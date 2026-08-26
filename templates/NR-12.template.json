@@ -1,0 +1,62 @@
+{
+  "nr_code": "NR-12",
+  "nr_name": "Segurança no Trabalho em Máquinas e Equipamentos",
+  "carga_horaria_minima": 8,
+  "validade_meses": 12,
+  "riscos": ["Acidente", "Fisico"],
+  "descricao_padrao": "Treinamento de Segurança na Operação de Máquinas e Equipamentos conforme NR-12",
+  "campos_extra": [
+    {
+      "id": "cargo",
+      "label": "Cargo/Função",
+      "tipo": "text",
+      "obrigatorio": false,
+      "placeholder": "Ex: Operador de Máquinas"
+    },
+    {
+      "id": "maquina",
+      "label": "Máquina/Equipamento",
+      "tipo": "text",
+      "obrigatorio": false,
+      "placeholder": "Ex: Prensa Hidráulica 50T, Injetora, Torno CNC"
+    },
+    {
+      "id": "tipo_treinamento",
+      "label": "Tipo de Treinamento",
+      "tipo": "select",
+      "opcoes": ["Inicial", "Periódico", "Reciclagem", "Mudança de Função"],
+      "obrigatorio": false
+    },
+    {
+      "id": "riscos_maquina",
+      "label": "Principais Riscos da Máquina",
+      "tipo": "text",
+      "obrigatorio": false,
+      "placeholder": "Ex: Pontos de esmagamento, Corte, Projeção de partículas"
+    }
+  ],
+  "conteudo_programatico": [
+    "1. Princípios gerais de prevenção em máquinas e equipamentos",
+    "2. Dispositivos de partida, acionamento e parada de emergência",
+    "3. Sistemas de segurança: proteções fixas, móveis, intertravadas, ajustáveis",
+    "4. Dispositivos de segurança: cortinas de luz, tapetes sensíveis, duas mãos",
+    "5. Procedimentos de trabalho: operação, ajustes, limpeza, manutenção",
+    "6. Bloqueio e etiquetagem (LOTO) para intervenções",
+    "7. Inspeção, manutenção, lubrificação e ajustes",
+    "8. Transporte, movimentação e armazenagem de materiais na máquina",
+    "9. Normas técnicas aplicáveis: ABNT NBR ISO 12100, NR-12"
+  ],
+  "texto_certificado": "Certificamos que {nome_funcionario}, portador do CPF no {cpf}, da empresa {empresa}, inscrito no CNPJ sob no {cnpj}, concluiu com aproveitamento o {descricao_treinamento}, com carga horaria de {carga_horaria} horas, no dia {data_treinamento}, nas dependencias de {local_treinamento}, atendendo aos requisitos da Norma Regulatoria no 12 (NR-12) do Ministerio do Trabalho e Emprego.",
+  "assinaturas": [
+    {
+      "role": "instrutor",
+      "label": "INSTRUTOR/RESPONSAVEL TECNICO",
+      "obrigatorio": true
+    },
+    {
+      "role": "participante",
+      "label": "PARTICIPANTE",
+      "obrigatorio": false
+    }
+  ]
+}

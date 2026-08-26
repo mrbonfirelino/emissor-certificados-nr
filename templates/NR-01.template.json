@@ -1,0 +1,47 @@
+{
+  "nr_code": "NR-01",
+  "nr_name": "Disposições Gerais",
+  "carga_horaria_minima": 8,
+  "validade_meses": 12,
+  "riscos": ["Fisico", "Ergonomico"],
+  "descricao_padrao": "Treinamento de Disposições Gerais - NR-01",
+  "campos_extra": [
+    {
+      "id": "cargo",
+      "label": "Cargo/Função",
+      "tipo": "text",
+      "obrigatorio": false,
+      "placeholder": "Ex: Técnico de Segurança"
+    },
+    {
+      "id": "setor",
+      "label": "Setor",
+      "tipo": "text",
+      "obrigatorio": false,
+      "placeholder": "Ex: SESMT"
+    }
+  ],
+  "conteudo_programatico": [
+    "1. Princípios gerais de prevenção em segurança e saúde no trabalho",
+    "2. Direitos e deveres dos trabalhadores e empregadores",
+    "3. Organização da segurança e saúde no trabalho",
+    "4. Comissão Interna de Prevenção de Acidentes (CIPA)",
+    "5. Serviços Especializados em Engenharia de Segurança e Medicina do Trabalho (SESMT)",
+    "6. Programas de prevenção (PPRA, PCMSO, PPR, etc.)",
+    "7. Comunicação de acidentes de trabalho (CAT)",
+    "8. Normas regulamentadoras - visão geral"
+  ],
+  "texto_certificado": "Certificamos que {nome_funcionario}, portador do CPF no {cpf}, da empresa {empresa}, inscrito no CNPJ sob no {cnpj}, concluiu com aproveitamento o {descricao_treinamento}, com carga horaria de {carga_horaria} horas, no dia {data_treinamento}, nas dependencias de {local_treinamento}, atendendo aos requisitos da Norma Regulatoria no 01 (NR-01) do Ministerio do Trabalho e Emprego.",
+  "assinaturas": [
+    {
+      "role": "instrutor",
+      "label": "INSTRUTOR/RESPONSAVEL TECNICO",
+      "obrigatorio": true
+    },
+    {
+      "role": "participante",
+      "label": "PARTICIPANTE",
+      "obrigatorio": false
+    }
+  ]
+}

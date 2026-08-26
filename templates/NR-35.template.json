@@ -1,0 +1,71 @@
+{
+  "nr_code": "NR-35",
+  "nr_name": "Trabalho em Altura",
+  "carga_horaria_minima": 8,
+  "validade_meses": 24,
+  "riscos": ["Acidente", "Fisico"],
+  "descricao_padrao": "Treinamento de Trabalho em Altura - NR-35",
+  "campos_extra": [
+    {
+      "id": "cargo",
+      "label": "Cargo/Função",
+      "tipo": "text",
+      "obrigatorio": false,
+      "placeholder": "Ex: Trabalhador em Altura, Montador de Andaimes"
+    },
+    {
+      "id": "tipo_trabalho",
+      "label": "Tipo de Trabalho em Altura",
+      "tipo": "select",
+      "opcoes": [
+        "Escadas",
+        "Andaimes",
+        "Plataformas Elevatórias (PTA)",
+        "Cordas/Acesso por Cordas",
+        "Telhados/Coberturas",
+        "Torres/Postes",
+        "Outro"
+      ],
+      "obrigatorio": false
+    },
+    {
+      "id": "equipamento_altura",
+      "label": "Equipamentos de Proteção Contra Quedas",
+      "tipo": "text",
+      "obrigatorio": false,
+      "placeholder": "Ex: Cinturão paraquedista, Talabarte duplo, Trava-quedas, Capacete com jugular"
+    },
+    {
+      "id": "tipo_treinamento",
+      "label": "Tipo de Treinamento",
+      "tipo": "select",
+      "opcoes": ["Inicial", "Periódico (Bienal)", "Reciclagem", "Mudança de Atividade"],
+      "obrigatorio": false
+    }
+  ],
+  "conteudo_programatico": [
+    "1. Normas e regulamentos aplicáveis ao trabalho em altura (NR-35, NBR 14626, NBR 15837)",
+    "2. Análise de risco e condições impeditivas (AET, PT - Permissão de Trabalho)",
+    "3. Riscos de queda: diferença de nível, abertura, beiral, fragilidade",
+    "4. Sistemas de proteção contra quedas: coletiva (guarda-corpo, redes) e individual (EPI)",
+    "5. Equipamentos de proteção individual: cinturão, talabarte, trava-quedas, capacete, luvas",
+    "6. Ancoragem: pontos fixos, linhas de vida, requisitos de resistência",
+    "7. Equipamentos de acesso: escadas, andaimes, plataformas, cestos aéreos",
+    "8. Procedimentos de emergência e resgate em altura",
+    "8. Inspeção, conservação e armazenamento de EPI para altura",
+    "10. Responsabilidades: empregador, trabalhador, supervisor, segurança do trabalho"
+  ],
+  "texto_certificado": "Certificamos que {nome_funcionario}, portador do CPF no {cpf}, da empresa {empresa}, inscrito no CNPJ sob no {cnpj}, concluiu com aproveitamento o {descricao_treinamento}, com carga horaria de {carga_horaria} horas, no dia {data_treinamento}, nas dependencias de {local_treinamento}, atendendo aos requisitos da Norma Regulatoria no 35 (NR-35) do Ministerio do Trabalho e Emprego.",
+  "assinaturas": [
+    {
+      "role": "instrutor",
+      "label": "INSTRUTOR/RESPONSAVEL TECNICO",
+      "obrigatorio": true
+    },
+    {
+      "role": "participante",
+      "label": "PARTICIPANTE",
+      "obrigatorio": false
+    }
+  ]
+}

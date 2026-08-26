@@ -1,0 +1,127 @@
+{
+  "page_size": "A4",
+  "orientation": "landscape",
+  "margins": {
+    "top": 10,
+    "bottom": 10,
+    "left": 10,
+    "right": 10
+  },
+  "logo": {
+    "path": "assets/LOGO TIPO ALTEC.png",
+    "width": 28,
+    "height": 18,
+    "position": "top-left"
+  },
+  "fonts": {
+    "title": {
+      "family": "Helvetica-Bold",
+      "size": 42,
+      "color": "#1B3A5C",
+      "leading_multiplier": 1.3,
+      "space_after": 4
+    },
+    "subtitle": {
+      "family": "Helvetica-Bold",
+      "size": 14,
+      "color": "#1B3A5C",
+      "leading_multiplier": 1.4,
+      "space_after": 4
+    },
+    "body": {
+      "family": "Helvetica",
+      "size": 16,
+      "color": "#333333"
+    },
+    "body_bold": {
+      "family": "Helvetica-Bold",
+      "size": 16,
+      "color": "#333333",
+      "leading_multiplier": 1.5,
+      "space_after": 6
+    },
+    "small": {
+      "family": "Helvetica",
+      "size": 18,
+      "color": "#999999",
+      "leading_multiplier": 1.4
+    },
+    "signature": {
+      "family": "Helvetica",
+      "size": 18,
+      "color": "#333333",
+      "leading_multiplier": 1.5
+    },
+    "signature_bold": {
+      "family": "Helvetica-Bold",
+      "size": 18,
+      "color": "#333333"
+    },
+    "signature_detail": {
+      "family": "Helvetica",
+      "size": 18,
+      "color": "#999999"
+    },
+    "content_item": {
+      "family": "Helvetica-Bold",
+      "size": 16,
+      "color": "#333333",
+      "leading_multiplier": 1.4,
+      "space_after": 3,
+      "left_indent_mm": 5
+    }
+  },
+  "colors": {
+    "primary": "#1B3A5C",
+    "text": "#333333",
+    "muted": "#999999",
+    "divider": "#1B3A5C"
+  },
+  "certificate_number": {
+    "position": "bottom-right",
+    "font_size": 10,
+    "color": "#CCCCCC",
+    "prefix": "CERT-"
+  },
+  "signature_blocks": [
+    {
+      "role": "instrutor",
+      "label": "INSTRUTOR/RESPONSAVEL TECNICO",
+      "registro_label": "Registro MTE"
+    },
+    {
+      "role": "participante",
+      "label": "PARTICIPANTE",
+      "registro_label": ""
+    }
+  ],
+  "signature_block": {
+    "label_size": 10,
+    "name_size": 10,
+    "detail_size": 8,
+    "detail_color": "#000000"
+  },
+  "spacers": {
+    "after_header_mm": 4,
+    "after_divider_mm": 8,
+    "after_text_mm": 8,
+    "after_date_mm": 0,
+    "after_content_title_mm": 6,
+    "cert_number_mm": 4
+  },
+  "border": {
+    "inset_mm": 5,
+    "line_width": 3
+  },
+  "divider": {
+    "line_width": 2
+  },
+  "city": "Cordeiro",
+  "title_format": "CERTIFICADO - NR{nr_num}",
+  "content_title": "CONTEUDO PROGRAMATICO",
+  "signature_line_length": 160,
+  "content_columns": {
+    "count": 1,
+    "padding_mm": 5
+  }
+}

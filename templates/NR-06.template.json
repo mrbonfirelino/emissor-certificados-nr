@@ -1,0 +1,54 @@
+{
+  "nr_code": "NR-06",
+  "nr_name": "Equipamento de Proteção Individual (EPI)",
+  "carga_horaria_minima": 4,
+  "validade_meses": 12,
+  "riscos": ["Acidente", "Fisico"],
+  "descricao_padrao": "Treinamento de Uso e Conservação de EPI - NR-06",
+  "campos_extra": [
+    {
+      "id": "cargo",
+      "label": "Cargo/Função",
+      "tipo": "text",
+      "obrigatorio": false,
+      "placeholder": "Ex: Operador de Produção"
+    },
+    {
+      "id": "epis",
+      "label": "EPIs Utilizados",
+      "tipo": "text",
+      "obrigatorio": false,
+      "placeholder": "Ex: Capacete, Luva de raspa, Botina de segurança, Protetor auricular"
+    },
+    {
+      "id": "riscos",
+      "label": "Riscos Protegidos",
+      "tipo": "text",
+      "obrigatorio": false,
+      "placeholder": "Ex: Queda de objetos, Agentes químicos, Ruído"
+    }
+  ],
+  "conteudo_programatico": [
+    "1. Definição e classificação de EPI",
+    "2. Obrigatoriedade do fornecimento e uso de EPI",
+    "3. Responsabilidades do empregador e do empregado",
+    "4. Tipos de EPI: proteção da cabeça, olhos/face, audição, respiratória, tronco, membros superiores/inferiores, corpo inteiro",
+    "5. Seleção adequada de EPI conforme risco",
+    "6. Uso correto, conservação, higienização e armazenamento",
+    "7. Substituição e descarte de EPI danificado ou vencido",
+    "8. Certificado de Aprovação (CA) do MTE"
+  ],
+  "texto_certificado": "Certificamos que {nome_funcionario}, portador do CPF no {cpf}, da empresa {empresa}, inscrito no CNPJ sob no {cnpj}, concluiu com aproveitamento o {descricao_treinamento}, com carga horaria de {carga_horaria} horas, no dia {data_treinamento}, nas dependencias de {local_treinamento}, atendendo aos requisitos da Norma Regulatoria no 06 (NR-06) do Ministerio do Trabalho e Emprego.",
+  "assinaturas": [
+    {
+      "role": "instrutor",
+      "label": "INSTRUTOR/RESPONSAVEL TECNICO",
+      "obrigatorio": true
+    },
+    {
+      "role": "participante",
+      "label": "PARTICIPANTE",
+      "obrigatorio": false
+    }
+  ]
+}

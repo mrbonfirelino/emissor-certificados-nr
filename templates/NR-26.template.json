@@ -1,0 +1,49 @@
+{
+  "nr_code": "NR-26",
+  "nr_name": "Simbolos de Seguranca",
+  "carga_horaria_minima": 4,
+  "validade_meses": 24,
+  "riscos": ["Fisico", "Quimico"],
+  "descricao_padrao": "Treinamento de Simbolos de Seguranca - NR-26",
+  "campos_extra": [
+    {
+      "id": "cargo",
+      "label": "Cargo/Funcao",
+      "tipo": "text",
+      "obrigatorio": false,
+      "placeholder": "Ex: Operador de Maquinas"
+    },
+    {
+      "id": "setor",
+      "label": "Setor",
+      "tipo": "text",
+      "obrigatorio": false,
+      "placeholder": "Ex: Producao"
+    }
+  ],
+  "conteudo_programatico": [
+    "1. Objetivo e importancia dos simbolos de seguranca no ambiente de trabalho",
+    "2. Classificacao dos signos de seguranca: proibicao, obrigacao, advertencia e salvamento",
+    "3. Signos de PROIBICAO: formato, cores e significados (ex: fumar, entrar, usar celulares)",
+    "4. Signos de OBRIGACAO: formato, cores e significados (ex: usar EPI, usar capacete, usar oculos)",
+    "5. Signos de ADVERTENCIA: formato, cores e significados (ex: risco eletrico, substancias toxicas, material inflamavel)",
+    "6. Signos de SALVAMENTO: formato, cores e significados (ex: saida de emergencia, extinctores, primeiros socorros)",
+    "7. Sinalizacao de seguranca: faixas no piso, sinalizacao de escape, delimitacao de areas",
+    "8. Identificacao de riscos: simbolos de risco quimico, biologico, fisico e ergonomico",
+    "9. Legislacao aplicavel: NR-26 e ABNT NBR 7195 (Sinalizacao de Seguranca)",
+    "10. Boas praticas de leitura e interpretacao dos simbolos no ambiente de trabalho"
+  ],
+  "texto_certificado": "Certificamos que {nome_funcionario}, portador do CPF no {cpf}, da empresa {empresa}, inscrito no CNPJ sob no {cnpj}, concluiu com aproveitamento o {descricao_treinamento}, com carga horaria de {carga_horaria} horas, no dia {data_treinamento}, nas dependencias de {local_treinamento}, atendendo aos requisitos da Norma Regulatoria no 26 (NR-26) do Ministerio do Trabalho e Emprego.",
+  "assinaturas": [
+    {
+      "role": "instrutor",
+      "label": "INSTRUTOR/RESPONSAVEL TECNICO",
+      "obrigatorio": true
+    },
+    {
+      "role": "participante",
+      "label": "PARTICIPANTE",
+      "obrigatorio": false
+    }
+  ]
+}
