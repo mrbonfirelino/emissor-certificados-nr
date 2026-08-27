@@ -1,0 +1,56 @@
+{
+  "nr_code": "PONTE-ROLANTE",
+  "nr_name": "Operacao de Ponte Rolante",
+  "carga_horaria_minima": 8,
+  "validade_meses": 12,
+  "riscos": ["Queda de carga", "Esmagamento", "Eletrocussao", "Colisao"],
+  "descricao_padrao": "Treinamento de Seguranca na Operacao de Ponte Rolante",
+  "campos_extra": [
+    {
+      "id": "cargo",
+      "label": "Cargo/Funcao",
+      "tipo": "text",
+      "obrigatorio": false,
+      "placeholder": "Ex: Operador de Ponte Rolante"
+    },
+    {
+      "id": "capacidade",
+      "label": "Capacidade da Ponte",
+      "tipo": "text",
+      "obrigatorio": false,
+      "placeholder": "Ex: 5 ton, 10 ton, 20 ton"
+    },
+    {
+      "id": "tipo_lancador",
+      "label": "Tipo de Lancador",
+      "tipo": "select",
+      "opcoes": ["Membro", "Corrente", "Eletroimã", "Garra"],
+      "obrigatorio": false
+    }
+  ],
+  "conteudo_programatico": [
+    "1. Riscos na operacao de ponte rolante",
+    "2. Componentes: ponte, trumpete, carretel, gancho, lancador",
+    "3. Capacidade de carga e limites de seguranca",
+    "4. Inspecao antes da operacao",
+    "5. Procedimentos de movimentacao de cargas",
+    "6. Sinalizacao e comunicacao com o apoio de chao",
+    "7. Uso correto do lancador e acessorios",
+    "8. Seguranca em operacoes de carga/descarga",
+    "9. EPIs e EPCs obrigatorios",
+    "10. Procedimentos de emergencia e parada de emergencia"
+  ],
+  "texto_certificado": "Certificamos que {nome_funcionario}, portador do CPF no {cpf}, da empresa {empresa}, inscrito no CNPJ sob no {cnpj}, concluiu com aproveitamento o {descricao_treinamento}, com carga horaria de {carga_horaria} horas, no dia {data_treinamento}, nas dependencias de {local_treinamento}, demonstrando capacitacao para operacao segura de ponte rolante.",
+  "assinaturas": [
+    {
+      "role": "instrutor",
+      "label": "INSTRUTOR/RESPONSAVEL TECNICO",
+      "obrigatorio": true
+    },
+    {
+      "role": "participante",
+      "label": "PARTICIPANTE",
+      "obrigatorio": false
+    }
+  ]
+}

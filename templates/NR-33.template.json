@@ -1,0 +1,56 @@
+{
+  "nr_code": "NR-33",
+  "nr_name": "Espacos Confinados",
+  "carga_horaria_minima": 8,
+  "validade_meses": 12,
+  "riscos": ["Asfixia", "Intoxicacao", "Incendio", "Explosao"],
+  "descricao_padrao": "Treinamento de Seguranca para Trabalho em Espacos Confinados conforme NR-33",
+  "campos_extra": [
+    {
+      "id": "cargo",
+      "label": "Cargo/Funcao",
+      "tipo": "text",
+      "obrigatorio": false,
+      "placeholder": "Ex: Operador de Manutencao"
+    },
+    {
+      "id": "tipo_trabalho",
+      "label": "Tipo de Trabalho",
+      "tipo": "select",
+      "opcoes": ["Entrada Permitida", "Vigia", "Supervisor", "Resgate"],
+      "obrigatorio": false
+    },
+    {
+      "id": "espaco",
+      "label": "Tipo de Espaco Confinado",
+      "tipo": "text",
+      "obrigatorio": false,
+      "placeholder": "Ex: Tanque, Caldeira, Fossa, Duto"
+    }
+  ],
+  "conteudo_programatico": [
+    "1. Conceitos de espaco confinado e seus perigos",
+    "2. Classificacao dos espacos confinados",
+    "3. Riscos: atmosferas perigosas, mecanicos, eletricos, biologicos",
+    "4. Permissao de entrada e trabalho",
+    "5. Monitoramento atmosferico continuo",
+    "6. Ventilacao de espacos confinados",
+    "7. Sistemas de resgate e salvamento",
+    "8. Equipamentos de protecao individual e coletiva",
+    "9. Procedimentos de emergencia e resgate",
+    "10. Papéis: trabalhador autorizado, vigia, supervisor, brigadista"
+  ],
+  "texto_certificado": "Certificamos que {nome_funcionario}, portador do CPF no {cpf}, da empresa {empresa}, inscrito no CNPJ sob no {cnpj}, concluiu com aproveitamento o {descricao_treinamento}, com carga horaria de {carga_horaria} horas, no dia {data_treinamento}, nas dependencias de {local_treinamento}, atendendo aos requisitos da Norma Regulatoria no 33 (NR-33) do Ministerio do Trabalho e Emprego.",
+  "assinaturas": [
+    {
+      "role": "instrutor",
+      "label": "INSTRUTOR/RESPONSAVEL TECNICO",
+      "obrigatorio": true
+    },
+    {
+      "role": "participante",
+      "label": "PARTICIPANTE",
+      "obrigatorio": false
+    }
+  ]
+}

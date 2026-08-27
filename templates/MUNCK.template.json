@@ -1,0 +1,56 @@
+{
+  "nr_code": "MUNCK",
+  "nr_name": "Operacao de Munck",
+  "carga_horaria_minima": 8,
+  "validade_meses": 12,
+  "riscos": ["Queda de carga", "Esmagamento", "Eletrocussao"],
+  "descricao_padrao": "Treinamento de Seguranca na Operacao de Munck (Guindaste Veicular)",
+  "campos_extra": [
+    {
+      "id": "cargo",
+      "label": "Cargo/Funcao",
+      "tipo": "text",
+      "obrigatorio": false,
+      "placeholder": "Ex: Operador de Munck, Ajudante"
+    },
+    {
+      "id": "modelo_equipamento",
+      "label": "Modelo/Capacidade do Munck",
+      "tipo": "text",
+      "obrigatorio": false,
+      "placeholder": "Ex: 5 toneladas, 10 toneladas"
+    },
+    {
+      "id": "tipo_operacao",
+      "label": "Tipo de Operacao",
+      "tipo": "select",
+      "opcoes": ["Carga/Descarga", "Movimentacao de Materiais", "Montagem de Estruturas"],
+      "obrigatorio": false
+    }
+  ],
+  "conteudo_programatico": [
+    "1. Riscos na operacao de munck/guindaste veicular",
+    "2. Componentes e principios de funcionamento",
+    "3. Capacidade de carga e diagrama de estabilidade",
+    "4. Inspecao antes do uso",
+    "5. Procedimentos de levantamento e movimentacao de cargas",
+    "6. Sinalizacao e comunicação com ajudantes",
+    "7. Uso de ancora e contrapeso",
+    "8. Seguranca em proximidade a linhas de energia",
+    "9. EPIs e EPCs especificos",
+    "10. Procedimentos de emergencia"
+  ],
+  "texto_certificado": "Certificamos que {nome_funcionario}, portador do CPF no {cpf}, da empresa {empresa}, inscrito no CNPJ sob no {cnpj}, concluiu com aproveitamento o {descricao_treinamento}, com carga horaria de {carga_horaria} horas, no dia {data_treinamento}, nas dependencias de {local_treinamento}, demonstrando capacitacao para operacao segura de munck.",
+  "assinaturas": [
+    {
+      "role": "instrutor",
+      "label": "INSTRUTOR/RESPONSAVEL TECNICO",
+      "obrigatorio": true
+    },
+    {
+      "role": "participante",
+      "label": "PARTICIPANTE",
+      "obrigatorio": false
+    }
+  ]
+}

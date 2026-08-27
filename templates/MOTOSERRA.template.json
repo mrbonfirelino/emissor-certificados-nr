@@ -1,0 +1,56 @@
+{
+  "nr_code": "MOTOSERRA",
+  "nr_name": "Operacao de Motoserra",
+  "carga_horaria_minima": 8,
+  "validade_meses": 12,
+  "riscos": ["Corte", "Projecao de fragmentos", "Vibracao", "Ruido"],
+  "descricao_padrao": "Treinamento de Seguranca na Operacao de Motoserra",
+  "campos_extra": [
+    {
+      "id": "cargo",
+      "label": "Cargo/Funcao",
+      "tipo": "text",
+      "obrigatorio": false,
+      "placeholder": "Ex: Operador de Motoserra"
+    },
+    {
+      "id": "modelo_equipamento",
+      "label": "Modelo/Marca da Motoserra",
+      "tipo": "text",
+      "obrigatorio": false,
+      "placeholder": "Ex: Husqvarna 450, Stihl MS 250"
+    },
+    {
+      "id": "tipo_atividade",
+      "label": "Tipo de Atividade",
+      "tipo": "select",
+      "opcoes": ["Corte de Arvores", "Podas", "Desramamento", "Corte de Toras"],
+      "obrigatorio": false
+    }
+  ],
+  "conteudo_programatico": [
+    "1. Riscos na operacao de motoserra",
+    "2. Componentes e funcionamento da motoserra",
+    "3. EPIs obrigatorios: capacete, óculos, luvas, protetor auricular, calca com protecao",
+    "4. Inspecao antes do uso (corrente, barra, filtro, combustivel)",
+    "5. Tecnicas de corte seguras",
+    "6. Posicao de trabalho e postura correta",
+    "7. Cuidados com combustivel e lubrificacao",
+    "8. Manutencao basica e limpeza",
+    "9. Procedimentos de emergencia",
+    "10. Normas de seguranca para corte de arvores"
+  ],
+  "texto_certificado": "Certificamos que {nome_funcionario}, portador do CPF no {cpf}, da empresa {empresa}, inscrito no CNPJ sob no {cnpj}, concluiu com aproveitamento o {descricao_treinamento}, com carga horaria de {carga_horaria} horas, no dia {data_treinamento}, nas dependencias de {local_treinamento}, demonstrando capacitacao para operacao segura de motoserra.",
+  "assinaturas": [
+    {
+      "role": "instrutor",
+      "label": "INSTRUTOR/RESPONSAVEL TECNICO",
+      "obrigatorio": true
+    },
+    {
+      "role": "participante",
+      "label": "PARTICIPANTE",
+      "obrigatorio": false
+    }
+  ]
+}

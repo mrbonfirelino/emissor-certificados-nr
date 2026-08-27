@@ -1,0 +1,54 @@
+{
+  "nr_code": "NR-10",
+  "nr_name": "Segurança em Instalações e Serviços em Eletricidade",
+  "carga_horaria_minima": 8,
+  "validade_meses": 24,
+  "riscos": ["Choque elétrico", "Arc elétrico", "Queda", "Incêndio"],
+  "descricao_padrao": "Treinamento de Segurança em Instalações e Serviços em Eletricidade - NR-10",
+  "campos_extra": [
+    {
+      "id": "cargo",
+      "label": "Cargo/Função",
+      "tipo": "text",
+      "obrigatorio": false,
+      "placeholder": "Ex: Eletricista"
+    },
+    {
+      "id": "cnae",
+      "label": "CNAE da Empresa",
+      "tipo": "text",
+      "obrigatorio": false,
+      "placeholder": "Ex: 43215-00"
+    }
+  ],
+  "conteudo_programatico": [
+    "1. Introdução à NR-10: Histórico, objetivo e campo de aplicação",
+    "2. Conceitos fundamentais de eletricidade: tensão, corrente, resistência, potência",
+    "3. Efeitos da eletricidade sobre o organismo humano: choque elétrico, queimaduras",
+    "4. Fatores que determinam a gravidade do acidente elétrico",
+    "5. Medidas de proteção contra choque elétrico: isolamento, aterramento, equipotencialização",
+    "6. Dispositivos de proteção: DR, disjuntores, fusíveis",
+    "7. EPIs para trabalhos em eletricidade: luvas isolantes, capacete dielétrico, calçados isolantes",
+    "8. Ferramentas isoladas e sua utilização",
+    "9. Sinalização de segurança e bloqueio/etiquetamento (LOTO)",
+    "10. Procedimentos de trabalho seguro: ordem de serviço, permissão de trabalho",
+    "11. Proteção contra incêndio e explosão em instalações elétricas",
+    "12. Primeiros socorros em acidentes com eletricidade",
+    "13. Normas técnicas aplicáveis: NBR 5410, NBR 14039",
+    "14. Organização do trabalho em eletricidade: brigadas, equipes de emergência",
+    "15. Documentação e registros obrigatórios"
+  ],
+  "texto_certificado": "Certificamos que {nome_funcionario}, portador do CPF no {cpf}, da empresa {empresa}, inscrito no CNPJ sob no {cnpj}, concluiu com aproveitamento o {descricao_treinamento}, com carga horaria de {carga_horaria} horas, no dia {data_treinamento}, nas dependencias de {local_treinamento}, atendendo aos requisitos da Norma Regulatoria no 10 (NR-10) do Ministerio do Trabalho e Emprego.",
+  "assinaturas": [
+    {
+      "role": "instrutor",
+      "label": "INSTRUTOR/RESPONSAVEL TECNICO",
+      "obrigatorio": true
+    },
+    {
+      "role": "participante",
+      "label": "PARTICIPANTE",
+      "obrigatorio": false
+    }
+  ]
+}

@@ -6,32 +6,7 @@ from src.utils.paths import get_data_dir
 
 FUNCOES_FILE = get_data_dir() / "funcoes.json"
 
-DEFAULT_FUNCOES = [
-    "Administrador",
-    "Analista",
-    "Armador",
-    "Auxiliar Administrativo",
-    "Auxiliar de Servicos Gerais",
-    "Carpinteiro",
-    " Eletricista",
-    "Encarregado",
-    "Engenheiro de Seguranca",
-    "Estagiario",
-    "Gerente",
-    "Lider",
-    "Mecanico",
-    "Motorista",
-    "Operador de Maquinas",
-    "Pedreiro",
-    "Planejador",
-    "Responsavel Tecnico",
-    "Servente",
-    "Tecnico de Seguranca do Trabalho",
-    "Tecnico em Eletricidade",
-    "Tecnico em Mecanica",
-    "Trabalhador Geral",
-    "Vendedor",
-]
+DEFAULT_FUNCOES = []
 
 
 def load_funcoes() -> list:

@@ -10,7 +10,7 @@ from src.core.employee_repo import EmployeeRepository
 from src.core.template_loader import load_nr_template
 from src.core.config import load_company_config
 from src.core.pdf_generator import generate_certificate_pdf
-from src.utils.paths import get_data_dir
+from src.utils.paths import get_data_dir, get_certificados_dir
 from src.utils.date_utils import hoje
 
 
@@ -64,7 +64,8 @@ class CertificateService:
             assinaturas=template.assinaturas
         )
 
-        output_dir = output_dir or get_data_dir()
+        output_dir = output_dir or get_certificados_dir() / employee.nome.replace(' ', '_')
+        output_dir.mkdir(parents=True, exist_ok=True)
         pdf_filename = f"{cert_number}_{nr_code}_{employee.nome.replace(' ', '_')}.pdf"
         pdf_path = output_dir / pdf_filename
 

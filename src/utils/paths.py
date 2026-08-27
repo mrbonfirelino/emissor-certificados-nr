@@ -76,3 +76,10 @@ def get_icon_path() -> Path:
 def get_config_dir() -> Path:
     """Pasta de configuração do usuário (para restore.key)."""
     return get_data_dir()
+
+
+def get_certificados_dir() -> Path:
+    """Pasta de certificados emitidos, organizados por funcionário."""
+    cert_dir = get_project_root() / "CERTIFICADOS"
+    cert_dir.mkdir(parents=True, exist_ok=True)
+    return cert_dir

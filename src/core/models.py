@@ -29,18 +29,23 @@ class CompanyConfig(BaseModel):
 class Employee(BaseModel):
     id: Optional[int] = None
     nome: str = Field(..., min_length=2)
-    cpf: str = Field(..., min_length=11)
+    cpf: Optional[str] = None
+    funcao: Optional[str] = None
     created_at: Optional[str] = None
 
     @field_validator('cpf')
     @classmethod
-    def validar_cpf_funcionario(cls, v: str) -> str:
+    def validar_cpf_funcionario(cls, v: Optional[str]) -> Optional[str]:
+        if not v or not v.strip():
+            return None
         if not validar_cpf(v):
             raise ValueError("CPF invalido")
         return formatar_cpf(v)
 
     def display_name(self) -> str:
-        return f"{self.nome} ({self.cpf})"
+        if self.cpf:
+            return f"{self.nome} ({self.cpf})"
+        return self.nome
 
 
 class NRTemplateExtraField(BaseModel):
@@ -53,7 +58,7 @@ class NRTemplateExtraField(BaseModel):
 
 
 class NRTemplate(BaseModel):
-    nr_code: str = Field(..., pattern=r'^NR-\d{2}$')
+    nr_code: str = Field(..., pattern=r'^[A-Z][A-Z0-9-]+$')
     nr_name: str
     carga_horaria_minima: int = 8
     validade_meses: int = 12

@@ -1,0 +1,52 @@
+{
+  "nr_code": "FDS",
+  "nr_name": "Ficha de Dados de Seguranca",
+  "carga_horaria_minima": 4,
+  "validade_meses": 12,
+  "riscos": ["Quimico"],
+  "descricao_padrao": "Treinamento de Ficha de Dados de Seguranca (FDS/FISPQ)",
+  "campos_extra": [
+    {
+      "id": "produto",
+      "label": "Produto/Substancia",
+      "tipo": "text",
+      "obrigatorio": false,
+      "placeholder": "Ex: Acido Sulfurico, Hidroxido de Sodio"
+    },
+    {
+      "id": "setor",
+      "label": "Setor",
+      "tipo": "text",
+      "obrigatorio": false,
+      "placeholder": "Ex: Laboratorio, Producao"
+    }
+  ],
+  "conteudo_programatico": [
+    "1. O que e a Ficha de Dados de Seguranca (FDS/FISPQ)",
+    "2. Identificacao dos produtos quimicos e seus riscos",
+    "3. Dados de composicao e informacoes sobre ingredientes",
+    "4. Medidas de primeiros socorros",
+    "5. Medidas de combate a incendio",
+    "6. Medidas de accidente ambiental",
+    "7. Manipulacao e armazenagem segura",
+    "8. Controle de exposicao e protecao individual",
+    "9. Propriedades fisicas e quimicas",
+    "10. Estabilidade e reatividade",
+    "11. Informacoes toxicologicas",
+    "12. Informacoes ecologicas",
+    "13. Disposicao final e transporte"
+  ],
+  "texto_certificado": "Certificamos que {nome_funcionario}, portador do CPF no {cpf}, da empresa {empresa}, inscrito no CNPJ sob no {cnpj}, concluiu com aproveitamento o {descricao_treinamento}, com carga horaria de {carga_horaria} horas, no dia {data_treinamento}, nas dependencias de {local_treinamento}, atendendo as normas de seguranca para manipulacao de produtos quimicos.",
+  "assinaturas": [
+    {
+      "role": "instrutor",
+      "label": "INSTRUTOR/RESPONSAVEL TECNICO",
+      "obrigatorio": true
+    },
+    {
+      "role": "participante",
+      "label": "PARTICIPANTE",
+      "obrigatorio": false
+    }
+  ]
+}

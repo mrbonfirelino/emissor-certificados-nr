@@ -5,7 +5,7 @@ from src.ui.styles import COLORS, FONTS
 
 
 class DynamicForm(ctk.CTkFrame):
-    """Formulário dinâmico baseado nos campos extras do template do NR."""
+    """Formulário dinâmico colapsável baseado nos campos extras do template do NR."""
     
     def __init__(
         self,
@@ -19,6 +19,7 @@ class DynamicForm(ctk.CTkFrame):
         self.on_change = on_change
         self.field_widgets: Dict[str, ctk.CTkBaseClass] = {}
         self.field_vars: Dict[str, ctk.StringVar] = {}
+        self._expanded = False
         self._build_form()
 
     def _build_form(self):
@@ -27,34 +28,70 @@ class DynamicForm(ctk.CTkFrame):
         self.field_widgets.clear()
         self.field_vars.clear()
         
+        fonts = FONTS
+
+        # Botão toggle
+        self._toggle_btn = ctk.CTkButton(
+            self,
+            text="▶ Campos Específicos da NR (Opcionais)",
+            font=fonts["heading"],
+            text_color=COLORS["primary"],
+            fg_color="transparent",
+            hover_color=COLORS["background"],
+            anchor="w",
+            height=32,
+            command=self._toggle
+        )
+        self._toggle_btn.pack(anchor="w", pady=(0, 4))
+
+        # Container dos campos (inicialmente oculto)
+        self._fields_frame = ctk.CTkFrame(self, fg_color="transparent")
+        
         if not self.template or not self.template.campos_extra:
             label = ctk.CTkLabel(
-                self,
+                self._fields_frame,
+                text="Nenhum campo extra para este NR",
+                font=fonts["small"],
+                text_color=COLORS["muted"]
+            )
+            label.pack(pady=10)
+
+    def _toggle(self):
+        self._expanded = not self._expanded
+        if self._expanded:
+            self._fields_frame.pack(fill="x", pady=(0, 8))
+            self._toggle_btn.configure(text="▼ Campos Específicos da NR (Opcionais)")
+            # Cria campos apenas na primeira expansão
+            if not self._fields_frame.winfo_children() or (
+                len(self._fields_frame.winfo_children()) == 1 and 
+                isinstance(self._fields_frame.winfo_children()[0], ctk.CTkLabel)
+            ):
+                self._create_fields()
+        else:
+            self._fields_frame.pack_forget()
+            self._toggle_btn.configure(text="▶ Campos Específicos da NR (Opcionais)")
+
+    def _create_fields(self):
+        for widget in self._fields_frame.winfo_children():
+            widget.destroy()
+        
+        if not self.template or not self.template.campos_extra:
+            label = ctk.CTkLabel(
+                self._fields_frame,
                 text="Nenhum campo extra para este NR",
                 font=FONTS["small"],
                 text_color=COLORS["muted"]
             )
-            label.pack(pady=20)
+            label.pack(pady=10)
             return
-        
-        # Título da seção
-        title = ctk.CTkLabel(
-            self,
-            text="Campos Específicos do NR",
-            font=FONTS["heading"],
-            text_color=COLORS["primary"]
-        )
-        title.pack(anchor="w", pady=(0, 12))
-        
-        # Cria campos
+
         for field in self.template.campos_extra:
             self._create_field(field)
 
     def _create_field(self, field: NRTemplateExtraField):
-        frame = ctk.CTkFrame(self, fg_color="transparent")
+        frame = ctk.CTkFrame(self._fields_frame, fg_color="transparent")
         frame.pack(fill="x", pady=6)
         
-        # Label
         label_text = f"{field.label}"
         if field.obrigatorio:
             label_text += " *"
@@ -85,9 +122,8 @@ class DynamicForm(ctk.CTkFrame):
                 corner_radius=6,
                 placeholder_text=field.placeholder
             )
-            # Validação só números
             widget.bind("<KeyRelease>", lambda e, fid=field.id: self._validate_number(fid))
-        else:  # text
+        else:
             widget = ctk.CTkEntry(
                 frame,
                 textvariable=var,
@@ -100,7 +136,6 @@ class DynamicForm(ctk.CTkFrame):
         widget.pack(fill="x", pady=(4, 0))
         self.field_widgets[field.id] = widget
         
-        # Trace para callback
         var.trace_add("write", lambda *args, fid=field.id: self._on_change(fid, var.get()))
 
     def _validate_number(self, field_id: str):
@@ -114,25 +149,22 @@ class DynamicForm(ctk.CTkFrame):
             self.on_change(self.get_values())
 
     def set_template(self, template: NRTemplate):
-        """Atualiza formulário para novo template."""
         self.template = template
+        self._expanded = False
         self._build_form()
 
     def get_values(self) -> Dict[str, Any]:
-        """Retorna valores atuais dos campos."""
         values = {}
         for field_id, var in self.field_vars.items():
             values[field_id] = var.get()
         return values
 
     def set_values(self, values: Dict[str, Any]):
-        """Define valores dos campos."""
         for field_id, value in values.items():
             if field_id in self.field_vars:
                 self.field_vars[field_id].set(str(value))
 
     def validate(self) -> tuple[bool, List[str]]:
-        """Valida campos obrigatórios. Retorna (válido, lista_erros)."""
         errors = []
         if not self.template:
             return True, errors
@@ -145,6 +177,5 @@ class DynamicForm(ctk.CTkFrame):
         return len(errors) == 0, errors
 
     def clear(self):
-        """Limpa todos os campos."""
         for var in self.field_vars.values():
             var.set("")

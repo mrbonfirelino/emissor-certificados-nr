@@ -1,0 +1,56 @@
+{
+  "nr_code": "CIPAA",
+  "nr_name": "Comissao Interna de Prevencao de Acidentes e de Assédio",
+  "carga_horaria_minima": 8,
+  "validade_meses": 12,
+  "riscos": ["Geral"],
+  "descricao_padrao": "Treinamento para Membros da CIPA/CIPAA - Comissao Interna de Prevencao de Acidentes e de Assedio",
+  "campos_extra": [
+    {
+      "id": "cargo",
+      "label": "Cargo na CIPA/CIPAA",
+      "tipo": "text",
+      "obrigatorio": false,
+      "placeholder": "Ex: Presidente, Vice, Secretario, Membro"
+    },
+    {
+      "id": "setor",
+      "label": "Setor Representado",
+      "tipo": "text",
+      "obrigatorio": false,
+      "placeholder": "Ex: Producao, Administrativo, Manutencao"
+    },
+    {
+      "id": "mandato",
+      "label": "Periodo do Mandato",
+      "tipo": "text",
+      "obrigatorio": false,
+      "placeholder": "Ex: 2024/2025"
+    }
+  ],
+  "conteudo_programatico": [
+    "1. Legislacao trabalhista eNR-5 (CIPA) e NR-5 (CIPAA)",
+    "2. Organizacao e funcionamento da CIPA/CIPAA",
+    "3. Atribuicoes e responsabilidades dos membros",
+    "4. Prevencao de acidentes e doencas do trabalho",
+    "5. Identificacao de riscos e avaliacao de perigos",
+    "6. Investigacao e analise de acidentes",
+    "7. Comunicacao de acidentes de trabalho (CAT)",
+    "8. Prevencao de assedio moral e sexual no trabalho",
+    "9.Campanhas de seguranca e saude",
+    "10. reunioes e registros da CIPA/CIPAA"
+  ],
+  "texto_certificado": "Certificamos que {nome_funcionario}, portador do CPF no {cpf}, da empresa {empresa}, inscrito no CNPJ sob no {cnpj}, concluiu com aproveitamento o {descricao_treinamento}, com carga horaria de {carga_horaria} horas, no dia {data_treinamento}, nas dependencias de {local_treinamento}, atendendo aos requisitos da Norma Regulatoria no 5 (NR-5) do Ministerio do Trabalho e Emprego.",
+  "assinaturas": [
+    {
+      "role": "instrutor",
+      "label": "INSTRUTOR/RESPONSAVEL TECNICO",
+      "obrigatorio": true
+    },
+    {
+      "role": "participante",
+      "label": "PARTICIPANTE",
+      "obrigatorio": false
+    }
+  ]
+}

@@ -32,10 +32,10 @@ def load_nr_template(nr_code: str) -> Optional[NRTemplate]:
 
 
 def list_available_nrs() -> List[str]:
-    """Lista códigos de NRs disponíveis (arquivos .template.json)."""
+    """Lista códigos de templates disponíveis (arquivos .template.json)."""
     templates_dir = get_templates_dir()
     nrs = []
-    for f in templates_dir.glob("NR-*.template.json"):
+    for f in templates_dir.glob("*.template.json"):
         nr_code = f.stem.replace(".template", "")
         nrs.append(nr_code)
     return sorted(nrs)

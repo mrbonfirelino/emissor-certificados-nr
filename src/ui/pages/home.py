@@ -61,6 +61,7 @@ class HomePage(ctk.CTkFrame):
         self.nr_scroll = ctk.CTkScrollableFrame(sidebar, fg_color="transparent")
         self.nr_scroll.grid(row=1, column=0, sticky="nsew", padx=6, pady=(0, 6))
         self.nr_scroll.grid_columnconfigure(0, weight=1)
+        self.nr_scroll.bind("<MouseWheel>", lambda e: self.nr_scroll._parent_canvas.yview_scroll(int(-1 * (e.delta / 120) * 2.5), "units"))
 
         self.nr_selector = NRSelector(self.nr_scroll, on_select=self._on_nr_selected, columns=1)
         self.nr_selector.pack(fill="both", expand=True)
@@ -90,11 +91,11 @@ class HomePage(ctk.CTkFrame):
         self.riscos_frame = ctk.CTkFrame(self.content_header, fg_color="transparent")
         self.riscos_frame.pack(anchor="w", pady=(4, 0))
 
-        # Form + Preview (50/50)
+        # Form + Preview (40/60)
         main_split = ctk.CTkFrame(content, fg_color="transparent")
         main_split.grid(row=1, column=0, sticky="nsew")
-        main_split.grid_columnconfigure(0, weight=1)
-        main_split.grid_columnconfigure(1, weight=1)
+        main_split.grid_columnconfigure(0, weight=2)
+        main_split.grid_columnconfigure(1, weight=3)
         main_split.grid_rowconfigure(0, weight=1)
 
         # === FORM ===
@@ -113,6 +114,7 @@ class HomePage(ctk.CTkFrame):
         self.form_scroll = ctk.CTkScrollableFrame(form_container, fg_color="transparent")
         self.form_scroll.grid(row=1, column=0, sticky="nsew", padx=10, pady=(0, 10))
         self.form_scroll.grid_columnconfigure(0, weight=1)
+        self.form_scroll.bind("<MouseWheel>", lambda e: self.form_scroll._parent_canvas.yview_scroll(int(-1 * (e.delta / 120) * 2.5), "units"))
 
         self._build_form_fields()
 
@@ -146,12 +148,12 @@ class HomePage(ctk.CTkFrame):
         # === PREVIEW ===
         self.preview = PDFPreview(main_split)
         self.preview.grid(row=0, column=1, sticky="nsew", padx=(3, 0))
-        self.preview.set_on_generate(self._on_generate)
+        self.preview.set_on_pdf_preview(self._on_pdf_preview)
 
     def _build_form_fields(self):
         fonts = get_fonts()
 
-        ctk.CTkLabel(self.form_scroll, text="Funcionario *", font=fonts["body_bold"], text_color=COLORS["text"]).pack(anchor="w", pady=(0, 4))
+        ctk.CTkLabel(self.form_scroll, text="Nome do Funcionario *", font=fonts["body_bold"], text_color=COLORS["text"]).pack(anchor="w", pady=(0, 4))
 
         self.employee_autocomplete = EmployeeAutocomplete(
             self.form_scroll, employee_repo=self.employee_repo,
@@ -160,11 +162,12 @@ class HomePage(ctk.CTkFrame):
         )
         self.employee_autocomplete.pack(fill="x", pady=(0, 12))
 
+        ctk.CTkLabel(self.form_scroll, text="CPF", font=fonts["body_bold"], text_color=COLORS["text"]).pack(anchor="w", pady=(0, 4))
         self.cpf_var = ctk.StringVar()
         self.cpf_entry = ctk.CTkEntry(
             self.form_scroll, textvariable=self.cpf_var,
             font=fonts["body"], height=32, corner_radius=6,
-            placeholder_text="CPF (auto)", state="readonly"
+            placeholder_text="Auto-preenchido", state="readonly"
         )
         self.cpf_entry.pack(fill="x", pady=(0, 12))
 
@@ -236,7 +239,16 @@ class HomePage(ctk.CTkFrame):
 
     def _on_employee_selected(self, employee: Employee):
         self.selected_employee = employee
-        self.cpf_var.set(employee.cpf)
+        self.cpf_var.set(employee.cpf or "")
+        has_cpf = bool(employee.cpf and employee.cpf.strip())
+        self.btn_generate.configure(
+            state="normal" if has_cpf else "disabled",
+            fg_color=COLORS["success"] if has_cpf else COLORS["muted"]
+        )
+        if not has_cpf:
+            self.btn_generate.configure(text="CPF obrigatório")
+        else:
+            self.btn_generate.configure(text="Gerar Certificado")
         self._update_preview()
 
     def _on_extra_fields_change(self, values: dict):
@@ -244,6 +256,38 @@ class HomePage(ctk.CTkFrame):
 
     def _on_preview(self):
         self._update_preview()
+
+    def _on_pdf_preview(self):
+        if not self._validate_form():
+            return
+        try:
+            from src.utils.validators import validar_data
+            from src.utils.paths import get_data_dir
+            data_treinamento = validar_data(self.data_var.get())
+            carga = int(self.carga_var.get())
+
+            preview_dir = get_data_dir() / "_previews"
+            preview_dir.mkdir(exist_ok=True)
+
+            preview_filename = f"preview_{self.selected_employee.nome.replace(' ', '_')}_{data_treinamento.strftime('%Y%m%d')}.pdf"
+            pdf_path = preview_dir / preview_filename
+
+            pdf_path = self.certificate_service.generate_preview_pdf(
+                nr_code=self.selected_nr,
+                employee=self.selected_employee,
+                data_treinamento=data_treinamento,
+                carga_horaria=carga,
+                descricao_treinamento=self.desc_var.get(),
+                campos_extra=self.dynamic_form.get_values(),
+                output_path=pdf_path
+            )
+
+            if pdf_path and pdf_path.exists():
+                self.preview.show_pdf_image(str(pdf_path))
+            else:
+                self._show_error("Erro ao gerar preview do PDF.")
+        except Exception as e:
+            self._show_error(f"Erro: {e}")
 
     def _update_preview(self):
         if not self.selected_nr or not self.current_template:
@@ -317,6 +361,51 @@ class HomePage(ctk.CTkFrame):
         if not self._validate_form():
             return
 
+        fonts = get_fonts()
+        dialog = ctk.CTkToplevel(self)
+        dialog.title("Confirmar")
+        dialog.geometry("420x200")
+        dialog.transient(self)
+        dialog.grab_set()
+        dialog.resizable(False, False)
+
+        dialog.update_idletasks()
+        x = self.winfo_rootx() + (self.winfo_width() // 2) - 210
+        y = self.winfo_rooty() + (self.winfo_height() // 2) - 100
+        dialog.geometry(f"+{x}+{y}")
+
+        ctk.CTkLabel(
+            dialog, text="Gerar Certificado?",
+            font=fonts["heading"], text_color=COLORS["primary"]
+        ).pack(pady=(20, 8))
+        ctk.CTkLabel(
+            dialog,
+            text=f"Deseja gerar o certificado para\n{self.selected_employee.nome}?",
+            font=fonts["body"], text_color=COLORS["text"], wraplength=380, justify="center"
+        ).pack(pady=(0, 16))
+
+        btn_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        btn_frame.pack(fill="x", padx=30)
+
+        def confirm():
+            dialog.destroy()
+            self._do_generate()
+
+        def cancel():
+            dialog.destroy()
+
+        ctk.CTkButton(
+            btn_frame, text="Cancelar", font=fonts["body_bold"], height=36,
+            fg_color=COLORS["muted"], hover_color=COLORS["text_secondary"],
+            command=cancel
+        ).pack(side="left", padx=(0, 8))
+        ctk.CTkButton(
+            btn_frame, text="Confirmar", font=fonts["body_bold"], height=36,
+            fg_color=COLORS["success"], hover_color="#256B28",
+            command=confirm
+        ).pack(side="right")
+
+    def _do_generate(self):
         try:
             from src.utils.validators import validar_data
             data_treinamento = validar_data(self.data_var.get())
@@ -441,6 +530,8 @@ class HomePage(ctk.CTkFrame):
             errors.append("Selecione um NR")
         if not self.selected_employee:
             errors.append("Selecione um funcionario")
+        elif not self.selected_employee.cpf or not self.selected_employee.cpf.strip():
+            errors.append("Funcionario sem CPF cadastrado. Edite o funcionario para adicionar o CPF.")
         if not self.data_var.get().strip():
             errors.append("Data obrigatoria")
         if not self.carga_var.get().strip().isdigit() or int(self.carga_var.get()) <= 0:

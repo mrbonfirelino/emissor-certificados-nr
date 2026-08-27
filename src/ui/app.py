@@ -4,6 +4,7 @@ from src.ui.pages.home import HomePage
 from src.ui.pages.employees import EmployeesPage
 from src.ui.pages.history import HistoryPage
 from src.ui.pages.backup import BackupPage
+from src.ui.pages.batch_import import BatchImportPage
 from src.ui.styles import setup_theme, COLORS, get_fonts, load_font_scale
 from src.core.certificate_service import CertificateService
 from src.core.employee_repo import EmployeeRepository
@@ -59,7 +60,7 @@ class CertificadosNRApp(ctk.CTk):
         self.sidebar = ctk.CTkFrame(self, fg_color=COLORS["primary"], corner_radius=0, width=SIDEBAR_WIDTH_EXPANDED)
         self.sidebar.grid(row=0, column=0, sticky="nsew")
         self.sidebar.grid_propagate(False)
-        self.sidebar.grid_rowconfigure(8, weight=1)
+        self.sidebar.grid_rowconfigure(10, weight=1)
 
         # Toggle button
         self.btn_toggle = ctk.CTkButton(
@@ -99,7 +100,7 @@ class CertificadosNRApp(ctk.CTk):
             ("history", "\U0001F4CB", "Historico", self._show_history),
             ("funcoes", "\U0001F4DD", "Funcoes", self._show_funcoes),
             ("vencimentos", "\U0001F4C5", "Vencimentos", self._show_vencimentos),
-            ("backup", "\U0001F4BE", "Backup", self._show_backup),
+            ("batch_import", "\U0001F4DD", "Import Lote", self._show_batch_import),
         ]
 
         for i, (key, icon, label, cmd) in enumerate(nav_items):
@@ -134,6 +135,47 @@ class CertificadosNRApp(ctk.CTk):
             self.nav_buttons[key] = btn
             self.nav_labels[key] = lbl
             self.nav_frames[key] = nav_frame
+
+        # Separador antes do Backup
+        sep_bottom = ctk.CTkFrame(self.sidebar, height=1, fg_color=COLORS["secondary"])
+        sep_bottom.grid(row=8, column=0, sticky="ew", padx=8, pady=4)
+
+        # Backup (positioned below separator, above version)
+        backup_key = "backup"
+        backup_icon = "\U0001F4BE"
+        backup_label = "Backup"
+        backup_cmd = self._show_backup
+
+        nav_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent", height=42, cursor="hand2")
+        nav_frame.grid(row=9, column=0, sticky="ews", padx=4, pady=2)
+        nav_frame.grid_propagate(False)
+        nav_frame.columnconfigure(1, weight=1)
+
+        def on_backup_frame_click(e, c=backup_cmd):
+            c()
+
+        nav_frame.bind("<Button-1>", on_backup_frame_click)
+
+        btn = ctk.CTkButton(
+            nav_frame, text=backup_icon, font=("Segoe UI", 14),
+            width=30, height=34, fg_color="transparent",
+            text_color=COLORS["surface"], corner_radius=6,
+            hover_color=COLORS["secondary"], command=backup_cmd
+        )
+        btn.grid(row=0, column=0, padx=4, pady=3, sticky="w")
+        btn.bind("<Button-1>", on_backup_frame_click)
+
+        lbl = ctk.CTkLabel(
+            nav_frame, text=backup_label,
+            font=fonts["sidebar_nav"], text_color=COLORS["surface"],
+            cursor="hand2"
+        )
+        lbl.grid(row=0, column=1, padx=2, pady=3, sticky="w")
+        lbl.bind("<Button-1>", on_backup_frame_click)
+
+        self.nav_buttons[backup_key] = btn
+        self.nav_labels[backup_key] = lbl
+        self.nav_frames[backup_key] = nav_frame
 
         # Version
         self.lbl_version = ctk.CTkLabel(
@@ -173,7 +215,6 @@ class CertificadosNRApp(ctk.CTk):
         self.lbl_title.pack(anchor="w")
         self.lbl_sub.pack(anchor="w")
         for key, lbl in self.nav_labels.items():
-            idx = list(self.nav_buttons.keys()).index(key)
             lbl.grid(row=0, column=1, padx=2, pady=3, sticky="w")
         self.lbl_version.grid(row=10, column=0, sticky="s", pady=8)
 
@@ -207,6 +248,8 @@ class CertificadosNRApp(ctk.CTk):
 
     def _show_history(self):
         self._show_page("history", HistoryPage, self.history_repo)
+        if "history" in self.pages:
+            self.pages["history"].refresh()
 
     def _show_funcoes(self):
         from src.ui.pages.funcoes import FuncoesPage
@@ -215,9 +258,14 @@ class CertificadosNRApp(ctk.CTk):
     def _show_vencimentos(self):
         from src.ui.pages.vencimentos import VencimentosPage
         self._show_page("vencimentos", VencimentosPage, self.history_repo)
+        if "vencimentos" in self.pages:
+            self.pages["vencimentos"].refresh()
 
     def _show_backup(self):
         self._show_page("backup", BackupPage, self.backup_manager)
+
+    def _show_batch_import(self):
+        self._show_page("batch_import", BatchImportPage, self.employee_repo, self.certificate_service)
 
     def _on_closing(self):
         self.backup_manager.shutdown()

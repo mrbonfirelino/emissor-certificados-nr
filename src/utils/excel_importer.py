@@ -28,6 +28,7 @@ def import_employees_from_excel(
     employee_repo,
     name_col: int = 0,
     cpf_col: int = 1,
+    funcao_col: int = 2,
     skip_header: bool = True
 ) -> Tuple[int, int, int, List[str]]:
     """
@@ -35,7 +36,7 @@ def import_employees_from_excel(
 
     Retorna (importados, duplicados, erros, erros_detalhe).
     - importados: numero de novos funcionarios cadastrados
-    - duplicados: CPFs que ja existiam no banco
+    - duplicados: funcionarios que ja existiam no banco
     - erros: linhas com dados invalidos
     - erros_detalhe: lista de mensagens de erro por linha
     """
@@ -69,6 +70,7 @@ def import_employees_from_excel(
         try:
             name_val = row[name_col] if name_col < len(row) else None
             cpf_val = row[cpf_col] if cpf_col < len(row) else None
+            funcao_val = row[funcao_col] if funcao_col < len(row) else None
         except IndexError:
             errors += 1
             error_details.append(f"Linha {i+1}: coluna fora do intervalo")
@@ -76,25 +78,39 @@ def import_employees_from_excel(
 
         name = _normalize_name(name_val)
         cpf = _normalize_cpf(cpf_val)
+        funcao = str(funcao_val).strip() if funcao_val else None
 
         if not name:
             errors += 1
             error_details.append(f"Linha {i+1}: nome vazio")
             continue
 
-        if not _is_valid_cpf_digits(cpf):
-            errors += 1
-            error_details.append(f"Linha {i+1}: CPF invalido ({cpf_val})")
+        cpf_formatted = None
+        if cpf:
+            if not _is_valid_cpf_digits(cpf):
+                errors += 1
+                error_details.append(f"Linha {i+1}: CPF invalido ({cpf_val})")
+                continue
+            cpf_formatted = f"{cpf[:3]}.{cpf[3:6]}.{cpf[6:9]}-{cpf[9:]}"
+
+        # Verificar se ja existe funcionario com mesmo nome
+        existing = employee_repo.search(name, limit=5)
+        found = False
+        for e in existing:
+            if e.nome.lower() == name.lower():
+                found = True
+                break
+
+        if found:
+            duplicates += 1
             continue
 
-        # Formata CPF: XXX.XXX.XXX-XX
-        cpf_formatted = f"{cpf[:3]}.{cpf[3:6]}.{cpf[6:9]}-{cpf[9:]}"
-
-        result = employee_repo.create(name, cpf_formatted)
+        result = employee_repo.create(name, cpf_formatted, funcao)
         if result:
             imported += 1
         else:
-            duplicates += 1
+            errors += 1
+            error_details.append(f"Linha {i+1}: erro ao cadastrar '{name}'")
 
     wb.close()
     return imported, duplicates, errors, error_details

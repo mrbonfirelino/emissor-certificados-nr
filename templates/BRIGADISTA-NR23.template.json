@@ -1,0 +1,56 @@
+{
+  "nr_code": "BRIGADISTA-NR23",
+  "nr_name": "Brigadista - Brigada de Incendio (NR-23)",
+  "carga_horaria_minima": 8,
+  "validade_meses": 12,
+  "riscos": ["Incendio", "Queimadura", "Intoxicacao por fumaca"],
+  "descricao_padrao": "Treinamento de Brigadista de Incendio conforme NR-23",
+  "campos_extra": [
+    {
+      "id": "cargo",
+      "label": "Cargo/Funcao",
+      "tipo": "text",
+      "obrigatorio": false,
+      "placeholder": "Ex: Brigadista, Lider de Brigada"
+    },
+    {
+      "id": "area",
+      "label": "Area de Atuacao",
+      "tipo": "text",
+      "obrigatorio": false,
+      "placeholder": "Ex: Producao, Administrativo, Galpao 1"
+    },
+    {
+      "id": "tipo_brigada",
+      "label": "Tipo de Brigada",
+      "tipo": "select",
+      "opcoes": ["Combate a Incendio", "Evacuacao", "Resgate", "Primeiros Socorros"],
+      "obrigatorio": false
+    }
+  ],
+  "conteudo_programatico": [
+    "1. Legislacao de seguranca contra incendio - NR-23",
+    "2. Conceitos basicos de fogo: tetraedro do fogo",
+    "3. Classes de incendio e agentes extintores",
+    "4. Tipos de extintores e uso correto",
+    "5. Sistemas de alarme e deteccao de incendio",
+    "6. Sinalizacao de saidas de emergencia",
+    "7. Planos de evacuacao e rotas de fuga",
+    "8. Brigada de incendio: organizacao e atuacao",
+    "9. Primeiros socorros em caso de queimadura e intoxicacao",
+    "10. Simulados de emergencia e treinamento pratico"
+  ],
+  "texto_certificado": "Certificamos que {nome_funcionario}, portador do CPF no {cpf}, da empresa {empresa}, inscrito no CNPJ sob no {cnpj}, concluiu com aproveitamento o {descricao_treinamento}, com carga horaria de {carga_horaria} horas, no dia {data_treinamento}, nas dependencias de {local_treinamento}, atendendo aos requisitos da Norma Regulatoria no 23 (NR-23) do Ministerio do Trabalho e Emprego, capacitando-o para atuar como brigadista de incendio.",
+  "assinaturas": [
+    {
+      "role": "instrutor",
+      "label": "INSTRUTOR/RESPONSAVEL TECNICO",
+      "obrigatorio": true
+    },
+    {
+      "role": "participante",
+      "label": "PARTICIPANTE",
+      "obrigatorio": false
+    }
+  ]
+}

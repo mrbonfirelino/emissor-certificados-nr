@@ -16,8 +16,9 @@ class HistoryRepository:
         self._init_db()
 
     def _get_conn(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=30)
         conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL")
         return conn
 
     def _init_db(self):
@@ -146,7 +147,10 @@ class HistoryRepository:
 
         with self._get_conn() as conn:
             rows = conn.execute("""
-                SELECT * FROM certificates ORDER BY funcionario_nome, nr_code
+                SELECT c.*, e.funcao 
+                FROM certificates c 
+                LEFT JOIN employees e ON c.employee_id = e.id
+                ORDER BY c.funcionario_nome, c.nr_code
             """).fetchall()
 
         results = []
@@ -179,6 +183,7 @@ class HistoryRepository:
                 "employee_id": row["employee_id"],
                 "funcionario_nome": row["funcionario_nome"],
                 "funcionario_cpf": row["funcionario_cpf"],
+                "funcionario_funcao": row["funcao"] if row["funcao"] else "",
                 "data_inicio": row["data_inicio"],
                 "data_fim": row["data_fim"],
                 "carga_horaria": row["carga_horaria"],

@@ -148,14 +148,17 @@ Na primeira execução, a tela de **Configuração** será exibida. Preencha:
 
 > **Importante**: A senha de restauração é definida na Configuração da Empresa. O hash Argon2 é salvo em `data/restore.key`.
 
-## 🔮 Roadmap Futuro
+## 📋 Roadmap e Documentação
 
-- [ ] **Alertas de Vencimento**: Dashboard com certificados vencendo em 30/7/1 dias
-- [ ] **Assinatura Digital ICP-Brasil**: Integração com SafeSign/GDOCS
-- [ ] **Relatórios**: Exportar histórico para Excel/PDF
-- [ ] **Múltiplas Empresas**: Suporte a filiais
-- [ ] **Importação em Lote**: CSV de funcionários
-- [ ] **Templates Visuais**: Editor drag-and-drop de layout
+Para informações detalhadas sobre o roadmap, novas funcionalidades e NRs a serem adicionadas, consulte:
+
+👉 **[docs/ROADMAP.md](docs/ROADMAP.md)**
+
+### Resumo das Próximas Implementações
+
+- **Novas NRs**: FDS, NR-33, NR-34, NR-23, PTA, Motoserra, Munck, Ponte Rolante, Direção Defensiva, CIPAA
+- **Funcionalidades**: Drive mapeado em rede, backup duplo, campo "Função" no cadastro
+- **Melhorias**: Tabela de funcionários com funções, busca por filtros
 
 ## 🛠️ Tecnologias
 

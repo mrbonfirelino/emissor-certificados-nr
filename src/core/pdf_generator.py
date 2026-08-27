@@ -1,4 +1,5 @@
 from pathlib import Path
+import threading
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.units import mm
 from reportlab.lib.colors import HexColor
@@ -14,19 +15,21 @@ from src.core.models import CertificateData, NRTemplate, LayoutConfig
 from src.utils.paths import get_assets_dir, get_fonts_dir
 
 _fonts_registered = False
+_font_lock = threading.Lock()
 
 
 def _register_fonts():
     global _fonts_registered
-    if _fonts_registered:
-        return
-    fonts_dir = get_fonts_dir()
-    try:
-        pdfmetrics.registerFont(TTFont('DejaVuSans', str(fonts_dir / 'DejaVuSans.ttf')))
-        pdfmetrics.registerFont(TTFont('DejaVuSans-Bold', str(fonts_dir / 'DejaVuSans-Bold.ttf')))
-        _fonts_registered = True
-    except Exception:
-        pass
+    with _font_lock:
+        if _fonts_registered:
+            return
+        fonts_dir = get_fonts_dir()
+        try:
+            pdfmetrics.registerFont(TTFont('DejaVuSans', str(fonts_dir / 'DejaVuSans.ttf')))
+            pdfmetrics.registerFont(TTFont('DejaVuSans-Bold', str(fonts_dir / 'DejaVuSans-Bold.ttf')))
+            _fonts_registered = True
+        except Exception:
+            pass
 
 
 def _hex(color: str) -> HexColor:

@@ -1,0 +1,56 @@
+{
+  "nr_code": "PTA",
+  "nr_name": "Programa de Treinamento e Aprendizagem",
+  "carga_horaria_minima": 16,
+  "validade_meses": 12,
+  "riscos": ["Geral"],
+  "descricao_padrao": "Programa de Treinamento e Aprendizagem para novos funcionarios",
+  "campos_extra": [
+    {
+      "id": "cargo",
+      "label": "Cargo/Funcao",
+      "tipo": "text",
+      "obrigatorio": false,
+      "placeholder": "Ex: Aprendiz, Estagiario"
+    },
+    {
+      "id": "setor",
+      "label": "Setor de Alocacao",
+      "tipo": "text",
+      "obrigatorio": false,
+      "placeholder": "Ex: Administrativo, Producao"
+    },
+    {
+      "id": "duracao_meses",
+      "label": "Duracao do Programa (meses)",
+      "tipo": "text",
+      "obrigatorio": false,
+      "placeholder": "Ex: 12, 18, 24"
+    }
+  ],
+  "conteudo_programatico": [
+    "1. Apresentacao da empresa e sua cultura organizacional",
+    "2. Direitos e deveres do trabalhador",
+    "3. Seguranca e saude no trabalho - conceitos basicos",
+    "4. Riscos do ambiente de trabalho e formas de prevencao",
+    "5. Uso e conservacao de EPIs",
+    "6. Rotinas de emergencia e acionamento",
+    "7. Treinamento pratico na funcao",
+    "8. Avaliacoes periodicas de aprendizagem",
+    "9. Habilidades tecnicas e comportamentais",
+    "10. Integracao com a equipe e supervisores"
+  ],
+  "texto_certificado": "Certificamos que {nome_funcionario}, portador do CPF no {cpf}, da empresa {empresa}, inscrito no CNPJ sob no {cnpj}, concluiu com aproveitamento o {descricao_treinamento}, com carga horaria de {carga_horaria} horas, no dia {data_treinamento}, nas dependencias de {local_treinamento}, cumprindo as etapas do Programa de Treinamento e Aprendizagem.",
+  "assinaturas": [
+    {
+      "role": "instrutor",
+      "label": "INSTRUTOR/RESPONSAVEL TECNICO",
+      "obrigatorio": true
+    },
+    {
+      "role": "participante",
+      "label": "PARTICIPANTE",
+      "obrigatorio": false
+    }
+  ]
+}

@@ -95,9 +95,9 @@ class EmployeeAutocomplete(ctk.CTkFrame):
     def _update_selection(self):
         for i, btn in enumerate(self.dropdown_buttons):
             if i == self._selected_index:
-                btn.configure(fg_color=COLORS["primary"])
+                btn.configure(fg_color="#FFF3CD", text_color="#1A1A2E")
             else:
-                btn.configure(fg_color="transparent")
+                btn.configure(fg_color="transparent", text_color=COLORS["text"])
 
     def _show_dropdown(self, query: str):
         if self.dropdown_frame:
@@ -118,11 +118,28 @@ class EmployeeAutocomplete(ctk.CTkFrame):
         # Posiciona abaixo do entry
         x = self.entry.winfo_rootx()
         y = self.entry.winfo_rooty() + self.entry.winfo_height()
-        width = self.entry.winfo_width()
-        self.dropdown_frame.geometry(f"{width}x{min(len(employees) * 40 + 10, 300)}+{x}+{y}")
+
+        # Calcula largura máxima baseada no container pai visível
+        max_width = self.entry.winfo_width()
+        parent = self.master
+        while parent is not None:
+            pw = parent.winfo_width()
+            if pw > 1 and pw < 5000:
+                max_width = min(max_width, pw)
+                break
+            parent = getattr(parent, 'master', None)
+
+        width = max_width
+        entry_h = self.entry.winfo_height()
+        height = entry_h * 6
+        self.dropdown_frame.tk.call('wm', 'geometry', self.dropdown_frame._w, f"{width}x{height}+{x}+{y}")
         
         scroll = ctk.CTkScrollableFrame(self.dropdown_frame, fg_color=COLORS["surface"], corner_radius=6)
         scroll.pack(fill="both", expand=True, padx=2, pady=2)
+
+        scroll._parent_frame.configure(width=width - 8)
+        self.dropdown_frame.update_idletasks()
+        self.dropdown_frame.tk.call('wm', 'geometry', self.dropdown_frame._w, f"{width}x{height}+{x}+{y}")
         
         self.dropdown_buttons = []
         for i, emp in enumerate(employees):
@@ -132,6 +149,7 @@ class EmployeeAutocomplete(ctk.CTkFrame):
                 font=FONTS["body"],
                 fg_color="transparent",
                 text_color=COLORS["text"],
+                hover_color="#FFF3CD",
                 anchor="w",
                 height=36,
                 corner_radius=4,
@@ -153,7 +171,7 @@ class EmployeeAutocomplete(ctk.CTkFrame):
             if index < len(employees):
                 emp = employees[index]
                 self.selected_employee = emp
-                self.entry_var.set(f"{emp.nome} ({emp.cpf})")
+                self.entry_var.set(f"{emp.nome} ({emp.cpf})" if emp.cpf else emp.nome)
                 self.entry.configure(state="readonly")
                 self._hide_dropdown()
                 if self.on_select:

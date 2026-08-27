@@ -1,0 +1,56 @@
+{
+  "nr_code": "DIR-DEFENSIVA",
+  "nr_name": "Direcao Defensiva",
+  "carga_horaria_minima": 8,
+  "validade_meses": 12,
+  "riscos": ["Acidente de Transito", "Colisao", "Atropelamento"],
+  "descricao_padrao": "Treinamento de Direcao Defensiva para Motoristas Profissionais",
+  "campos_extra": [
+    {
+      "id": "cnh",
+      "label": "Categoria da CNH",
+      "tipo": "text",
+      "obrigatorio": false,
+      "placeholder": "Ex: B, AB, C, D, E"
+    },
+    {
+      "id": "veiculo",
+      "label": "Tipo de Veiculo",
+      "tipo": "text",
+      "obrigatorio": false,
+      "placeholder": "Ex: Caminhao, Utilitario, Van"
+    },
+    {
+      "id": "tipo_trajeto",
+      "label": "Tipo de Trajeto",
+      "tipo": "select",
+      "opcoes": ["Urbano", "Rodoviario", "Misto"],
+      "obrigatorio": false
+    }
+  ],
+  "conteudo_programatico": [
+    "1. Conceitos de direcao defensiva e seguranca no transito",
+    "2. Fatores humanos: fadiga, estresse, sono, alcool e drogas",
+    "3. Velocidade adequada e distancia de seguranca",
+    "4. Previsao de riscos e antecipacao de manobras",
+    "5. Conducao em condicoes adversas: chuva, neblina, noite",
+    "6. Manutencao preventiva do veiculo",
+    "7. Cinto de seguranca e dispositivos de seguranca veicular",
+    "8. Legislacao de transito e penalidades",
+    "9. Atitude preventiva e responsabilidade social",
+    "10. Procedimentos em caso de acidente"
+  ],
+  "texto_certificado": "Certificamos que {nome_funcionario}, portador do CPF no {cpf}, da empresa {empresa}, inscrito no CNPJ sob no {cnpj}, concluiu com aproveitamento o {descricao_treinamento}, com carga horaria de {carga_horaria} horas, no dia {data_treinamento}, nas dependencias de {local_treinamento}, adquirindo conhecimentos sobre direcao defensiva e seguranca no transito.",
+  "assinaturas": [
+    {
+      "role": "instrutor",
+      "label": "INSTRUTOR/RESPONSAVEL TECNICO",
+      "obrigatorio": true
+    },
+    {
+      "role": "participante",
+      "label": "PARTICIPANTE",
+      "obrigatorio": false
+    }
+  ]
+}

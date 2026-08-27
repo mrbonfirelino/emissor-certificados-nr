@@ -1,0 +1,56 @@
+{
+  "nr_code": "NR-34",
+  "nr_name": "Manutencao Industrial",
+  "carga_horaria_minima": 8,
+  "validade_meses": 12,
+  "riscos": ["Mecanico", "Eletrico", "Termico", "Quimico"],
+  "descricao_padrao": "Treinamento de Seguranca na Manutencao Industrial conforme NR-34",
+  "campos_extra": [
+    {
+      "id": "cargo",
+      "label": "Cargo/Funcao",
+      "tipo": "text",
+      "obrigatorio": false,
+      "placeholder": "Ex: Mecanico de Manutencao"
+    },
+    {
+      "id": "tipo_manutencao",
+      "label": "Tipo de Manutencao",
+      "tipo": "select",
+      "opcoes": ["Preventiva", "Corretiva", "Preditiva", "Emergencial"],
+      "obrigatorio": false
+    },
+    {
+      "id": "equipamento",
+      "label": "Equipamento/Area",
+      "tipo": "text",
+      "obrigatorio": false,
+      "placeholder": "Ex: Linha de Producao, Bombas, Compressores"
+    }
+  ],
+  "conteudo_programatico": [
+    "1. Principios de seguranca em manutencao industrial",
+    "2. Riscos associados a manutencao: mecanicos, eletricos, termicos, quimicos",
+    "3. Bloqueio e etiquetagem (LOTO)",
+    "4. Procedimentos de trabalho seguro (PTS/PER)",
+    "5. Gerenciamento de servicos de manutencao",
+    "6. Controle de mudancas e servicos nao rotineiros",
+    "7. Seguranca em trabalhos em altura durante manutencao",
+    "8. Seguranca em espacos confinados durante manutencao",
+    "9. Uso de EPIs e EPCs especificos",
+    "10. Procedimentos de emergencia na area de manutencao"
+  ],
+  "texto_certificado": "Certificamos que {nome_funcionario}, portador do CPF no {cpf}, da empresa {empresa}, inscrito no CNPJ sob no {cnpj}, concluiu com aproveitamento o {descricao_treinamento}, com carga horaria de {carga_horaria} horas, no dia {data_treinamento}, nas dependencias de {local_treinamento}, atendendo aos requisitos da Norma Regulatoria no 34 (NR-34) do Ministerio do Trabalho e Emprego.",
+  "assinaturas": [
+    {
+      "role": "instrutor",
+      "label": "INSTRUTOR/RESPONSAVEL TECNICO",
+      "obrigatorio": true
+    },
+    {
+      "role": "participante",
+      "label": "PARTICIPANTE",
+      "obrigatorio": false
+    }
+  ]
+}

@@ -87,12 +87,12 @@
     {
       "role": "instrutor",
       "label": "INSTRUTOR/RESPONSAVEL TECNICO",
-      "registro_label": "Registro MTE"
+      "registro_label": "Registro "
     },
     {
       "role": "participante",
       "label": "PARTICIPANTE",
-      "registro_label": ""
+      "registro_label": "CPF "
     }
   ],
   "signature_block": {

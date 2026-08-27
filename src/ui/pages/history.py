@@ -76,7 +76,13 @@ class HistoryPage(ctk.CTkFrame):
         # Lista
         self.list_frame = ctk.CTkScrollableFrame(self, fg_color=COLORS["surface"], corner_radius=12)
         self.list_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 20))
-        self.list_frame.grid_columnconfigure(0, weight=1)
+        self.list_frame.grid_columnconfigure(0, weight=2)
+        self.list_frame.grid_columnconfigure(1, weight=1)
+        self.list_frame.grid_columnconfigure(2, weight=3)
+        self.list_frame.grid_columnconfigure(3, weight=2)
+        self.list_frame.grid_columnconfigure(4, weight=1)
+        self.list_frame.grid_columnconfigure(5, weight=1)
+        self.list_frame.bind("<MouseWheel>", lambda e: self.list_frame._parent_canvas.yview_scroll(int(-1 * (e.delta / 120) * 2.5), "units"))
 
     def _refresh_list(self):
         for widget in self.list_frame.winfo_children():
@@ -100,16 +106,21 @@ class HistoryPage(ctk.CTkFrame):
             ).pack(pady=40)
             return
         
-        # Header da tabela
         self._create_table_header()
         
-        for cert in certs:
-            self._create_cert_row(cert)
+        for i, cert in enumerate(certs):
+            self._create_cert_row(cert, i % 2 == 1)
 
     def _create_table_header(self):
-        header = ctk.CTkFrame(self.list_frame, fg_color=COLORS["primary"], corner_radius=6)
-        header.pack(fill="x", padx=8, pady=(8, 4))
-        header.grid_columnconfigure((0,1,2,3,4,5), weight=1)
+        header = ctk.CTkFrame(self.list_frame, fg_color=COLORS["primary"], corner_radius=6, height=36)
+        header.pack(fill="x", padx=8, pady=(8, 2))
+        header.pack_propagate(False)
+        header.grid_columnconfigure(0, weight=2)
+        header.grid_columnconfigure(1, weight=1)
+        header.grid_columnconfigure(2, weight=3)
+        header.grid_columnconfigure(3, weight=2)
+        header.grid_columnconfigure(4, weight=1)
+        header.grid_columnconfigure(5, weight=1)
         
         cols = [
             ("Número", 0), ("NR", 1), ("Funcionário", 2), 
@@ -121,62 +132,68 @@ class HistoryPage(ctk.CTkFrame):
                 text=text,
                 font=FONTS["small_bold"],
                 text_color=COLORS["surface"]
-            ).grid(row=0, column=col, sticky="w", padx=12, pady=8)
+            ).grid(row=0, column=col, sticky="w" if col < 5 else "e", padx=12, pady=6)
 
-    def _create_cert_row(self, cert: CertificateRecord):
-        row = ctk.CTkFrame(self.list_frame, fg_color="transparent")
-        row.pack(fill="x", pady=2, padx=8)
-        row.grid_columnconfigure((0,1,2,3,4,5), weight=1)
+    def _create_cert_row(self, cert: CertificateRecord, alternate: bool = False):
+        bg = COLORS["background"] if alternate else "transparent"
+        row = ctk.CTkFrame(self.list_frame, fg_color=bg, corner_radius=0, height=36)
+        row.pack(fill="x", padx=8)
+        row.pack_propagate(False)
+        row.grid_columnconfigure(0, weight=2)
+        row.grid_columnconfigure(1, weight=1)
+        row.grid_columnconfigure(2, weight=3)
+        row.grid_columnconfigure(3, weight=2)
+        row.grid_columnconfigure(4, weight=1)
+        row.grid_columnconfigure(5, weight=1)
         
-        # Número
         ctk.CTkLabel(
             row,
             text=cert.cert_number,
             font=FONTS["small_bold"],
-            text_color=COLORS["primary"]
-        ).grid(row=0, column=0, sticky="w", padx=12, pady=8)
+            text_color=COLORS["primary"],
+            anchor="w"
+        ).grid(row=0, column=0, sticky="w", padx=12, pady=6)
         
-        # NR
         ctk.CTkLabel(
             row,
             text=cert.nr_code,
             font=FONTS["small"],
-            text_color=COLORS["text"]
-        ).grid(row=0, column=1, sticky="w", padx=12, pady=8)
+            text_color=COLORS["text"],
+            anchor="w"
+        ).grid(row=0, column=1, sticky="w", padx=12, pady=6)
         
-        # Funcionário
         ctk.CTkLabel(
             row,
-            text=f"{cert.funcionario_nome} ({cert.funcionario_cpf})",
+            text=f"{cert.funcionario_nome} ({cert.funcionario_cpf})" if cert.funcionario_cpf else cert.funcionario_nome,
             font=FONTS["small"],
-            text_color=COLORS["text"]
-        ).grid(row=0, column=2, sticky="w", padx=12, pady=8)
+            text_color=COLORS["text"],
+            anchor="w"
+        ).grid(row=0, column=2, sticky="w", padx=12, pady=6)
         
-        # Data
         ctk.CTkLabel(
             row,
             text=cert.data_fim,
             font=FONTS["small"],
-            text_color=COLORS["text_secondary"]
-        ).grid(row=0, column=3, sticky="w", padx=12, pady=8)
+            text_color=COLORS["text_secondary"],
+            anchor="w"
+        ).grid(row=0, column=3, sticky="w", padx=12, pady=6)
         
-        # Carga
         ctk.CTkLabel(
             row,
             text=f"{cert.carga_horaria}h",
             font=FONTS["small"],
-            text_color=COLORS["text_secondary"]
-        ).grid(row=0, column=4, sticky="w", padx=12, pady=8)
+            text_color=COLORS["text_secondary"],
+            anchor="w"
+        ).grid(row=0, column=4, sticky="w", padx=12, pady=6)
         
-        # Ações
         btn_frame = ctk.CTkFrame(row, fg_color="transparent")
-        btn_frame.grid(row=0, column=5, sticky="e", padx=12, pady=4)
+        btn_frame.grid(row=0, column=5, sticky="e", padx=8, pady=4)
         
         ctk.CTkButton(
             btn_frame,
             text="📄",
             width=32,
-            height=32,
+            height=28,
             font=FONTS["small"],
             fg_color=COLORS["secondary"],
             hover_color=COLORS["primary"],
@@ -187,12 +204,15 @@ class HistoryPage(ctk.CTkFrame):
             btn_frame,
             text="📁",
             width=32,
-            height=32,
+            height=28,
             font=FONTS["small"],
             fg_color=COLORS["accent"],
             hover_color=COLORS["secondary"],
             command=lambda c=cert: self._open_folder(c)
         ).pack(side="left", padx=2)
+
+        sep = ctk.CTkFrame(self.list_frame, fg_color=COLORS["border"], height=1)
+        sep.pack(fill="x", padx=12, pady=0)
 
     def _open_pdf(self, cert: CertificateRecord):
         """Abre PDF do certificado."""
@@ -222,6 +242,10 @@ class HistoryPage(ctk.CTkFrame):
                     subprocess.run(["xdg-open", folder])
             except Exception as e:
                 self._show_error(f"Erro ao abrir pasta: {e}")
+
+    def refresh(self):
+        """Atualiza lista de certificados."""
+        self._refresh_list()
 
     def _show_error(self, message: str):
         dialog = ctk.CTkToplevel(self)
