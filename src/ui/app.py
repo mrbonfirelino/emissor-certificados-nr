@@ -122,7 +122,6 @@ class CertificadosNRApp(ctk.CTk):
                 hover_color=COLORS["secondary"], command=cmd
             )
             btn.grid(row=0, column=0, padx=4, pady=3, sticky="w")
-            btn.bind("<Button-1>", on_frame_click)
 
             lbl = ctk.CTkLabel(
                 nav_frame, text=label,
@@ -163,7 +162,6 @@ class CertificadosNRApp(ctk.CTk):
             hover_color=COLORS["secondary"], command=backup_cmd
         )
         btn.grid(row=0, column=0, padx=4, pady=3, sticky="w")
-        btn.bind("<Button-1>", on_backup_frame_click)
 
         lbl = ctk.CTkLabel(
             nav_frame, text=backup_label,
@@ -226,11 +224,25 @@ class CertificadosNRApp(ctk.CTk):
                 frame.configure(fg_color="transparent")
 
     def _show_page(self, page_key: str, page_class, *args, **kwargs):
+        # evita duplo clique (command + bind) — se ja esta ativa, so atualiza destaque
+        if page_key in self.pages and self.pages[page_key] is self.current_page:
+            self._set_active_nav(page_key)
+            return
         if self.current_page:
             self.current_page.grid_remove()
 
         if page_key not in self.pages:
-            page = page_class(self.content_frame, *args, **kwargs)
+            try:
+                page = page_class(self.content_frame, *args, **kwargs)
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                # restaura pagina anterior visivel
+                if self.current_page:
+                    self.current_page.grid(row=0, column=0, sticky="nsew")
+                from tkinter import messagebox
+                messagebox.showerror("Erro ao abrir pagina", f"{page_key}: {e}")
+                return
             page.grid(row=0, column=0, sticky="nsew")
             self.pages[page_key] = page
         else:

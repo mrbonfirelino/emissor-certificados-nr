@@ -34,6 +34,7 @@ class VencimentosPage(ctk.CTkFrame):
         fonts = get_fonts()
 
         self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(3, weight=1)
         self.grid_propagate(False)
 
         # Row 0 — Header
@@ -118,17 +119,31 @@ class VencimentosPage(ctk.CTkFrame):
         self._pagination = PaginationBar(self, on_page_change=self._render_list)
         self._pagination.grid(row=4, column=0, sticky="w", padx=20, pady=(0, 5))
 
-        self.after(200, self._fit_scroll_height)
+        self.after(200, lambda: self._fit_scroll_height(0))
+        self.after(600, lambda: self._fit_scroll_height(0))
 
-    def _fit_scroll_height(self, event=None):
+    def _fit_scroll_height(self, _retry=0):
         self.update_idletasks()
         h = self.winfo_height()
         if h < 200:
+            try:
+                ph = self.master.winfo_height()
+                if ph >= 200:
+                    h = ph
+            except Exception:
+                pass
+        if h < 200:
+            if _retry < 5:
+                self.after(300, lambda r=_retry + 1: self._fit_scroll_height(r))
             return
         header_h = self._header.winfo_reqheight()
         cards_h = self._cards_frame.winfo_reqheight()
         filters_h = self._filters.winfo_reqheight()
         pag_h = self._pagination.winfo_reqheight()
+        # filhos ainda nao renderizados — tenta novamente
+        if min(header_h, cards_h, filters_h, pag_h) < 5 and _retry < 5:
+            self.after(300, lambda r=_retry + 1: self._fit_scroll_height(r))
+            return
         margins = 30
         available = h - header_h - cards_h - filters_h - pag_h - margins
         self._list.configure(height=max(available, 150))
@@ -338,7 +353,16 @@ class VencimentosPage(ctk.CTkFrame):
 
     @staticmethod
     def _bind_clicks(widget, handler):
-        widget.bind("<Button-1>", handler)
+        try:
+            widget.bind("<Button-1>", handler, add="+")
+        except Exception:
+            widget.bind("<Button-1>", handler)
+        # CTkFrame usa um CTkCanvas com place(relwidth=1,relheight=1) que intercepta o clique
+        if hasattr(widget, "_canvas") and widget._canvas is not None:
+            try:
+                widget._canvas.bind("<Button-1>", handler, add="+")
+            except Exception:
+                pass
         for child in widget.winfo_children():
             VencimentosPage._bind_clicks(child, handler)
 

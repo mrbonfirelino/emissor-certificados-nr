@@ -40,6 +40,7 @@ class FuncoesPage(ctk.CTkFrame):
         fonts = get_fonts()
 
         self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(1, weight=1)
         self.grid_propagate(False)
 
         # Row 0 — Header
@@ -114,17 +115,30 @@ class FuncoesPage(ctk.CTkFrame):
         )
         self.btn_next.pack(side="left", padx=2)
 
-        self.after(200, self._fit_scroll_height)
+        self.after(200, lambda: self._fit_scroll_height(0))
+        self.after(600, lambda: self._fit_scroll_height(0))
 
         self._refresh_list()
 
-    def _fit_scroll_height(self, event=None):
+    def _fit_scroll_height(self, _retry=0):
         self.update_idletasks()
         h = self.winfo_height()
         if h < 200:
+            try:
+                ph = self.master.winfo_height()
+                if ph >= 200:
+                    h = ph
+            except Exception:
+                pass
+        if h < 200:
+            if _retry < 5:
+                self.after(300, lambda r=_retry + 1: self._fit_scroll_height(r))
             return
         header_h = self._header.winfo_reqheight()
         pag_h = self.pagination_frame.winfo_reqheight()
+        if min(header_h, pag_h) < 5 and _retry < 5:
+            self.after(300, lambda r=_retry + 1: self._fit_scroll_height(r))
+            return
         margins = 30
         available = h - header_h - pag_h - margins
         self.list_frame.configure(height=max(available, 150))
