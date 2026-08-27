@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Optional, List
 from src.utils.paths import get_db_path
 from src.core.models import Employee
+from src.utils.text_utils import normalize_text
 
 
 class EmployeeRepository:
@@ -16,6 +17,7 @@ class EmployeeRepository:
         conn = sqlite3.connect(self.db_path, timeout=30)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA journal_mode=WAL")
+        conn.create_function("normalize", 1, normalize_text)
         return conn
 
     def _init_db(self):
@@ -31,19 +33,16 @@ class EmployeeRepository:
                 CREATE INDEX IF NOT EXISTS idx_emp_cpf ON employees(cpf);
                 CREATE INDEX IF NOT EXISTS idx_emp_nome ON employees(nome);
             """)
-            # Migracao: adicionar coluna funcao se nao existir
             try:
                 conn.execute("SELECT funcao FROM employees LIMIT 1")
             except sqlite3.OperationalError:
                 conn.execute("ALTER TABLE employees ADD COLUMN funcao TEXT")
-            # Migracao: permitir CPF nulo (remover NOT NULL se existir)
             try:
                 conn.execute("SELECT cpf FROM employees WHERE cpf IS NULL LIMIT 1")
             except Exception:
                 pass
 
     def create(self, nome: str, cpf: str = None, funcao: str = None) -> Optional[int]:
-        """Cria novo funcionario. Retorna ID ou None se erro."""
         try:
             cpf_val = cpf.strip() if cpf and cpf.strip() else None
             with self._get_conn() as conn:
@@ -66,17 +65,28 @@ class EmployeeRepository:
             return self._row_to_employee(row) if row else None
 
     def search(self, query: str, limit: int = 20) -> List[Employee]:
-        """Busca por nome, CPF ou funcao (para autocomplete)."""
+        """Busca por nome, CPF ou funcao (ignora acentos)."""
+        norm = normalize_text(query)
         with self._get_conn() as conn:
-            like = f"%{query}%"
+            like = f"%{norm}%"
             rows = conn.execute("""
-                SELECT * FROM employees 
-                WHERE nome LIKE ? OR cpf LIKE ? OR funcao LIKE ?
+                SELECT * FROM employees
+                WHERE normalize(nome) LIKE ? OR cpf LIKE ? OR normalize(funcao) LIKE ?
                 ORDER BY nome LIMIT ?
-            """, (like, like, like, limit)).fetchall()
+            """, (like, f"%{query}%", like, limit)).fetchall()
             return [self._row_to_employee(r) for r in rows]
 
-    def get_all(self, limit: int = 100, offset: int = 0) -> List[Employee]:
+    def count_search(self, query: str) -> int:
+        """Conta resultados de busca."""
+        norm = normalize_text(query)
+        with self._get_conn() as conn:
+            like = f"%{norm}%"
+            return conn.execute("""
+                SELECT COUNT(*) FROM employees
+                WHERE normalize(nome) LIKE ? OR cpf LIKE ? OR normalize(funcao) LIKE ?
+            """, (like, f"%{query}%", like)).fetchone()[0]
+
+    def get_all(self, limit: int = 10, offset: int = 0) -> List[Employee]:
         with self._get_conn() as conn:
             rows = conn.execute(
                 "SELECT * FROM employees ORDER BY nome LIMIT ? OFFSET ?",
@@ -84,8 +94,11 @@ class EmployeeRepository:
             ).fetchall()
             return [self._row_to_employee(r) for r in rows]
 
+    def count_all(self) -> int:
+        with self._get_conn() as conn:
+            return conn.execute("SELECT COUNT(*) FROM employees").fetchone()[0]
+
     def get_all_funcoes(self) -> List[str]:
-        """Retorna lista de funcoes distintas dos funcionarios."""
         with self._get_conn() as conn:
             rows = conn.execute(
                 "SELECT DISTINCT funcao FROM employees WHERE funcao IS NOT NULL AND funcao != '' ORDER BY funcao"
@@ -105,7 +118,6 @@ class EmployeeRepository:
             return False
 
     def delete(self, emp_id: int) -> bool:
-        """Deleta funcionario (se nao tiver certificados vinculados)."""
         from src.core.history_repo import HistoryRepository
         history = HistoryRepository(self.db_path)
         certs = history.get_by_employee(emp_id)

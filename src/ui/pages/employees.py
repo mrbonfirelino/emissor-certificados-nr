@@ -5,6 +5,7 @@ from src.ui.styles import COLORS, get_fonts
 from src.core.models import Employee
 from src.core.employee_repo import EmployeeRepository
 from src.utils.validators import validar_cpf, formatar_cpf
+from src.ui.components.pagination import PaginationBar
 
 
 class EmployeesPage(ctk.CTkFrame):
@@ -13,26 +14,26 @@ class EmployeesPage(ctk.CTkFrame):
         self.employee_repo = employee_repo
         self.selected_employee: Optional[Employee] = None
 
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(1, weight=1)
-
         self._build_ui()
         self._refresh_list()
 
     def _build_ui(self):
         fonts = get_fonts()
 
-        header = ctk.CTkFrame(self, fg_color="transparent")
-        header.grid(row=0, column=0, sticky="ew", padx=20, pady=20)
-        header.grid_columnconfigure(1, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_propagate(False)
+
+        # Row 0 — Header
+        self._header = ctk.CTkFrame(self, fg_color="transparent")
+        self._header.grid(row=0, column=0, sticky="ew", padx=20, pady=20)
+        self._header.grid_columnconfigure(1, weight=1)
 
         ctk.CTkLabel(
-            header, text="Funcionarios Cadastrados",
+            self._header, text="Funcionarios Cadastrados",
             font=fonts["title"], text_color=COLORS["primary"]
         ).grid(row=0, column=0, sticky="w")
 
-        # Botoes
-        btn_frame = ctk.CTkFrame(header, fg_color="transparent")
+        btn_frame = ctk.CTkFrame(self._header, fg_color="transparent")
         btn_frame.grid(row=0, column=1, sticky="e")
 
         ctk.CTkButton(
@@ -57,20 +58,18 @@ class EmployeesPage(ctk.CTkFrame):
         ).pack(side="left")
 
         # Search
-        search_frame = ctk.CTkFrame(header, fg_color="transparent")
+        search_frame = ctk.CTkFrame(self._header, fg_color="transparent")
         search_frame.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(12, 0))
         search_frame.grid_columnconfigure(0, weight=1)
-        search_frame.grid_columnconfigure(1, weight=0)
-        search_frame.grid_columnconfigure(2, weight=0)
 
         self.search_var = ctk.StringVar()
         self.search_entry = ctk.CTkEntry(
             search_frame, textvariable=self.search_var,
             font=fonts["body"], height=36, corner_radius=6,
-            placeholder_text="🔍 Buscar por nome ou CPF..."
+            placeholder_text="Buscar por nome ou CPF..."
         )
         self.search_entry.grid(row=0, column=0, sticky="ew", padx=(0, 8))
-        self.search_var.trace_add("write", lambda *args: self._refresh_list())
+        self.search_var.trace_add("write", lambda *args: self._on_search())
 
         funcoes_disponiveis = ["Todas"] + self.employee_repo.get_all_funcoes()
         self._funcao_filter_var = ctk.StringVar(value="Todas")
@@ -91,17 +90,36 @@ class EmployeesPage(ctk.CTkFrame):
             command=self._clear_search
         ).grid(row=0, column=2)
 
-        self.list_frame = ctk.CTkScrollableFrame(self, fg_color=COLORS["surface"], corner_radius=12)
-        self.list_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 20))
-        self.list_frame.grid_columnconfigure(0, weight=3)
-        self.list_frame.grid_columnconfigure(1, weight=2)
-        self.list_frame.grid_columnconfigure(2, weight=2)
-        self.list_frame.grid_columnconfigure(3, weight=1)
-        self.list_frame.bind("<MouseWheel>", lambda e: self.list_frame._parent_canvas.yview_scroll(int(-1 * (e.delta / 120) * 2.5), "units"))
+        # Row 1 — Lista (weight=1 preenche resto)
+        self.list_frame = ctk.CTkScrollableFrame(self, fg_color=COLORS["surface"], corner_radius=12, height=200)
+        self.list_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 5))
+        self.list_frame.grid_columnconfigure(0, weight=1)
+
+        # Row 2 — Paginacao
+        self.pagination = PaginationBar(self, on_page_change=self._refresh_list)
+        self.pagination.grid(row=2, column=0, sticky="w", padx=20, pady=(0, 5))
+
+        self.after(200, self._fit_scroll_height)
+
+    def _fit_scroll_height(self, event=None):
+        self.update_idletasks()
+        h = self.winfo_height()
+        if h < 200:
+            return
+        header_h = self._header.winfo_reqheight()
+        pag_h = self.pagination.winfo_reqheight()
+        margins = 30
+        available = h - header_h - pag_h - margins
+        self.list_frame.configure(height=max(available, 150))
 
     def _clear_search(self):
         self.search_var.set("")
         self._funcao_filter_var.set("Todas")
+        self.pagination.reset()
+        self._refresh_list()
+
+    def _on_search(self):
+        self.pagination.reset()
         self._refresh_list()
 
     def _refresh_list(self):
@@ -109,31 +127,39 @@ class EmployeesPage(ctk.CTkFrame):
         query = self.search_var.get().strip()
         funcao_filter = self._funcao_filter_var.get()
 
-        try:
-            if query:
-                employees = self.employee_repo.search(query, limit=100)
-            else:
-                employees = self.employee_repo.get_all(limit=100)
-        except Exception:
-            employees = []
-
-        if funcao_filter and funcao_filter != "Todas":
-            employees = [e for e in employees if (e.funcao or "") == funcao_filter]
-
         for widget in self.list_frame.winfo_children():
             widget.destroy()
+
+        # Buscar com paginacao
+        if query:
+            total = self.employee_repo.count_search(query)
+        else:
+            total = self.employee_repo.count_all()
+
+        self.pagination.set_total(total)
+
+        if query:
+            employees = self.employee_repo.search(query, limit=PaginationBar.ITEMS_PER_PAGE * 10)
+        else:
+            employees = self.employee_repo.get_all(limit=PaginationBar.ITEMS_PER_PAGE, offset=self.pagination.offset)
+
+        # Filtro de funcao (client-side)
+        if funcao_filter and funcao_filter != "Todas":
+            employees = [e for e in employees if (e.funcao or "") == funcao_filter]
+            total = len(employees)
 
         if not employees:
             ctk.CTkLabel(
                 self.list_frame,
                 text="Nenhum funcionario cadastrado" if not query else "Nenhum resultado encontrado",
                 font=fonts["body"], text_color=COLORS["muted"]
-            ).pack(pady=40)
+            ).grid(row=0, column=0, pady=40, padx=20)
             return
 
+        # Header da tabela
         header = ctk.CTkFrame(self.list_frame, fg_color=COLORS["primary"], corner_radius=6, height=36)
-        header.pack(fill="x", padx=8, pady=(4, 2))
-        header.pack_propagate(False)
+        header.grid(row=0, column=0, sticky="ew", padx=8, pady=(4, 2))
+        header.grid_propagate(False)
         header.grid_columnconfigure(0, weight=3)
         header.grid_columnconfigure(1, weight=2)
         header.grid_columnconfigure(2, weight=2)
@@ -142,27 +168,27 @@ class EmployeesPage(ctk.CTkFrame):
         for col, text in enumerate(["Nome", "Funcao", "CPF", "Acoes"]):
             ctk.CTkLabel(
                 header, text=text, font=fonts["body_bold"],
-                text_color="#FFFFFF"
-            ).grid(row=0, column=col, sticky="w" if col < 3 else "e", padx=12, pady=6)
+                text_color="#FFFFFF", anchor="center" if col < 3 else "e"
+            ).grid(row=0, column=col, sticky="ew" if col < 3 else "e", padx=12, pady=6)
 
         for i, emp in enumerate(employees):
-            self._create_employee_row(emp, i % 2 == 1)
+            self._create_employee_row(emp, i + 1, i % 2 == 1)
 
-    def _create_employee_row(self, emp: Employee, alternate: bool = False):
+    def _create_employee_row(self, emp: Employee, row_idx: int, alternate: bool = False):
         fonts = get_fonts()
         bg = COLORS["background"] if alternate else "transparent"
         row = ctk.CTkFrame(self.list_frame, fg_color=bg, corner_radius=0, height=36)
-        row.pack(fill="x", padx=8)
-        row.pack_propagate(False)
+        row.grid(row=row_idx, column=0, sticky="ew", padx=8, pady=0)
+        row.grid_propagate(False)
         row.grid_columnconfigure(0, weight=3)
         row.grid_columnconfigure(1, weight=2)
         row.grid_columnconfigure(2, weight=2)
         row.grid_columnconfigure(3, weight=1)
 
-        ctk.CTkLabel(row, text=emp.nome, font=fonts["body"], text_color=COLORS["text"], anchor="w").grid(row=0, column=0, sticky="w", padx=12, pady=6)
+        ctk.CTkLabel(row, text=emp.nome, font=fonts["body"], text_color=COLORS["text"], anchor="center").grid(row=0, column=0, sticky="ew", padx=12, pady=6)
         funcao_text = emp.funcao if emp.funcao else "-"
-        ctk.CTkLabel(row, text=funcao_text, font=fonts["body"], text_color=COLORS["text_secondary"], anchor="w").grid(row=0, column=1, sticky="w", padx=12, pady=6)
-        ctk.CTkLabel(row, text=emp.cpf, font=fonts["body"], text_color=COLORS["text_secondary"], anchor="w").grid(row=0, column=2, sticky="w", padx=12, pady=6)
+        ctk.CTkLabel(row, text=funcao_text, font=fonts["body"], text_color=COLORS["text_secondary"], anchor="center").grid(row=0, column=1, sticky="ew", padx=12, pady=6)
+        ctk.CTkLabel(row, text=emp.cpf or "-", font=fonts["body"], text_color=COLORS["text_secondary"], anchor="center").grid(row=0, column=2, sticky="ew", padx=12, pady=6)
 
         btn_frame = ctk.CTkFrame(row, fg_color="transparent")
         btn_frame.grid(row=0, column=3, sticky="e", padx=8, pady=4)
@@ -182,7 +208,7 @@ class EmployeesPage(ctk.CTkFrame):
         ).pack(side="left", padx=2)
 
         sep = ctk.CTkFrame(self.list_frame, fg_color=COLORS["border"], height=1)
-        sep.pack(fill="x", padx=12, pady=0)
+        sep.grid(row=row_idx + 1, column=0, sticky="ew", padx=12, pady=0)
 
     def _open_new_dialog(self):
         self._open_employee_dialog()
@@ -219,9 +245,9 @@ class EmployeesPage(ctk.CTkFrame):
         nome_var = ctk.StringVar(value=employee.nome if is_edit else "")
         ctk.CTkEntry(form, textvariable=nome_var, font=fonts["body"], height=36, corner_radius=6, placeholder_text="Nome completo do funcionario").grid(row=2, column=0, sticky="ew", pady=(0, 12))
 
-        ctk.CTkLabel(form, text="CPF *", font=fonts["body_bold"], text_color=COLORS["text"]).grid(row=3, column=0, sticky="w", pady=(0, 4))
+        ctk.CTkLabel(form, text="CPF", font=fonts["body_bold"], text_color=COLORS["text"]).grid(row=3, column=0, sticky="w", pady=(0, 4))
         cpf_var = ctk.StringVar(value=employee.cpf if is_edit else "")
-        ctk.CTkEntry(form, textvariable=cpf_var, font=fonts["body"], height=36, corner_radius=6, placeholder_text="000.000.000-00").grid(row=4, column=0, sticky="ew", pady=(0, 12))
+        ctk.CTkEntry(form, textvariable=cpf_var, font=fonts["body"], height=36, corner_radius=6, placeholder_text="000.000.000-00 (opcional)").grid(row=4, column=0, sticky="ew", pady=(0, 12))
 
         def format_cpf_entry(*args):
             val = cpf_var.get()
@@ -331,7 +357,6 @@ class EmployeesPage(ctk.CTkFrame):
             messagebox.showerror("Erro", f"Erro ao exportar: {e}", parent=self)
 
     def _open_import_dialog(self):
-        """Dialog de importacao de Excel."""
         fonts = get_fonts()
 
         dialog = ctk.CTkToplevel(self)
@@ -357,11 +382,10 @@ class EmployeesPage(ctk.CTkFrame):
 
         ctk.CTkLabel(
             content,
-            text="Formato esperado: Coluna A = Nome, Coluna B = CPF (opcional), Coluna C = Funcao (opcional)\nA primeira linha (cabecalho) sera ignorada.",
+            text="Formato: Coluna A = Nome, Coluna B = CPF (opcional), Coluna C = Funcao (opcional)\nA primeira linha (cabecalho) sera ignorada.",
             font=fonts["small"], text_color=COLORS["text_secondary"], justify="left"
         ).grid(row=1, column=0, sticky="w", pady=(0, 16))
 
-        # File selection
         file_frame = ctk.CTkFrame(content, fg_color="transparent")
         file_frame.grid(row=2, column=0, sticky="ew", pady=(0, 12))
         file_frame.grid_columnconfigure(0, weight=1)
@@ -389,14 +413,12 @@ class EmployeesPage(ctk.CTkFrame):
             hover_color=COLORS["primary"], command=browse_file
         ).grid(row=0, column=1)
 
-        # Status area
         self._import_status = ctk.CTkLabel(
             content, text="", font=fonts["body"],
             text_color=COLORS["text"], justify="left"
         )
         self._import_status.grid(row=3, column=0, sticky="w", pady=(8, 16))
 
-        # Result text
         self._import_result = ctk.CTkTextbox(
             content, font=fonts["mono"], height=120,
             fg_color=COLORS["background"], text_color=COLORS["text"],
@@ -404,7 +426,6 @@ class EmployeesPage(ctk.CTkFrame):
         )
         self._import_result.grid(row=4, column=0, sticky="ew", pady=(0, 16))
 
-        # Buttons
         btn_frame = ctk.CTkFrame(content, fg_color="transparent")
         btn_frame.grid(row=5, column=0, sticky="ew")
 
@@ -422,7 +443,6 @@ class EmployeesPage(ctk.CTkFrame):
         self._btn_import.pack(side="right")
 
     def _do_import(self, dialog):
-        """Executa a importacao."""
         from src.utils.excel_importer import import_employees_from_excel
 
         filepath = self._import_file_var.get()
@@ -440,7 +460,6 @@ class EmployeesPage(ctk.CTkFrame):
 
         self._btn_import.configure(state="normal", text="Importar")
 
-        # Build result message
         lines = []
         if imported > 0:
             lines.append(f"Importados: {imported}")
@@ -457,7 +476,6 @@ class EmployeesPage(ctk.CTkFrame):
         color = COLORS["success"] if imported > 0 else COLORS["warning"]
         self._import_status.configure(text=summary, text_color=color)
 
-        # Show details
         self._import_result.configure(state="normal")
         self._import_result.delete("1.0", "end")
         if imported > 0:

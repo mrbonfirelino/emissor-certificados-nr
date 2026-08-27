@@ -6,10 +6,11 @@ from dateutil.relativedelta import relativedelta
 from typing import Optional, List, Dict, Any
 from src.utils.paths import get_db_path
 from src.core.models import CertificateRecord
+from src.utils.text_utils import normalize_text
 
 
 class HistoryRepository:
-    """Repositório de histórico de certificados + numeração sequencial."""
+    """Repositorio de historico de certificados + numeracao sequencial."""
 
     def __init__(self, db_path: Optional[Path] = None):
         self.db_path = db_path or get_db_path()
@@ -19,6 +20,7 @@ class HistoryRepository:
         conn = sqlite3.connect(self.db_path, timeout=30)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA journal_mode=WAL")
+        conn.create_function("normalize", 1, normalize_text)
         return conn
 
     def _init_db(self):
@@ -42,13 +44,13 @@ class HistoryRepository:
                 CREATE INDEX IF NOT EXISTS idx_cert_number ON certificates(cert_number);
                 CREATE INDEX IF NOT EXISTS idx_cert_employee ON certificates(employee_id);
                 CREATE INDEX IF NOT EXISTS idx_cert_date ON certificates(data_fim);
-                
+
                 CREATE TABLE IF NOT EXISTS sequences (
                     name TEXT PRIMARY KEY,
                     value INTEGER NOT NULL
                 );
                 INSERT OR IGNORE INTO sequences (name, value) VALUES ('certificate', 0);
-                
+
                 CREATE TABLE IF NOT EXISTS backup_meta (
                     key TEXT PRIMARY KEY,
                     value TEXT
@@ -56,7 +58,6 @@ class HistoryRepository:
             """)
 
     def next_certificate_number(self) -> str:
-        """Gera próximo número sequencial: CERT-000001"""
         with self._get_conn() as conn:
             cursor = conn.execute(
                 "UPDATE sequences SET value = value + 1 WHERE name = 'certificate' RETURNING value"
@@ -65,7 +66,6 @@ class HistoryRepository:
             return f"CERT-{row[0]:06d}"
 
     def save(self, record: CertificateRecord) -> int:
-        """Salva certificado no histórico. Retorna ID."""
         with self._get_conn() as conn:
             cursor = conn.execute("""
                 INSERT INTO certificates (
@@ -81,16 +81,18 @@ class HistoryRepository:
             ))
             return cursor.lastrowid
 
-    def get_all(self, limit: int = 100, offset: int = 0) -> List[CertificateRecord]:
-        """Lista certificados (mais recentes primeiro)."""
+    def get_all(self, limit: int = 10, offset: int = 0) -> List[CertificateRecord]:
         with self._get_conn() as conn:
             rows = conn.execute("""
                 SELECT * FROM certificates ORDER BY created_at DESC LIMIT ? OFFSET ?
             """, (limit, offset)).fetchall()
             return [self._row_to_record(r) for r in rows]
 
+    def count_all(self) -> int:
+        with self._get_conn() as conn:
+            return conn.execute("SELECT COUNT(*) FROM certificates").fetchone()[0]
+
     def get_by_number(self, cert_number: str) -> Optional[CertificateRecord]:
-        """Busca certificado pelo número."""
         with self._get_conn() as conn:
             row = conn.execute(
                 "SELECT * FROM certificates WHERE cert_number = ?", (cert_number,)
@@ -98,27 +100,41 @@ class HistoryRepository:
             return self._row_to_record(row) if row else None
 
     def get_by_employee(self, employee_id: int) -> List[CertificateRecord]:
-        """Certificados de um funcionário."""
         with self._get_conn() as conn:
             rows = conn.execute("""
                 SELECT * FROM certificates WHERE employee_id = ? ORDER BY created_at DESC
             """, (employee_id,)).fetchall()
             return [self._row_to_record(r) for r in rows]
 
-    def search(self, query: str, limit: int = 50) -> List[CertificateRecord]:
-        """Busca por nome, CPF, número ou NR."""
+    def search(self, query: str, limit: int = 10, offset: int = 0) -> List[CertificateRecord]:
+        """Busca por nome, CPF, numero ou NR (ignora acentos)."""
+        norm = normalize_text(query)
         with self._get_conn() as conn:
-            like = f"%{query}%"
+            like = f"%{norm}%"
             rows = conn.execute("""
-                SELECT * FROM certificates 
-                WHERE cert_number LIKE ? OR funcionario_nome LIKE ? 
-                   OR funcionario_cpf LIKE ? OR nr_code LIKE ?
-                ORDER BY created_at DESC LIMIT ?
-            """, (like, like, like, like, limit)).fetchall()
+                SELECT * FROM certificates
+                WHERE normalize(funcionario_nome) LIKE ?
+                   OR funcionario_cpf LIKE ?
+                   OR normalize(cert_number) LIKE ?
+                   OR nr_code LIKE ?
+                ORDER BY created_at DESC LIMIT ? OFFSET ?
+            """, (like, f"%{query}%", like, f"%{query}%", limit, offset)).fetchall()
             return [self._row_to_record(r) for r in rows]
 
+    def count_search(self, query: str) -> int:
+        """Conta resultados de busca."""
+        norm = normalize_text(query)
+        with self._get_conn() as conn:
+            like = f"%{norm}%"
+            return conn.execute("""
+                SELECT COUNT(*) FROM certificates
+                WHERE normalize(funcionario_nome) LIKE ?
+                   OR funcionario_cpf LIKE ?
+                   OR normalize(cert_number) LIKE ?
+                   OR nr_code LIKE ?
+            """, (like, f"%{query}%", like, f"%{query}%")).fetchone()[0]
+
     def count_total(self) -> int:
-        """Total de certificados emitidos."""
         with self._get_conn() as conn:
             return conn.execute("SELECT COUNT(*) FROM certificates").fetchone()[0]
 
@@ -140,15 +156,14 @@ class HistoryRepository:
         )
 
     def get_certificates_with_expiration(self) -> List[Dict[str, Any]]:
-        """Retorna todos certificados com data_validade e dias_para_vencer calculados."""
         from src.core.template_loader import load_all_templates
         templates = load_all_templates()
         today = date.today()
 
         with self._get_conn() as conn:
             rows = conn.execute("""
-                SELECT c.*, e.funcao 
-                FROM certificates c 
+                SELECT c.*, e.funcao
+                FROM certificates c
                 LEFT JOIN employees e ON c.employee_id = e.id
                 ORDER BY c.funcionario_nome, c.nr_code
             """).fetchall()
