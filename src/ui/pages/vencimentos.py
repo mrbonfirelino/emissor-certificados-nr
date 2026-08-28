@@ -1,3 +1,4 @@
+import time
 import customtkinter as ctk
 from datetime import date
 from src.ui.styles import COLORS, get_fonts
@@ -24,6 +25,7 @@ class VencimentosPage(ctk.CTkFrame):
         self.filtered_certs = []
         self._employees_list = []
         self._expanded = set()
+        self._last_toggle = {}
         self._active_period = "all"
         self._build_ui()
         self._load_data()
@@ -237,30 +239,6 @@ class VencimentosPage(ctk.CTkFrame):
         start = self._pagination.offset
         page = self._employees_list[start:start + PaginationBar.ITEMS_PER_PAGE]
 
-        # debug visivel + arquivo em TEMP (sempre gravavel)
-        dbg_msg = f"page={len(page)} off={start} tot={len(self._employees_list)}"
-        try:
-            # escreve em TEMP e tambem ao lado do exe
-            import tempfile, pathlib
-            for p in [pathlib.Path(tempfile.gettempdir()) / "debug_venc.log",
-                      pathlib.Path.cwd() / "debug_venc.log"]:
-                try:
-                    with open(p, "a", encoding="utf-8") as f:
-                        f.write(dbg_msg + f" children_before={len(self._list.winfo_children())}\n")
-                except Exception:
-                    pass
-        except Exception:
-            pass
-        # label temporario de debug no header (remove depois)
-        try:
-            if hasattr(self, "_dbg_label"):
-                self._dbg_label.configure(text=dbg_msg)
-            else:
-                self._dbg_label = ctk.CTkLabel(self._header, text=dbg_msg, font=fonts["small"], text_color="red")
-                self._dbg_label.grid(row=1, column=0, columnspan=2, sticky="w", pady=(2,0))
-        except Exception:
-            pass
-
         if not page:
             ctk.CTkLabel(self._list, text="Nenhum certificado encontrado",
                          font=fonts["body"], text_color=COLORS["muted"]).grid(row=0, column=0, pady=30)
@@ -272,33 +250,12 @@ class VencimentosPage(ctk.CTkFrame):
             return
 
         for i, (emp_key, certs) in enumerate(page):
-            try:
-                emp_id, emp_name, emp_cpf, emp_funcao = emp_key
-                self._make_employee_card(i, emp_id, emp_name, emp_cpf, emp_funcao, certs)
-            except Exception as e:
-                import traceback
-                try:
-                    import tempfile, pathlib
-                    with open(pathlib.Path(tempfile.gettempdir()) / "debug_venc.log", "a", encoding="utf-8") as f:
-                        f.write(f"ERRO card {i} {emp_key}: {e}\n{traceback.format_exc()}\n")
-                except Exception:
-                    pass
+            emp_id, emp_name, emp_cpf, emp_funcao = emp_key
+            self._make_employee_card(i, emp_id, emp_name, emp_cpf, emp_funcao, certs)
 
         self.update_idletasks()
         try:
             self._list._parent_canvas.configure(scrollregion=self._list._parent_canvas.bbox("all"))
-        except Exception:
-            pass
-        # log apos criacao
-        try:
-            import tempfile, pathlib
-            for p in [pathlib.Path(tempfile.gettempdir()) / "debug_venc.log",
-                      pathlib.Path.cwd() / "debug_venc.log"]:
-                try:
-                    with open(p, "a", encoding="utf-8") as f:
-                        f.write(f"apos children={len(self._list.winfo_children())} bbox={self._list._parent_canvas.bbox('all')} h={self._list.cget('height')}\n")
-                except Exception:
-                    pass
         except Exception:
             pass
         self.after(50, lambda: self._fit_scroll_height(0))
@@ -342,14 +299,25 @@ class VencimentosPage(ctk.CTkFrame):
         if emp_id in self._expanded:
             tbl.grid(row=2, column=0, columnspan=3, sticky="ew", padx=10, pady=(0, 5))
 
-        # Toggle via bind recursivo
-        def toggle(e, _id=emp_id, _tbl=tbl):
+        # Toggle via bind recursivo — debounce global para o card todo (evita duplo disparo canvas+label)
+        def toggle(e=None, _id=emp_id, _tbl=tbl):
+            now = time.time()
+            last = self._last_toggle.get(_id, 0)
+            if now - last < 0.3:
+                return "break"
+            self._last_toggle[_id] = now
             if _id in self._expanded:
                 self._expanded.discard(_id)
                 _tbl.grid_remove()
             else:
                 self._expanded.add(_id)
                 _tbl.grid(row=2, column=0, columnspan=3, sticky="ew", padx=10, pady=(0, 5))
+            self.update_idletasks()
+            try:
+                self._list._parent_canvas.configure(scrollregion=self._list._parent_canvas.bbox("all"))
+            except Exception:
+                pass
+            return "break"
 
         self._bind_clicks(card, toggle)
 
@@ -411,22 +379,26 @@ class VencimentosPage(ctk.CTkFrame):
                          text_color=COLORS["surface"], corner_radius=4,
                          fg_color=STATUS_COLORS.get(cert["status"], COLORS["muted"]),
                          padx=6, pady=2
-                         ).grid(row=0, column=4, padx=8, pady=4, sticky="center")
+                         ).grid(row=0, column=4, padx=8, pady=4)
 
         return tbl
 
     @staticmethod
     def _bind_clicks(widget, handler):
-        try:
-            widget.bind("<Button-1>", handler, add="+")
-        except Exception:
-            widget.bind("<Button-1>", handler)
-        # CTkFrame usa um CTkCanvas com place(relwidth=1,relheight=1) que intercepta o clique
+        # hotfix: bindar SO no _canvas quando existir, senao no widget — evita duplo disparo (canvas + widget)
         if hasattr(widget, "_canvas") and widget._canvas is not None:
             try:
-                widget._canvas.bind("<Button-1>", handler, add="+")
+                widget._canvas.bind("<ButtonRelease-1>", handler, add="+")
             except Exception:
                 pass
+        else:
+            try:
+                widget.bind("<ButtonRelease-1>", handler, add="+")
+            except Exception:
+                try:
+                    widget.bind("<ButtonRelease-1>", handler)
+                except Exception:
+                    pass
         for child in widget.winfo_children():
             VencimentosPage._bind_clicks(child, handler)
 
