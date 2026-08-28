@@ -110,23 +110,16 @@ class VencimentosPage(ctk.CTkFrame):
             b.pack(side="left", padx=2)
             self._period_btns[key] = b
 
-        # Row 3 — Wrapper branco (lista + paginacao dentro do footer)
-        self._container = ctk.CTkFrame(self, fg_color=COLORS["surface"],
-                                       corner_radius=10, border_width=1,
-                                       border_color=COLORS["border"])
-        self._container.grid(row=3, column=0, sticky="nsew", padx=20, pady=(0, 4))
-        self._container.grid_columnconfigure(0, weight=1)
-        self._container.grid_rowconfigure(0, weight=1)
-
-        self._list = ctk.CTkScrollableFrame(self._container, fg_color="transparent",
-                                            corner_radius=0, height=200)
-        self._list.grid(row=0, column=0, sticky="nsew", padx=1, pady=(1, 0))
+        # Row 3 — Lista (wrapper branco, weight1) — paginacao fora para nao sobrepor tabela
+        self._list = ctk.CTkScrollableFrame(self, fg_color=COLORS["surface"],
+                                            corner_radius=10, border_width=1,
+                                            border_color=COLORS["border"], height=200)
+        self._list.grid(row=3, column=0, sticky="nsew", padx=20, pady=(0, 2))
         self._list.grid_columnconfigure(0, weight=1)
 
-        # Footer branco — paginacao colada (gap minimo 4px)
-        self._pagination = PaginationBar(self._container, on_page_change=self._render_list)
-        self._pagination.grid(row=1, column=0, sticky="ew", padx=8, pady=(4, 4))
-        self._pagination.configure(fg_color="transparent")
+        # Row 4 — Paginacao fora do branco (sem sobreposicao, gap minimo 2px na altura)
+        self._pagination = PaginationBar(self, on_page_change=self._render_list)
+        self._pagination.grid(row=4, column=0, sticky="w", padx=20, pady=(2, 8))
 
         self.after(200, lambda: self._fit_scroll_height(0))
         self.after(600, lambda: self._fit_scroll_height(0))
@@ -155,7 +148,17 @@ class VencimentosPage(ctk.CTkFrame):
             return
         margins = 10
         available = h - header_h - cards_h - filters_h - pag_h - margins
-        self._list.configure(height=max(available, 150))
+        # altura do conteudo (bbox) — se menor que available, encolhe Canvas e cola paginacao (alternativa A)
+        self.update_idletasks()
+        try:
+            bbox = self._list._parent_canvas.bbox("all")
+            content_h = (bbox[3] - bbox[1] if bbox and bbox[3] else self._list.winfo_reqheight()) + 6
+        except Exception:
+            content_h = self._list.winfo_reqheight() + 6
+        needed = content_h + 4 if content_h else available
+        # usa o menor entre available e needed para eliminar vao branco interno mantendo scroll quando necessario
+        target = max(150, min(available, needed)) if needed and needed > 50 else max(150, available)
+        self._list.configure(height=target)
 
     # ── Dados ────────────────────────────────────────────────
 

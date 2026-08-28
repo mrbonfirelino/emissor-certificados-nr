@@ -98,3 +98,25 @@ def validar_carga_horaria(carga: str) -> Optional[int]:
         return valor if valor > 0 else None
     except ValueError:
         return None
+
+
+def validar_telefone(tel: str) -> bool:
+    """Valida celular 11 digitos (DDD+numero). Ex: 21984209236."""
+    dig = re.sub(r'\D', '', tel or "")
+    if len(dig) != 11 or not dig.isdigit():
+        return False
+    # DDD 11-91, terceiro digito 9 para celular
+    if dig[2] != '9':
+        return False
+    # nao todos iguais
+    if dig == dig[0] * 11:
+        return False
+    return True
+
+
+def formatar_telefone(tel: str) -> str:
+    """Formata 11 digitos para (XX) 9XXXX-XXXX."""
+    dig = re.sub(r'\D', '', tel or "")
+    if len(dig) == 11:
+        return f"({dig[:2]}) {dig[2:7]}-{dig[7:]}"
+    return tel

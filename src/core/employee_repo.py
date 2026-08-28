@@ -28,6 +28,8 @@ class EmployeeRepository:
                     nome TEXT NOT NULL,
                     cpf TEXT,
                     funcao TEXT,
+                    foto BLOB,
+                    telefone TEXT,
                     created_at TEXT DEFAULT (datetime('now'))
                 );
                 CREATE INDEX IF NOT EXISTS idx_emp_cpf ON employees(cpf);
@@ -38,17 +40,31 @@ class EmployeeRepository:
             except sqlite3.OperationalError:
                 conn.execute("ALTER TABLE employees ADD COLUMN funcao TEXT")
             try:
+                conn.execute("SELECT foto FROM employees LIMIT 1")
+            except sqlite3.OperationalError:
+                conn.execute("ALTER TABLE employees ADD COLUMN foto BLOB")
+            try:
+                conn.execute("SELECT telefone FROM employees LIMIT 1")
+            except sqlite3.OperationalError:
+                conn.execute("ALTER TABLE employees ADD COLUMN telefone TEXT")
+            try:
                 conn.execute("SELECT cpf FROM employees WHERE cpf IS NULL LIMIT 1")
             except Exception:
                 pass
 
-    def create(self, nome: str, cpf: str = None, funcao: str = None) -> Optional[int]:
+    def create(self, nome: str, cpf: str = None, funcao: str = None, foto: Optional[bytes] = None, telefone: Optional[str] = None) -> Optional[int]:
         try:
             cpf_val = cpf.strip() if cpf and cpf.strip() else None
+            tel_val = telefone.strip() if telefone and telefone.strip() else None
+            if tel_val:
+                import re
+                tel_val = re.sub(r'\D', '', tel_val)
+                if tel_val == "":
+                    tel_val = None
             with self._get_conn() as conn:
                 cursor = conn.execute(
-                    "INSERT INTO employees (nome, cpf, funcao) VALUES (?, ?, ?)",
-                    (nome.strip(), cpf_val, funcao.strip() if funcao else None)
+                    "INSERT INTO employees (nome, cpf, funcao, foto, telefone) VALUES (?, ?, ?, ?, ?)",
+                    (nome.strip(), cpf_val, funcao.strip() if funcao else None, foto, tel_val)
                 )
                 return cursor.lastrowid
         except sqlite3.IntegrityError:
@@ -65,15 +81,15 @@ class EmployeeRepository:
             return self._row_to_employee(row) if row else None
 
     def search(self, query: str, limit: int = 20) -> List[Employee]:
-        """Busca por nome, CPF ou funcao (ignora acentos)."""
+        """Busca por nome, CPF, funcao ou telefone (ignora acentos)."""
         norm = normalize_text(query)
         with self._get_conn() as conn:
             like = f"%{norm}%"
             rows = conn.execute("""
                 SELECT * FROM employees
-                WHERE normalize(nome) LIKE ? OR cpf LIKE ? OR normalize(funcao) LIKE ?
+                WHERE normalize(nome) LIKE ? OR cpf LIKE ? OR normalize(funcao) LIKE ? OR telefone LIKE ?
                 ORDER BY nome LIMIT ?
-            """, (like, f"%{query}%", like, limit)).fetchall()
+            """, (like, f"%{query}%", like, f"%{query}%", limit)).fetchall()
             return [self._row_to_employee(r) for r in rows]
 
     def count_search(self, query: str) -> int:
@@ -83,8 +99,8 @@ class EmployeeRepository:
             like = f"%{norm}%"
             return conn.execute("""
                 SELECT COUNT(*) FROM employees
-                WHERE normalize(nome) LIKE ? OR cpf LIKE ? OR normalize(funcao) LIKE ?
-            """, (like, f"%{query}%", like)).fetchone()[0]
+                WHERE normalize(nome) LIKE ? OR cpf LIKE ? OR normalize(funcao) LIKE ? OR telefone LIKE ?
+            """, (like, f"%{query}%", like, f"%{query}%")).fetchone()[0]
 
     def get_all(self, limit: int = 10, offset: int = 0) -> List[Employee]:
         with self._get_conn() as conn:
@@ -105,14 +121,46 @@ class EmployeeRepository:
             ).fetchall()
             return [row["funcao"] for row in rows]
 
-    def update(self, emp_id: int, nome: str, cpf: str = None, funcao: str = None) -> bool:
+    def update(self, emp_id: int, nome: str, cpf: str = None, funcao: str = None, foto: Optional[bytes] = None, telefone: Optional[str] = None) -> bool:
         try:
             cpf_val = cpf.strip() if cpf and cpf.strip() else None
+            tel_val = telefone.strip() if telefone and telefone.strip() else None
+            if tel_val:
+                import re
+                tel_val = re.sub(r'\D', '', tel_val)
+                if tel_val == "":
+                    tel_val = None
             with self._get_conn() as conn:
-                conn.execute(
-                    "UPDATE employees SET nome = ?, cpf = ?, funcao = ? WHERE id = ?",
-                    (nome.strip(), cpf_val, funcao.strip() if funcao else None, emp_id)
-                )
+                if foto is not None:
+                    conn.execute(
+                        "UPDATE employees SET nome = ?, cpf = ?, funcao = ?, foto = ?, telefone = ? WHERE id = ?",
+                        (nome.strip(), cpf_val, funcao.strip() if funcao else None, foto, tel_val, emp_id)
+                    )
+                else:
+                    conn.execute(
+                        "UPDATE employees SET nome = ?, cpf = ?, funcao = ?, telefone = ? WHERE id = ?",
+                        (nome.strip(), cpf_val, funcao.strip() if funcao else None, tel_val, emp_id)
+                    )
+                return True
+        except sqlite3.IntegrityError:
+            return False
+
+    def update_foto(self, emp_id: int, foto: Optional[bytes]) -> bool:
+        try:
+            with self._get_conn() as conn:
+                conn.execute("UPDATE employees SET foto = ? WHERE id = ?", (foto, emp_id))
+                return True
+        except sqlite3.IntegrityError:
+            return False
+
+    def update_telefone(self, emp_id: int, telefone: Optional[str]) -> bool:
+        try:
+            tel_val = telefone.strip() if telefone and telefone.strip() else None
+            if tel_val:
+                import re
+                tel_val = re.sub(r'\D', '', tel_val)
+            with self._get_conn() as conn:
+                conn.execute("UPDATE employees SET telefone = ? WHERE id = ?", (tel_val, emp_id))
                 return True
         except sqlite3.IntegrityError:
             return False
@@ -133,10 +181,20 @@ class EmployeeRepository:
 
     def _row_to_employee(self, row: sqlite3.Row) -> Employee:
         cpf_val = row["cpf"] if row["cpf"] else ""
+        try:
+            foto_val = row["foto"]
+        except Exception:
+            foto_val = None
+        try:
+            tel_val = row["telefone"]
+        except Exception:
+            tel_val = None
         return Employee(
             id=row["id"],
             nome=row["nome"],
             cpf=cpf_val,
             funcao=row["funcao"],
+            foto=foto_val,
+            telefone=tel_val or None,
             created_at=row["created_at"]
         )

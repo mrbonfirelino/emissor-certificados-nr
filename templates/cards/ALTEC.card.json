@@ -1,0 +1,53 @@
+{
+  "card_code": "ALTEC",
+  "cliente_nome": "ALTEC INDUSTRIAL LTDA",
+  "descricao": "Cartao de bloqueio padrao ALTEC 9x12cm",
+  "card_width_mm": 90,
+  "card_height_mm": 120,
+  "gap_mm": 5,
+  "page_margins_mm": { "top": 10, "bottom": 10, "left": 10, "right": 10 },
+  "border": { "width": 2.0, "color": "#111111", "corner_radius_mm": 1.5 },
+  "divider_width": 1.2,
+  "logo_altec": { "path": "", "x_mm": 0, "y_mm": 0, "width_mm": 20, "height_mm": 11 },
+  "sections": [
+    { "type": "header", "height_mm": 12 },
+    { "type": "danger_band", "height_mm": 14 },
+    { "type": "photo", "height_mm": 36 },
+    { "type": "message", "height_mm": 22 },
+    { "type": "employee", "height_mm": 24 },
+    { "type": "phone", "height_mm": 12 }
+  ],
+  "header": {
+    "hole": { "enabled": true, "x_mm": 7, "diameter_mm": 9, "ring_color": "#1E7A1E", "ring_width": 2.6, "cross_width": 2.4, "cross_arm_ratio": 0.40 },
+    "logo": { "x_mm": 58, "y_center_mm": 6, "width_mm": 26, "height_mm": 11 }
+  },
+  "danger_band": {
+    "color": "#D40000",
+    "text": "PERIGO",
+    "font": "Helvetica-Bold",
+    "font_size": 20,
+    "text_color": "#FFFFFF",
+    "border_color": "#111111",
+    "border_width_mm": 1.2,
+    "padding_mm": 10,
+    "rect_height_mm": 11,
+    "corner_radius_mm": 2
+  },
+  "photo": { "width_mm": 30, "height_mm": 32, "border_width": 0.8, "border_color": "#111111", "placeholder_text": "SEM FOTO" },
+  "message": {
+    "line1": { "text": "EQUIPAMENTO EM MANUTENÇÃO", "font": "Helvetica-Bold", "size": 10.5, "color": "#111111" },
+    "line2": { "text": "NÃO LIGUE!", "font": "Helvetica-Bold", "size": 16, "color": "#111111" }
+  },
+  "employee": {
+    "nome": { "font": "Helvetica-Bold", "size": 11, "color": "#111111", "max_chars": 30 },
+    "funcao": { "font": "Helvetica", "size": 9, "color": "#111111", "max_chars": 28 }
+  },
+  "phone": {
+    "label": "Tel: ",
+    "font": "Helvetica-Bold",
+    "size": 11,
+    "color": "#111111",
+    "centered": true,
+    "space_before_hyphen": true
+  }
+}

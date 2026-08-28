@@ -9,10 +9,11 @@ class PaginationBar(ctk.CTkFrame):
     FIXED_WIDTH = 520
 
     def __init__(self, master, on_page_change=None, **kwargs):
-        super().__init__(master, fg_color="transparent", width=self.FIXED_WIDTH, height=44, **kwargs)
+        super().__init__(master, fg_color="transparent", width=self.FIXED_WIDTH, height=34, **kwargs)
         self.on_page_change = on_page_change
         self.current_page = 1
         self.total_items = 0
+        self.items_per_page = self.ITEMS_PER_PAGE  # copia por instancia (outras paginas podem alterar)
         self._build_ui()
 
     def _build_ui(self):
@@ -25,14 +26,14 @@ class PaginationBar(ctk.CTkFrame):
         self.lbl_info.pack(side="left", padx=(0, 8))
 
         self.btn_first = ctk.CTkButton(
-            self, text="|<", width=28, height=26, font=fonts["small"],
+            self, text="|<", width=28, height=22, font=fonts["small"],
             fg_color=COLORS["primary"], hover_color=COLORS["secondary"],
             command=lambda: self._go_to(1)
         )
         self.btn_first.pack(side="left", padx=1)
 
         self.btn_prev = ctk.CTkButton(
-            self, text="<", width=26, height=26, font=fonts["small"],
+            self, text="<", width=26, height=22, font=fonts["small"],
             fg_color=COLORS["primary"], hover_color=COLORS["secondary"],
             command=lambda: self._go_to(self.current_page - 1)
         )
@@ -46,7 +47,7 @@ class PaginationBar(ctk.CTkFrame):
 
         for i in range(5):
             btn = ctk.CTkButton(
-                self.pages_frame, text="", width=32, height=26,
+                self.pages_frame, text="", width=32, height=22,
                 font=fonts["small"], fg_color=COLORS["primary"],
                 hover_color=COLORS["secondary"],
                 command=lambda pg=0: self._go_to(pg)
@@ -55,14 +56,14 @@ class PaginationBar(ctk.CTkFrame):
             self._page_buttons.append(btn)
 
         self.btn_next = ctk.CTkButton(
-            self, text=">", width=26, height=26, font=fonts["small"],
+            self, text=">", width=26, height=22, font=fonts["small"],
             fg_color=COLORS["primary"], hover_color=COLORS["secondary"],
             command=lambda: self._go_to(self.current_page + 1)
         )
         self.btn_next.pack(side="left", padx=1)
 
         self.btn_last = ctk.CTkButton(
-            self, text=">|", width=28, height=26, font=fonts["small"],
+            self, text=">|", width=28, height=22, font=fonts["small"],
             fg_color=COLORS["primary"], hover_color=COLORS["secondary"],
             command=lambda: self._go_to(self.total_pages)
         )
@@ -72,11 +73,11 @@ class PaginationBar(ctk.CTkFrame):
     def total_pages(self) -> int:
         if self.total_items <= 0:
             return 1
-        return (self.total_items + self.ITEMS_PER_PAGE - 1) // self.ITEMS_PER_PAGE
+        return (self.total_items + self.items_per_page - 1) // self.items_per_page
 
     @property
     def offset(self) -> int:
-        return (self.current_page - 1) * self.ITEMS_PER_PAGE
+        return (self.current_page - 1) * self.items_per_page
 
     def set_total(self, total: int):
         self.total_items = total
@@ -99,8 +100,8 @@ class PaginationBar(ctk.CTkFrame):
 
     def _render(self):
         fonts = get_fonts()
-        start = (self.current_page - 1) * self.ITEMS_PER_PAGE + 1
-        end = min(self.current_page * self.ITEMS_PER_PAGE, self.total_items)
+        start = (self.current_page - 1) * self.items_per_page + 1
+        end = min(self.current_page * self.items_per_page, self.total_items)
         if self.total_items == 0:
             start = 0
             end = 0

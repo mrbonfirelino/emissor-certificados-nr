@@ -174,16 +174,18 @@ class EmployeesPage(ctk.CTkFrame):
         header = ctk.CTkFrame(self.list_frame, fg_color=COLORS["primary"], corner_radius=6, height=36)
         header.grid(row=0, column=0, sticky="ew", padx=8, pady=(4, 2))
         header.grid_propagate(False)
-        header.grid_columnconfigure(0, weight=3)
-        header.grid_columnconfigure(1, weight=2)
+        header.grid_columnconfigure(0, weight=0)
+        header.grid_columnconfigure(1, weight=3)
         header.grid_columnconfigure(2, weight=2)
-        header.grid_columnconfigure(3, weight=1)
+        header.grid_columnconfigure(3, weight=2)
+        header.grid_columnconfigure(4, weight=2)
+        header.grid_columnconfigure(5, weight=1)
 
-        for col, text in enumerate(["Nome", "Funcao", "CPF", "Acoes"]):
+        for col, text in enumerate(["Foto", "Nome", "Funcao", "CPF", "Telefone", "Acoes"]):
             ctk.CTkLabel(
                 header, text=text, font=fonts["body_bold"],
-                text_color="#FFFFFF", anchor="center" if col < 3 else "e"
-            ).grid(row=0, column=col, sticky="ew" if col < 3 else "e", padx=12, pady=6)
+                text_color="#FFFFFF", anchor="center" if col < 5 else "e"
+            ).grid(row=0, column=col, sticky="ew" if col < 5 else "e", padx=10, pady=6)
 
         for i, emp in enumerate(employees):
             self._create_employee_row(emp, i + 1, i % 2 == 1)
@@ -191,21 +193,45 @@ class EmployeesPage(ctk.CTkFrame):
     def _create_employee_row(self, emp: Employee, row_idx: int, alternate: bool = False):
         fonts = get_fonts()
         bg = COLORS["background"] if alternate else "transparent"
-        row = ctk.CTkFrame(self.list_frame, fg_color=bg, corner_radius=0, height=36)
+        row = ctk.CTkFrame(self.list_frame, fg_color=bg, corner_radius=0, height=40)
         row.grid(row=row_idx, column=0, sticky="ew", padx=8, pady=0)
         row.grid_propagate(False)
-        row.grid_columnconfigure(0, weight=3)
-        row.grid_columnconfigure(1, weight=2)
+        row.grid_columnconfigure(0, weight=0)
+        row.grid_columnconfigure(1, weight=3)
         row.grid_columnconfigure(2, weight=2)
-        row.grid_columnconfigure(3, weight=1)
+        row.grid_columnconfigure(3, weight=2)
+        row.grid_columnconfigure(4, weight=2)
+        row.grid_columnconfigure(5, weight=1)
 
-        ctk.CTkLabel(row, text=emp.nome, font=fonts["body"], text_color=COLORS["text"], anchor="center").grid(row=0, column=0, sticky="ew", padx=12, pady=6)
+        # Foto thumb 3x4
+        if emp.foto:
+            try:
+                from src.utils.photo_utils import bytes_to_pil_image
+                from PIL import Image
+                pil = bytes_to_pil_image(emp.foto)
+                if pil:
+                    pil_thumb = pil.copy()
+                    pil_thumb.thumbnail((28, 36), Image.LANCZOS)
+                    ctk_img = ctk.CTkImage(light_image=pil_thumb, dark_image=pil_thumb, size=(28, 36))
+                    lbl_img = ctk.CTkLabel(row, image=ctk_img, text="")
+                    lbl_img.grid(row=0, column=0, padx=(8, 2), pady=4)
+                    lbl_img._img_ref = ctk_img
+                else:
+                    ctk.CTkLabel(row, text="--", font=fonts["small"], text_color=COLORS["muted"]).grid(row=0, column=0, padx=8, pady=6)
+            except Exception:
+                ctk.CTkLabel(row, text="--", font=fonts["small"], text_color=COLORS["muted"]).grid(row=0, column=0, padx=8, pady=6)
+        else:
+            ctk.CTkLabel(row, text="--", font=fonts["small"], text_color=COLORS["muted"]).grid(row=0, column=0, padx=8, pady=6)
+
+        tel_display = emp.telefone_formatado() if emp.telefone else "-"
+        ctk.CTkLabel(row, text=emp.nome, font=fonts["body"], text_color=COLORS["text"], anchor="center").grid(row=0, column=1, sticky="ew", padx=10, pady=6)
         funcao_text = emp.funcao if emp.funcao else "-"
-        ctk.CTkLabel(row, text=funcao_text, font=fonts["body"], text_color=COLORS["text_secondary"], anchor="center").grid(row=0, column=1, sticky="ew", padx=12, pady=6)
-        ctk.CTkLabel(row, text=emp.cpf or "-", font=fonts["body"], text_color=COLORS["text_secondary"], anchor="center").grid(row=0, column=2, sticky="ew", padx=12, pady=6)
+        ctk.CTkLabel(row, text=funcao_text, font=fonts["body"], text_color=COLORS["text_secondary"], anchor="center").grid(row=0, column=2, sticky="ew", padx=10, pady=6)
+        ctk.CTkLabel(row, text=emp.cpf or "-", font=fonts["body"], text_color=COLORS["text_secondary"], anchor="center").grid(row=0, column=3, sticky="ew", padx=10, pady=6)
+        ctk.CTkLabel(row, text=tel_display, font=fonts["body"], text_color=COLORS["text_secondary"], anchor="center").grid(row=0, column=4, sticky="ew", padx=10, pady=6)
 
         btn_frame = ctk.CTkFrame(row, fg_color="transparent")
-        btn_frame.grid(row=0, column=3, sticky="e", padx=8, pady=4)
+        btn_frame.grid(row=0, column=5, sticky="e", padx=8, pady=4)
 
         ctk.CTkButton(
             btn_frame, text="Editar", width=60, height=26,
@@ -236,32 +262,105 @@ class EmployeesPage(ctk.CTkFrame):
 
         dialog = ctk.CTkToplevel(self)
         dialog.title("Editar Funcionario" if is_edit else "Novo Funcionario")
-        dialog.geometry("450x420")
+        dialog.geometry("520x680")
         dialog.transient(self)
         dialog.grab_set()
         dialog.resizable(False, False)
 
         dialog.update_idletasks()
-        x = self.winfo_rootx() + (self.winfo_width() // 2) - (450 // 2)
-        y = self.winfo_rooty() + (self.winfo_height() // 2) - (420 // 2)
+        x = self.winfo_rootx() + (self.winfo_width() // 2) - (520 // 2)
+        y = self.winfo_rooty() + (self.winfo_height() // 2) - (680 // 2)
         dialog.geometry(f"+{x}+{y}")
 
         form = ctk.CTkFrame(dialog, fg_color="transparent")
-        form.pack(fill="both", expand=True, padx=30, pady=30)
+        form.pack(fill="both", expand=True, padx=24, pady=24)
         form.grid_columnconfigure(0, weight=1)
 
         ctk.CTkLabel(
             form, text="Editar Funcionario" if is_edit else "Cadastrar Novo Funcionario",
             font=fonts["heading"], text_color=COLORS["primary"]
-        ).grid(row=0, column=0, pady=(0, 16))
+        ).grid(row=0, column=0, pady=(0, 12))
 
-        ctk.CTkLabel(form, text="Nome Completo *", font=fonts["body_bold"], text_color=COLORS["text"]).grid(row=1, column=0, sticky="w", pady=(0, 4))
+        # --- Foto 3x4 ---
+        foto_bytes = employee.foto if (is_edit and employee.foto) else None
+        foto_changed = {"val": False}
+        try:
+            from src.utils.photo_utils import process_photo_3x4, bytes_to_pil_image
+            from PIL import Image
+        except Exception:
+            process_photo_3x4 = None
+            bytes_to_pil_image = None
+
+        foto_frame = ctk.CTkFrame(form, fg_color=COLORS["background"], corner_radius=8, border_width=1, border_color=COLORS["border"], width=120, height=160)
+        foto_frame.grid(row=1, column=0, pady=(0, 12))
+        foto_frame.grid_propagate(False)
+        foto_frame.grid_columnconfigure(0, weight=1)
+        foto_frame.grid_rowconfigure(0, weight=1)
+
+        lbl_foto = ctk.CTkLabel(foto_frame, text="Sem foto\n3x4", font=fonts["small"], text_color=COLORS["muted"])
+        lbl_foto.grid(row=0, column=0, sticky="nsew")
+        lbl_foto._image_ref = None  # keep ref
+
+        def update_foto_preview(data: bytes = None):
+            if data and bytes_to_pil_image:
+                pil = bytes_to_pil_image(data)
+                if pil:
+                    try:
+                        pil_thumb = pil.copy()
+                        pil_thumb.thumbnail((90, 120), Image.LANCZOS)
+                        ctk_img = ctk.CTkImage(light_image=pil_thumb, dark_image=pil_thumb, size=(90, 120))
+                        lbl_foto.configure(image=ctk_img, text="")
+                        lbl_foto._image_ref = ctk_img
+                        return
+                    except Exception:
+                        pass
+            lbl_foto.configure(image=None, text="Sem foto\n3x4")
+            lbl_foto._image_ref = None
+
+        if foto_bytes:
+            update_foto_preview(foto_bytes)
+
+        btn_foto_frame = ctk.CTkFrame(form, fg_color="transparent")
+        btn_foto_frame.grid(row=2, column=0, pady=(0, 12))
+
+        def choose_foto():
+            if process_photo_3x4 is None:
+                messagebox.showerror("Erro", "Pillow nao instalado", parent=dialog)
+                return
+            path = filedialog.askopenfilename(
+                title="Escolher foto 3x4",
+                filetypes=[("Imagens", "*.jpg *.jpeg *.png *.bmp *.webp"), ("Todos", "*.*")],
+                parent=dialog
+            )
+            if not path:
+                return
+            try:
+                data = process_photo_3x4(path)
+                foto_bytes_new = data
+                update_foto_preview(data)
+                # armazena no closure
+                nonlocal foto_bytes
+                foto_bytes = foto_bytes_new
+                foto_changed["val"] = True
+            except Exception as e:
+                messagebox.showerror("Erro", str(e), parent=dialog)
+
+        def remove_foto():
+            nonlocal foto_bytes
+            foto_bytes = None
+            foto_changed["val"] = True
+            update_foto_preview(None)
+
+        ctk.CTkButton(btn_foto_frame, text="Escolher foto", width=120, height=28, font=fonts["small"], fg_color=COLORS["secondary"], hover_color=COLORS["primary"], command=choose_foto).pack(side="left", padx=4)
+        ctk.CTkButton(btn_foto_frame, text="Remover", width=80, height=28, font=fonts["small"], fg_color=COLORS["muted"], hover_color=COLORS["text_secondary"], command=remove_foto).pack(side="left", padx=4)
+
+        ctk.CTkLabel(form, text="Nome Completo *", font=fonts["body_bold"], text_color=COLORS["text"]).grid(row=3, column=0, sticky="w", pady=(0, 4))
         nome_var = ctk.StringVar(value=employee.nome if is_edit else "")
-        ctk.CTkEntry(form, textvariable=nome_var, font=fonts["body"], height=36, corner_radius=6, placeholder_text="Nome completo do funcionario").grid(row=2, column=0, sticky="ew", pady=(0, 12))
+        ctk.CTkEntry(form, textvariable=nome_var, font=fonts["body"], height=36, corner_radius=6, placeholder_text="Nome completo do funcionario").grid(row=4, column=0, sticky="ew", pady=(0, 10))
 
-        ctk.CTkLabel(form, text="CPF", font=fonts["body_bold"], text_color=COLORS["text"]).grid(row=3, column=0, sticky="w", pady=(0, 4))
+        ctk.CTkLabel(form, text="CPF", font=fonts["body_bold"], text_color=COLORS["text"]).grid(row=5, column=0, sticky="w", pady=(0, 4))
         cpf_var = ctk.StringVar(value=employee.cpf if is_edit else "")
-        ctk.CTkEntry(form, textvariable=cpf_var, font=fonts["body"], height=36, corner_radius=6, placeholder_text="000.000.000-00 (opcional)").grid(row=4, column=0, sticky="ew", pady=(0, 12))
+        ctk.CTkEntry(form, textvariable=cpf_var, font=fonts["body"], height=36, corner_radius=6, placeholder_text="000.000.000-00 (opcional)").grid(row=6, column=0, sticky="ew", pady=(0, 10))
 
         def format_cpf_entry(*args):
             val = cpf_var.get()
@@ -269,7 +368,26 @@ class EmployeesPage(ctk.CTkFrame):
                 cpf_var.set(val[:14])
         cpf_var.trace_add("write", format_cpf_entry)
 
-        ctk.CTkLabel(form, text="Funcao", font=fonts["body_bold"], text_color=COLORS["text"]).grid(row=5, column=0, sticky="w", pady=(0, 4))
+        ctk.CTkLabel(form, text="Telefone (celular)", font=fonts["body_bold"], text_color=COLORS["text"]).grid(row=7, column=0, sticky="w", pady=(0, 4))
+        tel_display = ""
+        if is_edit and employee.telefone:
+            from src.utils.validators import formatar_telefone
+            tel_display = formatar_telefone(employee.telefone)
+        tel_var = ctk.StringVar(value=tel_display)
+        ctk.CTkEntry(form, textvariable=tel_var, font=fonts["body"], height=36, corner_radius=6, placeholder_text="(21) 98420-9236 (opcional)").grid(row=8, column=0, sticky="ew", pady=(0, 10))
+
+        def format_tel_entry(*args):
+            # so formata quando os 11 digitos estao completos — evita cursor pulando durante digitacao
+            import re as _re
+            val = tel_var.get()
+            dig = _re.sub(r'\D', '', val)
+            if len(dig) < 11:
+                return
+            dig = dig[:11]
+            tel_var.set(f"({dig[:2]}) {dig[2:7]}-{dig[7:]}")
+        tel_var.trace_add("write", format_tel_entry)
+
+        ctk.CTkLabel(form, text="Funcao", font=fonts["body_bold"], text_color=COLORS["text"]).grid(row=9, column=0, sticky="w", pady=(0, 4))
         from src.ui.pages.funcoes import load_funcoes
         funcoes_list = load_funcoes()
         funcao_var = ctk.StringVar(value=employee.funcao if (is_edit and employee.funcao) else "")
@@ -281,16 +399,17 @@ class EmployeesPage(ctk.CTkFrame):
             button_color=COLORS["secondary"], button_hover_color=COLORS["primary"],
             state="readonly"
         )
-        funcao_entry.grid(row=6, column=0, sticky="ew", pady=(0, 16))
+        funcao_entry.grid(row=10, column=0, sticky="ew", pady=(0, 12))
 
         btn_frame = ctk.CTkFrame(form, fg_color="transparent")
-        btn_frame.grid(row=7, column=0, sticky="ew")
+        btn_frame.grid(row=11, column=0, sticky="ew", pady=(8, 0))
         btn_frame.grid_columnconfigure(0, weight=1)
 
         def save():
             nome = nome_var.get().strip()
             cpf = cpf_var.get().strip()
             funcao = funcao_var.get().strip() if funcao_var.get() else None
+            tel_raw = tel_var.get().strip()
             if not nome:
                 messagebox.showerror("Erro", "Nome e obrigatorio", parent=dialog)
                 return
@@ -300,16 +419,25 @@ class EmployeesPage(ctk.CTkFrame):
                     messagebox.showerror("Erro", "CPF invalido", parent=dialog)
                     return
                 cpf_fmt = formatar_cpf(cpf)
+            tel_fmt = None
+            if tel_raw:
+                from src.utils.validators import validar_telefone
+                if not validar_telefone(tel_raw):
+                    messagebox.showerror("Erro", "Telefone invalido: use celular com DDD, 11 digitos (ex: (21) 98420-9236)", parent=dialog)
+                    return
+                import re as _re
+                tel_fmt = _re.sub(r'\D', '', tel_raw)
             try:
                 if is_edit:
-                    success = self.employee_repo.update(employee.id, nome, cpf_fmt, funcao)
-                    if success:
-                        messagebox.showinfo("Sucesso", "Funcionario atualizado!", parent=dialog)
-                    else:
+                    success = self.employee_repo.update(employee.id, nome, cpf_fmt, funcao, telefone=tel_fmt)
+                    if not success:
                         messagebox.showerror("Erro", "Erro ao atualizar funcionario", parent=dialog)
                         return
+                    if foto_changed["val"]:
+                        self.employee_repo.update_foto(employee.id, foto_bytes)
+                    messagebox.showinfo("Sucesso", "Funcionario atualizado!", parent=dialog)
                 else:
-                    emp_id = self.employee_repo.create(nome, cpf_fmt, funcao)
+                    emp_id = self.employee_repo.create(nome, cpf_fmt, funcao, foto_bytes if foto_changed["val"] or foto_bytes else None, telefone=tel_fmt)
                     if emp_id:
                         messagebox.showinfo("Sucesso", "Funcionario cadastrado!", parent=dialog)
                     else:
@@ -375,14 +503,14 @@ class EmployeesPage(ctk.CTkFrame):
 
         dialog = ctk.CTkToplevel(self)
         dialog.title("Importar Funcionarios de Excel")
-        dialog.geometry("550x400")
+        dialog.geometry("550x480")
         dialog.transient(self)
         dialog.grab_set()
         dialog.resizable(False, False)
 
         dialog.update_idletasks()
         x = self.winfo_rootx() + (self.winfo_width() // 2) - (550 // 2)
-        y = self.winfo_rooty() + (self.winfo_height() // 2) - (400 // 2)
+        y = self.winfo_rooty() + (self.winfo_height() // 2) - (480 // 2)
         dialog.geometry(f"+{x}+{y}")
 
         content = ctk.CTkFrame(dialog, fg_color="transparent")
@@ -396,7 +524,7 @@ class EmployeesPage(ctk.CTkFrame):
 
         ctk.CTkLabel(
             content,
-            text="Formato: Coluna A = Nome, Coluna B = CPF (opcional), Coluna C = Funcao (opcional)\nA primeira linha (cabecalho) sera ignorada.",
+            text="Formato: Coluna A = Nome, Coluna B = CPF (opcional), Coluna C = Funcao (opcional),\nColuna D = Telefone celular (opcional, 11 digitos: 21984209236)\nA primeira linha (cabecalho) sera ignorada.",
             font=fonts["small"], text_color=COLORS["text_secondary"], justify="left"
         ).grid(row=1, column=0, sticky="w", pady=(0, 16))
 

@@ -13,16 +13,18 @@ def export_employees_to_excel(employee_repo, output_path: str) -> int:
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Funcionarios"
-    ws.append(["ID", "Nome", "CPF", "Data Cadastro"])
+    ws.append(["ID", "Nome", "CPF", "Telefone", "Funcao", "Data Cadastro"])
 
     for emp in employees:
-        ws.append([emp.id, emp.nome, emp.cpf, emp.created_at or ""])
+        ws.append([emp.id, emp.nome, emp.cpf, emp.telefone or "", emp.funcao or "", emp.created_at or ""])
 
     # Ajusta largura das colunas
     ws.column_dimensions['A'].width = 8
     ws.column_dimensions['B'].width = 40
     ws.column_dimensions['C'].width = 18
-    ws.column_dimensions['D'].width = 20
+    ws.column_dimensions['D'].width = 16
+    ws.column_dimensions['E'].width = 30
+    ws.column_dimensions['F'].width = 20
 
     wb.save(output_path)
     wb.close()

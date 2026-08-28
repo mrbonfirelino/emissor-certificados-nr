@@ -60,7 +60,7 @@ class CertificadosNRApp(ctk.CTk):
         self.sidebar = ctk.CTkFrame(self, fg_color=COLORS["primary"], corner_radius=0, width=SIDEBAR_WIDTH_EXPANDED)
         self.sidebar.grid(row=0, column=0, sticky="nsew")
         self.sidebar.grid_propagate(False)
-        self.sidebar.grid_rowconfigure(10, weight=1)
+        self.sidebar.grid_rowconfigure(12, weight=1)
 
         # Toggle button
         self.btn_toggle = ctk.CTkButton(
@@ -100,6 +100,7 @@ class CertificadosNRApp(ctk.CTk):
             ("history", "\U0001F4CB", "Historico", self._show_history),
             ("funcoes", "\U0001F4DD", "Funcoes", self._show_funcoes),
             ("vencimentos", "\U0001F4C5", "Vencimentos", self._show_vencimentos),
+            ("blocking_cards", "\U0001F4C3", "Cartoes", self._show_blocking_cards),
             ("batch_import", "\U0001F4DD", "Import Lote", self._show_batch_import),
         ]
 
@@ -137,7 +138,7 @@ class CertificadosNRApp(ctk.CTk):
 
         # Separador antes do Backup
         sep_bottom = ctk.CTkFrame(self.sidebar, height=1, fg_color=COLORS["secondary"])
-        sep_bottom.grid(row=8, column=0, sticky="ew", padx=8, pady=4)
+        sep_bottom.grid(row=10, column=0, sticky="ew", padx=8, pady=4)
 
         # Backup (positioned below separator, above version)
         backup_key = "backup"
@@ -146,7 +147,7 @@ class CertificadosNRApp(ctk.CTk):
         backup_cmd = self._show_backup
 
         nav_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent", height=42, cursor="hand2")
-        nav_frame.grid(row=9, column=0, sticky="ews", padx=4, pady=2)
+        nav_frame.grid(row=11, column=0, sticky="ews", padx=4, pady=2)
         nav_frame.grid_propagate(False)
         nav_frame.columnconfigure(1, weight=1)
 
@@ -180,7 +181,7 @@ class CertificadosNRApp(ctk.CTk):
             self.sidebar, text="v1.1.0",
             font=fonts["sidebar_version"], text_color=COLORS["muted"]
         )
-        self.lbl_version.grid(row=10, column=0, sticky="s", pady=8)
+        self.lbl_version.grid(row=12, column=0, sticky="s", pady=8)
 
         # === CONTENT ===
         self.content_frame = ctk.CTkFrame(self, fg_color=COLORS["background"], corner_radius=0)
@@ -214,7 +215,7 @@ class CertificadosNRApp(ctk.CTk):
         self.lbl_sub.pack(anchor="w")
         for key, lbl in self.nav_labels.items():
             lbl.grid(row=0, column=1, padx=2, pady=3, sticky="w")
-        self.lbl_version.grid(row=10, column=0, sticky="s", pady=8)
+        self.lbl_version.grid(row=12, column=0, sticky="s", pady=8)
 
     def _set_active_nav(self, key: str):
         for k, frame in self.nav_frames.items():
@@ -272,6 +273,12 @@ class CertificadosNRApp(ctk.CTk):
         self._show_page("vencimentos", VencimentosPage, self.history_repo)
         if "vencimentos" in self.pages:
             self.pages["vencimentos"].refresh()
+
+    def _show_blocking_cards(self):
+        from src.ui.pages.blocking_cards import BlockingCardsPage
+        self._show_page("blocking_cards", BlockingCardsPage, self.employee_repo)
+        if "blocking_cards" in self.pages:
+            self.pages["blocking_cards"].refresh()
 
     def _show_backup(self):
         self._show_page("backup", BackupPage, self.backup_manager)

@@ -18,9 +18,32 @@ def _normalize_name(val) -> str:
     return str(val).strip()
 
 
+def _normalize_telefone(val) -> str:
+    """Extrai apenas digitos do telefone (plano: DDD+numero, ex 21984209236)."""
+    if val is None:
+        return ""
+    # openpyxl pode ler numero como float (21984209236.0)
+    s = str(val).strip()
+    if s.endswith(".0"):
+        s = s[:-2]
+    return re.sub(r'\D', '', s)
+
+
 def _is_valid_cpf_digits(cpf: str) -> bool:
     """Valida se tem 11 digitos (validacao basica de formato)."""
     return len(cpf) == 11 and cpf.isdigit()
+
+
+def _is_valid_telefone_digits(tel: str) -> bool:
+    """Celular: 11 digitos, DDD valido, 3o digito 9."""
+    if len(tel) != 11 or not tel.isdigit():
+        return False
+    if tel[2] != '9':
+        return False
+    ddd = int(tel[:2])
+    if ddd < 11 or ddd > 91:
+        return False
+    return True
 
 
 def import_employees_from_excel(
@@ -29,10 +52,12 @@ def import_employees_from_excel(
     name_col: int = 0,
     cpf_col: int = 1,
     funcao_col: int = 2,
+    telefone_col: int = 3,
     skip_header: bool = True
 ) -> Tuple[int, int, int, List[str]]:
     """
     Importa funcionarios de um arquivo Excel (.xlsx).
+    Colunas: A=Nome, B=CPF (opcional), C=Funcao (opcional), D=Telefone (opcional, 11 digitos).
 
     Retorna (importados, duplicados, erros, erros_detalhe).
     - importados: numero de novos funcionarios cadastrados
@@ -71,6 +96,7 @@ def import_employees_from_excel(
             name_val = row[name_col] if name_col < len(row) else None
             cpf_val = row[cpf_col] if cpf_col < len(row) else None
             funcao_val = row[funcao_col] if funcao_col < len(row) else None
+            tel_val = row[telefone_col] if telefone_col < len(row) else None
         except IndexError:
             errors += 1
             error_details.append(f"Linha {i+1}: coluna fora do intervalo")
@@ -79,6 +105,7 @@ def import_employees_from_excel(
         name = _normalize_name(name_val)
         cpf = _normalize_cpf(cpf_val)
         funcao = str(funcao_val).strip() if funcao_val else None
+        telefone = _normalize_telefone(tel_val)
 
         if not name:
             errors += 1
@@ -93,6 +120,14 @@ def import_employees_from_excel(
                 continue
             cpf_formatted = f"{cpf[:3]}.{cpf[3:6]}.{cpf[6:9]}-{cpf[9:]}"
 
+        telefone_val = None
+        if telefone:
+            if not _is_valid_telefone_digits(telefone):
+                errors += 1
+                error_details.append(f"Linha {i+1}: telefone invalido ({tel_val}) - use 11 digitos DDD+9XXXXXXXX")
+                continue
+            telefone_val = telefone
+
         # Verificar se ja existe funcionario com mesmo nome
         existing = employee_repo.search(name, limit=5)
         found = False
@@ -105,7 +140,7 @@ def import_employees_from_excel(
             duplicates += 1
             continue
 
-        result = employee_repo.create(name, cpf_formatted, funcao)
+        result = employee_repo.create(name, cpf_formatted, funcao, None, telefone_val)
         if result:
             imported += 1
         else:

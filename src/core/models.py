@@ -1,7 +1,8 @@
+import re
 from datetime import date
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field, field_validator
-from src.utils.validators import validar_cpf, validar_cnpj, validar_registro_mte, formatar_cpf, formatar_cnpj, formatar_registro_mte
+from src.utils.validators import validar_cpf, validar_cnpj, validar_registro_mte, validar_telefone, formatar_cpf, formatar_cnpj, formatar_registro_mte, formatar_telefone
 
 
 class CompanyConfig(BaseModel):
@@ -31,6 +32,8 @@ class Employee(BaseModel):
     nome: str = Field(..., min_length=2)
     cpf: Optional[str] = None
     funcao: Optional[str] = None
+    foto: Optional[bytes] = None
+    telefone: Optional[str] = None
     created_at: Optional[str] = None
 
     @field_validator('cpf')
@@ -42,10 +45,24 @@ class Employee(BaseModel):
             raise ValueError("CPF invalido")
         return formatar_cpf(v)
 
+    @field_validator('telefone')
+    @classmethod
+    def validar_tel_funcionario(cls, v: Optional[str]) -> Optional[str]:
+        if not v or not str(v).strip():
+            return None
+        if not validar_telefone(v):
+            raise ValueError("Telefone invalido: use 11 digitos DDD+numero (ex: 21984209236)")
+        return re.sub(r'\D', '', str(v))
+
     def display_name(self) -> str:
         if self.cpf:
             return f"{self.nome} ({self.cpf})"
         return self.nome
+
+    def telefone_formatado(self) -> str:
+        if not self.telefone:
+            return ""
+        return formatar_telefone(self.telefone)
 
 
 class NRTemplateExtraField(BaseModel):
