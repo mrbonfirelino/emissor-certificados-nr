@@ -108,16 +108,23 @@ class VencimentosPage(ctk.CTkFrame):
             b.pack(side="left", padx=2)
             self._period_btns[key] = b
 
-        # Row 3 — Lista (weight=1 preenche resto)
-        self._list = ctk.CTkScrollableFrame(self, fg_color=COLORS["surface"],
-                                            corner_radius=10, border_width=1,
-                                            border_color=COLORS["border"], height=200)
-        self._list.grid(row=3, column=0, sticky="nsew", padx=20, pady=(0, 5))
+        # Row 3 — Wrapper branco (lista + paginacao dentro do footer)
+        self._container = ctk.CTkFrame(self, fg_color=COLORS["surface"],
+                                       corner_radius=10, border_width=1,
+                                       border_color=COLORS["border"])
+        self._container.grid(row=3, column=0, sticky="nsew", padx=20, pady=(0, 4))
+        self._container.grid_columnconfigure(0, weight=1)
+        self._container.grid_rowconfigure(0, weight=1)
+
+        self._list = ctk.CTkScrollableFrame(self._container, fg_color="transparent",
+                                            corner_radius=0, height=200)
+        self._list.grid(row=0, column=0, sticky="nsew", padx=1, pady=(1, 0))
         self._list.grid_columnconfigure(0, weight=1)
 
-        # Row 4 — Paginacao
-        self._pagination = PaginationBar(self, on_page_change=self._render_list)
-        self._pagination.grid(row=4, column=0, sticky="w", padx=20, pady=(0, 5))
+        # Footer branco — paginacao colada (gap minimo 4px)
+        self._pagination = PaginationBar(self._container, on_page_change=self._render_list)
+        self._pagination.grid(row=1, column=0, sticky="ew", padx=8, pady=(4, 4))
+        self._pagination.configure(fg_color="transparent")
 
         self.after(200, lambda: self._fit_scroll_height(0))
         self.after(600, lambda: self._fit_scroll_height(0))
@@ -144,7 +151,7 @@ class VencimentosPage(ctk.CTkFrame):
         if min(header_h, cards_h, filters_h, pag_h) < 5 and _retry < 5:
             self.after(300, lambda r=_retry + 1: self._fit_scroll_height(r))
             return
-        margins = 30
+        margins = 10
         available = h - header_h - cards_h - filters_h - pag_h - margins
         self._list.configure(height=max(available, 150))
 
@@ -230,14 +237,71 @@ class VencimentosPage(ctk.CTkFrame):
         start = self._pagination.offset
         page = self._employees_list[start:start + PaginationBar.ITEMS_PER_PAGE]
 
+        # debug visivel + arquivo em TEMP (sempre gravavel)
+        dbg_msg = f"page={len(page)} off={start} tot={len(self._employees_list)}"
+        try:
+            # escreve em TEMP e tambem ao lado do exe
+            import tempfile, pathlib
+            for p in [pathlib.Path(tempfile.gettempdir()) / "debug_venc.log",
+                      pathlib.Path.cwd() / "debug_venc.log"]:
+                try:
+                    with open(p, "a", encoding="utf-8") as f:
+                        f.write(dbg_msg + f" children_before={len(self._list.winfo_children())}\n")
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        # label temporario de debug no header (remove depois)
+        try:
+            if hasattr(self, "_dbg_label"):
+                self._dbg_label.configure(text=dbg_msg)
+            else:
+                self._dbg_label = ctk.CTkLabel(self._header, text=dbg_msg, font=fonts["small"], text_color="red")
+                self._dbg_label.grid(row=1, column=0, columnspan=2, sticky="w", pady=(2,0))
+        except Exception:
+            pass
+
         if not page:
             ctk.CTkLabel(self._list, text="Nenhum certificado encontrado",
                          font=fonts["body"], text_color=COLORS["muted"]).grid(row=0, column=0, pady=30)
+            self.update_idletasks()
+            try:
+                self._list._parent_canvas.configure(scrollregion=self._list._parent_canvas.bbox("all"))
+            except Exception:
+                pass
             return
 
         for i, (emp_key, certs) in enumerate(page):
-            emp_id, emp_name, emp_cpf, emp_funcao = emp_key
-            self._make_employee_card(i, emp_id, emp_name, emp_cpf, emp_funcao, certs)
+            try:
+                emp_id, emp_name, emp_cpf, emp_funcao = emp_key
+                self._make_employee_card(i, emp_id, emp_name, emp_cpf, emp_funcao, certs)
+            except Exception as e:
+                import traceback
+                try:
+                    import tempfile, pathlib
+                    with open(pathlib.Path(tempfile.gettempdir()) / "debug_venc.log", "a", encoding="utf-8") as f:
+                        f.write(f"ERRO card {i} {emp_key}: {e}\n{traceback.format_exc()}\n")
+                except Exception:
+                    pass
+
+        self.update_idletasks()
+        try:
+            self._list._parent_canvas.configure(scrollregion=self._list._parent_canvas.bbox("all"))
+        except Exception:
+            pass
+        # log apos criacao
+        try:
+            import tempfile, pathlib
+            for p in [pathlib.Path(tempfile.gettempdir()) / "debug_venc.log",
+                      pathlib.Path.cwd() / "debug_venc.log"]:
+                try:
+                    with open(p, "a", encoding="utf-8") as f:
+                        f.write(f"apos children={len(self._list.winfo_children())} bbox={self._list._parent_canvas.bbox('all')} h={self._list.cget('height')}\n")
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        self.after(50, lambda: self._fit_scroll_height(0))
 
     def _make_employee_card(self, row, emp_id, name, cpf, funcao, certs):
         fonts = get_fonts()
