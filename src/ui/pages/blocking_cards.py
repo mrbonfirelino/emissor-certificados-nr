@@ -4,7 +4,7 @@ import subprocess
 from typing import Optional
 
 import customtkinter as ctk
-from tkinter import messagebox
+from tkinter import messagebox, filedialog
 
 from src.ui.styles import COLORS, get_fonts
 from src.core.employee_repo import EmployeeRepository
@@ -14,6 +14,7 @@ from src.core.blocking_card_service import (
     generate_cards,
 )
 from src.ui.components.pagination import PaginationBar
+from src.ui.components.generation_options_dialog import GenerationOptionsDialog
 
 PER_PAGE_OPTIONS = [10, 25, 40]
 
@@ -27,8 +28,36 @@ class BlockingCardsPage(ctk.CTkFrame):
         self._page_employees = []       # funcionarios da pagina atual
         self._per_page = 10
         self._total = 0
+        self._last_setor = ""           # ultimo setor usado em lote PPTX (conveniencia)
         self._build_ui()
         self._refresh_list()
+
+    # ── Template corrente ────────────────────────────────────
+
+    def _current_template(self) -> Optional[dict]:
+        return self._templates.get(self._template_var.get())
+
+    def _is_pptx(self) -> bool:
+        tpl = self._current_template()
+        return bool(tpl and tpl.get("template_type") == "pptx")
+
+    def _requirements(self):
+        """(exige_telefone, exige_foto) conforme campos usados pelo template atual."""
+        tpl = self._current_template()
+        if tpl and tpl.get("template_type") == "pptx":
+            used = set(tpl.get("used_fields") or [])
+            return ("TELEFONE" in used, bool(tpl.get("uses_photo")))
+        return (True, True)
+
+    def _missing_fields(self, emp):
+        """Campos obrigatorios ausentes para o template atual."""
+        needs_tel, needs_photo = self._requirements()
+        faltas = []
+        if needs_tel and not emp.telefone:
+            faltas.append("telefone")
+        if needs_photo and not emp.foto:
+            faltas.append("foto 3x4")
+        return faltas
 
     # ── Layout ───────────────────────────────────────────────
 
@@ -114,20 +143,26 @@ class BlockingCardsPage(ctk.CTkFrame):
         # Row 4 — Acoes (rodape)
         actions = ctk.CTkFrame(self, fg_color="transparent")
         actions.grid(row=4, column=0, sticky="ew", padx=20, pady=(2, 8))
-        actions.grid_columnconfigure(4, weight=1)
+        actions.grid_columnconfigure(5, weight=1)
         self._actions = actions
+
+        ctk.CTkButton(
+            actions, text="Importar Excel", font=fonts["body_bold"], height=34,
+            fg_color=COLORS["accent"], hover_color=COLORS["secondary"],
+            command=self._import_excel
+        ).grid(row=0, column=0, padx=(0, 8))
 
         ctk.CTkButton(
             actions, text="Selecionar Todos (pagina)", font=fonts["body_bold"], height=34,
             fg_color=COLORS["secondary"], hover_color=COLORS["primary"],
             command=self._select_page
-        ).grid(row=0, column=0, padx=(0, 8))
+        ).grid(row=0, column=1, padx=(0, 8))
 
         ctk.CTkButton(
             actions, text="Limpar Selecao", font=fonts["body_bold"], height=34,
             fg_color=COLORS["muted"], hover_color=COLORS["text_secondary"],
             command=self._clear_selection
-        ).grid(row=0, column=1, padx=(0, 16))
+        ).grid(row=0, column=2, padx=(0, 16))
 
         self._single_pdf_var = ctk.BooleanVar(value=True)
         ctk.CTkCheckBox(
@@ -136,25 +171,62 @@ class BlockingCardsPage(ctk.CTkFrame):
             font=fonts["body"], text_color=COLORS["text"],
             fg_color=COLORS["primary"], hover_color=COLORS["secondary"],
             checkbox_height=20, checkbox_width=20
-        ).grid(row=0, column=2, padx=(0, 16))
+        ).grid(row=0, column=3, padx=(0, 16))
+
+        self._one_page_var = ctk.BooleanVar(value=False)
+        self._one_page_cb = ctk.CTkCheckBox(
+            actions, text="1 cartao por pagina",
+            variable=self._one_page_var,
+            font=fonts["body"], text_color=COLORS["text"],
+            fg_color=COLORS["primary"], hover_color=COLORS["secondary"],
+            checkbox_height=20, checkbox_width=20,
+            state="disabled"
+        )
+        self._one_page_cb.grid(row=0, column=4, padx=(0, 16))
+
+        self.btn_preview = ctk.CTkButton(
+            actions, text="Preview", font=fonts["body_bold"], height=36,
+            fg_color=COLORS["accent"], hover_color=COLORS["secondary"],
+            command=self._preview
+        )
+        self.btn_preview.grid(row=0, column=6, padx=(0, 8))
 
         self.btn_generate = ctk.CTkButton(
             actions, text="Gerar Cartoes", font=fonts["body_bold"], height=36,
             fg_color=COLORS["success"], hover_color="#256B28",
             command=self._generate
         )
-        self.btn_generate.grid(row=0, column=3)
+        self.btn_generate.grid(row=0, column=7)
 
         self.after(200, lambda: self._fit_scroll_height(0))
         self._update_grid_info()
 
     def _update_grid_info(self):
-        tpl = self._templates.get(self._template_var.get())
-        if tpl:
+        tpl = self._current_template()
+        if not tpl:
+            return
+        if tpl.get("template_type") == "pptx":
+            k = int(tpl.get("cards_per_slide", 1))
+            s = int(tpl.get("_slides", 1))
+            extra = f" x {s} folhas" if s > 1 else ""
+            self._grid_info.configure(text=f"PPTX — {k} cartao(oes)/folha{extra}")
+            self._one_page_cb.configure(state="normal")
+        else:
             cols, rows = compute_grid(tpl)
             self._grid_info.configure(
                 text=f"{tpl.get('card_width_mm', 85.6)}x{tpl.get('card_height_mm', 54)}mm — {cols*rows}/folha"
             )
+            self._one_page_var.set(False)
+            self._one_page_cb.configure(state="disabled")
+        # requisitos mudam conforme template -> revalida a lista
+        self._prune_selection()
+        self._refresh_list()
+
+    def _prune_selection(self):
+        """Remove da selecao funcionarios da pagina atual que ficaram invalidos."""
+        for emp in self._page_employees:
+            if self._missing_fields(emp):
+                self._selected.discard(emp.id)
 
     def _fit_scroll_height(self, _retry=0):
         self.update_idletasks()
@@ -256,8 +328,8 @@ class BlockingCardsPage(ctk.CTkFrame):
         row.grid_columnconfigure(3, weight=2)
         row.grid_columnconfigure(4, weight=3)
 
-        ready = bool(emp.telefone and emp.foto)
-        status_tip = "" if ready else ("sem telefone" if not emp.telefone else "sem foto")
+        ready = not self._missing_fields(emp)
+        status_tip = "" if ready else " e ".join(self._missing_fields(emp))
 
         var = ctk.BooleanVar(value=(emp.id in self._selected and ready))
         cb = ctk.CTkCheckBox(
@@ -270,7 +342,7 @@ class BlockingCardsPage(ctk.CTkFrame):
             cb.configure(state="disabled")
         cb.grid(row=0, column=0, padx=(8, 4), pady=4)
 
-        nome_txt = emp.nome if ready else f"{emp.nome}  ({status_tip})"
+        nome_txt = emp.nome if ready else f"{emp.nome}  (sem {status_tip})"
         ctk.CTkLabel(row, text=nome_txt, font=fonts["body"],
                      text_color=COLORS["text"] if ready else COLORS["muted"],
                      anchor="w").grid(row=0, column=1, sticky="ew", padx=8, pady=4)
@@ -295,7 +367,7 @@ class BlockingCardsPage(ctk.CTkFrame):
 
     def _select_page(self):
         for emp in self._page_employees:
-            if emp.telefone and emp.foto:
+            if not self._missing_fields(emp):
                 self._selected.add(emp.id)
         self._refresh_list()
 
@@ -304,7 +376,7 @@ class BlockingCardsPage(ctk.CTkFrame):
         self._refresh_list()
 
     def _update_count(self):
-        ready_ids = [e.id for e in self._page_employees if e.id in self._selected and e.telefone and e.foto]
+        ready_ids = [e.id for e in self._page_employees if e.id in self._selected and not self._missing_fields(e)]
         total_sel = len(self._selected)
         txt = f"{total_sel} selecionado(s)"
         if total_sel != len(ready_ids):
@@ -313,8 +385,11 @@ class BlockingCardsPage(ctk.CTkFrame):
 
     # ── Geracao ──────────────────────────────────────────────
 
-    def _generate(self):
-        # recarrega dados frescos do banco (telefone/foto atualizados sem reiniciar)
+    def _collect(self, action_label: str = "emitir"):
+        """
+        Valida selecao/template e coleta o contexto do lote (popup se aplicavel).
+        Retorna (valid, template, options, is_pptx, missing) ou None se abortado.
+        """
         selected_ids = list(self._selected)
         selected = []
         for eid in selected_ids:
@@ -324,66 +399,230 @@ class BlockingCardsPage(ctk.CTkFrame):
 
         if not selected:
             messagebox.showwarning("Aviso", "Selecione pelo menos um funcionario.", parent=self)
-            return
+            return None
 
-        template = self._templates.get(self._template_var.get())
+        template = self._current_template()
         if not template:
             messagebox.showerror("Erro", f"Template '{self._template_var.get()}' nao encontrado.", parent=self)
-            return
+            return None
 
         valid, missing = [], []
         for emp in selected:
-            faltas = []
-            if not emp.telefone:
-                faltas.append("telefone")
-            if not emp.foto:
-                faltas.append("foto 3x4")
+            faltas = self._missing_fields(emp)
             if faltas:
                 missing.append(f"{emp.nome}: sem {' e '.join(faltas)}")
             else:
                 valid.append(emp)
 
         if missing:
-            msg = "Cartao NAO emitido para:\n\n" + "\n".join(missing)
+            msg = "Cartao NAO incluido para:\n\n" + "\n".join(missing)
             if not valid:
                 messagebox.showerror(
                     "Cartao de Bloqueio",
-                    "Nenhum cartao pode ser emitido.\n\n" + msg,
+                    "Nenhum cartao pode ser gerado.\n\n" + msg,
                     parent=self
                 )
-                return
+                return None
             resp = messagebox.askyesno(
                 "Funcionarios sem dados obrigatorios",
-                msg + f"\n\nDeseja emitir os cartoes dos outros {len(valid)} funcionario(s)?",
+                msg + f"\n\nDeseja {action_label} os cartoes dos outros {len(valid)} funcionario(s)?",
                 parent=self
             )
             if not resp:
-                return
+                return None
 
+        # Contexto do lote (templates PPTX que usam {{SETOR}}/{{PAPEL}}/{{MATRICULA}})
+        options = None
+        is_pptx = template.get("template_type") == "pptx"
+        if is_pptx:
+            used = set(template.get("used_fields") or [])
+            if used & {"SETOR", "PAPEL", "MATRICULA"}:
+                dlg = GenerationOptionsDialog(self, valid, template, initial_setor=self._last_setor)
+                self.wait_window(dlg)
+                if not dlg.selected:
+                    return None
+                options = dlg.selected
+                self._last_setor = options.get("setor", "")
+
+        return valid, template, options, is_pptx, missing
+
+    def _run_generation(self, valid, template, options, is_pptx, output_dir=None):
+        """Executa generate_cards e trata erros. Retorna paths ou None."""
         self.btn_generate.configure(state="disabled", text="Gerando...")
+        self.btn_preview.configure(state="disabled")
         self.update_idletasks()
-
         try:
-            paths, missing2 = generate_cards(
+            paths, _ = generate_cards(
                 valid, template,
-                single_pdf=self._single_pdf_var.get()
+                single_pdf=self._single_pdf_var.get(),
+                options=options,
+                one_per_page=(is_pptx and self._one_page_var.get()),
+                output_dir=output_dir,
             )
+            return paths or None
         except Exception as e:
-            self.btn_generate.configure(state="normal", text="Gerar Cartoes")
             messagebox.showerror("Erro", f"Erro ao gerar cartoes: {e}", parent=self)
+            return None
+        finally:
+            self.btn_generate.configure(state="normal", text="Gerar Cartoes")
+            self.btn_preview.configure(state="normal")
+
+    def _generate(self):
+        ctx = self._collect("emitir")
+        if not ctx:
+            return
+        valid, template, options, is_pptx, missing = ctx
+
+        paths = self._run_generation(valid, template, options, is_pptx)
+        if not paths:
+            messagebox.showerror("Erro", "Nenhum PDF foi gerado.", parent=self)
             return
 
-        self.btn_generate.configure(state="normal", text="Gerar Cartoes")
+        try:
+            from src.utils.notifications import notify
+            notify("Cartoes de Bloqueio",
+                   f"{len(valid)} cartao(oes) gerado(s) em {len(paths)} PDF(s).")
+        except Exception:
+            pass
+        self._show_result_dialog(valid, paths, missing)
 
-        if paths:
-            n_pdfs = len(paths)
-            resumo = f"{len(valid)} cartao(oes) gerado(s) em {n_pdfs} PDF(s).\n\n{paths[0].parent}"
-            if missing:
-                resumo += "\n\nPulados (dados faltando):\n" + "\n".join(missing)
-            if messagebox.askyesno("Sucesso", resumo + "\n\nAbrir pasta?", parent=self):
-                self._open_folder(paths[0].parent)
-        else:
-            messagebox.showerror("Erro", "Nenhum PDF foi gerado.", parent=self)
+    def _show_result_dialog(self, valid, paths, missing):
+        """Dialogo de sucesso com Imprimir / Abrir Pasta / Fechar."""
+        fonts = get_fonts()
+        resumo = (f"{len(valid)} cartao(oes) gerado(s) em {len(paths)} PDF(s).\n"
+                  f"{paths[0].parent}")
+        if missing:
+            resumo += "\n\nPulados (dados faltando):\n" + "\n".join(missing)
+
+        dlg = ctk.CTkToplevel(self)
+        dlg.title("Cartoes Gerados")
+        dlg.geometry("480x220")
+        dlg.transient(self)
+        dlg.grab_set()
+        dlg.resizable(False, False)
+        dlg.update_idletasks()
+        x = self.winfo_rootx() + (self.winfo_width() // 2) - 240
+        y = self.winfo_rooty() + (self.winfo_height() // 2) - 110
+        dlg.geometry(f"+{x}+{y}")
+
+        ctk.CTkLabel(dlg, text="Sucesso!", font=fonts["heading"],
+                     text_color=COLORS["success"]).pack(pady=(16, 4))
+        ctk.CTkLabel(dlg, text=resumo, font=fonts["small"],
+                     text_color=COLORS["text_secondary"], justify="left", wraplength=430).pack(padx=20)
+
+        btns = ctk.CTkFrame(dlg, fg_color="transparent")
+        btns.pack(pady=14)
+        ctk.CTkButton(btns, text="Imprimir", width=90, height=32, font=fonts["body_bold"],
+                      fg_color=COLORS["secondary"], hover_color=COLORS["primary"],
+                      command=lambda: self._print_pdf(paths[0])).pack(side="left", padx=4)
+        ctk.CTkButton(btns, text="Abrir Pasta", width=100, height=32, font=fonts["body_bold"],
+                      fg_color=COLORS["accent"], hover_color=COLORS["secondary"],
+                      command=lambda: (self._open_folder(paths[0].parent), dlg.destroy())
+                      ).pack(side="left", padx=4)
+        ctk.CTkButton(btns, text="Fechar", width=80, height=32, font=fonts["body_bold"],
+                      fg_color=COLORS["muted"], hover_color=COLORS["text_secondary"],
+                      command=dlg.destroy).pack(side="left", padx=4)
+
+    # ── Preview ──────────────────────────────────────────────
+
+    def _preview(self):
+        ctx = self._collect("prever")
+        if not ctx:
+            return
+        valid, template, options, is_pptx, missing = ctx
+
+        import tempfile
+        from pathlib import Path
+
+        tmp_dir = Path(tempfile.mkdtemp(prefix="preview_cartoes_"))
+        paths = self._run_generation(valid, template, options, is_pptx, output_dir=tmp_dir)
+        if not paths:
+            messagebox.showerror("Erro", "Nenhum PDF foi gerado para o preview.", parent=self)
+            return
+
+        fonts = get_fonts()
+        dlg = ctk.CTkToplevel(self)
+        dlg.title(f"Preview — {template.get('card_code', '')}")
+        dlg.geometry("900x760")
+        dlg.transient(self)
+        dlg.grab_set()
+        x = self.winfo_rootx() + (self.winfo_width() // 2) - 450
+        y = self.winfo_rooty() + (self.winfo_height() // 2) - 380
+        dlg.geometry(f"+{max(x, 0)}+{max(y, 0)}")
+
+        from src.ui.components.pdf_preview import PDFPreview
+        preview = PDFPreview(dlg)
+        preview.pack(fill="both", expand=True, padx=12, pady=(12, 8))
+        preview.show_pdf_image(str(paths[0]))
+
+        btns = ctk.CTkFrame(dlg, fg_color="transparent")
+        btns.pack(fill="x", padx=12, pady=(0, 12))
+        ctk.CTkLabel(btns, text=f"{len(valid)} cartao(oes) — modo preview (arquivo temporario)",
+                     font=fonts["small"], text_color=COLORS["muted"]).pack(side="left")
+
+        def gerar_definitivo():
+            dlg.destroy()
+            final_paths = self._run_generation(valid, template, options, is_pptx)
+            if final_paths:
+                try:
+                    from src.utils.notifications import notify
+                    notify("Cartoes de Bloqueio", f"{len(valid)} cartao(oes) gerado(s).")
+                except Exception:
+                    pass
+                self._show_result_dialog(valid, final_paths, missing)
+
+        ctk.CTkButton(btns, text="Imprimir", width=90, height=32, font=fonts["body_bold"],
+                      fg_color=COLORS["secondary"], hover_color=COLORS["primary"],
+                      command=lambda: self._print_pdf(paths[0])).pack(side="right", padx=4)
+        ctk.CTkButton(btns, text="Gerar PDF Definitivo", width=150, height=32, font=fonts["body_bold"],
+                      fg_color=COLORS["success"], hover_color="#256B28",
+                      command=gerar_definitivo).pack(side="right", padx=4)
+
+    # ── Impressao / importacao ───────────────────────────────
+
+    @staticmethod
+    def _print_pdf(path):
+        """Envia o PDF para a impressora padrao do Windows."""
+        try:
+            if sys.platform == "win32":
+                os.startfile(str(path), "print")
+            elif sys.platform == "darwin":
+                subprocess.run(["lp", str(path)])
+            else:
+                subprocess.run(["lp", str(path)])
+        except Exception as e:
+            messagebox.showerror("Impressao", f"Erro ao imprimir: {e}")
+
+    def _import_excel(self):
+        """Importa lista de bloqueios de planilha (A=Nome, B=CPF) e marca a selecao."""
+        path = filedialog.askopenfilename(
+            title="Importar lista de bloqueios",
+            filetypes=[("Excel", "*.xlsx"), ("Todos", "*.*")],
+            parent=self
+        )
+        if not path:
+            return
+        try:
+            from src.utils.blocking_importer import import_blocking_list
+            encontrados, nao_encontrados = import_blocking_list(path, self.employee_repo)
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao importar planilha: {e}", parent=self)
+            return
+
+        adicionados = 0
+        for emp in encontrados:
+            if not self._missing_fields(emp) and emp.id not in self._selected:
+                self._selected.add(emp.id)
+                adicionados += 1
+        self._refresh_list()
+
+        msg = (f"Planilha processada.\n\n"
+               f"{len(encontrados)} funcionario(s) encontrado(s) no cadastro — "
+               f"{adicionados} novo(s) na selecao.")
+        if nao_encontrados:
+            msg += ("\n\nNAO encontrados no cadastro:\n" + "\n".join(nao_encontrados[:15]) +
+                    (f"\n... e mais {len(nao_encontrados) - 15}" if len(nao_encontrados) > 15 else ""))
+        messagebox.showinfo("Importar Bloqueios", msg, parent=self)
 
     @staticmethod
     def _open_folder(folder):

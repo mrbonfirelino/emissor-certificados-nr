@@ -1,22 +1,29 @@
 import gzip
 import shutil
+import sqlite3
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
-from src.utils.paths import get_db_path, get_backup_dir, get_data_dir
+from src.utils.paths import get_db_path, get_backup_dir
 from src.core.config import verify_restore_password
+
+KEEP_REGULAR = 12   # backups manuais/semanais mantidos
+KEEP_PERIODIC = 32  # backups periodicos mantidos (32 x 15min = 8h de historico)
 
 
 class BackupManager:
-    """Gerencia backups automáticos (semanal) e manuais + restauração com senha."""
+    """Gerencia backups: semanal (silencioso), periodico (configuravel), manual,
+    duplo (copia em Documents) e restauracao com senha."""
 
     def __init__(self):
         self.db_path = get_db_path()
         self.backup_dir = get_backup_dir()
         self.scheduler = BackgroundScheduler(daemon=True)
         self._start_auto_backup()
+        self._start_periodic_backup()
 
     def _start_auto_backup(self):
         """Inicia agendador de backup semanal silencioso."""
@@ -31,8 +38,30 @@ class BackupManager:
         except Exception:
             pass  # Silencioso
 
+    def _start_periodic_backup(self):
+        """Backup periodico enquanto o app estiver aberto (intervalo configuravel)."""
+        from src.core.app_settings import get_setting
+
+        try:
+            intervalo = max(1, int(get_setting("backup_intervalo_min", 15)))
+        except Exception:
+            intervalo = 15
+        try:
+            self.scheduler.add_job(
+                self.periodic_backup,
+                IntervalTrigger(minutes=intervalo),
+                id='periodic_backup',
+                replace_existing=True
+            )
+        except Exception:
+            pass
+
+    def reschedule(self):
+        """Reaplica o intervalo do backup periodico apos mudanca nas configuracoes."""
+        self._start_periodic_backup()
+
     def auto_backup_if_needed(self):
-        """Faz backup automático se passou mais de 7 dias do último."""
+        """Faz backup automatico se passou mais de 7 dias do ultimo."""
         from src.core.history_repo import HistoryRepository
         history = HistoryRepository()
         last_backup = history.get_backup_meta('last_auto_backup')
@@ -41,36 +70,106 @@ class BackupManager:
             self.create_backup(auto=True)
             history.set_backup_meta('last_auto_backup', today)
 
-    def create_backup(self, auto: bool = False) -> Optional[Path]:
-        """Cria backup compactado do banco (.db.gz)."""
+    def periodic_backup(self):
+        """Backup periodico leve (snapshot consistente via SQLite backup API)."""
+        self.create_backup(periodic=True)
+
+    def _snapshot_db(self, tmp_path: Path) -> bool:
+        """
+        Snapshot consistente do banco via SQLite backup API.
+        Necessario porque o banco roda em WAL: copiar o arquivo .db direto
+        pode perder transacoes ainda no -wal.
+        """
+        src = sqlite3.connect(str(self.db_path))
+        try:
+            dst = sqlite3.connect(str(tmp_path))
+            try:
+                dst.execute("PRAGMA journal_mode=DELETE")
+                src.backup(dst)
+                dst.commit()
+            finally:
+                dst.close()
+        finally:
+            src.close()
+        return True
+
+    def create_backup(self, auto: bool = False, periodic: bool = False) -> Optional[Path]:
+        """Cria backup compactado do banco (.db.gz) com snapshot consistente."""
         try:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            prefix = "auto" if auto else "manual"
-            backup_name = f"certificados_{prefix}_{timestamp}.db.gz"
+            kind = "periodic" if periodic else ("auto" if auto else "manual")
+            backup_name = f"certificados_{kind}_{timestamp}.db.gz"
             backup_path = self.backup_dir / backup_name
-            
-            with open(self.db_path, 'rb') as f_in:
-                with gzip.open(backup_path, 'wb') as f_out:
-                    shutil.copyfileobj(f_in, f_out)
-            
-            # Mantém apenas últimos 12 backups
-            self._cleanup_old_backups(keep=12)
+
+            with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+                tmp_path = Path(tmp.name)
+            try:
+                self._snapshot_db(tmp_path)
+                with open(tmp_path, 'rb') as f_in:
+                    with gzip.open(backup_path, 'wb') as f_out:
+                        shutil.copyfileobj(f_in, f_out)
+            finally:
+                try:
+                    tmp_path.unlink(missing_ok=True)
+                except Exception:
+                    pass
+
+            # retencao separada: periodicos x manuais/semanais
+            self._cleanup_old_backups()
+            # backup duplo (Documents)
+            self._copy_dual(backup_path)
+
+            if periodic or auto:
+                try:
+                    from src.utils.notifications import notify
+                    notify("Backup concluido", backup_name)
+                except Exception:
+                    pass
             return backup_path
         except Exception:
             return None
 
-    def _cleanup_old_backups(self, keep: int = 12):
-        """Remove backups antigos, mantendo os mais recentes."""
-        backups = sorted(self.backup_dir.glob("certificados_*.db.gz"), reverse=True)
-        for old in backups[keep:]:
+    def _dual_dir(self) -> Optional[Path]:
+        """Destino duplo: Documents\\BackupsCertificados (se ativado)."""
+        from src.core.app_settings import get_setting
+
+        try:
+            if not get_setting("backup_duplo", True):
+                return None
+            d = Path.home() / "Documents" / "BackupsCertificados"
+            d.mkdir(parents=True, exist_ok=True)
+            return d
+        except Exception:
+            return None
+
+    def _copy_dual(self, backup_path: Path):
+        d = self._dual_dir()
+        if not d:
+            return
+        try:
+            shutil.copy2(backup_path, d / backup_path.name)
+        except Exception:
+            pass
+
+    def _cleanup_old_backups(self, base_dir: Optional[Path] = None):
+        """Remove backups antigos. Periodicos e nao-periodicos tem retencao propria."""
+        base = base_dir or self.backup_dir
+        periodic_files = sorted(base.glob("certificados_periodic_*.db.gz"),
+                                key=lambda p: p.name, reverse=True)
+        regular_files = sorted(
+            [p for p in base.glob("certificados_*.db.gz")
+             if not p.name.startswith("certificados_periodic_")],
+            key=lambda p: p.name, reverse=True)
+        for old in periodic_files[KEEP_PERIODIC:] + regular_files[KEEP_REGULAR:]:
             try:
                 old.unlink()
             except Exception:
                 pass
 
     def list_backups(self) -> List[Path]:
-        """Lista backups disponíveis (mais recentes primeiro)."""
-        return sorted(self.backup_dir.glob("certificados_*.db.gz"), reverse=True)
+        """Lista backups disponiveis (mais recentes primeiro)."""
+        return sorted(self.backup_dir.glob("certificados_*.db.gz"),
+                      key=lambda p: p.name, reverse=True)
 
     def restore_backup(self, backup_path: Path, password: str) -> bool:
         """Restaura backup (requer senha)."""
@@ -79,15 +178,20 @@ class BackupManager:
         try:
             # Para restaurar, precisa fechar conexões atuais
             # Faz restore para arquivo temporário e substitui
-            import tempfile
             with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp:
                 temp_path = Path(tmp.name)
-            
+
             with gzip.open(backup_path, 'rb') as f_in:
                 with open(temp_path, 'wb') as f_out:
                     shutil.copyfileobj(f_in, f_out)
-            
-            # Substitui o banco atual
+
+            # Substitui o banco atual (remove WAL/SHM antigos)
+            for suffix in ("-wal", "-shm"):
+                side = Path(str(self.db_path) + suffix)
+                try:
+                    side.unlink(missing_ok=True)
+                except Exception:
+                    pass
             shutil.move(str(temp_path), str(self.db_path))
             return True
         except Exception:

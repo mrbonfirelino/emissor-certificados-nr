@@ -1,0 +1,36 @@
+{
+  "card_code": "ARCELORMITTAL",
+  "cliente_nome": "ArcelorMittal Tubarao",
+  "descricao": "Cartao de bloqueio ArcelorMittal (4 por folha) — PPTX",
+  "template_type": "pptx",
+  "pptx_file": "ARCELORMITTAL.pptx",
+  "cards_per_slide": 4,
+  "slides": 1,
+  "empresa_default": "ALTEC",
+  "card_zones_fraction": [
+    [
+      0.0,
+      0.0,
+      1.0,
+      0.2409
+    ],
+    [
+      0.0,
+      0.2409,
+      1.0,
+      0.4929
+    ],
+    [
+      0.0,
+      0.4929,
+      1.0,
+      0.7461
+    ],
+    [
+      0.0,
+      0.7461,
+      1.0,
+      1.0236
+    ]
+  ]
+}

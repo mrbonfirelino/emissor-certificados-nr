@@ -303,6 +303,18 @@ class BatchImportPage(ctk.CTkFrame):
         self._log("-" * 50)
         self._log("Importacao concluida!")
 
+        try:
+            from src.utils.notifications import notify
+            if result["erros"]:
+                notify("Importacao concluida com erros",
+                       f"{result['gerados']} gerados, {len(result['erros'])} erro(s). Verifique o relatorio.")
+            else:
+                notify("Importacao concluida",
+                       f"{result['gerados']} certificado(s) gerado(s), "
+                       f"{result['registrados_sem_pdf']} registrado(s) sem PDF.")
+        except Exception:
+            pass
+
         lines = []
         if result["gerados"] > 0:
             lines.append(f"Gerados: {result['gerados']}")

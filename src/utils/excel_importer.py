@@ -1,6 +1,7 @@
 import re
 from pathlib import Path
 from typing import Tuple, List
+from src.ui.pages.funcoes import load_funcoes, save_funcoes
 
 
 def _normalize_cpf(val) -> str:
@@ -84,6 +85,7 @@ def import_employees_from_excel(
     duplicates = 0
     errors = 0
     error_details = []
+    funcoes_encontradas = set()
 
     for i, row in enumerate(ws.iter_rows(values_only=True)):
         if i == 0 and skip_header:
@@ -105,6 +107,8 @@ def import_employees_from_excel(
         name = _normalize_name(name_val)
         cpf = _normalize_cpf(cpf_val)
         funcao = str(funcao_val).strip() if funcao_val else None
+        if funcao:
+            funcoes_encontradas.add(funcao)
         telefone = _normalize_telefone(tel_val)
 
         if not name:
@@ -148,4 +152,12 @@ def import_employees_from_excel(
             error_details.append(f"Linha {i+1}: erro ao cadastrar '{name}'")
 
     wb.close()
+    if funcoes_encontradas:
+        try:
+            funcoes_existentes = load_funcoes()
+            funcoes_atualizadas = list(set(funcoes_existentes + list(funcoes_encontradas)))
+            funcoes_atualizadas.sort()
+            save_funcoes(funcoes_atualizadas)
+        except Exception as e:
+            error_details.append(f"Aviso: erro ao sincronizar funcoes: {e}")
     return imported, duplicates, errors, error_details

@@ -56,6 +56,19 @@ class HistoryRepository:
                     value TEXT
                 );
             """)
+            # documento assinado (escaneado) anexado ao certificado
+            try:
+                conn.execute("SELECT signed_doc FROM certificates LIMIT 1")
+            except sqlite3.OperationalError:
+                conn.execute("ALTER TABLE certificates ADD COLUMN signed_doc BLOB")
+                conn.execute("ALTER TABLE certificates ADD COLUMN signed_doc_tipo TEXT")
+
+    # colunas de listagem (BLOB signed_doc fica de fora: carga pesada)
+    _LIST_COLS = """
+        id, cert_number, nr_code, employee_id, funcionario_nome, funcionario_cpf,
+        data_inicio, data_fim, carga_horaria, descricao_treinamento, campos_extra,
+        pdf_path, created_at, (signed_doc IS NOT NULL) AS has_signed_doc
+    """
 
     def next_certificate_number(self) -> str:
         with self._get_conn() as conn:
@@ -83,8 +96,8 @@ class HistoryRepository:
 
     def get_all(self, limit: int = 10, offset: int = 0) -> List[CertificateRecord]:
         with self._get_conn() as conn:
-            rows = conn.execute("""
-                SELECT * FROM certificates ORDER BY created_at DESC LIMIT ? OFFSET ?
+            rows = conn.execute(f"""
+                SELECT {self._LIST_COLS} FROM certificates ORDER BY created_at DESC LIMIT ? OFFSET ?
             """, (limit, offset)).fetchall()
             return [self._row_to_record(r) for r in rows]
 
@@ -95,14 +108,14 @@ class HistoryRepository:
     def get_by_number(self, cert_number: str) -> Optional[CertificateRecord]:
         with self._get_conn() as conn:
             row = conn.execute(
-                "SELECT * FROM certificates WHERE cert_number = ?", (cert_number,)
+                f"SELECT {self._LIST_COLS} FROM certificates WHERE cert_number = ?", (cert_number,)
             ).fetchone()
             return self._row_to_record(row) if row else None
 
     def get_by_employee(self, employee_id: int) -> List[CertificateRecord]:
         with self._get_conn() as conn:
-            rows = conn.execute("""
-                SELECT * FROM certificates WHERE employee_id = ? ORDER BY created_at DESC
+            rows = conn.execute(f"""
+                SELECT {self._LIST_COLS} FROM certificates WHERE employee_id = ? ORDER BY created_at DESC
             """, (employee_id,)).fetchall()
             return [self._row_to_record(r) for r in rows]
 
@@ -111,8 +124,8 @@ class HistoryRepository:
         norm = normalize_text(query)
         with self._get_conn() as conn:
             like = f"%{norm}%"
-            rows = conn.execute("""
-                SELECT * FROM certificates
+            rows = conn.execute(f"""
+                SELECT {self._LIST_COLS} FROM certificates
                 WHERE normalize(funcionario_nome) LIKE ?
                    OR funcionario_cpf LIKE ?
                    OR normalize(cert_number) LIKE ?
@@ -139,6 +152,10 @@ class HistoryRepository:
             return conn.execute("SELECT COUNT(*) FROM certificates").fetchone()[0]
 
     def _row_to_record(self, row: sqlite3.Row) -> CertificateRecord:
+        try:
+            has_signed = bool(row["has_signed_doc"])
+        except (IndexError, KeyError):
+            has_signed = False
         return CertificateRecord(
             id=row["id"],
             cert_number=row["cert_number"],
@@ -152,8 +169,48 @@ class HistoryRepository:
             descricao_treinamento=row["descricao_treinamento"],
             campos_extra=row["campos_extra"] or "{}",
             pdf_path=row["pdf_path"],
-            created_at=row["created_at"]
+            created_at=row["created_at"],
+            has_signed_doc=has_signed
         )
+
+    # --- Documento assinado (escaneado) ---
+
+    SIGNED_DOC_MAX_BYTES = 10 * 1024 * 1024  # 10MB
+    SIGNED_DOC_TIPOS = {"pdf", "jpg", "jpeg", "png"}
+
+    def attach_signed_doc(self, cert_id: int, data: bytes, tipo: str) -> bool:
+        """Anexa (ou substitui) o documento assinado. tipo: pdf|jpg|jpeg|png."""
+        tipo = (tipo or "").lower().strip()
+        if tipo not in self.SIGNED_DOC_TIPOS:
+            raise ValueError(f"Formato invalido: {tipo} (aceitos: PDF, JPG, PNG)")
+        if len(data) > self.SIGNED_DOC_MAX_BYTES:
+            raise ValueError("Arquivo maior que 10MB")
+        if tipo == "jpeg":
+            tipo = "jpg"
+        with self._get_conn() as conn:
+            conn.execute(
+                "UPDATE certificates SET signed_doc = ?, signed_doc_tipo = ? WHERE id = ?",
+                (data, tipo, cert_id)
+            )
+            return True
+
+    def get_signed_doc(self, cert_id: int) -> Optional[tuple]:
+        """Retorna (bytes, tipo) do documento assinado ou None."""
+        with self._get_conn() as conn:
+            row = conn.execute(
+                "SELECT signed_doc, signed_doc_tipo FROM certificates WHERE id = ?", (cert_id,)
+            ).fetchone()
+            if row and row["signed_doc"]:
+                return row["signed_doc"], (row["signed_doc_tipo"] or "pdf")
+            return None
+
+    def remove_signed_doc(self, cert_id: int) -> bool:
+        with self._get_conn() as conn:
+            conn.execute(
+                "UPDATE certificates SET signed_doc = NULL, signed_doc_tipo = NULL WHERE id = ?",
+                (cert_id,)
+            )
+            return True
 
     def get_certificates_with_expiration(self) -> List[Dict[str, Any]]:
         from src.core.template_loader import load_all_templates

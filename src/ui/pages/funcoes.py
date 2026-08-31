@@ -153,6 +153,13 @@ class FuncoesPage(ctk.CTkFrame):
         self.current_page = max(1, min(page, self.total_pages))
         self._refresh_list()
 
+    def refresh(self):
+        """Recarrega funcoes.json (import de funcionarios pode ter adicionado novas) e re-renderiza."""
+        self.funcoes = load_funcoes()
+        if self.current_page > self.total_pages:
+            self.current_page = self.total_pages
+        self._refresh_list()
+
     def _refresh_list(self):
         for widget in self.list_frame.winfo_children():
             widget.destroy()

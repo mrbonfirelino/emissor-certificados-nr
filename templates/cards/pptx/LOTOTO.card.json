@@ -1,0 +1,18 @@
+{
+  "card_code": "LOTOTO",
+  "cliente_nome": "LOTO/TO",
+  "descricao": "Cartao LOTOTO (1 por folha, Lider/Liderado) — PPTX",
+  "template_type": "pptx",
+  "pptx_file": "LOTOTO.pptx",
+  "cards_per_slide": 1,
+  "slides": 2,
+  "empresa_default": "ALTEC",
+  "card_zones_fraction": [
+    [
+      0.0,
+      0.0,
+      1.0,
+      1.0
+    ]
+  ]
+}

@@ -3,6 +3,7 @@ from tkinter import messagebox
 from src.ui.styles import COLORS, get_fonts, get_font_scale, save_font_scale
 from src.core.config import load_company_config, save_company_config, set_restore_password, has_restore_password
 from src.core.models import CompanyConfig
+from src.core.app_settings import load_app_settings, save_app_settings
 from src.utils.validators import validar_cnpj, formatar_cnpj, validar_registro_mte, formatar_registro_mte
 
 
@@ -149,6 +150,56 @@ class ConfigPage(ctk.CTkFrame):
         )
         self.btn_font_reset.pack(side="left")
 
+        # Separador
+        ctk.CTkFrame(form, height=2, fg_color=COLORS["border"]).grid(row=row, column=0, sticky="ew", pady=20)
+        row += 1
+
+        # Preferencias (notificacoes)
+        ctk.CTkLabel(form, text="Preferencias", font=fonts["heading"], text_color=COLORS["primary"]).grid(row=row, column=0, sticky="w", pady=(0, 8))
+        row += 1
+
+        self._notificacoes_var = ctk.BooleanVar(value=True)
+        ctk.CTkCheckBox(
+            form, text="Notificacoes do Windows (aviso de emissao, backup e importacao)",
+            variable=self._notificacoes_var,
+            font=fonts["body"], text_color=COLORS["text"],
+            fg_color=COLORS["primary"], hover_color=COLORS["secondary"],
+            checkbox_height=20, checkbox_width=20
+        ).grid(row=row, column=0, sticky="w", pady=(0, 16))
+        row += 1
+
+        # Separador
+        ctk.CTkFrame(form, height=2, fg_color=COLORS["border"]).grid(row=row, column=0, sticky="ew", pady=20)
+        row += 1
+
+        # Backups
+        ctk.CTkLabel(form, text="Backups", font=fonts["heading"], text_color=COLORS["primary"]).grid(row=row, column=0, sticky="w", pady=(0, 8))
+        row += 1
+        ctk.CTkLabel(form, text="Backup periodico enquanto o programa estiver aberto (alem do semanal)",
+                     font=fonts["small"], text_color=COLORS["muted"]).grid(row=row, column=0, sticky="w", pady=(0, 12))
+        row += 1
+
+        backup_frame = ctk.CTkFrame(form, fg_color="transparent")
+        backup_frame.grid(row=row, column=0, sticky="ew", pady=(0, 10))
+        row += 1
+
+        ctk.CTkLabel(backup_frame, text="Intervalo (minutos):", font=fonts["body"],
+                     text_color=COLORS["text"]).pack(side="left", padx=(0, 8))
+        self._backup_interval_var = ctk.StringVar(value="15")
+        interval_entry = ctk.CTkEntry(backup_frame, textvariable=self._backup_interval_var,
+                                      width=70, height=32, font=fonts["body"], corner_radius=6)
+        interval_entry.pack(side="left")
+
+        self._backup_duplo_var = ctk.BooleanVar(value=True)
+        ctk.CTkCheckBox(
+            form, text="Backup duplo (copia adicional em Documentos\\BackupsCertificados)",
+            variable=self._backup_duplo_var,
+            font=fonts["body"], text_color=COLORS["text"],
+            fg_color=COLORS["primary"], hover_color=COLORS["secondary"],
+            checkbox_height=20, checkbox_width=20
+        ).grid(row=row, column=0, sticky="w", pady=(0, 16))
+        row += 1
+
         # Botao salvar
         ctk.CTkButton(
             form, text="Salvar Configuracao",
@@ -200,6 +251,10 @@ class ConfigPage(ctk.CTkFrame):
             self.local_var.set(self.config.local_treinamento)
             self.instrutor_var.set(self.config.instrutor_nome)
             self.registro_var.set(self.config.instrutor_registro_mte)
+        settings = load_app_settings()
+        self._notificacoes_var.set(bool(settings.get("notificacoes_ativas", True)))
+        self._backup_interval_var.set(str(settings.get("backup_intervalo_min", 15)))
+        self._backup_duplo_var.set(bool(settings.get("backup_duplo", True)))
 
     def _save_config(self):
         empresa = self.empresa_var.get().strip()
@@ -236,6 +291,22 @@ class ConfigPage(ctk.CTkFrame):
             if len(new_pass) < 6:
                 messagebox.showerror("Erro", "Senha deve ter pelo menos 6 caracteres", parent=self)
                 return
+
+        # preferencias do app
+        try:
+            intervalo = int(self._backup_interval_var.get().strip())
+        except ValueError:
+            messagebox.showerror("Erro", "Intervalo de backup deve ser um numero inteiro (minutos)", parent=self)
+            return
+        if not (1 <= intervalo <= 720):
+            messagebox.showerror("Erro", "Intervalo de backup deve ficar entre 1 e 720 minutos", parent=self)
+            return
+        app_settings = {
+            "notificacoes_ativas": bool(self._notificacoes_var.get()),
+            "backup_intervalo_min": intervalo,
+            "backup_duplo": bool(self._backup_duplo_var.get()),
+        }
+        save_app_settings(app_settings)
 
         try:
             config = CompanyConfig(

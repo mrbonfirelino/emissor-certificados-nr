@@ -3,6 +3,7 @@ import os
 import subprocess
 import sys
 from typing import Optional
+from tkinter import messagebox, filedialog
 from src.ui.styles import COLORS, get_fonts
 from src.core.history_repo import HistoryRepository
 from src.core.models import CertificateRecord
@@ -141,14 +142,15 @@ class HistoryPage(ctk.CTkFrame):
         header.grid_columnconfigure(3, weight=2)
         header.grid_columnconfigure(4, weight=1)
         header.grid_columnconfigure(5, weight=1)
+        header.grid_columnconfigure(6, weight=2)
 
         for text, col in [("Numero", 0), ("NR", 1), ("Funcionario", 2),
-                          ("Data", 3), ("Carga", 4), ("Acoes", 5)]:
+                          ("Data", 3), ("Carga", 4), ("Assinado", 5), ("Acoes", 6)]:
             ctk.CTkLabel(
                 header, text=text,
                 font=fonts["small_bold"], text_color=COLORS["surface"],
-                anchor="center" if col < 5 else "e"
-            ).grid(row=0, column=col, sticky="ew" if col < 5 else "e", padx=12, pady=6)
+                anchor="center" if col < 6 else "e"
+            ).grid(row=0, column=col, sticky="ew" if col < 6 else "e", padx=12, pady=6)
 
     def _create_cert_row(self, cert: CertificateRecord, row_idx: int, alternate: bool = False):
         fonts = get_fonts()
@@ -162,6 +164,7 @@ class HistoryPage(ctk.CTkFrame):
         row.grid_columnconfigure(3, weight=2)
         row.grid_columnconfigure(4, weight=1)
         row.grid_columnconfigure(5, weight=1)
+        row.grid_columnconfigure(6, weight=2)
 
         ctk.CTkLabel(row, text=cert.cert_number,
             font=fonts["small_bold"], text_color=COLORS["primary"], anchor="center"
@@ -184,8 +187,19 @@ class HistoryPage(ctk.CTkFrame):
             font=fonts["small"], text_color=COLORS["text_secondary"], anchor="center"
         ).grid(row=0, column=4, sticky="ew", padx=12, pady=6)
 
+        # indicador de documento assinado anexado
+        if cert.has_signed_doc:
+            badge = ctk.CTkLabel(row, text="ASSINADO", font=fonts["tiny"],
+                                 text_color=COLORS["success"], fg_color="#E6F2E6",
+                                 corner_radius=4, padx=0)
+            badge.grid(row=0, column=5, sticky="center", padx=8, pady=4)
+        else:
+            ctk.CTkLabel(row, text="—", font=fonts["small"],
+                         text_color=COLORS["muted"], anchor="center"
+                         ).grid(row=0, column=5, sticky="ew", padx=12, pady=6)
+
         btn_frame = ctk.CTkFrame(row, fg_color="transparent")
-        btn_frame.grid(row=0, column=5, sticky="e", padx=8, pady=4)
+        btn_frame.grid(row=0, column=6, sticky="e", padx=8, pady=4)
 
         ctk.CTkButton(btn_frame, text="PDF", width=40, height=26,
             font=fonts["small"], fg_color=COLORS["secondary"],
@@ -199,8 +213,92 @@ class HistoryPage(ctk.CTkFrame):
             command=lambda c=cert: self._open_folder(c)
         ).pack(side="left", padx=2)
 
+        ctk.CTkButton(btn_frame, text="Anexar", width=52, height=26,
+            font=fonts["small"], fg_color=COLORS["warning"],
+            hover_color="#BF5300",
+            command=lambda c=cert: self._attach_signed(c)
+        ).pack(side="left", padx=2)
+
+        btn_baixar = ctk.CTkButton(btn_frame, text="Baixar", width=52, height=26,
+            font=fonts["small"], fg_color=COLORS["success"],
+            hover_color="#256B28",
+            command=lambda c=cert: self._download_signed(c)
+        )
+        if not cert.has_signed_doc:
+            btn_baixar.configure(state="disabled")
+        btn_baixar.pack(side="left", padx=2)
+
         sep = ctk.CTkFrame(self.list_frame, fg_color=COLORS["border"], height=1)
         sep.grid(row=row_idx + 1, column=0, sticky="ew", padx=12, pady=0)
+
+    # ── Documento assinado (escaneado) ───────────────────────
+
+    def _attach_signed(self, cert: CertificateRecord):
+        if cert.has_signed_doc:
+            resp = messagebox.askyesnocancel(
+                "Documento assinado",
+                "Este certificado ja possui documento assinado anexado.\n\n"
+                "Sim = substituir por novo arquivo\n"
+                "Nao = remover o documento atual\n"
+                "Cancelar = fechar sem alterar",
+                parent=self
+            )
+            if resp is None:
+                return
+            if resp is False:
+                if self.history_repo.remove_signed_doc(cert.id):
+                    messagebox.showinfo("Sucesso", "Documento assinado removido.", parent=self)
+                    self._refresh_list()
+                else:
+                    self._show_error("Erro ao remover documento")
+                return
+            # resp True: segue para substituir
+
+        path = filedialog.askopenfilename(
+            title=f"Anexar certificado assinado ({cert.cert_number})",
+            filetypes=[("Documentos", "*.pdf *.jpg *.jpeg *.png"), ("Todos", "*.*")],
+            parent=self
+        )
+        if not path:
+            return
+        try:
+            ext = path.rsplit(".", 1)[-1].lower()
+            with open(path, "rb") as f:
+                data = f.read()
+            self.history_repo.attach_signed_doc(cert.id, data, ext)
+            messagebox.showinfo("Sucesso", "Documento assinado anexado ao certificado.", parent=self)
+            self._refresh_list()
+        except ValueError as e:
+            messagebox.showerror("Erro", str(e), parent=self)
+        except Exception as e:
+            self._show_error(f"Erro ao anexar documento: {e}")
+
+    def _download_signed(self, cert: CertificateRecord):
+        result = self.history_repo.get_signed_doc(cert.id)
+        if not result:
+            messagebox.showwarning("Aviso", "Nenhum documento assinado anexado.", parent=self)
+            return
+        data, tipo = result
+        ext_map = {"pdf": ".pdf", "jpg": ".jpg", "jpeg": ".jpg", "png": ".png"}
+        ext = ext_map.get(tipo, ".pdf")
+        path = filedialog.asksaveasfilename(
+            title="Salvar documento assinado",
+            defaultextension=ext,
+            initialfile=f"{cert.cert_number}_assinado{ext}",
+            parent=self
+        )
+        if not path:
+            return
+        try:
+            with open(path, "wb") as f:
+                f.write(data)
+            if messagebox.askyesno("Sucesso", f"Documento salvo em:\n{path}\n\nAbrir agora?", parent=self):
+                try:
+                    os.startfile(path)
+                except Exception:
+                    pass
+        except Exception as e:
+            self._show_error(f"Erro ao salvar documento: {e}")
 
     def _open_pdf(self, cert: CertificateRecord):
         if cert.pdf_path and os.path.exists(cert.pdf_path):

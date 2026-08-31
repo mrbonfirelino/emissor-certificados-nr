@@ -37,7 +37,7 @@ class VencimentosPage(ctk.CTkFrame):
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(3, weight=1)
-        self.grid_propagate(False)
+        #self.grid_propagate(False)
 
         # Row 0 — Header
         self._header = ctk.CTkFrame(self, fg_color="transparent")
@@ -55,7 +55,7 @@ class VencimentosPage(ctk.CTkFrame):
             self._cards_frame.grid_columnconfigure(i, weight=1)
         self._card_labels = {}
         for i, (key, label, color) in enumerate([
-            ("total", "TOTAL", COLORS["primary"]),
+            ("total", "TOTAL de certificados emitidos", COLORS["primary"]),
             ("vencidos", "Vencidos", COLORS["error"]),
             ("dias_7", "7 Dias", COLORS["error"]),
             ("dias_15", "15 Dias", "#E65100"),
@@ -121,44 +121,44 @@ class VencimentosPage(ctk.CTkFrame):
         self._pagination = PaginationBar(self, on_page_change=self._render_list)
         self._pagination.grid(row=4, column=0, sticky="w", padx=20, pady=(2, 8))
 
-        self.after(200, lambda: self._fit_scroll_height(0))
-        self.after(600, lambda: self._fit_scroll_height(0))
+        #self.after(200, lambda: self._fit_scroll_height(0))
+        #self.after(600, lambda: self._fit_scroll_height(0))
 
-    def _fit_scroll_height(self, _retry=0):
-        self.update_idletasks()
-        h = self.winfo_height()
-        if h < 200:
-            try:
-                ph = self.master.winfo_height()
-                if ph >= 200:
-                    h = ph
-            except Exception:
-                pass
-        if h < 200:
-            if _retry < 5:
-                self.after(300, lambda r=_retry + 1: self._fit_scroll_height(r))
-            return
-        header_h = self._header.winfo_reqheight()
-        cards_h = self._cards_frame.winfo_reqheight()
-        filters_h = self._filters.winfo_reqheight()
-        pag_h = self._pagination.winfo_reqheight()
-        # filhos ainda nao renderizados — tenta novamente
-        if min(header_h, cards_h, filters_h, pag_h) < 5 and _retry < 5:
-            self.after(300, lambda r=_retry + 1: self._fit_scroll_height(r))
-            return
-        margins = 10
-        available = h - header_h - cards_h - filters_h - pag_h - margins
-        # altura do conteudo (bbox) — se menor que available, encolhe Canvas e cola paginacao (alternativa A)
-        self.update_idletasks()
-        try:
-            bbox = self._list._parent_canvas.bbox("all")
-            content_h = (bbox[3] - bbox[1] if bbox and bbox[3] else self._list.winfo_reqheight()) + 6
-        except Exception:
-            content_h = self._list.winfo_reqheight() + 6
-        needed = content_h + 4 if content_h else available
-        # usa o menor entre available e needed para eliminar vao branco interno mantendo scroll quando necessario
-        target = max(150, min(available, needed)) if needed and needed > 50 else max(150, available)
-        self._list.configure(height=target)
+#    def _fit_scroll_height(self, _retry=0):
+#        self.update_idletasks()
+#        h = self.winfo_height()
+#        if h < 200:
+#            try:
+#                ph = self.master.winfo_height()
+#                if ph >= 200:
+#                    h = ph
+#            except Exception:
+#               pass
+#        if h < 200:
+#            if _retry < 5:
+#                self.after(300, lambda r=_retry + 1: self._fit_scroll_height(r))
+#            return
+#        header_h = self._header.winfo_reqheight()
+#        cards_h = self._cards_frame.winfo_reqheight()
+#        filters_h = self._filters.winfo_reqheight()
+#        pag_h = self._pagination.winfo_reqheight()
+#        # filhos ainda nao renderizados — tenta novamente
+#        if min(header_h, cards_h, filters_h, pag_h) < 5 and _retry < 5:
+#            self.after(300, lambda r=_retry + 1: self._fit_scroll_height(r))
+#            return
+#        margins = 10
+#        available = h - header_h - cards_h - filters_h - pag_h - margins
+#        # altura do conteudo (bbox) — se menor que available, encolhe Canvas e cola paginacao (alternativa A)
+#       self.update_idletasks()
+#        try:
+#            bbox = self._list._parent_canvas.bbox("all")
+#            content_h = (bbox[3] - bbox[1] if bbox and bbox[3] else self._list.winfo_reqheight()) + 6
+#        except Exception:
+#            content_h = self._list.winfo_reqheight() + 6
+#        needed = content_h + 4 if content_h else available
+#        # usa o menor entre available e needed para eliminar vao branco interno mantendo scroll quando necessario
+#        target = max(150, min(available, needed)) if needed and needed > 50 else max(150, available)
+#        self._list.configure(height=target)
 
     # ── Dados ────────────────────────────────────────────────
 
@@ -261,7 +261,7 @@ class VencimentosPage(ctk.CTkFrame):
             self._list._parent_canvas.configure(scrollregion=self._list._parent_canvas.bbox("all"))
         except Exception:
             pass
-        self.after(50, lambda: self._fit_scroll_height(0))
+        #self.after(50, lambda: self._fit_scroll_height(0))
 
     def _make_employee_card(self, row, emp_id, name, cpf, funcao, certs):
         fonts = get_fonts()

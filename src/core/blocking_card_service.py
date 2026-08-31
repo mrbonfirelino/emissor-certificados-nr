@@ -23,18 +23,22 @@ def _hex(color_str: str):
 
 
 def load_card_templates() -> Dict[str, dict]:
-    """Carrega todos os templates de cartao (templates/cards/*.card.json)."""
+    """Carrega templates de cartao: JSON (templates/cards/*.card.json) + PPTX (templates/cards/pptx/*.card.json)."""
     cards_dir = get_templates_dir() / "cards"
     templates = {}
-    if not cards_dir.exists():
-        return templates
-    for f in sorted(cards_dir.glob("*.card.json")):
-        try:
-            data = json.loads(f.read_text(encoding="utf-8"))
-            if "card_code" in data:
-                templates[data["card_code"]] = data
-        except Exception:
-            continue
+    if cards_dir.exists():
+        for f in sorted(cards_dir.glob("*.card.json")):
+            try:
+                data = json.loads(f.read_text(encoding="utf-8"))
+                if "card_code" in data:
+                    templates[data["card_code"]] = data
+            except Exception:
+                continue
+    try:
+        from src.core.pptx_card_service import load_pptx_card_templates
+        templates.update(load_pptx_card_templates())
+    except Exception:
+        pass
     return templates
 
 
@@ -62,11 +66,16 @@ def compute_grid(template: dict) -> Tuple[int, int]:
     return cols, rows
 
 
-def validate_employees_for_cards(employees: list) -> Tuple[list, List[str]]:
+def validate_employees_for_cards(employees: list, template: Optional[dict] = None) -> Tuple[list, List[str]]:
     """
-    Separa funcionarios validos (com telefone E foto) dos invalidos.
+    Separa funcionarios validos dos invalidos conforme o template:
+    - PPTX: exige apenas os campos que o template usa (foto/telefone)
+    - JSON (default): exige telefone E foto
     Retorna (validos, mensagens_faltantes).
     """
+    if template and template.get("template_type") == "pptx":
+        from src.core.pptx_card_service import validate_employees_for_pptx
+        return validate_employees_for_pptx(employees, template)
     valid, missing = [], []
     for emp in employees:
         faltas = []
@@ -281,17 +290,36 @@ def generate_cards(
     employees: list,
     template: dict,
     single_pdf: bool = True,
-    output_dir: Optional[Path] = None
+    output_dir: Optional[Path] = None,
+    options: Optional[dict] = None,
+    one_per_page: bool = False,
 ) -> Tuple[List[Path], List[str]]:
     """
     Gera cartoes de bloqueio em PDF.
 
-    - single_pdf=True: um PDF unico com N cartoes por folha (grid automatico)
-    - single_pdf=False: um PDF por funcionario (1 cartao centralizado por folha)
+    - Template JSON (ReportLab):
+      - single_pdf=True: um PDF unico com N cartoes por folha (grid automatico)
+      - single_pdf=False: um PDF por funcionario (1 cartao centralizado por folha)
+    - Template PPTX (PowerPoint):
+      - single_pdf=True: um PDF unico (folha do template, ou 1 cartao/pagina
+        se one_per_page=True)
+      - single_pdf=False: um PDF por funcionario (cartao recortado)
+
+    options (PPTX): {"setor": str, "papeis": {employee_id: "LIDER"|"LIDERADO"}}
 
     Retorna (caminhos_gerados, faltantes_msg).
     """
-    valid, missing = validate_employees_for_cards(employees)
+    if template.get("template_type") == "pptx":
+        from src.core.pptx_card_service import generate_pptx_cards
+        return generate_pptx_cards(
+            employees, template,
+            options=options,
+            single_pdf=single_pdf,
+            one_per_page=one_per_page,
+            output_dir=output_dir,
+        )
+
+    valid, missing = validate_employees_for_cards(employees, template)
     if not valid:
         return [], missing
 

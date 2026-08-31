@@ -1,0 +1,36 @@
+{
+  "card_code": "CSN",
+  "cliente_nome": "CSN",
+  "descricao": "Cartao de bloqueio CSN (4 por folha, Lider/Liderado) — PPTX",
+  "template_type": "pptx",
+  "pptx_file": "CSN.pptx",
+  "cards_per_slide": 4,
+  "slides": 1,
+  "empresa_default": "ALTEC",
+  "card_zones_fraction": [
+    [
+      0.0,
+      0.0,
+      0.5039,
+      0.5039
+    ],
+    [
+      0.5039,
+      0.0,
+      1.0,
+      0.5039
+    ],
+    [
+      0.0,
+      0.5039,
+      0.5039,
+      1.0
+    ],
+    [
+      0.5039,
+      0.5039,
+      1.0,
+      1.0
+    ]
+  ]
+}

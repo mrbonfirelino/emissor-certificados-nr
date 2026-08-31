@@ -189,3 +189,4 @@ class CertificateRecord(BaseModel):
     campos_extra: str
     pdf_path: Optional[str] = None
     created_at: Optional[str] = None
+    has_signed_doc: bool = False

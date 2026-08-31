@@ -126,6 +126,16 @@ class EmployeesPage(ctk.CTkFrame):
         available = h - header_h - pag_h - margins
         self.list_frame.configure(height=max(available, 150))
 
+    def _refresh_funcao_filter(self):
+        """Repopula o dropdown de filtro de funcao com dados atuais do banco (pos-import/cadastro)."""
+        if not hasattr(self, "_funcao_filter_menu"):
+            return
+        atual = self._funcao_filter_var.get()
+        funcoes = ["Todas"] + self.employee_repo.get_all_funcoes()
+        self._funcao_filter_menu.configure(values=funcoes)
+        if atual not in funcoes:
+            self._funcao_filter_var.set("Todas")
+
     def _clear_search(self):
         self.search_var.set("")
         self._funcao_filter_var.set("Todas")
@@ -444,6 +454,7 @@ class EmployeesPage(ctk.CTkFrame):
                         messagebox.showerror("Erro", "Erro ao cadastrar funcionario", parent=dialog)
                         return
                 dialog.destroy()
+                self._refresh_funcao_filter()
                 self._refresh_list()
             except Exception as e:
                 messagebox.showerror("Erro", f"Erro ao salvar: {e}", parent=dialog)
@@ -472,6 +483,7 @@ class EmployeesPage(ctk.CTkFrame):
         ):
             if self.employee_repo.delete(employee.id):
                 messagebox.showinfo("Sucesso", "Funcionario excluido!", parent=self)
+                self._refresh_funcao_filter()
                 self._refresh_list()
             else:
                 messagebox.showerror("Erro", "Erro ao excluir", parent=self)
@@ -631,4 +643,9 @@ class EmployeesPage(ctk.CTkFrame):
         self._import_result.configure(state="disabled")
 
         if imported > 0:
+            self._refresh_funcao_filter()
             self._refresh_list()
+
+    def refresh(self):
+        self._refresh_funcao_filter()
+        self._refresh_list()

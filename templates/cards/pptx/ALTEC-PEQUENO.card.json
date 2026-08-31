@@ -1,0 +1,54 @@
+{
+  "card_code": "ALTEC-PEQUENO",
+  "cliente_nome": "ALTEC (cartao pequeno)",
+  "descricao": "Cartao de bloqueio ALTEC pequeno (7 por folha) — PPTX",
+  "template_type": "pptx",
+  "pptx_file": "ALTEC_PEQUENO.pptx",
+  "cards_per_slide": 7,
+  "slides": 1,
+  "empresa_default": "ALTEC",
+  "card_zones_fraction": [
+    [
+      0.0,
+      0.0,
+      0.2874,
+      0.4919
+    ],
+    [
+      0.2874,
+      0.0,
+      0.4921,
+      0.4919
+    ],
+    [
+      0.4921,
+      0.0,
+      0.7016,
+      0.4919
+    ],
+    [
+      0.7016,
+      0.0,
+      1.0,
+      0.4919
+    ],
+    [
+      0.0,
+      0.4919,
+      0.2874,
+      1.0
+    ],
+    [
+      0.2874,
+      0.4919,
+      0.4921,
+      1.0
+    ],
+    [
+      0.4921,
+      0.4919,
+      0.7016,
+      1.0
+    ]
+  ]
+}

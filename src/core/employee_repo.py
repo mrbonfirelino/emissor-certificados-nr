@@ -47,6 +47,7 @@ class EmployeeRepository:
                 conn.execute("SELECT telefone FROM employees LIMIT 1")
             except sqlite3.OperationalError:
                 conn.execute("ALTER TABLE employees ADD COLUMN telefone TEXT")
+            # nota: coluna matricula pode existir em bancos antigos — permanece ignorada
             try:
                 conn.execute("SELECT cpf FROM employees WHERE cpf IS NULL LIMIT 1")
             except Exception:
