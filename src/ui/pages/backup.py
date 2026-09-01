@@ -17,6 +17,24 @@ class BackupPage(ctk.CTkFrame):
         
         self._build_ui()
         self._refresh_list()
+        self._tick_auto_refresh()
+
+    def refresh(self):
+        """Atualiza a lista de backups (chamado ao abrir a pagina)."""
+        self._refresh_list()
+
+    def _tick_auto_refresh(self):
+        """Auto-refresh a cada 30s enquanto a pagina estiver visivel —
+        backups periodicos/automaticos aparecem sem reiniciar o app."""
+        try:
+            if self.winfo_ismapped():
+                self._refresh_list()
+        except Exception:
+            return
+        try:
+            self.after(30000, self._tick_auto_refresh)
+        except Exception:
+            pass
 
     def _build_ui(self):
         # Header
@@ -121,9 +139,15 @@ class BackupPage(ctk.CTkFrame):
         
         # Nome
         name = backup_path.name
-        is_auto = name.startswith("certificados_auto_")
-        type_label = "Automático" if is_auto else "Manual"
-        type_color = COLORS["accent"] if is_auto else COLORS["success"]
+        if name.startswith("certificados_periodic_"):
+            type_label = "Periódico"
+            type_color = COLORS["accent"]
+        elif name.startswith("certificados_auto_"):
+            type_label = "Automático"
+            type_color = COLORS["accent"]
+        else:
+            type_label = "Manual"
+            type_color = COLORS["success"]
         
         ctk.CTkLabel(
             row,

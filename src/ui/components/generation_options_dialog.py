@@ -45,7 +45,10 @@ class EmissionReviewDialog(ctk.CTkToplevel):
         used_fields = set(template.get("used_fields") or [])
         self._needs_setor = "SETOR" in used_fields
         self._needs_papel = "PAPEL" in used_fields
-        self._needs_matricula = "MATRICULA" in used_fields
+        # matricula obrigatoria so onde o template pede (ex.: ArcelorMittal);
+        # LOTOTO tem o campo no layout, mas nao exige preenchimento
+        self._needs_matricula = ("MATRICULA" in used_fields
+                                 and template.get("matricula_obrigatoria", True))
 
         self.title("Revisao da Emissao")
         w, h = 940, 680

@@ -262,7 +262,80 @@ def _clip_text_to_width(text: str, size_pt: float, bold: bool, usable_pt: float)
     return out
 
 
-def _replace_tokens_in_text_frame(shape, values: Dict[str, str], fit_mode: str = "wrap"):
+def _clip_text_to_lines(text: str, size_pt: float, bold: bool, usable_pt: float, max_lines: int) -> str:
+    """
+    Modo wrap com limite de linhas: mantem palavras inteiras enquanto houver
+    linha disponivel; o que exceder a ultima linha permitida e apagado.
+    """
+    words = [w for w in text.split() if w]
+    if not words:
+        return text
+    kept: list = []
+    cur = ""
+    for w in words:
+        cand = f"{cur} {w}".strip()
+        if not cur or _text_width_pt(cand, size_pt, bold) <= usable_pt:
+            cur = cand
+        else:
+            kept.append(cur)
+            if len(kept) >= max_lines:
+                return " ".join(kept)
+            cur = w
+    if cur:
+        kept.append(cur)
+    return " ".join(kept)
+
+
+def _fit_box_uniform(shape, text_frame, replaced: list, max_lines_cfg: dict):
+    """
+    Ajuste por CAIXA (templates com wrap_max_lines, ex.: CSN):
+    reduz a fonte de forma UNIFORME em todos os paragrafos substituidos ate o
+    bloco inteiro (soma das linhas, respeitando o limite por campo) caber na
+    altura real da caixa; depois apaga o que exceder as linhas permitidas.
+
+    replaced: [(para, new_text, field, size0, bold)]
+    """
+    if not replaced:
+        return
+    from pptx.util import Pt
+
+    uw_pt = _usable_width_pt(shape, text_frame)
+    uh_emu = (shape.height or 0) - (text_frame.margin_top or 0) - (text_frame.margin_bottom or 0)
+    uh_pt = uh_emu / 12700.0 if uh_emu > 0 else None
+
+    def allowed(field: str) -> int:
+        return int(max_lines_cfg.get(field, max_lines_cfg.get("default", 1)))
+
+    size = max(r[3] for r in replaced)
+    while size > 5.5:
+        total_lines = 0
+        fits = True
+        for _, text, field, _, bold in replaced:
+            words = [w for w in text.split() if w]
+            longest = max((_text_width_pt(w, size, bold) for w in words), default=0.0)
+            if longest > uw_pt:
+                fits = False
+                break
+            n = _wrap_line_count(text, size, bold, uw_pt)
+            total_lines += min(n, allowed(field))
+        if fits and (uh_pt is None or total_lines * size * LINE_HEIGHT_FACTOR <= uh_pt):
+            break
+        size -= 0.5
+    size = max(5.5, size)
+
+    for para, text, field, size0, bold in replaced:
+        clipped = _clip_text_to_lines(text, size, bold, uw_pt, allowed(field))
+        runs = para.runs
+        if runs:
+            runs[0].text = clipped
+            for r in runs[1:]:
+                r.text = ""
+            if size < size0:
+                runs[0].font.size = Pt(size)
+
+
+def _replace_tokens_in_text_frame(shape, values: Dict[str, str], fit_mode: str = "wrap",
+                                  wrap_max_lines: Optional[dict] = None):
     """
     Substitui {{TOKENS}} a nivel de paragrafo (resolve runs quebrados tipo
     "FABRICIO " + "CARVALHO"). O texto substituido herda o estilo do 1o run.
@@ -270,6 +343,8 @@ def _replace_tokens_in_text_frame(shape, values: Dict[str, str], fit_mode: str =
     fit_mode:
     - "wrap" (default): liga word_wrap e reduz a fonte ate as linhas quebradas
       caberem na largura (maior palavra) e altura do shape
+      * se wrap_max_lines informado: ajuste por CAIXA inteira com fonte uniforme
+        e limite de linhas por campo (excedente apagado) — usado no CSN
     - "clip": sem quebra e sem reducao — corta o que passar do limite do campo
     """
     text_frame = shape.text_frame
@@ -282,6 +357,25 @@ def _replace_tokens_in_text_frame(shape, values: Dict[str, str], fit_mode: str =
             text_frame.margin_bottom = 0
     except Exception:
         pass
+
+    if fit_mode != "clip" and wrap_max_lines:
+        # modo caixa: coleta os paragrafos substituidos e ajusta de uma vez
+        replaced = []
+        for para in text_frame.paragraphs:
+            runs = para.runs
+            if not runs:
+                continue
+            full = "".join(r.text for r in runs)
+            m = TOKEN_RE.search(full)
+            if not m:
+                continue
+            field = m.group(1)
+            new_text = TOKEN_RE.sub(lambda mm: values.get(mm.group(1), mm.group(0)), full)
+            size0 = runs[0].font.size.pt if runs[0].font.size else 12.0
+            replaced.append((para, new_text, field, size0, bool(runs[0].font.bold)))
+        _fit_box_uniform(shape, text_frame, replaced, wrap_max_lines)
+        return
+
     for para in text_frame.paragraphs:
         runs = para.runs
         if not runs:
@@ -391,6 +485,7 @@ def _fill_clone(prs, chunk: list, template: dict, options: dict):
     """
     cards_per_slide = int(template.get("cards_per_slide", 1))
     fit_mode = template.get("text_fit", "wrap")
+    wrap_max_lines = template.get("wrap_max_lines")
     slides = list(prs.slides)
 
     for idx in range(len(slides) * cards_per_slide):
@@ -407,7 +502,7 @@ def _fill_clone(prs, chunk: list, template: dict, options: dict):
                 continue
             if getattr(shape, "has_text_frame", False):
                 try:
-                    _replace_tokens_in_text_frame(shape, values, fit_mode)
+                    _replace_tokens_in_text_frame(shape, values, fit_mode, wrap_max_lines)
                 except Exception:
                     pass
             if (shape.name or "").endswith(PHOTO_SUFFIX):

@@ -43,7 +43,12 @@ Os dois aparecem juntos no dropdown "Modelo" da tela de Emissao de Cartoes de Bl
      passos de 0,5pt (min. 5,5pt) ate as linhas caberem na largura e altura da caixa
    - `"clip"` (ex.: LOTOTO): sem quebra e sem reducao — o que passar do limite
      do campo e **cortado**
-6. Na geracao:
+   - `"wrap"` + `"wrap_max_lines"` (ex.: CSN): ajuste por caixa inteira com
+     fonte **uniforme** reduzida e limite de linhas por campo
+     (`{"NOME": 2, "default": 1}`) — o excedente das linhas permitidas e apagado
+6. **Matricula por template**: `"matricula_obrigatoria": false` (ex.: LOTOTO)
+   esconde o campo da revisao — so a ArcelorMittal exige matricula.
+7. Na geracao:
    - Lotes maiores que a capacidade geram varios clones do template
      (capacidade = nº slides x cartoes por slide)
    - Cartoes nao preenchidos na ultima folha ficam em branco (texto vazio + foto cinza)

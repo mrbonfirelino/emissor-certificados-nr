@@ -2,21 +2,36 @@ import gzip
 import shutil
 import sqlite3
 import tempfile
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Optional
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
-from src.utils.paths import get_db_path, get_backup_dir
+from src.utils.paths import get_db_path, get_backup_dir, get_data_dir
 from src.core.config import verify_restore_password
 
 KEEP_REGULAR = 12   # backups manuais/semanais mantidos
 KEEP_PERIODIC = 32  # backups periodicos mantidos (32 x 15min = 8h de historico)
+LOG_FILE = get_data_dir() / "backup.log"
+
+
+def _log(msg: str):
+    """Log simples de backups (data/backup.log) — falhas nao podem ser invisiveis."""
+    try:
+        with open(LOG_FILE, "a", encoding="utf-8") as f:
+            f.write(f"{datetime.now().isoformat(timespec='seconds')} {msg}\n")
+    except Exception:
+        pass
 
 
 class BackupManager:
     """Gerencia backups: semanal (silencioso), periodico (configuravel), manual,
-    duplo (copia em Documents) e restauracao com senha."""
+    duplo (copia em Documents) e restauracao com senha.
+
+    Os jobs rodam com next_run_time=agora: no startup cada um avalia seus
+    metadados e executa se estiver vencido (sessoes curtas de uso tambem
+    recebem backup). O IntervalTrigger mantem a cadencia enquanto o app fica
+    aberto."""
 
     def __init__(self):
         self.db_path = get_db_path()
@@ -26,20 +41,23 @@ class BackupManager:
         self._start_periodic_backup()
 
     def _start_auto_backup(self):
-        """Inicia agendador de backup semanal silencioso."""
+        """Backup semanal — avalia (e executa se vencido) ja no startup."""
         try:
             self.scheduler.add_job(
                 self.auto_backup_if_needed,
                 IntervalTrigger(days=7),
                 id='weekly_backup',
-                replace_existing=True
+                replace_existing=True,
+                next_run_time=datetime.now(),
             )
             self.scheduler.start()
-        except Exception:
-            pass  # Silencioso
+        except Exception as e:
+            _log(f"ERRO ao iniciar job semanal: {e}")
 
     def _start_periodic_backup(self):
-        """Backup periodico enquanto o app estiver aberto (intervalo configuravel)."""
+        """Backup periodico enquanto o app estiver aberto (intervalo configuravel).
+        next_run_time=agora: se o ultimo backup periodico passou do intervalo,
+        faz imediatamente na abertura do programa."""
         from src.core.app_settings import get_setting
 
         try:
@@ -51,10 +69,11 @@ class BackupManager:
                 self.periodic_backup,
                 IntervalTrigger(minutes=intervalo),
                 id='periodic_backup',
-                replace_existing=True
+                replace_existing=True,
+                next_run_time=datetime.now(),
             )
-        except Exception:
-            pass
+        except Exception as e:
+            _log(f"ERRO ao iniciar job periodico: {e}")
 
     def reschedule(self):
         """Reaplica o intervalo do backup periodico apos mudanca nas configuracoes."""
@@ -71,8 +90,28 @@ class BackupManager:
             history.set_backup_meta('last_auto_backup', today)
 
     def periodic_backup(self):
-        """Backup periodico leve (snapshot consistente via SQLite backup API)."""
-        self.create_backup(periodic=True)
+        """Backup periodico — executado no startup (se vencido) e a cada intervalo."""
+        from src.core.history_repo import HistoryRepository
+        from src.core.app_settings import get_setting
+
+        try:
+            intervalo = max(1, int(get_setting("backup_intervalo_min", 15)))
+        except Exception:
+            intervalo = 15
+        history = HistoryRepository()
+        now = datetime.now()
+        last = history.get_backup_meta('last_periodic_backup')
+        if last:
+            try:
+                # ainda dentro do intervalo -> nao repete (evita backup a cada abertura)
+                if now - datetime.fromisoformat(last) < timedelta(minutes=intervalo):
+                    return
+            except ValueError:
+                pass
+        path = self.create_backup(periodic=True)
+        history.set_backup_meta('last_periodic_backup', now.isoformat(timespec='seconds'))
+        if not path:
+            _log("ERRO backup periodico: create_backup falhou (ver disco/permissao)")
 
     def _snapshot_db(self, tmp_path: Path) -> bool:
         """
@@ -125,8 +164,10 @@ class BackupManager:
                     notify("Backup concluido", backup_name)
                 except Exception:
                     pass
+            _log(f"OK {backup_name}")
             return backup_path
-        except Exception:
+        except Exception as e:
+            _log(f"ERRO create_backup: {e}")
             return None
 
     def _dual_dir(self) -> Optional[Path]:

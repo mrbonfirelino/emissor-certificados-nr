@@ -385,6 +385,7 @@ TEMPLATES = [
         "descricao": "Cartao LOTOTO (1 por folha, Lider/Liderado) — PPTX",
         "empresa_default": "ALTEC",
         "text_fit": "clip",  # sem quebra de linha: corta o que passar do campo
+        "matricula_obrigatoria": False,  # so ArcelorMittal exige matricula
         "prep": prep_lototo,
     },
 ]
@@ -424,6 +425,8 @@ def main():
         }
         if cfg.get("text_fit"):
             card["text_fit"] = cfg["text_fit"]
+        if cfg.get("matricula_obrigatoria") is False:
+            card["matricula_obrigatoria"] = False
         card_json = OUT_DIR / f"{cfg['card_code']}.card.json"
         card_json.write_text(json.dumps(card, ensure_ascii=False, indent=2), encoding="utf-8")
 

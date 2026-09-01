@@ -156,6 +156,21 @@ def test_wrap_e_clip():
     print(f"[OK] clip: 'FABRICIO CARVALHO FERREIRA' -> '{cortado}'")
 
 
+def test_clip_linhas_csn():
+    """Modo CSN: excedente da 2a linha do nome e da 1a linha dos demais e apagado."""
+    from src.core.pptx_card_service import _clip_text_to_lines, _text_width_pt
+
+    texto = "UM DOIS TRES QUATRO CINCO SEIS SETE"
+    # largura que comporta o par mais largo ("TRES QUATRO") por linha
+    w2 = _text_width_pt("TRES QUATRO", 10.0, False)
+    duas = _clip_text_to_lines(texto, 10.0, False, w2, 2)
+    uma = _clip_text_to_lines(texto, 10.0, False, w2, 1)
+    # caixa comporta 2 palavras por linha: 2 linhas = 4 palavras; 1 linha = 2
+    assert duas.split() == ["UM", "DOIS", "TRES", "QUATRO"], duas
+    assert uma.split() == ["UM", "DOIS"], uma
+    print(f"[OK] clip por linhas: 2 linhas -> '{duas}' | 1 linha -> '{uma}'")
+
+
 def test_edicao_por_emissao():
     """Copias transitorias: edicao nao afeta o funcionario original."""
     orig = make_employees()[0]
@@ -318,6 +333,7 @@ if __name__ == "__main__":
         test_tokens()
         test_shrink()
         test_wrap_e_clip()
+        test_clip_linhas_csn()
         test_edicao_por_emissao()
         test_matricula_do_popup()
         test_validacao_dinamica()

@@ -7,6 +7,7 @@
   "cards_per_slide": 4,
   "slides": 1,
   "empresa_default": "ALTEC",
+  "wrap_max_lines": { "NOME": 2, "default": 1 },
   "card_zones_fraction": [
     [
       0.0,

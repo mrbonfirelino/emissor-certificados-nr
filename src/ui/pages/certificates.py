@@ -296,6 +296,12 @@ class CertificatesPage(ctk.CTkFrame):
         if not self.selected_employee:
             self.preview.set_content("Selecione um funcionario.")
             return
+        if not self.selected_employee.cpf or not self.selected_employee.cpf.strip():
+            self.preview.set_content(
+                "Funcionario sem CPF cadastrado.\n\n"
+                "Edite o funcionario para adicionar o CPF antes de emitir o certificado."
+            )
+            return
 
         try:
             from src.utils.validators import validar_data

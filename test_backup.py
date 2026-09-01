@@ -133,8 +133,72 @@ def test_backup_duplo():
         pathlib.Path.home = orig_path_home
 
 
+def test_periodic_startup_catchup():
+    """Sessao curta: backup periodico vencido executa na hora (via meta), e
+    nao repete quando o ultimo ainda esta dentro do intervalo."""
+    import sqlite3
+    from datetime import datetime, timedelta
+    from src.core.backup_manager import BackupManager
+    from src.core import app_settings
+
+    tmp = Path(tempfile.mkdtemp(prefix="test_catchup_"))
+    # banco + meta de backup no mesmo db (mesmo layout do app)
+    db = tmp / "db.db"
+    conn = sqlite3.connect(db)
+    conn.executescript("""
+        CREATE TABLE t (v TEXT);
+        CREATE TABLE IF NOT EXISTS backup_meta (key TEXT PRIMARY KEY, value TEXT);
+    """)
+    conn.commit()
+    conn.close()
+
+    bm = BackupManager.__new__(BackupManager)
+    bm.db_path = db
+    bm.backup_dir = tmp / "backups"
+    bm.backup_dir.mkdir()
+
+    orig_load = app_settings.load_app_settings
+    orig_get_db = None
+    import src.core.history_repo as hr
+    orig_get_db = hr.get_db_path
+    hr.get_db_path = lambda: db  # meta vai para o mesmo banco de teste
+
+    def settings(intervalo):
+        return lambda: {"notificacoes_ativas": False, "backup_duplo": False,
+                        "backup_intervalo_min": intervalo}
+
+    try:
+        app_settings.load_app_settings = settings(15)
+
+        # 1o startup: nunca fez periodico -> faz agora
+        bm.periodic_backup()
+        files1 = list(bm.backup_dir.glob("certificados_periodic_*.db.gz"))
+        assert len(files1) == 1, files1
+
+        # 2a chamada logo em seguida (dentro do intervalo) -> nao repete
+        bm.periodic_backup()
+        files2 = list(bm.backup_dir.glob("certificados_periodic_*.db.gz"))
+        assert len(files2) == 1, files2
+
+        # meta antiga (1h atras, intervalo 15min) -> refaz no "startup"
+        import time
+        time.sleep(1.1)  # garante timestamp diferente no nome do arquivo
+        from src.core.history_repo import HistoryRepository
+        hr2 = HistoryRepository(db)
+        hr2.set_backup_meta("last_periodic_backup",
+                            (datetime.now() - timedelta(hours=1)).isoformat(timespec="seconds"))
+        bm.periodic_backup()
+        files3 = list(bm.backup_dir.glob("certificados_periodic_*.db.gz"))
+        assert len(files3) == 2, files3
+        print("[OK] catch-up: startup faz backup vencido; nao duplica dentro do intervalo")
+    finally:
+        app_settings.load_app_settings = orig_load
+        hr.get_db_path = orig_get_db
+
+
 if __name__ == "__main__":
     test_snapshot_wal()
     test_retencao_separada()
     test_backup_duplo()
+    test_periodic_startup_catchup()
     print("\nTODOS OS TESTES PASSARAM")

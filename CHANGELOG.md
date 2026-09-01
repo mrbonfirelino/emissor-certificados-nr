@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.3.1] - 2026-09-01
+
+### Corrigido
+- **Matrícula pedida só onde precisa**: nova flag `matricula_obrigatoria` por
+  template — LOTOTO não pede mais (campo some da revisão; espaço fica em branco);
+  ArcelorMittal continua obrigatória
+- **CSN dentro do quadrado**: ajuste por caixa com fonte uniforme reduzida
+  (~9pt) e limite de linhas por campo (`wrap_max_lines`): nome em até 2 linhas,
+  Dpto/Empresa em 1 — o excedente é apagado (ex.: "JUNIOR" do nome de teste)
+- **Impressão (WinError 1155)**: cascata — verbo "print" do Windows → leitor
+  padrão com flag de impressão (Acrobat `/p /h`, Foxit `/p`, SumatraPDF
+  `-print-dialog`, abrindo já na janela de imprimir) → último recurso abre o PDF
+- **Preview de certificado sem CPF**: mensagem amigável em vez do erro
+  `CertificateData.funcionario_cpf` (a emissão já bloqueava; o preview não validava)
+- **Backup automático em sessões curtas**: jobs com avaliação imediata no
+  startup via metadados (`last_periodic_backup`) — intervalo de 15 min passa a
+  valer também para quem abre o app por poucos minutos; semanal idem
+- **Log de backups** (`data/backup.log`): falhas deixam de ser invisíveis no exe
+- **Rodapé da tela de cartões**: ações divididas em 2 linhas — todos os botões
+  visíveis sem esticar a janela
+- **Tela de backups**: refresh ao abrir + auto-refresh a cada 30s; tipo
+  "Periódico" reconhecido na lista
+
 ## [1.3.0] - 2026-09-01
 
 ### Adicionado

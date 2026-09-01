@@ -332,6 +332,8 @@ class NormaTechApp(ctk.CTk):
 
     def _show_backup(self):
         self._show_page("backup", BackupPage, self.backup_manager)
+        if "backup" in self.pages:
+            self.pages["backup"].refresh()
 
     def _show_config(self):
         from src.ui.pages.config import ConfigPage

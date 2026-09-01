@@ -8,6 +8,7 @@
   "slides": 2,
   "empresa_default": "ALTEC",
   "text_fit": "clip",
+  "matricula_obrigatoria": false,
   "card_zones_fraction": [
     [
       0.0,

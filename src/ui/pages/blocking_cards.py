@@ -19,6 +19,43 @@ from src.ui.components.generation_options_dialog import EmissionReviewDialog
 PER_PAGE_OPTIONS = [10, 25, 40]
 
 
+def _resolve_default_pdf_reader():
+    """Descobre o executavel do leitor de PDF padrao do Windows via registro."""
+    import winreg
+
+    progid = None
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER,
+                            r"Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.pdf\UserChoice") as k:
+            progid = winreg.QueryValueEx(k, "ProgId")[0]
+    except OSError:
+        pass
+    if not progid:
+        try:
+            with winreg.OpenKey(winreg.HKEY_CLASSES_ROOT, ".pdf") as k:
+                progid = winreg.QueryValueEx(k, "")[0]
+        except OSError:
+            return None
+    if not progid:
+        return None
+
+    try:
+        with winreg.OpenKey(winreg.HKEY_CLASSES_ROOT, rf"{progid}\shell\open\command") as k:
+            cmd = winreg.QueryValueEx(k, "")[0].strip()
+    except OSError:
+        return None
+
+    if not cmd:
+        return None
+    if cmd.startswith('"'):
+        end = cmd.find('"', 1)
+        exe = cmd[1:end if end > 0 else len(cmd)]
+    else:
+        idx = cmd.lower().find(".exe")
+        exe = cmd[:idx + 4] if idx >= 0 else cmd.split()[0]
+    return exe if exe.lower().endswith(".exe") else None
+
+
 class BlockingCardsPage(ctk.CTkFrame):
 
     def __init__(self, master, employee_repo: EmployeeRepository, **kwargs):
@@ -140,63 +177,67 @@ class BlockingCardsPage(ctk.CTkFrame):
         self.pagination = PaginationBar(self, on_page_change=self._refresh_list)
         self.pagination.grid(row=3, column=0, sticky="w", padx=20, pady=(2, 2))
 
-        # Row 4 — Acoes (rodape)
-        actions = ctk.CTkFrame(self, fg_color="transparent")
-        actions.grid(row=4, column=0, sticky="ew", padx=20, pady=(2, 8))
-        actions.grid_columnconfigure(5, weight=1)
-        self._actions = actions
+        # Row 4 — Acoes linha 1: selecao/importacao
+        actions1 = ctk.CTkFrame(self, fg_color="transparent")
+        actions1.grid(row=4, column=0, sticky="ew", padx=20, pady=(2, 4))
+        self._actions1 = actions1
 
         ctk.CTkButton(
-            actions, text="Importar Excel", font=fonts["body_bold"], height=34,
+            actions1, text="Importar Excel", font=fonts["body_bold"], height=32,
             fg_color=COLORS["accent"], hover_color=COLORS["secondary"],
             command=self._import_excel
-        ).grid(row=0, column=0, padx=(0, 8))
+        ).pack(side="left", padx=(0, 8))
 
         ctk.CTkButton(
-            actions, text="Selecionar Todos (pagina)", font=fonts["body_bold"], height=34,
+            actions1, text="Selecionar Pagina", font=fonts["body_bold"], height=32,
             fg_color=COLORS["secondary"], hover_color=COLORS["primary"],
             command=self._select_page
-        ).grid(row=0, column=1, padx=(0, 8))
+        ).pack(side="left", padx=(0, 8))
 
         ctk.CTkButton(
-            actions, text="Limpar Selecao", font=fonts["body_bold"], height=34,
+            actions1, text="Limpar Selecao", font=fonts["body_bold"], height=32,
             fg_color=COLORS["muted"], hover_color=COLORS["text_secondary"],
             command=self._clear_selection
-        ).grid(row=0, column=2, padx=(0, 16))
+        ).pack(side="left")
+
+        # Row 5 — Acoes linha 2: opcoes + preview/gerar
+        actions2 = ctk.CTkFrame(self, fg_color="transparent")
+        actions2.grid(row=5, column=0, sticky="ew", padx=20, pady=(0, 8))
+        self._actions2 = actions2
 
         self._single_pdf_var = ctk.BooleanVar(value=True)
         ctk.CTkCheckBox(
-            actions, text="PDF unico (varios cartoes por folha)",
+            actions2, text="PDF unico (varios cartoes por folha)",
             variable=self._single_pdf_var,
-            font=fonts["body"], text_color=COLORS["text"],
+            font=fonts["small"], text_color=COLORS["text"],
             fg_color=COLORS["primary"], hover_color=COLORS["secondary"],
-            checkbox_height=20, checkbox_width=20
-        ).grid(row=0, column=3, padx=(0, 16))
+            checkbox_height=18, checkbox_width=18
+        ).pack(side="left", padx=(0, 14))
 
         self._one_page_var = ctk.BooleanVar(value=False)
         self._one_page_cb = ctk.CTkCheckBox(
-            actions, text="1 cartao por pagina",
+            actions2, text="1 cartao por pagina",
             variable=self._one_page_var,
-            font=fonts["body"], text_color=COLORS["text"],
+            font=fonts["small"], text_color=COLORS["text"],
             fg_color=COLORS["primary"], hover_color=COLORS["secondary"],
-            checkbox_height=20, checkbox_width=20,
+            checkbox_height=18, checkbox_width=18,
             state="disabled"
         )
-        self._one_page_cb.grid(row=0, column=4, padx=(0, 16))
+        self._one_page_cb.pack(side="left")
 
         self.btn_preview = ctk.CTkButton(
-            actions, text="Preview", font=fonts["body_bold"], height=36,
+            actions2, text="Preview", font=fonts["body_bold"], height=34,
             fg_color=COLORS["accent"], hover_color=COLORS["secondary"],
             command=self._preview
         )
-        self.btn_preview.grid(row=0, column=6, padx=(0, 8))
+        self.btn_preview.pack(side="right", padx=(8, 0))
 
         self.btn_generate = ctk.CTkButton(
-            actions, text="Gerar Cartoes", font=fonts["body_bold"], height=36,
+            actions2, text="Gerar Cartoes", font=fonts["body_bold"], height=34,
             fg_color=COLORS["success"], hover_color="#256B28",
             command=self._generate
         )
-        self.btn_generate.grid(row=0, column=7)
+        self.btn_generate.pack(side="right")
 
         self.after(200, lambda: self._fit_scroll_height(0))
         self._update_grid_info()
@@ -244,10 +285,14 @@ class BlockingCardsPage(ctk.CTkFrame):
             return
         header_h = self._header.winfo_reqheight()
         pag_h = self.pagination.winfo_reqheight()
-        actions_h = self._actions.winfo_reqheight() if hasattr(self, "_actions") else 40
-        # margens reais: pady da lista (8+2) + paginacao (2+2) + acoes (2+8) = 24
-        margins = 24
-        available = h - header_h - pag_h - actions_h - margins
+        a1_h = self._actions1.winfo_reqheight() if hasattr(self, "_actions1") else 40
+        a2_h = self._actions2.winfo_reqheight() if hasattr(self, "_actions2") else 44
+        if min(header_h, pag_h) < 5 and _retry < 5:
+            self.after(300, lambda r=_retry + 1: self._fit_scroll_height(r))
+            return
+        # margens: lista pady(8+2)=10 + paginacao(2+2)=4 + acoes1(2+4)=6 + acoes2(0+8)=8
+        margins = 10 + 4 + 6 + 8
+        available = h - header_h - pag_h - a1_h - a2_h - margins
         self.list_frame.configure(height=max(available, 150))
 
     # ── Paginacao ────────────────────────────────────────────
@@ -623,16 +668,44 @@ class BlockingCardsPage(ctk.CTkFrame):
 
     @staticmethod
     def _print_pdf(path):
-        """Envia o PDF para a impressora padrao do Windows."""
+        """
+        Envia o PDF para a impressora em cascata:
+        1. verbo "print" do Windows (exige app associado)
+        2. leitor padrão de PDF com flag de impressão (abre na tela de imprimir):
+           Acrobat /p /h · Foxit /p · SumatraPDF -print-dialog
+        3. último recurso: abre o PDF no visualizador padrão
+        """
+        path = str(path)
         try:
-            if sys.platform == "win32":
-                os.startfile(str(path), "print")
-            elif sys.platform == "darwin":
-                subprocess.run(["lp", str(path)])
-            else:
-                subprocess.run(["lp", str(path)])
+            os.startfile(path, "print")
+            return
+        except OSError:
+            pass
+
+        exe = _resolve_default_pdf_reader()
+        if exe:
+            nome = exe.lower()
+            try:
+                if "acrord32" in nome or "acrobat" in nome:
+                    subprocess.Popen([exe, "/p", "/h", path])
+                    return
+                if "foxit" in nome:
+                    subprocess.Popen([exe, "/p", path])
+                    return
+                if "sumatra" in nome:
+                    subprocess.Popen([exe, "-print-dialog", path])
+                    return
+            except Exception:
+                pass
+
+        try:
+            os.startfile(path)
         except Exception as e:
-            messagebox.showerror("Impressao", f"Erro ao imprimir: {e}")
+            messagebox.showerror(
+                "Impressao",
+                f"Nao foi possivel imprimir nem abrir o PDF.\n\n{e}\n\n"
+                "Dica: associe um leitor de PDF (Adobe, Edge ou Chrome) como padrao do Windows."
+            )
 
     def _import_excel(self):
         """Importa lista de bloqueios de planilha (A=Nome, B=CPF) e marca a selecao."""
