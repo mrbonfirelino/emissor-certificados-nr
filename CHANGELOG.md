@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.3.0] - 2026-09-01
+
+### Adicionado
+- **Revisão da Emissão** (substitui o popup simples): abre sempre antes de Gerar e
+  Preview, com edição de **nome, função, telefone e foto** por funcionário
+  (cópias transitórias — nada grava no cadastro), setor do lote, papel
+  Líder/Liderado e matrícula obrigatória
+- **"Voltar e Editar" no Preview**: reabre a revisão com as edições preservadas e
+  regenera o preview até o resultado ficar bom
+- **Quebra de linha** (word_wrap) para nome/função nos templates PPTX com
+  auto-shrink vertical: reduz a fonte em passos de 0,5pt até as linhas caberem
+- **Modo clip** (`text_fit: "clip"`, usado no LOTOTO): sem quebra e sem redução —
+  o texto que passar do limite do campo é cortado
+
+### Corrigido
+- **ALTEC-PEQUENO com 8 cartões por folha**: shapes do 8º cartão (adicionados
+  manualmente) renomeados para `CARD8_*` — antes os dois últimos cartões saíam
+  com os dados do 7º funcionário
+- Shape de função do cartão 3 do ALTEC-PEQUENO estava nomeado como NOME
+  (funcionava por token, corrigido por clareza); tolerância da tabela de
+  posições da preparação reduzida (0,45 → 0,35) para evitar esse tipo de troca
+- Script de preparação agora reproduz o 8º cartão e a posição das fotos da
+  linha 2 ajustada pelo usuário (regenerações futuras não desfazem a edição)
+
 ## [1.2.0] - 2026-08-31
 
 ### Adicionado

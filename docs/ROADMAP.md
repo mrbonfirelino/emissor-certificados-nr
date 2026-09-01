@@ -1,7 +1,7 @@
 # Roadmap - NormaTech
 
 ## Status do Projeto
-- Versao atual: 1.2.0
+- Versao atual: 1.3.0
 - NRs disponiveis: 17 (01, 05, 06, 09, 10, 11, 12, 17, 18, 26, 33, 34, 35 + FDS, BRIGADISTA-NR23, PTA, MOTOSERRA, MUNCK, PONTE-ROLANTE, DIR-DEFENSIVA, CIPAA)
 
 ---
@@ -107,6 +107,9 @@ integrado de forma transparente ao sistema JSON existente (mesmo dropdown).
 | Ferramenta de preparação | `tools/prepare_pptx_templates.py` (regenera templates dos originais) | Media | Concluído |
 | Documentação | `docs/PPTX_TEMPLATES.md` | Media | Concluído |
 | Testes | `test_pptx_cards.py` (unitários + E2E com PowerPoint) | Media | Concluído |
+| Quebra de linha | word_wrap + auto-shrink vertical (todos PPTX); modo clip no LOTOTO (corta no limite) | Alta | Concluído |
+| Edição por emissão | Revisão da Emissão: editar nome/função/telefone/foto só na hora (cópias, sem tocar o banco) + "Voltar e Editar" no Preview | Alta | Concluído |
+| 8 cartões ALTEC-PEQUENO | Slot 8 validado (shapes CARD8_*, zonas e preparação atualizados) | Alta | Concluído |
 
 Requisitos: Microsoft PowerPoint instalado na máquina (conversão via COM).
 

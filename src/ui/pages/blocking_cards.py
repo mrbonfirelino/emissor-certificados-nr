@@ -14,7 +14,7 @@ from src.core.blocking_card_service import (
     generate_cards,
 )
 from src.ui.components.pagination import PaginationBar
-from src.ui.components.generation_options_dialog import GenerationOptionsDialog
+from src.ui.components.generation_options_dialog import EmissionReviewDialog
 
 PER_PAGE_OPTIONS = [10, 25, 40]
 
@@ -387,7 +387,9 @@ class BlockingCardsPage(ctk.CTkFrame):
 
     def _collect(self, action_label: str = "emitir"):
         """
-        Valida selecao/template e coleta o contexto do lote (popup se aplicavel).
+        Abre a Revisao da Emissao (sempre) sobre COPIAS transitorias dos
+        funcionarios — edicoes (nome/funcao/telefone/foto + setor/papel/
+        matricula) valem somente para esta emissao, nada e gravado no banco.
         Retorna (valid, template, options, is_pptx, missing) ou None se abortado.
         """
         selected_ids = list(self._selected)
@@ -406,8 +408,18 @@ class BlockingCardsPage(ctk.CTkFrame):
             messagebox.showerror("Erro", f"Template '{self._template_var.get()}' nao encontrado.", parent=self)
             return None
 
+        # copias transitórias — o banco nao e afetado
+        copies = [e.model_copy() for e in selected]
+        dlg = EmissionReviewDialog(self, copies, template, initial_setor=self._last_setor)
+        self.wait_window(dlg)
+        if not dlg.selected:
+            return None
+        options = dlg.selected
+        self._last_setor = options.get("setor", "")
+
+        # validacao dinamica sobre as copias EDITADAS
         valid, missing = [], []
-        for emp in selected:
+        for emp in options["employees"]:
             faltas = self._missing_fields(emp)
             if faltas:
                 missing.append(f"{emp.nome}: sem {' e '.join(faltas)}")
@@ -431,19 +443,7 @@ class BlockingCardsPage(ctk.CTkFrame):
             if not resp:
                 return None
 
-        # Contexto do lote (templates PPTX que usam {{SETOR}}/{{PAPEL}}/{{MATRICULA}})
-        options = None
         is_pptx = template.get("template_type") == "pptx"
-        if is_pptx:
-            used = set(template.get("used_fields") or [])
-            if used & {"SETOR", "PAPEL", "MATRICULA"}:
-                dlg = GenerationOptionsDialog(self, valid, template, initial_setor=self._last_setor)
-                self.wait_window(dlg)
-                if not dlg.selected:
-                    return None
-                options = dlg.selected
-                self._last_setor = options.get("setor", "")
-
         return valid, template, options, is_pptx, missing
 
     def _run_generation(self, valid, template, options, is_pptx, output_dir=None):
@@ -535,48 +535,89 @@ class BlockingCardsPage(ctk.CTkFrame):
         from pathlib import Path
 
         tmp_dir = Path(tempfile.mkdtemp(prefix="preview_cartoes_"))
-        paths = self._run_generation(valid, template, options, is_pptx, output_dir=tmp_dir)
-        if not paths:
-            messagebox.showerror("Erro", "Nenhum PDF foi gerado para o preview.", parent=self)
+        while True:
+            paths = self._run_generation(valid, template, options, is_pptx, output_dir=tmp_dir)
+            if not paths:
+                messagebox.showerror("Erro", "Nenhum PDF foi gerado para o preview.", parent=self)
+                return
+
+            action = self._show_preview_dialog(template, paths[0], len(valid))
+            if action == "edit":
+                # reabre a revisao com as MESMAS copias (edicoes anteriores preservadas)
+                dlg = EmissionReviewDialog(self, options["employees"], template,
+                                           initial_setor=options.get("setor", ""))
+                self.wait_window(dlg)
+                if not dlg.selected:
+                    continue  # cancelou a edicao — mostra o preview atual de novo
+                options = dlg.selected
+                self._last_setor = options.get("setor", "")
+                valid, missing = [], []
+                for emp in options["employees"]:
+                    faltas = self._missing_fields(emp)
+                    if faltas:
+                        missing.append(f"{emp.nome}: sem {' e '.join(faltas)}")
+                    else:
+                        valid.append(emp)
+                if not valid:
+                    messagebox.showerror("Cartao de Bloqueio",
+                                         "Nenhum cartao valido apos a edicao.", parent=self)
+                    return
+                continue  # regenera o preview com os dados editados
+
+            if action == "final":
+                final_paths = self._run_generation(valid, template, options, is_pptx)
+                if final_paths:
+                    try:
+                        from src.utils.notifications import notify
+                        notify("Cartoes de Bloqueio", f"{len(valid)} cartao(oes) gerado(s).")
+                    except Exception:
+                        pass
+                    self._show_result_dialog(valid, final_paths, missing)
             return
 
+    def _show_preview_dialog(self, template, pdf_path, n_cards: int) -> str:
+        """Dialogo de preview. Retorna 'edit' | 'final' | 'close'."""
         fonts = get_fonts()
+        result = {"action": "close"}
+
         dlg = ctk.CTkToplevel(self)
         dlg.title(f"Preview — {template.get('card_code', '')}")
-        dlg.geometry("900x760")
+        dlg.geometry("900x780")
         dlg.transient(self)
         dlg.grab_set()
         x = self.winfo_rootx() + (self.winfo_width() // 2) - 450
-        y = self.winfo_rooty() + (self.winfo_height() // 2) - 380
+        y = self.winfo_rooty() + (self.winfo_height() // 2) - 390
         dlg.geometry(f"+{max(x, 0)}+{max(y, 0)}")
 
         from src.ui.components.pdf_preview import PDFPreview
         preview = PDFPreview(dlg)
         preview.pack(fill="both", expand=True, padx=12, pady=(12, 8))
-        preview.show_pdf_image(str(paths[0]))
+        preview.show_pdf_image(str(pdf_path))
+
+        def set_action(a):
+            result["action"] = a
+            dlg.destroy()
 
         btns = ctk.CTkFrame(dlg, fg_color="transparent")
         btns.pack(fill="x", padx=12, pady=(0, 12))
-        ctk.CTkLabel(btns, text=f"{len(valid)} cartao(oes) — modo preview (arquivo temporario)",
+        ctk.CTkLabel(btns, text=f"{n_cards} cartao(oes) — preview temporario; edicoes nao afetam o cadastro",
                      font=fonts["small"], text_color=COLORS["muted"]).pack(side="left")
 
-        def gerar_definitivo():
-            dlg.destroy()
-            final_paths = self._run_generation(valid, template, options, is_pptx)
-            if final_paths:
-                try:
-                    from src.utils.notifications import notify
-                    notify("Cartoes de Bloqueio", f"{len(valid)} cartao(oes) gerado(s).")
-                except Exception:
-                    pass
-                self._show_result_dialog(valid, final_paths, missing)
-
-        ctk.CTkButton(btns, text="Imprimir", width=90, height=32, font=fonts["body_bold"],
-                      fg_color=COLORS["secondary"], hover_color=COLORS["primary"],
-                      command=lambda: self._print_pdf(paths[0])).pack(side="right", padx=4)
+        ctk.CTkButton(btns, text="Fechar", width=80, height=32, font=fonts["body_bold"],
+                      fg_color=COLORS["muted"], hover_color=COLORS["text_secondary"],
+                      command=lambda: set_action("close")).pack(side="right", padx=4)
         ctk.CTkButton(btns, text="Gerar PDF Definitivo", width=150, height=32, font=fonts["body_bold"],
                       fg_color=COLORS["success"], hover_color="#256B28",
-                      command=gerar_definitivo).pack(side="right", padx=4)
+                      command=lambda: set_action("final")).pack(side="right", padx=4)
+        ctk.CTkButton(btns, text="Imprimir", width=90, height=32, font=fonts["body_bold"],
+                      fg_color=COLORS["secondary"], hover_color=COLORS["primary"],
+                      command=lambda: self._print_pdf(pdf_path)).pack(side="right", padx=4)
+        ctk.CTkButton(btns, text="Voltar e Editar", width=120, height=32, font=fonts["body_bold"],
+                      fg_color=COLORS["warning"], hover_color="#BF5300",
+                      command=lambda: set_action("edit")).pack(side="right", padx=4)
+
+        self.wait_window(dlg)
+        return result["action"]
 
     # ── Impressao / importacao ───────────────────────────────
 

@@ -28,20 +28,28 @@ def make_employees():
     fotos_dir = ROOT / "FOTOS PARA TESTE"
     foto1 = next(fotos_dir.glob("ADELSON*")).read_bytes()
     foto2 = next(fotos_dir.glob("ALCIMAR*")).read_bytes()
-    return [
+    fotos = [foto1, foto2]
+    base = [
         # nome longo de proposito: estressa o auto-shrink de fonte
-        Employee(id=1, nome="Fabricio Carvalho Ferreira Da Silva Santos Junior", cpf="529.982.247-25",
-                 funcao="Soldador", telefone="21981586650", foto=foto1),
-        Employee(id=2, nome="Ailton Costa Martins", cpf="111.444.777-35",
-                 funcao="Tecnico em Seguranca do Trabalho", telefone="22981632680", foto=foto2),
-        Employee(id=3, nome="Luciano Dias", cpf="123.456.789-09",
-                 funcao="Encarregado", telefone="21984209236", foto=foto1),
-        Employee(id=4, nome="Paulo Vitor Barbosa", cpf="987.654.321-00",
-                 funcao="Eletricista", telefone="21987654321", foto=foto2),
+        ("Fabricio Carvalho Ferreira Da Silva Santos Junior", "529.982.247-25", "Soldador", "21981586650"),
+        ("Ailton Costa Martins", "111.444.777-35", "Tecnico em Seguranca do Trabalho", "22981632680"),
+        ("Luciano Dias", "123.456.789-09", "Encarregado de Montagem e Manutencao Predial", "21984209236"),
+        ("Paulo Vitor Barbosa", "987.654.321-00", "Eletricista", "21987654321"),
+        ("Herkton Diniz Santos", "222.333.444-05", "Mecanico de Manutencao Industrial", "22987651234"),
+        ("Valques Ribeiro Goncalves", "333.444.555-08", "Caldeireiro", "21986543210"),
+        ("Wesley De Azevedo Barboza", "444.555.666-19", "Montador de Andaime", "22985432109"),
+        ("Wancler Alves Poubel", "555.666.777-20", "Ajudante de Soldador Pleno", "21984321098"),
+    ]
+    return [
+        Employee(id=i + 1, nome=n, cpf=c, funcao=f, telefone=t, foto=fotos[i % 2])
+        for i, (n, c, f, t) in enumerate(base)
     ]
 
 
-E2E_MATRICULAS = {1: "12240721707", 2: "22927112738", 3: "10442439709", 4: "70132975"}
+E2E_MATRICULAS = {
+    1: "12240721707", 2: "22927112738", 3: "10442439709", 4: "70132975",
+    5: "13762726795", 6: "14154086707", 7: "17088417766", 8: "18393107741",
+}
 
 
 # ── Unitarios ───────────────────────────────────────────────
@@ -60,11 +68,14 @@ def test_tokens():
             self.paragraphs = paras
             self.margin_left = 91440
             self.margin_right = 91440
+            self.margin_top = 45720
+            self.margin_bottom = 45720
 
     class FakeShape:
         def __init__(self, tf):
             self.text_frame = tf
             self.width = 3600000  # 10cm — largo o bastante para nao acionar shrink
+            self.height = None
 
     # placeholder quebrado em varios runs
     tf = FakeTF([FakePara("Nome: ", "{{NO", "ME}} | teste")])
@@ -89,19 +100,27 @@ def test_shrink():
             self.paragraphs = [para]
             self.margin_left = 91440
             self.margin_right = 91440
+            self.margin_top = 45720
+            self.margin_bottom = 45720
 
     class FakeShape:
-        def __init__(self, tf, w):
+        def __init__(self, tf, w, h=None):
             self.text_frame = tf
             self.width = w
+            self.height = h  # None -> shrink ignora altura (so largura)
 
     from src.core.pptx_card_service import _shrink_paragraph_to_fit
 
-    # texto longo em shape estreito (2cm) -> fonte deve encolher
+    # texto longo em shape estreito (2cm), sem altura -> encolhe pela largura
     r = FakeRun("FABRICIO CARVALHO FERREIRA DA SILVA SANTOS JUNIOR")
     _shrink_paragraph_to_fit(FakePara(r), r.text, FakeShape(None, 720000), FakeTF(None))
     assert r.font.size.pt < 12.0, r.font.size.pt
-    print(f"[OK] auto-shrink: 12pt -> {r.font.size.pt}pt para caber em 2cm")
+    print(f"[OK] auto-shrink (largura): 12pt -> {r.font.size.pt}pt para caber em 2cm")
+
+    # com quebra: caixa larga e alta comporta em 2 linhas sem reduzir tanto
+    r2 = FakeRun("FABRICIO CARVALHO FERREIRA DA SILVA")
+    _shrink_paragraph_to_fit(FakePara(r2), r2.text, FakeShape(None, 2000000, 1000000), FakeTF(None))
+    print(f"[OK] auto-shrink (wrap vertical): {r2.font.size.pt}pt em caixa 5.6x2.8cm")
 
 
 def test_matricula_do_popup():
@@ -114,6 +133,41 @@ def test_matricula_do_popup():
     vals2 = _employee_values(emps[1], tpl, {})
     assert vals2["MATRICULA"] == "", vals2["MATRICULA"]
     print("[OK] matricula exclusiva do popup (sem fallback CPF)")
+
+
+def test_wrap_e_clip():
+    from src.core.pptx_card_service import _wrap_line_count, _clip_text_to_width, _text_width_pt
+
+    # wrap: nome longo em caixa estreita -> 2+ linhas
+    nome = "FABRICIO CARVALHO FERREIRA DA SILVA SANTOS JUNIOR"
+    largura_1linha = _text_width_pt(nome, 8.0, True)
+    n = _wrap_line_count(nome, 8.0, True, largura_1linha * 0.45)
+    assert n >= 2, n
+    n1 = _wrap_line_count("JOAO", 8.0, True, largura_1linha)
+    assert n1 == 1
+    print(f"[OK] estimador de quebra: {n} linhas para caixa de 45%")
+
+    # clip: texto cortado no limite, prefixo preservado, sem reticencias
+    limit = _text_width_pt("FABRICIO CARVALHO", 8.0, True)
+    cortado = _clip_text_to_width("FABRICIO CARVALHO FERREIRA", 8.0, True, limit)
+    assert cortado.startswith("FABRICIO"), cortado
+    assert "..." not in cortado, cortado
+    assert _text_width_pt(cortado, 8.0, True) <= limit, cortado
+    print(f"[OK] clip: 'FABRICIO CARVALHO FERREIRA' -> '{cortado}'")
+
+
+def test_edicao_por_emissao():
+    """Copias transitorias: edicao nao afeta o funcionario original."""
+    orig = make_employees()[0]
+    copia = orig.model_copy()
+    copia.nome = "EDITADO SO NA EMISSAO"
+    copia.funcao = "Nova Funcao"
+    vals = _employee_values(copia, {"empresa_default": "ALTEC"}, {})
+    assert vals["NOME"] == "EDITADO SO NA EMISSAO"
+    assert vals["FUNCAO"] == "NOVA FUNCAO"
+    assert orig.nome != "EDITADO SO NA EMISSAO" and orig.funcao == "Soldador"
+    assert copia.id == orig.id  # papeis/matriculas continuam casando por id
+    print("[OK] edicao por emissao: copia editada, original intacto")
 
 
 def test_validacao_dinamica():
@@ -133,13 +187,14 @@ def test_validacao_dinamica():
     print("[OK] ALTEC-PEQUENO exige telefone e foto")
 
     valid, missing = validate_employees_for_pptx(emps, tpls["CSN"])
-    assert len(valid) == 4 and not missing
+    assert len(valid) == len(emps) and not missing
     print("[OK] funcionarios completos validos")
 
 
 def test_fill_clone_tokens():
     tpls = load_pptx_card_templates()
     tpl = tpls["LOTOTO"]
+    assert tpl.get("text_fit") == "clip", "LOTOTO deveria usar text_fit=clip"
     prs = Presentation(tpl["_pptx_path"])
     from src.core.pptx_card_service import _fill_clone
     emps = make_employees()[:2]
@@ -151,12 +206,31 @@ def test_fill_clone_tokens():
         for shp in _iter_all_shapes(slide.shapes):
             if getattr(shp, "has_text_frame", False):
                 texts.append(shp.text_frame.text)
+                # modo clip: word_wrap desligado nos shapes de dados preenchidos
+                if (shp.name or "").startswith("CARD"):
+                    assert shp.text_frame.word_wrap is False, shp.name
     joined = "\n".join(texts)
     assert "{{" not in joined, "tokens remanescentes!"
-    assert "FABRICIO CARVALHO FERREIRA DA SILVA SANTOS JUNIOR" in joined
+    assert "FABRICIO CARVALHO" in joined  # clip pode cortar o fim, nunca o inicio
     assert "LIDER" in joined and "Manutencao Mecanica" in joined
-    assert "22927112738" in joined  # matricula do slide 2 (via popup)
-    print("[OK] _fill_clone LOTOTO (2 slides) sem tokens remanescentes")
+    print("[OK] _fill_clone LOTOTO (clip, 2 slides) sem tokens remanescentes")
+
+
+def test_altec_pequeno_8_slots():
+    """ALTEC-PEQUENO: 8 slots com o 8o independente do 7o (fix do slot 8)."""
+    tpls = load_pptx_card_templates()
+    tpl = tpls["ALTEC-PEQUENO"]
+    assert tpl["_capacity"] == 8, tpl["_capacity"]
+    prs = Presentation(tpl["_pptx_path"])
+    from src.core.pptx_card_service import _fill_clone, _iter_all_shapes
+    emps = make_employees()
+    _fill_clone(prs, emps, tpl, {})
+    texts = [s.text_frame.text for s in _iter_all_shapes(prs.slides[0].shapes)
+             if getattr(s, "has_text_frame", False)]
+    joined = "\n".join(texts)
+    assert "WESLEY DE AZEVEDO BARBOZA" in joined, "slot 7 sem dados"
+    assert "WANCLER ALVES POUBEL" in joined, "slot 8 sem dados (renomeacao falhou?)"
+    print("[OK] ALTEC-PEQUENO: 8 slots preenchidos, 8o distinto do 7o")
 
 
 # ── E2E ─────────────────────────────────────────────────────
@@ -230,7 +304,7 @@ def test_e2e():
         import fitz
         d = fitz.open(str(p1))
         try:
-            expected = 4  # 4 funcionarios -> 4 cartoes
+            expected = len(emps)  # 1 pagina por cartao
             assert len(d) == expected, f"{code}: esperava {expected} paginas, veio {len(d)}"
         finally:
             d.close()
@@ -243,9 +317,12 @@ if __name__ == "__main__":
     if run_all or "--unit" in args:
         test_tokens()
         test_shrink()
+        test_wrap_e_clip()
+        test_edicao_por_emissao()
         test_matricula_do_popup()
         test_validacao_dinamica()
         test_fill_clone_tokens()
+        test_altec_pequeno_8_slots()
     if run_all or "--e2e" in args:
         test_e2e()
     print("\nTODOS OS TESTES PASSARAM")

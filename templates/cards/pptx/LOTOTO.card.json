@@ -7,6 +7,7 @@
   "cards_per_slide": 1,
   "slides": 2,
   "empresa_default": "ALTEC",
+  "text_fit": "clip",
   "card_zones_fraction": [
     [
       0.0,

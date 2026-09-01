@@ -167,32 +167,35 @@ def prep_arcelor(prs):
 # ── ALTEC PEQUENO ───────────────────────────────────────────
 
 ALTEC_P_FIELDS = {
-    # (l_cm, t_cm): (slot, campo)  — posicoes dos shapes de dados
-    (2.12, 6.98): (1, "NOME"), (8.18, 6.99): (2, "NOME"), (12.9, 7.06): (3, "NOME"), (18.12, 7.13): (4, "NOME"),
-    (1.99, 15.61): (5, "NOME"), (8.43, 15.62): (6, "NOME"), (13.07, 15.43): (7, "NOME"),
-    (2.13, 7.47): (1, "FUNCAO"), (7.53, 7.48): (2, "FUNCAO"), (13.0, 7.47): (3, "FUNCAO"), (17.93, 7.66): (4, "FUNCAO"),
-    (2.13, 16.22): (5, "FUNCAO"), (7.42, 16.18): (6, "FUNCAO"), (13.02, 16.1): (7, "FUNCAO"),
-    (2.68, 8.03): (1, "TELEFONE"), (7.85, 8.04): (2, "TELEFONE"), (13.07, 8.05): (3, "TELEFONE"), (18.54, 8.09): (4, "TELEFONE"),
-    (2.76, 16.83): (5, "TELEFONE"), (7.94, 16.74): (6, "TELEFONE"), (13.17, 16.71): (7, "TELEFONE"),
+    # (l_cm, t_cm): (slot, campo)  — posicoes medidas dos shapes de dados
+    # ATENCAO: tolerancia 0.35 no _find_field; nome e funcao do mesmo cartao
+    # ficam a ~0.5cm de distancia — nao aproximar mais que isso na tabela
+    (2.12, 6.98): (1, "NOME"), (8.18, 6.99): (2, "NOME"), (12.82, 7.06): (3, "NOME"), (18.12, 7.13): (4, "NOME"),
+    (1.99, 15.61): (5, "NOME"), (8.43, 15.62): (6, "NOME"), (13.07, 15.43): (7, "NOME"), (18.07, 15.53): (8, "NOME"),
+    (2.26, 7.76): (1, "FUNCAO"), (7.53, 7.48): (2, "FUNCAO"), (12.82, 7.59): (3, "FUNCAO"), (17.93, 7.66): (4, "FUNCAO"),
+    (2.13, 16.22): (5, "FUNCAO"), (7.42, 16.18): (6, "FUNCAO"), (13.02, 16.1): (7, "FUNCAO"), (18.07, 16.33): (8, "FUNCAO"),
+    (2.68, 8.03): (1, "TELEFONE"), (7.85, 8.04): (2, "TELEFONE"), (12.82, 8.19): (3, "TELEFONE"), (18.54, 8.09): (4, "TELEFONE"),
+    (2.76, 16.83): (5, "TELEFONE"), (7.94, 16.74): (6, "TELEFONE"), (13.17, 16.71): (7, "TELEFONE"), (18.07, 17.09): (8, "TELEFONE"),
 }
 
 
 def _find_field(l_cm, t_cm):
     for (fl, ft), val in ALTEC_P_FIELDS.items():
-        if abs(l_cm - fl) < 0.45 and abs(t_cm - ft) < 0.45:
+        if abs(l_cm - fl) < 0.35 and abs(t_cm - ft) < 0.35:
             return val
     return None
 
 
-# posicao da foto 3x4 dentro de cada cartao (card_left cm): (slot, left_cm, top_cm)
+# posicao da foto 3x4 dentro de cada cartao (card_left cm): {slot: (left_cm, top_cm)}
 ALTEC_P_FOTO_POS = {
     1: (2.18 + 1.55, 2.45),   # A (linha 1)
     2: (7.45 + 1.55, 2.45),   # B
     3: (12.71 + 1.55, 2.45),  # C
     4: (18.0 + 1.55, 2.45),   # D
-    5: (2.1 + 1.55, 10.92),   # E (linha 2)
-    6: (7.45 + 1.55, 10.92),  # F
-    7: (12.79 + 1.55, 10.92), # G
+    5: (2.1 + 1.55, 10.8),    # E (linha 2)
+    6: (7.45 + 1.55, 10.8),   # F
+    7: (12.79 + 1.55, 10.8),  # G
+    8: (18.0 + 1.55, 10.84),  # H (8o cartao)
 }
 ALTEC_P_FOTO_W_CM = 1.9
 ALTEC_P_FOTO_H_CM = 2.55
@@ -237,6 +240,21 @@ def prep_altec_pequeno(prs):
                 r.font.size = Pt(ALTEC_P_FONT_PT[campo])
         report.append((k, campo))
 
+    # 8o cartao: no original e reserva em branco — clona os campos do 7o
+    # deslocados ~5cm a direita (coluna 4 da linha 2), mesma posicao vertical
+    from copy import deepcopy as _dc
+
+    dx = int(Cm(5.0))
+    for shape in list(slide.shapes):
+        n = shape.name or ""
+        if n in ("CARD7_NOME", "CARD7_FUNCAO", "CARD7_TELEFONE"):
+            el = _dc(shape._element)
+            shape._element.getparent().append(el)
+            novo = slide.shapes[-1]
+            novo.left = (novo.left or 0) + dx
+            novo.name = n.replace("CARD7_", "CARD8_", 1)
+            report.append((8, n.split("_", 1)[1]))
+
     # foto 3x4: o template original nao tem foto — insere placeholder centralizado
     # na area livre entre os logos do topo e a faixa "MANUTENCAO / NAO LIGUE"
     foto_bytes = _foto_placeholder_jpeg()
@@ -249,9 +267,8 @@ def prep_altec_pequeno(prs):
         report.append((k, "FOTO"))
     bands_x = [(0, 7.3), (7.3, 12.5), (12.5, 17.82), (17.82, 25.4)]
     bands_y = [(0, 9.37), (9.37, 19.05)]
-    # 7 slots usados (o 8o cartao e reserva em branco no original)
-    zones = cm_fractions(bands_x, bands_y, 25.4, 19.05)[:7]
-    return {"zones": zones, "cards_per_slide": 7, "report": report}
+    zones = cm_fractions(bands_x, bands_y, 25.4, 19.05)  # 8 slots (4x2)
+    return {"zones": zones, "cards_per_slide": 8, "report": report}
 
 
 # ── CSN ─────────────────────────────────────────────────────
@@ -367,6 +384,7 @@ TEMPLATES = [
         "cliente_nome": "LOTO/TO",
         "descricao": "Cartao LOTOTO (1 por folha, Lider/Liderado) — PPTX",
         "empresa_default": "ALTEC",
+        "text_fit": "clip",  # sem quebra de linha: corta o que passar do campo
         "prep": prep_lototo,
     },
 ]
@@ -404,6 +422,8 @@ def main():
             "empresa_default": cfg["empresa_default"],
             "card_zones_fraction": result["zones"],
         }
+        if cfg.get("text_fit"):
+            card["text_fit"] = cfg["text_fit"]
         card_json = OUT_DIR / f"{cfg['card_code']}.card.json"
         card_json.write_text(json.dumps(card, ensure_ascii=False, indent=2), encoding="utf-8")
 

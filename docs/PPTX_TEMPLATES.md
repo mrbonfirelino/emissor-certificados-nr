@@ -27,24 +27,40 @@ Os dois aparecem juntos no dropdown "Modelo" da tela de Emissao de Cartoes de Bl
 
    | Token | Origem do dado |
    |-------|----------------|
-   | `{{NOME}}` | Funcionario (maiusculas) |
-   | `{{FUNCAO}}` | Funcionario (maiusculas) |
-   | `{{TELEFONE}}` | Funcionario (formatado) |
+   | `{{NOME}}` | Funcionario (maiusculas) — editavel na revisao |
+   | `{{FUNCAO}}` | Funcionario (maiusculas) — editavel na revisao |
+   | `{{TELEFONE}}` | Funcionario (formatado) — editavel na revisao |
    | `{{CPF}}` | Funcionario |
    | `{{MATRICULA}}` | **Obrigatória no popup** de geração (número tem validade — não fica no cadastro, sem fallback CPF) |
-   | `{{SETOR}}` | Perguntado no popup (valor unico para o lote) |
+   | `{{SETOR}}` | Perguntado na revisão (valor unico para o lote) |
    | `{{EMPRESA}}` | Fixo no `card.json` (`empresa_default`) |
-   | `{{PAPEL}}` | Popup na geracao: LIDER ou LIDERADO (por funcionario) |
+   | `{{PAPEL}}` | Revisão: LIDER ou LIDERADO (por funcionario) |
 
 4. **Somente os tokens presentes no template sao usados** (deteccao automatica).
    A validacao tambem e dinamica: um template sem `{{TELEFONE}}` nao exige telefone.
-5. Na geracao:
+5. **Ajuste de texto** (campo `text_fit` do `card.json`):
+   - `"wrap"` (padrao): liga quebra de linha (word_wrap) e reduz a fonte em
+     passos de 0,5pt (min. 5,5pt) ate as linhas caberem na largura e altura da caixa
+   - `"clip"` (ex.: LOTOTO): sem quebra e sem reducao — o que passar do limite
+     do campo e **cortado**
+6. Na geracao:
    - Lotes maiores que a capacidade geram varios clones do template
      (capacidade = nº slides x cartoes por slide)
    - Cartoes nao preenchidos na ultima folha ficam em branco (texto vazio + foto cinza)
    - Conversao em PDF com UMA unica sessao do PowerPoint (rapida)
    - Opcao "1 cartao por pagina": recorta cada cartao da folha via PyMuPDF
    - Sem "PDF unico": gera 1 PDF por funcionario (cartao recortado)
+
+## Revisao da Emissao (edicao temporaria)
+
+Antes de **Gerar** e de **Preview** abre sempre a tela de Revisao da Emissao,
+onde o usuario pode alterar **nome, funcao, telefone e foto** de cada funcionario,
+alem do setor do lote, papel (Lider/Liderado) e matricula.
+
+- As alteracoes valem **somente para aquela emissao** — nada e gravado no
+  cadastro/banco (o dialog trabalha sobre copias transitorias do funcionario)
+- No Preview ha o botao **"Voltar e Editar"**, que reabre a revisao com as
+  edicoes anteriores preservadas para regenerar o preview
 
 ---
 
@@ -79,15 +95,16 @@ Os dois aparecem juntos no dropdown "Modelo" da tela de Emissao de Cartoes de Bl
 
 ## Templates disponiveis
 
-| Codigo | Campos | Capacidade |
-|--------|--------|-----------|
-| `ARCELORMITTAL` | NOME, MATRICULA, FOTO | 4 por folha (1 slide) |
-| `ALTEC-PEQUENO` | NOME, FUNCAO, TELEFONE, FOTO* | 7 por folha (1 slide; o 8o cartao e reserva) |
-| `CSN` | NOME, SETOR, EMPRESA, PAPEL, FOTO | 4 por folha (2x2) |
-| `LOTOTO` | NOME, FUNCAO, MATRICULA, SETOR, PAPEL (2x), FOTO | 1 por folha (2 slides) |
+| Codigo | Campos | Capacidade | Ajuste de texto |
+|--------|--------|-----------|-----------------|
+| `ARCELORMITTAL` | NOME, MATRICULA, FOTO | 4 por folha (1 slide) | wrap |
+| `ALTEC-PEQUENO` | NOME, FUNCAO, TELEFONE, FOTO* | 8 por folha (4x2, 1 slide) | wrap |
+| `CSN` | NOME, SETOR, EMPRESA, PAPEL, FOTO | 4 por folha (2x2) | wrap |
+| `LOTOTO` | NOME, FUNCAO, MATRICULA, SETOR, PAPEL (2x), FOTO | 1 por folha (2 slides) | **clip** (corta no limite) |
 
 *Fotos do ALTEC-PEQUENO: o modelo original nao tinha foto; os placeholders 3x4
 foram inseridos na preparacao (centralizados, entre os logos e a faixa de perigo).
+O 8o cartao foi acrescentado pelo usuario e reproduzido no script de preparacao.
 
 ---
 

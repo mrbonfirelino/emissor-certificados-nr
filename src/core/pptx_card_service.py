@@ -191,42 +191,97 @@ def _text_width_pt(text: str, size_pt: float, bold: bool) -> float:
     return len(text) * size_pt * (0.62 if bold else 0.58)
 
 
+LINE_HEIGHT_FACTOR = 1.28  # altura de linha estimada (x fonte) para o shrink vertical
+
+
+def _wrap_line_count(text: str, size_pt: float, bold: bool, usable_pt: float) -> int:
+    """Estima o numero de linhas com quebra gulosa de palavras (medindo cada linha)."""
+    words = [w for w in text.split() if w]
+    if not words:
+        return 1
+    lines, cur = 1, ""
+    for w in words:
+        cand = f"{cur} {w}".strip()
+        if not cur or _text_width_pt(cand, size_pt, bold) <= usable_pt:
+            cur = cand
+        else:
+            lines += 1
+            cur = w
+    return lines
+
+
+def _usable_width_pt(shape, text_frame) -> float:
+    usable_emu = (shape.width or 0) - (text_frame.margin_left or 0) - (text_frame.margin_right or 0)
+    return max(usable_emu, 0) / 12700.0
+
+
 def _shrink_paragraph_to_fit(para, text: str, shape, text_frame):
     """
-    Reduz a fonte do 1o run do paragrafo ate o texto caber na largura util
-    do shape (passos de 0.5pt, minimo 5.5pt). Protege nomes/funcoes longos.
+    Reduz a fonte do 1o run ate o texto caber no shape, considerando a quebra
+    de linha (word_wrap): largura da maior palavra E altura do bloco de linhas.
+    Passos de 0.5pt, minimo 5.5pt.
     """
-    import math
-
     runs = para.runs
     if not runs:
         return
     r0 = runs[0]
     size = r0.font.size.pt if r0.font.size else 12.0
-    usable_emu = (shape.width or 0) - (text_frame.margin_left or 0) - (text_frame.margin_right or 0)
-    if usable_emu <= 0 or size <= 5.5:
+    if size <= 5.5:
         return
-    limit_pt = usable_emu / 12700.0  # 1pt = 12700 EMU
+    uw_pt = _usable_width_pt(shape, text_frame)
+    if uw_pt <= 0:
+        return
+    uh_emu = (shape.height or 0) - (text_frame.margin_top or 0) - (text_frame.margin_bottom or 0)
+    uh_pt = uh_emu / 12700.0 if uh_emu > 0 else None
     bold = bool(r0.font.bold)
-    if _text_width_pt(text, size, bold) <= limit_pt:
-        return
-    scale = limit_pt / _text_width_pt(text, size, bold)
-    new_size = max(5.5, math.floor(size * scale * 2) / 2)
-    if _text_width_pt(text, new_size, bold) > limit_pt and new_size > 5.5:
-        new_size = 5.5
+    words = [w for w in text.split() if w]
+
+    new_size = size
+    while new_size > 5.5:
+        longest_word = max((_text_width_pt(w, new_size, bold) for w in words), default=0.0)
+        n_lines = _wrap_line_count(text, new_size, bold, uw_pt)
+        fits_w = longest_word <= uw_pt
+        fits_h = uh_pt is None or (n_lines * new_size * LINE_HEIGHT_FACTOR) <= uh_pt
+        if fits_w and fits_h:
+            break
+        new_size -= 0.5
+    new_size = max(5.5, new_size)
     if new_size < size:
         from pptx.util import Pt
 
         r0.font.size = Pt(new_size)
 
 
-def _replace_tokens_in_text_frame(shape, values: Dict[str, str]):
+def _clip_text_to_width(text: str, size_pt: float, bold: bool, usable_pt: float) -> str:
+    """Modo clip (sem quebra): corta caracteres ate caber na largura util."""
+    if _text_width_pt(text, size_pt, bold) <= usable_pt:
+        return text
+    out = text
+    while out and _text_width_pt(out, size_pt, bold) > usable_pt:
+        out = out[:-1].rstrip()
+    return out
+
+
+def _replace_tokens_in_text_frame(shape, values: Dict[str, str], fit_mode: str = "wrap"):
     """
     Substitui {{TOKENS}} a nivel de paragrafo (resolve runs quebrados tipo
-    "FABRICIO " + "CARVALHO"). O texto substituido herda o estilo do 1o run
-    e a fonte e reduzida automaticamente se nao couber na largura do shape.
+    "FABRICIO " + "CARVALHO"). O texto substituido herda o estilo do 1o run.
+
+    fit_mode:
+    - "wrap" (default): liga word_wrap e reduz a fonte ate as linhas quebradas
+      caberem na largura (maior palavra) e altura do shape
+    - "clip": sem quebra e sem reducao — corta o que passar do limite do campo
     """
     text_frame = shape.text_frame
+    try:
+        text_frame.word_wrap = (fit_mode != "clip")
+        if fit_mode != "clip":
+            # caixas desses templates tem altura exata de 1 linha; zerar as
+            # margens verticais libera espaco para a 2a linha da quebra
+            text_frame.margin_top = 0
+            text_frame.margin_bottom = 0
+    except Exception:
+        pass
     for para in text_frame.paragraphs:
         runs = para.runs
         if not runs:
@@ -235,13 +290,19 @@ def _replace_tokens_in_text_frame(shape, values: Dict[str, str]):
         if not TOKEN_RE.search(full):
             continue
         new_text = TOKEN_RE.sub(lambda m: values.get(m.group(1), m.group(0)), full)
+        if fit_mode == "clip":
+            r0 = runs[0]
+            size = r0.font.size.pt if r0.font.size else 12.0
+            new_text = _clip_text_to_width(new_text, size, bool(r0.font.bold),
+                                           _usable_width_pt(shape, text_frame))
         runs[0].text = new_text
         for r in runs[1:]:
             r.text = ""
-        try:
-            _shrink_paragraph_to_fit(para, new_text, shape, text_frame)
-        except Exception:
-            pass
+        if fit_mode != "clip":
+            try:
+                _shrink_paragraph_to_fit(para, new_text, shape, text_frame)
+            except Exception:
+                pass
 
 
 # ── Substituicao de foto ────────────────────────────────────
@@ -329,6 +390,7 @@ def _fill_clone(prs, chunk: list, template: dict, options: dict):
     Slots nao usados ficam em branco (texto vazio + foto cinza).
     """
     cards_per_slide = int(template.get("cards_per_slide", 1))
+    fit_mode = template.get("text_fit", "wrap")
     slides = list(prs.slides)
 
     for idx in range(len(slides) * cards_per_slide):
@@ -345,7 +407,7 @@ def _fill_clone(prs, chunk: list, template: dict, options: dict):
                 continue
             if getattr(shape, "has_text_frame", False):
                 try:
-                    _replace_tokens_in_text_frame(shape, values)
+                    _replace_tokens_in_text_frame(shape, values, fit_mode)
                 except Exception:
                     pass
             if (shape.name or "").endswith(PHOTO_SUFFIX):
