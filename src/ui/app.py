@@ -18,13 +18,13 @@ SIDEBAR_WIDTH_EXPANDED = 150
 SIDEBAR_WIDTH_COLLAPSED = 42
 
 
-class CertificadosNRApp(ctk.CTk):
+class NormaTechApp(ctk.CTk):
     def __init__(self):
         super().__init__()
         load_font_scale()
         setup_theme()
 
-        self.title("Certificados NR - ALTEC")
+        self.title("NormaTech")
         self.geometry("1280x720")
         self.minsize(1024, 600)
 
@@ -77,16 +77,10 @@ class CertificadosNRApp(ctk.CTk):
         self.logo_frame.grid(row=1, column=0, sticky="ew", padx=8, pady=(2, 6))
 
         self.lbl_title = ctk.CTkLabel(
-            self.logo_frame, text="Certificados",
+            self.logo_frame, text="NormaTech",
             font=fonts["sidebar_title"], text_color=COLORS["surface"]
         )
         self.lbl_title.pack(anchor="w")
-
-        self.lbl_sub = ctk.CTkLabel(
-            self.logo_frame, text="ALTEC",
-            font=fonts["sidebar_sub"], text_color=COLORS["surface"]
-        )
-        self.lbl_sub.pack(anchor="w")
 
         sep = ctk.CTkFrame(self.sidebar, height=1, fg_color=COLORS["secondary"])
         sep.grid(row=2, column=0, sticky="ew", padx=8, pady=4)
@@ -250,7 +244,6 @@ class CertificadosNRApp(ctk.CTk):
         self.sidebar.configure(width=SIDEBAR_WIDTH_EXPANDED)
         self.logo_frame.grid(row=1, column=0, sticky="ew", padx=8, pady=(2, 6))
         self.lbl_title.pack(anchor="w")
-        self.lbl_sub.pack(anchor="w")
         for key, lbl in self.nav_labels.items():
             lbl.grid(row=0, column=1, padx=2, pady=3, sticky="w")
         self.lbl_version.grid(row=14, column=0, sticky="s", pady=8)
@@ -362,7 +355,7 @@ class CertificadosNRApp(ctk.CTk):
 
 
 def main():
-    app = CertificadosNRApp()
+    app = NormaTechApp()
     app.mainloop()
 
 

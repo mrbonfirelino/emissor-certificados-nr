@@ -288,7 +288,7 @@ def main():
         show_license_screen(license_mgr)
         return  # Nao abre o app
     
-    app = CertificadosNRApp()
+    app = NormaTechApp()
     
     if status == LicenseStatus.EXPIRING_SOON:
         # Aviso apos 2 segundos de uso
@@ -383,7 +383,7 @@ Apenas 1 dependencia. Leve, amplamente mantida, sem dependencias nativas complex
 ```
          +------------------+
          |  Usuario abre    |
-         |  CertificadosNR  |
+         |    NormaTech     |
          +--------+---------+
                   |
          +--------v---------+

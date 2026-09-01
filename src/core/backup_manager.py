@@ -130,13 +130,13 @@ class BackupManager:
             return None
 
     def _dual_dir(self) -> Optional[Path]:
-        """Destino duplo: Documents\\BackupsCertificados (se ativado)."""
+        """Destino duplo: Documents\\BackupsNormaTech (se ativado)."""
         from src.core.app_settings import get_setting
 
         try:
             if not get_setting("backup_duplo", True):
                 return None
-            d = Path.home() / "Documents" / "BackupsCertificados"
+            d = Path.home() / "Documents" / "BackupsNormaTech"
             d.mkdir(parents=True, exist_ok=True)
             return d
         except Exception:

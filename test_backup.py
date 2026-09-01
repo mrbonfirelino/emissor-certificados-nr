@@ -86,7 +86,7 @@ def test_retencao_separada():
 
 
 def test_backup_duplo():
-    """Backup duplo copia para Documents/BackupsCertificados quando ativado."""
+    """Backup duplo copia para Documents/BackupsNormaTech quando ativado."""
     tmp = Path(tempfile.mkdtemp(prefix="test_duplo_"))
     from src.core.backup_manager import BackupManager
     from src.core import app_settings
@@ -100,7 +100,7 @@ def test_backup_duplo():
     bm.backup_dir = tmp / "backups"
     bm.backup_dir.mkdir()
 
-    dest = tmp / "Documents" / "BackupsCertificados"
+    dest = tmp / "Documents" / "BackupsNormaTech"
     orig_load = app_settings.load_app_settings
     orig_home = Path.home
 

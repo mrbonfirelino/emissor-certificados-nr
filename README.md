@@ -1,4 +1,4 @@
-# Gerador de Certificados NR - ALTEC
+# NormaTech - Gerador de Certificados de Treinamento
 
 Sistema desktop para emissão de certificados de treinamento NR (Normas Regulamentadoras) com templates configuráveis, interface moderna e geração de PDF profissional.
 
@@ -39,7 +39,7 @@ python -m src.main
 
 ### Build Executável (.exe)
 ```bash
-# Gera CertificadosNR.exe em dist/
+# Gera NormaTech.exe em dist/
 python build/build_exe.py
 ```
 

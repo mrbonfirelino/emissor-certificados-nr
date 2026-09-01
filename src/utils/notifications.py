@@ -30,7 +30,7 @@ def notify(title: str, body: str = "") -> bool:
 
         from windows_toasts import InteractableWindowsToaster, Toast
 
-        toaster = InteractableWindowsToaster("Certificados NR")
+        toaster = InteractableWindowsToaster("NormaTech")
         toast = Toast(text_fields=[title, body] if body else [title])
         toaster.show_toast(toast)
         return True

@@ -1,4 +1,4 @@
-# Guia de Build - Emissor de Certificados NR
+# Guia de Build - NormaTech
 
 Documento completo do processo de build, configurações e distribuição do executável.
 
@@ -24,16 +24,16 @@ O `requirements.txt` inclui todas as bibliotecas: `customtkinter` (UI), `reportl
 
 ## 2. Regra de ouro antes de buildar
 
-**Feche o CertificadosNR.exe antes de rodar a build.** O script limpa a pasta `dist/` e, se o exe estiver aberto, o Windows bloqueia a exclusão:
+**Feche o NormaTech.exe antes de rodar a build.** O script limpa a pasta `dist/` e, se o exe estiver aberto, o Windows bloqueia a exclusão:
 
 ```
-PermissionError: [WinError 5] Acesso negado: 'dist\CertificadosNR\CertificadosNR.exe'
+PermissionError: [WinError 5] Acesso negado: 'dist\NormaTech\NormaTech.exe'
 ```
 
 Para matar o processo pela linha de comando:
 
 ```powershell
-taskkill /F /IM CertificadosNR.exe
+taskkill /F /IM NormaTech.exe
 ```
 
 > Nota: o projeto fica dentro do OneDrive. Durante a build a sincronização pode deixar o processo mais lento — é normal.
@@ -66,9 +66,9 @@ A configuração está em `build/build_exe.py`, linhas 34–39:
 '--noupx',
 ```
 
-- Saída: `dist\CertificadosNR\CertificadosNR.exe` (pasta com ~165 MB de DLLs/_internal)
+- Saída: `dist\NormaTech\NormaTech.exe` (pasta com ~165 MB de DLLs/_internal)
 - Build mais rápida, depuração mais fácil, inicialização do exe mais rápida
-- Distribuição: copiar a **pasta inteira** `CertificadosNR\`
+- Distribuição: copiar a **pasta inteira** `NormaTech\`
 
 ### Modo release — onefile
 
@@ -79,7 +79,7 @@ Trocar as linhas por:
 '--windowed',
 ```
 
-- Saída: `dist\CertificadosNR.exe` (arquivo único, ~78 MB)
+- Saída: `dist\NormaTech.exe` (arquivo único, ~78 MB)
 - Extração temporária a cada inicialização (abre mais devagar)
 - Distribuição: enviar só o arquivo (+ pastas `data\` e `templates\` do lado)
 
@@ -98,11 +98,11 @@ Arquivo: `build/build_exe.py`
 4. **Runtime hook** `build/rthook_jaraco.py` — registra o caminho do `setuptools/_vendor` no `sys.path` para que `import jaraco.text` e `pkg_resources` funcionem dentro do exe (o PyInstaller não resolve esse namespace package sozinho).
 5. **Hidden imports** — `customtkinter`, `reportlab`, `pydantic`, `apscheduler`, `argon2`, `PIL`, `jaraco.*`, `packaging.*`, `platformdirs`, `pkg_resources`, `openpyxl`, `fitz`, `pymupdf`, `pydantic_settings` (imports dinâmicos que o analisador não detecta).
 6. **Exclusões** (`--exclude-module`) — `torch`, `tensorflow`, `sklearn`, `scipy`, `pandas`, `cv2`, `boto3`, `grpc`, etc. Evita arrastar dependências pesadas que existem no ambiente mas não são usadas.
-7. **Cópia de dados de runtime** para `dist\data\` e `dist\CertificadosNR\data\`:
+7. **Cópia de dados de runtime** para `dist\data\` e `dist\NormaTech\data\`:
    - `data\certificados.db` (banco)
    - `data\company_config.json`
    - `data\funcoes.json`
-8. **Cópia de templates externos** — `copytree` de `templates\` inteiro (incluindo subpasta `templates\cards\`) para `dist\templates\` e `dist\CertificadosNR\templates\`. Templates ficam **fora** do exe para edição sem recompilar.
+8. **Cópia de templates externos** — `copytree` de `templates\` inteiro (incluindo subpasta `templates\cards\`) para `dist\templates\` e `dist\NormaTech\templates\`. Templates ficam **fora** do exe para edição sem recompilar.
 
 ---
 
@@ -180,7 +180,7 @@ extra para empacotar. Templates JSON continuam funcionando sem Office.
 | `Hidden import "pysqlite2"/"MySQLdb" not found` | hooks opcionais de SQLAlchemy | ignorar |
 | `Could not find an up-to-date installation of packaging` | licensificação | ignorar |
 
-Relatório completo de warnings: `build\work\CertificadosNR\warn-CertificadosNR.txt`
+Relatório completo de warnings: `build\work\NormaTech\warn-NormaTech.txt`
 
 ---
 
@@ -188,7 +188,7 @@ Relatório completo de warnings: `build\work\CertificadosNR\warn-CertificadosNR.
 
 | Problema | Causa | Solução |
 |----------|-------|---------|
-| `PermissionError: WinError 5 Acesso negado` | exe aberto travando `dist\` | `taskkill /F /IM CertificadosNR.exe` e rebuildar |
+| `PermissionError: WinError 5 Acesso negado` | exe aberto travando `dist\` | `taskkill /F /IM NormaTech.exe` e rebuildar |
 | Build muito lenta | OneDrive sincronizando a pasta `dist\` | aguardar, ou pausar sincronização |
 | Exe abre e fecha na hora (onefile) | ver traceback rodando o build console: trocar `--windowed` por `--console` temporariamente | debugar e reverter |
 | Antivírus bloqueia o exe | falso positivo comum do PyInstaller | adicionar exclusão |
@@ -201,7 +201,7 @@ Relatório completo de warnings: `build\work\CertificadosNR\warn-CertificadosNR.
 Para entregar a um usuário final (modo onedir):
 
 1. Buildar (`python build/build_exe.py`)
-2. Compactar/enviar a pasta `dist\CertificadosNR\` **inteira**
-3. Instruções ao usuário: extrair em pasta local (ex: `C:\CertificadosNR`), executar `CertificadosNR.exe`
+2. Compactar/enviar a pasta `dist\NormaTech\` **inteira**
+3. Instruções ao usuário: extrair em pasta local (ex: `C:\NormaTech`), executar `NormaTech.exe`
 4. Primeira execução cria `CERTIFICADOS\` e `data\backups\` automaticamente
 5. Para atualizar templates depois: substituir apenas os JSONs em `templates\`

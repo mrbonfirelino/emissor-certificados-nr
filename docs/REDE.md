@@ -26,7 +26,7 @@ validar o cenário real antes de qualquer mudança no código.
 ## Checklist de validação (executar no ambiente real)
 
 1. Preparar
-   - [ ] Copiar a pasta `dist\CertificadosNR\` para o drive mapeado (ex: `Z:\CertificadosNR\`)
+   - [ ] Copiar a pasta `dist\NormaTech\` para o drive mapeado (ex: `Z:\NormaTech\`)
    - [ ] Conferir permissões de leitura/escrita para todos os usuários (icacls)
 2. Banco em rede — 1 máquina
    - [ ] Abrir o app, cadastrar um funcionário, emitir um certificado

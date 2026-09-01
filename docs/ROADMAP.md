@@ -1,4 +1,4 @@
-# Roadmap - Emissor de Certificados NR
+# Roadmap - NormaTech
 
 ## Status do Projeto
 - Versao atual: 1.2.0

@@ -53,12 +53,12 @@ class WelcomePage(ctk.CTkFrame):
 
         # Titulo + subtitulo
         ctk.CTkLabel(
-            card, text="Bem-vindo ao Certificados NR",
+            card, text="Bem-vindo ao NormaTech",
             font=fonts["title"], text_color=COLORS["primary"]
         ).grid(row=2, column=0, pady=(4, 2))
 
         ctk.CTkLabel(
-            card, text="Sistema de emissao de certificados de treinamento - ALTEC",
+            card, text="Sistema de emissao de certificados de treinamento - NormaTech",
             font=fonts["body"], text_color=COLORS["text_secondary"]
         ).grid(row=3, column=0, pady=(0, 8))
 
