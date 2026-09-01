@@ -53,12 +53,12 @@ class WelcomePage(ctk.CTkFrame):
 
         # Titulo + subtitulo
         ctk.CTkLabel(
-            card, text="Bem-vindo ao NormaTech",
+            card, text="Bem-vindo ao NormaTech!",
             font=fonts["title"], text_color=COLORS["primary"]
         ).grid(row=2, column=0, pady=(4, 2))
 
         ctk.CTkLabel(
-            card, text="Sistema de emissao de certificados de treinamento - NormaTech",
+            card, text="Sistema de emissão e controle de certificados e cartões de bloqueio.",
             font=fonts["body"], text_color=COLORS["text_secondary"]
         ).grid(row=3, column=0, pady=(0, 8))
 
@@ -67,8 +67,8 @@ class WelcomePage(ctk.CTkFrame):
         stats_frame.grid(row=4, column=0, sticky="ew", padx=24, pady=(4, 12))
         stats_frame.grid_columnconfigure((0, 1, 2), weight=1)
 
-        self.lbl_cert_count = self._build_stat_card(stats_frame, 0, "\U0001F4C4", "0", "Certificados Emitidos")
-        self.lbl_emp_count = self._build_stat_card(stats_frame, 1, "\U0001F465", "0", "Funcionarios Cadastrados")
+        self.lbl_cert_count = self._build_stat_card(stats_frame, 0, "\U0001F4C4", "0", "Total de Certificados Emitidos")
+        self.lbl_emp_count = self._build_stat_card(stats_frame, 1, "\U0001F465", "0", "Funcionarios Cadastrados no sistema")
         self.lbl_nr_count = self._build_stat_card(stats_frame, 2, "\U0001F4DA", "0", "NRs Disponiveis")
 
         # === ATALHOS ===
@@ -89,14 +89,14 @@ class WelcomePage(ctk.CTkFrame):
         ).pack(side="left", expand=True, fill="x", padx=6)
 
         ctk.CTkButton(
-            shortcuts_frame, text="\U0001F465  Funcionarios",
+            shortcuts_frame, text="\U0001F465  Funcionários",
             font=fonts["body_bold"], height=40,
             fg_color=COLORS["secondary"], hover_color=COLORS["primary"],
             state=state, command=lambda: nav("employees")
         ).pack(side="left", expand=True, fill="x", padx=6)
 
         ctk.CTkButton(
-            shortcuts_frame, text="\U0001F4CB  Historico",
+            shortcuts_frame, text="\U0001F4CB  Histórico",
             font=fonts["body_bold"], height=40,
             fg_color=COLORS["accent"], hover_color=COLORS["secondary"],
             state=state, command=lambda: nav("history")
