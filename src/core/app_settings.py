@@ -16,6 +16,8 @@ DEFAULTS: Dict[str, Any] = {
     "notificacoes_ativas": True,
     "backup_intervalo_min": 15,
     "backup_duplo": True,
+    "backup_rede_ativo": True,
+    "backup_rede_caminho": r"Z:\SEGURANÇA\NORMATECH-BACKUP",
 }
 
 

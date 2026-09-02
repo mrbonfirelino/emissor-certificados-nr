@@ -62,8 +62,15 @@ class EmployeeAutocomplete(ctk.CTkFrame):
         except Exception:
             pass
 
-        # clique FORA do campo/dropdown fecha a lista (bind permanente, inerte quando fechada)
-        self.bind_all("<Button-1>", self._on_global_click, add="+")
+        # clique FORA do campo/dropdown fecha a lista.
+        # NOTA: CTk proibe bind_all nos widgets dele ("could result in undefined
+        # behavior"), entao usamos binding direto no Tcl com %W (caminho do widget
+        # clicado) — permanente e inerte quando a lista esta fechada.
+        try:
+            cb = self.register(self._on_global_click)
+            self.tk.call("bind", "all", "<Button-1>", f"+{cb} %W")
+        except Exception:
+            pass
 
     def _on_keyrelease(self, event):
         if event.keysym in ("Up", "Down", "Return", "Escape", "Tab", "Shift_L", "Shift_R", "Control_L", "Control_R", "Alt_L", "Alt_R"):
@@ -235,13 +242,12 @@ class EmployeeAutocomplete(ctk.CTkFrame):
         except Exception:
             self._hide_dropdown()
 
-    def _on_global_click(self, event):
-        """Clique em qualquer lugar: se foi fora do campo e do dropdown, fecha."""
+    def _on_global_click(self, widget_path: str = ""):
+        """Clique em qualquer lugar (via Tcl %W): fora do campo/dropdown, fecha."""
         if not self.dropdown_frame:
             return
         try:
-            w = event.widget
-            ws = str(w) if w is not None else ""
+            ws = widget_path or ""
             if ws.startswith(str(self.entry)):
                 return
             if self.dropdown_frame and ws.startswith(str(self.dropdown_frame)):

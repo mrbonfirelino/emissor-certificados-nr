@@ -338,6 +338,12 @@ class HistoryPage(ctk.CTkFrame):
         self.pagination.reset()
         self._refresh_list()
 
+    def search_for(self, term: str):
+        """Preenche a busca e executa (acao 'Historico' dos cards de Vencimentos)."""
+        self.search_var.set(term)
+        self.pagination.reset()
+        self._refresh_list()
+
     def _show_error(self, message: str):
         fonts = get_fonts()
         dialog = ctk.CTkToplevel(self)

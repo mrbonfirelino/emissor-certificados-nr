@@ -205,9 +205,66 @@ def test_periodic_startup_catchup():
         hr.get_db_path = orig_get_db
 
 
+def test_backup_rede():
+    """Backup em rede: copia quando o caminho existe; drive fora do ar pula
+    com aviso (sem quebrar o backup local)."""
+    tmp = Path(tempfile.mkdtemp(prefix="test_rede_"))
+    from src.core import backup_manager as bm
+    from src.core.backup_manager import BackupManager
+    from src.core import app_settings
+
+    rede = tmp / "Z_FAKE" / "SEGURANCA" / "NORMATECH-BACKUP"
+
+    bmn = BackupManager.__new__(BackupManager)
+    bmn.db_path = tmp / "db.db"
+    import sqlite3
+    conn = sqlite3.connect(bmn.db_path)
+    conn.execute("CREATE TABLE t (v TEXT)")
+    conn.commit()
+    conn.close()
+    bmn.backup_dir = tmp / "backups"
+    bmn.backup_dir.mkdir()
+
+    orig_dirs = bm.EXTERNAL_BACKUP_DIRS
+    orig_load = app_settings.load_app_settings
+    try:
+        bm.EXTERNAL_BACKUP_DIRS = []
+        # rede ativa com caminho valido -> copia
+        app_settings.load_app_settings = lambda: {
+            "notificacoes_ativas": False, "backup_duplo": False,
+            "backup_rede_ativo": True, "backup_rede_caminho": str(rede)}
+        path = bmn.create_backup()
+        assert path and list(rede.glob("*.db.gz")), "copia na rede faltando"
+        print("[OK] backup em rede copia para o caminho configurado (pasta criada)")
+
+        # drive fora do ar (letra inexistente) -> nao quebra, backup local ok
+        import time
+        time.sleep(1.1)
+        app_settings.load_app_settings = lambda: {
+            "notificacoes_ativas": False, "backup_duplo": False,
+            "backup_rede_ativo": True, "backup_rede_caminho": r"Q:\NAO_EXISTE\BK"}
+        path2 = bmn.create_backup()
+        assert path2 and path2.exists(), "backup local falhou por causa da rede"
+        print("[OK] drive de rede fora do ar: backup local continua (aviso no log)")
+
+        # desativado -> nem tenta
+        time.sleep(1.1)
+        app_settings.load_app_settings = lambda: {
+            "notificacoes_ativas": False, "backup_duplo": False,
+            "backup_rede_ativo": False, "backup_rede_caminho": str(rede)}
+        antes = len(list(rede.glob("*.db.gz")))
+        path3 = bmn.create_backup()
+        assert path3 and len(list(rede.glob("*.db.gz"))) == antes
+        print("[OK] toggle do backup em rede respeitado")
+    finally:
+        bm.EXTERNAL_BACKUP_DIRS = orig_dirs
+        app_settings.load_app_settings = orig_load
+
+
 if __name__ == "__main__":
     test_snapshot_wal()
     test_retencao_separada()
     test_backup_duplo()
     test_periodic_startup_catchup()
+    test_backup_rede()
     print("\nTODOS OS TESTES PASSARAM")

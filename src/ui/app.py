@@ -52,6 +52,12 @@ class NormaTechApp(ctk.CTk):
         self._build_ui()
         self.protocol("WM_DELETE_WINDOW", self._on_closing)
 
+        # erros deixam de ser invisiveis (data/error.log)
+        from src.utils.error_log import install_error_hooks
+        install_error_hooks(self)
+        # toast de vencimentos (7 dias) pouco apos abrir
+        self.after(3000, self._notify_expirations)
+
     def _build_ui(self):
         fonts = get_fonts()
         self.grid_columnconfigure(1, weight=1)
@@ -289,15 +295,35 @@ class NormaTechApp(ctk.CTk):
         if "home" in self.pages:
             self.pages["home"].refresh()
 
-    def _navigate(self, key: str):
-        handlers = {
-            "certificates": self._show_certificates,
-            "employees": self._show_employees,
-            "history": self._show_history,
-        }
-        handler = handlers.get(key)
-        if handler:
-            handler()
+    def _navigate(self, key: str, payload: dict = None):
+        payload = payload or {}
+        if key == "certificates":
+            self._show_certificates()
+            emp_id = payload.get("employee_id")
+            if emp_id is not None and "certificates" in self.pages:
+                self.pages["certificates"].preload_employee_by_id(emp_id)
+        elif key == "history":
+            self._show_history()
+            busca = payload.get("busca")
+            if busca and "history" in self.pages:
+                self.pages["history"].search_for(busca)
+        elif key == "employees":
+            self._show_employees()
+        elif key == "vencimentos":
+            self._show_vencimentos()
+
+    def _notify_expirations(self):
+        """Toast informativo: certificados que vencem nos proximos 7 dias."""
+        try:
+            from src.utils.notifications import notify
+            certs = self.history_repo.get_certificates_with_expiration()
+            n = sum(1 for c in certs if 0 <= c["dias_para_vencer"] <= 7)
+            if n > 0:
+                notify("Vencimentos",
+                       f"{n} certificado(s) vencem nos proximos 7 dias. Veja a aba Vencimentos.")
+        except Exception as e:
+            from src.utils.error_log import log_error
+            log_error("toast-vencimentos", e)
 
     def _show_certificates(self):
         self._show_page("certificates", CertificatesPage, self.certificate_service, self.employee_repo)
@@ -320,7 +346,7 @@ class NormaTechApp(ctk.CTk):
 
     def _show_vencimentos(self):
         from src.ui.pages.vencimentos import VencimentosPage
-        self._show_page("vencimentos", VencimentosPage, self.history_repo)
+        self._show_page("vencimentos", VencimentosPage, self.history_repo, on_navigate=self._navigate)
         if "vencimentos" in self.pages:
             self.pages["vencimentos"].refresh()
 

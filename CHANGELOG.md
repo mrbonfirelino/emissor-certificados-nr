@@ -1,5 +1,37 @@
 # Changelog
 
+## [1.4.0] - 2026-09-01
+
+### Corrigido
+- **Erro ao abrir Certificados** ("bind_all is not allowed"): o clique-global do
+  autocomplete usava `bind_all` dos widgets CTk (proibido pelo CustomTkinter) —
+  trocado por binding direto no Tcl com `%W`, sem o guard e sem colisões
+
+### Adicionado
+- **Log de erros central** (`data/error.log`): captura exceções de callbacks do
+  tkinter e de threads de trabalho (antes invisíveis no exe), com contexto,
+  traceback e truncamento automático (1MB → últimos 256KB)
+- **Toast de vencimentos ao abrir**: certificados que vencem nos próximos 7
+  dias (contagem na notificação; respeita o toggle de notificações)
+- **Ações nos cards de Vencimentos**: "Emitir" abre Certificados com o
+  funcionário pré-selecionado; "Histórico" abre o Histórico com a busca
+  preenchida (clique nos botões não expande/colapsa o card)
+- **Importar fotos em massa** (aba Funcionários): escolhe uma pasta, casa por
+  CPF (11 dígitos no nome do arquivo) ou nome exato (ignora acentos/caixa) e
+  mostra janela de conferência com miniatura, status adicionar/substituir e
+  checkboxes antes de aplicar (corte 3x4 automático)
+- **Backup em rede (drive mapeado)**: destino configurável (padrão
+  `Z:\SEGURANÇA\NORMATECH-BACKUP`), ativo por padrão e tolerante — drive fora
+  do ar pula com aviso no `backup.log` sem interromper o backup local
+- **Documentos de planejamento**: `docs/INSTALADOR.md` (script Inno Setup
+  completo pronto para uso) e `docs/ASSINATURA_DIGITAL.md` (PAdES/ICP-Brasil,
+  opções, arquitetura e fases)
+
+### Alterado
+- **Restauração de backup reinicia o app automaticamente** (`os.execv`) em vez
+  de apenas fechar
+- Configurações ganham "Backup em rede" (toggle + caminho editável)
+
 ## [1.3.3] - 2026-09-01
 
 ### Corrigido

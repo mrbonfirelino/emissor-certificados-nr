@@ -251,6 +251,17 @@ class CertificatesPage(ctk.CTkFrame):
             self.btn_generate.configure(text="Gerar Certificado")
         self._update_preview()
 
+    def preload_employee_by_id(self, emp_id: int):
+        """Pre-seleciona um funcionario (acao 'Emitir' dos cards de Vencimentos)."""
+        try:
+            emp = self.employee_repo.get_by_id(emp_id)
+        except Exception:
+            emp = None
+        if not emp:
+            return
+        self.employee_autocomplete.set_employee(emp)
+        self._on_employee_selected(emp)
+
     def _on_extra_fields_change(self, values: dict):
         self._update_preview()
 

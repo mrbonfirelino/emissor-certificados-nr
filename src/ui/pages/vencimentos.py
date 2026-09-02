@@ -49,10 +49,12 @@ def filter_certs(certs: list, nr: str, search: str, period: str) -> list:
 
 
 class VencimentosPage(ctk.CTkFrame):
-    def __init__(self, master, history_repo: HistoryRepository, **kwargs):
+    def __init__(self, master, history_repo: HistoryRepository,
+                 on_navigate=None, **kwargs):
         super().__init__(master, fg_color=COLORS["background"], **kwargs)
         self.history_repo = history_repo
         self.employee_repo = EmployeeRepository()
+        self._on_navigate = on_navigate
         self.all_certs = []
         self.filtered_certs = []
         self._employees_list = []
@@ -60,6 +62,18 @@ class VencimentosPage(ctk.CTkFrame):
         self._last_toggle = {}
         self._active_period = "all"
         self._build_ui()
+
+    # ── Acoes rapidas dos cards ───────────────────────────────
+
+    def _action_emit(self, emp_id: int):
+        """Abre a aba Certificados com o funcionario pre-selecionado."""
+        if self._on_navigate:
+            self._on_navigate("certificates", {"employee_id": emp_id})
+
+    def _action_history(self, emp_id: int, nome: str):
+        """Abre a aba Historico com a busca pre-preenchida pelo nome."""
+        if self._on_navigate:
+            self._on_navigate("history", {"busca": nome})
         self._load_data()
 
     # ── Layout ───────────────────────────────────────────────
@@ -313,15 +327,33 @@ class VencimentosPage(ctk.CTkFrame):
         # Contagem
         ctk.CTkLabel(card, text=f"{len(certs)} certificado(s)",
                      font=fonts["small"], text_color=COLORS["secondary"]
-                     ).grid(row=0, column=2, rowspan=2, padx=10, pady=8, sticky="e")
+                     ).grid(row=0, column=2, rowspan=2, padx=(10, 4), pady=8, sticky="e")
+
+        # Acoes rapidas: emitir novamente / ver historico
+        if self._on_navigate:
+            btns = ctk.CTkFrame(card, fg_color="transparent")
+            btns.grid(row=0, column=3, rowspan=2, padx=(4, 8), pady=6, sticky="e")
+            ctk.CTkButton(
+                btns, text="Emitir", width=58, height=26, corner_radius=4,
+                font=fonts["small"], fg_color=COLORS["success"], hover_color="#256B28",
+                command=lambda eid=emp_id: self._action_emit(eid)
+            ).pack(side="left", padx=2)
+            ctk.CTkButton(
+                btns, text="Historico", width=72, height=26, corner_radius=4,
+                font=fonts["small"], fg_color=COLORS["secondary"], hover_color=COLORS["primary"],
+                command=lambda eid=emp_id, n=name: self._action_history(eid, n)
+            ).pack(side="left", padx=2)
 
         # Tabela (filha do card, nao do list_frame)
         tbl = self._make_table(certs, parent=card)
         if emp_id in self._expanded:
-            tbl.grid(row=2, column=0, columnspan=3, sticky="ew", padx=10, pady=(0, 5))
+            tbl.grid(row=2, column=0, columnspan=4, sticky="ew", padx=10, pady=(0, 5))
 
         # Toggle via bind recursivo — debounce global para o card todo (evita duplo disparo canvas+label)
         def toggle(e=None, _id=emp_id, _tbl=tbl):
+            # clique em botao de acao nao expande/colapsa o card
+            if e is not None and "ctkbutton" in str(getattr(e, "widget", "")):
+                return "break"
             now = time.time()
             last = self._last_toggle.get(_id, 0)
             if now - last < 0.3:
@@ -332,7 +364,7 @@ class VencimentosPage(ctk.CTkFrame):
                 _tbl.grid_remove()
             else:
                 self._expanded.add(_id)
-                _tbl.grid(row=2, column=0, columnspan=3, sticky="ew", padx=10, pady=(0, 5))
+                _tbl.grid(row=2, column=0, columnspan=4, sticky="ew", padx=10, pady=(0, 5))
             self.update_idletasks()
             try:
                 self._list._parent_canvas.configure(scrollregion=self._list._parent_canvas.bbox("all"))

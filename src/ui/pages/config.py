@@ -197,8 +197,28 @@ class ConfigPage(ctk.CTkFrame):
             font=fonts["body"], text_color=COLORS["text"],
             fg_color=COLORS["primary"], hover_color=COLORS["secondary"],
             checkbox_height=20, checkbox_width=20
-        ).grid(row=row, column=0, sticky="w", pady=(0, 16))
+        ).grid(row=row, column=0, sticky="w", pady=(0, 8))
         row += 1
+
+        self._backup_rede_var = ctk.BooleanVar(value=True)
+        ctk.CTkCheckBox(
+            form, text="Backup em rede (drive mapeado — pula com aviso se o drive estiver fora)",
+            variable=self._backup_rede_var,
+            font=fonts["body"], text_color=COLORS["text"],
+            fg_color=COLORS["primary"], hover_color=COLORS["secondary"],
+            checkbox_height=20, checkbox_width=20
+        ).grid(row=row, column=0, sticky="w", pady=(0, 6))
+        row += 1
+
+        rede_frame = ctk.CTkFrame(form, fg_color="transparent")
+        rede_frame.grid(row=row, column=0, sticky="ew", pady=(0, 16))
+        row += 1
+        ctk.CTkLabel(rede_frame, text="Caminho na rede:", font=fonts["body"],
+                     text_color=COLORS["text"]).pack(side="left", padx=(0, 8))
+        self._backup_rede_path_var = ctk.StringVar(value=r"Z:\SEGURANÇA\NORMATECH-BACKUP")
+        ctk.CTkEntry(rede_frame, textvariable=self._backup_rede_path_var,
+                     font=fonts["body"], height=32, corner_radius=6
+                     ).pack(side="left", fill="x", expand=True)
 
         # Botao salvar
         ctk.CTkButton(
@@ -255,6 +275,9 @@ class ConfigPage(ctk.CTkFrame):
         self._notificacoes_var.set(bool(settings.get("notificacoes_ativas", True)))
         self._backup_interval_var.set(str(settings.get("backup_intervalo_min", 15)))
         self._backup_duplo_var.set(bool(settings.get("backup_duplo", True)))
+        self._backup_rede_var.set(bool(settings.get("backup_rede_ativo", True)))
+        self._backup_rede_path_var.set(str(settings.get(
+            "backup_rede_caminho", r"Z:\SEGURANÇA\NORMATECH-BACKUP")))
 
     def _save_config(self):
         empresa = self.empresa_var.get().strip()
@@ -305,6 +328,9 @@ class ConfigPage(ctk.CTkFrame):
             "notificacoes_ativas": bool(self._notificacoes_var.get()),
             "backup_intervalo_min": intervalo,
             "backup_duplo": bool(self._backup_duplo_var.get()),
+            "backup_rede_ativo": bool(self._backup_rede_var.get()),
+            "backup_rede_caminho": self._backup_rede_path_var.get().strip()
+                                   or r"Z:\SEGURANÇA\NORMATECH-BACKUP",
         }
         save_app_settings(app_settings)
 

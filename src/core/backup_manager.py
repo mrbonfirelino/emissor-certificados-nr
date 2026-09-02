@@ -177,6 +177,26 @@ class BackupManager:
             _log(f"ERRO create_backup: {e}")
             return None
 
+    def _network_dir(self) -> Optional[Path]:
+        """Destino em rede (drive mapeado) — tolerante: drive fora do ar nao
+        interrompe o backup, so registra aviso no log."""
+        from src.core.app_settings import get_setting
+
+        try:
+            if not get_setting("backup_rede_ativo", True):
+                return None
+            caminho = Path(get_setting("backup_rede_caminho",
+                                       r"Z:\SEGURANÇA\NORMATECH-BACKUP"))
+        except Exception:
+            return None
+        try:
+            if not caminho.exists():
+                caminho.mkdir(parents=True, exist_ok=True)
+            return caminho
+        except Exception as e:
+            _log(f"AVISO rede indisponivel ({caminho}): {e}")
+            return None
+
     def _external_dirs(self) -> List[Path]:
         """Destinos externos ativados (cria as pastas se nao existirem)."""
         from src.core.app_settings import get_setting
@@ -196,8 +216,13 @@ class BackupManager:
         return dirs
 
     def _copy_dual(self, backup_path: Path):
-        """Copia o backup para cada destino externo, com a mesma retencao."""
-        for d in self._external_dirs():
+        """Copia o backup para cada destino externo (locais + rede), com a
+        mesma retencao; falha em um destino nao para os demais."""
+        destinos = self._external_dirs()
+        rede = self._network_dir()
+        if rede:
+            destinos.append(rede)
+        for d in destinos:
             try:
                 shutil.copy2(backup_path, d / backup_path.name)
                 self._cleanup_old_backups(d)

@@ -52,6 +52,13 @@ class EmployeesPage(ctk.CTkFrame):
         ).pack(side="left", padx=(0, 8))
 
         ctk.CTkButton(
+            btn_frame, text="Importar Fotos",
+            font=fonts["body_bold"], height=32,
+            fg_color=COLORS["accent"], hover_color=COLORS["secondary"],
+            command=self._bulk_photos
+        ).pack(side="left", padx=(0, 8))
+
+        ctk.CTkButton(
             btn_frame, text="+ Novo",
             font=fonts["body_bold"], height=32,
             fg_color=COLORS["success"], hover_color="#256B28",
@@ -468,6 +475,35 @@ class EmployeesPage(ctk.CTkFrame):
 
         ctk.CTkButton(btn_frame, text="Cancelar", font=fonts["body_bold"], height=36, fg_color=COLORS["muted"], hover_color=COLORS["text_secondary"], command=dialog.destroy).grid(row=0, column=0, sticky="w")
         ctk.CTkButton(btn_frame, text="Salvar", font=fonts["body_bold"], height=36, fg_color=COLORS["success"], hover_color="#256B28", command=save).grid(row=0, column=1, sticky="e")
+
+    def _bulk_photos(self):
+        """Importa fotos 3x4 em massa de uma pasta (nome do arquivo = CPF ou nome)."""
+        folder = filedialog.askdirectory(
+            title="Selecione a pasta com as fotos (arquivo = CPF ou nome do funcionario)",
+            parent=self
+        )
+        if not folder:
+            return
+        try:
+            from src.utils.photo_importer import match_photos
+            employees = self.employee_repo.get_all(limit=100000)
+            casados, nao = match_photos(employees, folder)
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao ler pasta de fotos: {e}", parent=self)
+            return
+
+        if not casados:
+            msg = "Nenhuma foto casada com funcionarios cadastrados."
+            if nao:
+                msg += f"\n\n({len(nao)} arquivo(s) sem match)"
+            messagebox.showinfo("Importar Fotos", msg, parent=self)
+            return
+
+        from src.ui.components.bulk_photo_dialog import BulkPhotoDialog
+        dlg = BulkPhotoDialog(self, self.employee_repo, casados, nao,
+                              on_done=self._refresh_list)
+        self.wait_window(dlg)
+        self._refresh_list()
 
     def _confirm_delete(self, employee: Employee):
         from src.core.history_repo import HistoryRepository

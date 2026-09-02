@@ -283,9 +283,17 @@ class BackupPage(ctk.CTkFrame):
             
             # Restaura
             if self.backup_manager.restore_backup(selected_path, password):
-                messagebox.showinfo("Sucesso", "Backup restaurado! O programa será reiniciado.", parent=self)
-                # Reinicia app
-                self.quit()
+                try:
+                    self.backup_manager.shutdown()
+                except Exception:
+                    pass
+                messagebox.showinfo("Sucesso", "Backup restaurado! O programa sera reiniciado.", parent=self)
+                try:
+                    self.update()
+                except Exception:
+                    pass
+                from src.utils.restart import restart_app
+                restart_app()
             else:
                 messagebox.showerror("Erro", "Falha ao restaurar backup", parent=self)
         
