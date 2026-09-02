@@ -86,51 +86,60 @@ def test_retencao_separada():
 
 
 def test_backup_duplo():
-    """Backup duplo copia para Documents/BackupsNormaTech quando ativado."""
+    """Backup externo copia para TODOS os destinos (Documents + C:) com retencao;
+    falha num destino nao interrompe os outros; toggle desliga tudo."""
     tmp = Path(tempfile.mkdtemp(prefix="test_duplo_"))
+    from src.core import backup_manager as bm
     from src.core.backup_manager import BackupManager
     from src.core import app_settings
 
-    bm = BackupManager.__new__(BackupManager)
-    bm.db_path = tmp / "db.db"
-    conn = sqlite3.connect(bm.db_path)
+    ext1 = tmp / "Documents" / "NormaTech-Backup"
+    ext2 = tmp / "C_fake" / "NormaTech-Backup"
+
+    bm_db = tmp / "db.db"
+    conn = sqlite3.connect(bm_db)
     conn.execute("CREATE TABLE t (v TEXT)")
     conn.commit()
     conn.close()
-    bm.backup_dir = tmp / "backups"
-    bm.backup_dir.mkdir()
 
-    dest = tmp / "Documents" / "BackupsNormaTech"
+    bmn = BackupManager.__new__(BackupManager)
+    bmn.db_path = bm_db
+    bmn.backup_dir = tmp / "backups"
+    bmn.backup_dir.mkdir()
+
+    orig_dirs = bm.EXTERNAL_BACKUP_DIRS
     orig_load = app_settings.load_app_settings
-    orig_home = Path.home
-
-    class FakePath(type(Path("C:/"))):
-        @classmethod
-        def home(cls):
-            return tmp
-
     try:
-        app_settings.load_app_settings = lambda: {"notificacoes_ativas": False, "backup_duplo": True}
-        import pathlib
-        orig_path_home = pathlib.Path.home
-        pathlib.Path.home = staticmethod(lambda: tmp)
+        bm.EXTERNAL_BACKUP_DIRS = [ext1, ext2]
+        app_settings.load_app_settings = lambda: {"notificacoes_ativas": False, "backup_duplo": True,
+                                                  "backup_intervalo_min": 15}
+        path = bmn.create_backup()
+        assert path and list(ext1.glob("*.db.gz")) and list(ext2.glob("*.db.gz")), "copias externas faltando"
+        print(f"[OK] backup externo nos 2 destinos: {ext1.name} + {ext2.name}")
 
-        path = bm.create_backup()
-        copies = list(dest.glob("*.db.gz"))
-        assert path and copies, "copia dupla nao encontrada"
-        print(f"[OK] backup duplo em {dest.name}: {copies[0].name}")
+        # destino inacessivel (arquivo no lugar da pasta) -> nao quebra o outro
+        import time
+        time.sleep(1.1)  # timestamps diferentes no nome do arquivo
+        ext2.unlink() if ext2.is_symlink() else None
+        bad = tmp / "arquivo_no_caminho"
+        bad.write_text("x")  # cria ARQUIVO onde iria a pasta -> mkdir falha
+        bm.EXTERNAL_BACKUP_DIRS = [ext1, bad / "NormaTech-Backup"]
+        path2 = bmn.create_backup()
+        assert path2 and len(list(ext1.glob("*.db.gz"))) == 2, "destino valido nao recebeu copia"
+        print("[OK] destino com falha nao interrompe os demais")
 
-        # desligado -> nao copia
-        for c in dest.glob("*.db.gz"):
-            c.unlink()
-        app_settings.load_app_settings = lambda: {"notificacoes_ativas": False, "backup_duplo": False}
-        path2 = bm.create_backup()
-        assert path2 and not list(dest.glob("*.db.gz")), "copiou com duplo desligado"
-        print("[OK] backup duplo respeita o toggle")
+        # toggle desligado -> nao copia
+        time.sleep(1.1)
+        antes = len(list(ext1.glob("*.db.gz")))
+        app_settings.load_app_settings = lambda: {"notificacoes_ativas": False, "backup_duplo": False,
+                                                  "backup_intervalo_min": 15}
+        bm.EXTERNAL_BACKUP_DIRS = orig_dirs
+        path3 = bmn.create_backup()
+        assert path3 and len(list(ext1.glob("*.db.gz"))) == antes, "copiou com backup externo desligado"
+        print("[OK] toggle do backup externo respeitado")
     finally:
+        bm.EXTERNAL_BACKUP_DIRS = orig_dirs
         app_settings.load_app_settings = orig_load
-        import pathlib
-        pathlib.Path.home = orig_path_home
 
 
 def test_periodic_startup_catchup():

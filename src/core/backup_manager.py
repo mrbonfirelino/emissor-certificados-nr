@@ -14,6 +14,13 @@ KEEP_REGULAR = 12   # backups manuais/semanais mantidos
 KEEP_PERIODIC = 32  # backups periodicos mantidos (32 x 15min = 8h de historico)
 LOG_FILE = get_data_dir() / "backup.log"
 
+# destinos externos do backup duplo (criados se nao existirem).
+# falha em um destino (ex.: sem permissao em C:\) nao interrompe os demais.
+EXTERNAL_BACKUP_DIRS = [
+    Path.home() / "Documents" / "NormaTech-Backup",
+    Path("C:/") / "NormaTech-Backup",
+]
+
 
 def _log(msg: str):
     """Log simples de backups (data/backup.log) — falhas nao podem ser invisiveis."""
@@ -170,27 +177,32 @@ class BackupManager:
             _log(f"ERRO create_backup: {e}")
             return None
 
-    def _dual_dir(self) -> Optional[Path]:
-        """Destino duplo: Documents\\BackupsNormaTech (se ativado)."""
+    def _external_dirs(self) -> List[Path]:
+        """Destinos externos ativados (cria as pastas se nao existirem)."""
         from src.core.app_settings import get_setting
 
+        dirs: List[Path] = []
         try:
             if not get_setting("backup_duplo", True):
-                return None
-            d = Path.home() / "Documents" / "BackupsNormaTech"
-            d.mkdir(parents=True, exist_ok=True)
-            return d
+                return dirs
         except Exception:
-            return None
+            return dirs
+        for d in EXTERNAL_BACKUP_DIRS:
+            try:
+                d.mkdir(parents=True, exist_ok=True)
+                dirs.append(d)
+            except Exception as e:
+                _log(f"AVISO destino externo indisponivel ({d}): {e}")
+        return dirs
 
     def _copy_dual(self, backup_path: Path):
-        d = self._dual_dir()
-        if not d:
-            return
-        try:
-            shutil.copy2(backup_path, d / backup_path.name)
-        except Exception:
-            pass
+        """Copia o backup para cada destino externo, com a mesma retencao."""
+        for d in self._external_dirs():
+            try:
+                shutil.copy2(backup_path, d / backup_path.name)
+                self._cleanup_old_backups(d)
+            except Exception as e:
+                _log(f"AVISO falha ao copiar backup para ({d}): {e}")
 
     def _cleanup_old_backups(self, base_dir: Optional[Path] = None):
         """Remove backups antigos. Periodicos e nao-periodicos tem retencao propria."""

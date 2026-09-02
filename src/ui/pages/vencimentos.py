@@ -15,6 +15,38 @@ STATUS_COLORS = {
     "ok": COLORS["success"],
 }
 
+# limites dos filtros por periodo (dias para vencer); vencidos (d < 0) so
+# aparecem nos filtros "Todos" e "Vencidos"
+PERIOD_RANGES = {
+    "dias_7": (0, 7),
+    "dias_15": (0, 15),
+    "mes_1": (0, 30),
+    "meses_3": (0, 90),
+}
+
+
+def filter_certs(certs: list, nr: str, search: str, period: str) -> list:
+    """Filtra certificados por NR, busca textual e periodo de vencimento."""
+    out = []
+    for c in certs:
+        if nr != "TODAS" and c["nr_code"] != nr:
+            continue
+        if search:
+            if (search not in c["funcionario_nome"].lower()
+                    and search not in c["funcionario_cpf"]
+                    and search not in c["nr_code"].lower()):
+                continue
+        d = c["dias_para_vencer"]
+        if period == "vencidos":
+            if d >= 0:
+                continue
+        elif period in PERIOD_RANGES:
+            lo, hi = PERIOD_RANGES[period]
+            if not (lo <= d <= hi):
+                continue
+        out.append(c)
+    return out
+
 
 class VencimentosPage(ctk.CTkFrame):
     def __init__(self, master, history_repo: HistoryRepository, **kwargs):
@@ -177,27 +209,7 @@ class VencimentosPage(ctk.CTkFrame):
         nr = self._nr_var.get()
         period = self._active_period
 
-        self.filtered_certs = []
-        for c in self.all_certs:
-            if nr != "TODAS" and c["nr_code"] != nr:
-                continue
-            if search:
-                if (search not in c["funcionario_nome"].lower()
-                        and search not in c["funcionario_cpf"]
-                        and search not in c["nr_code"].lower()):
-                    continue
-            d = c["dias_para_vencer"]
-            if period == "vencidos" and d >= 0:
-                continue
-            if period == "dias_7" and d > 7:
-                continue
-            if period == "dias_15" and d > 15:
-                continue
-            if period == "mes_1" and d > 30:
-                continue
-            if period == "meses_3" and d > 90:
-                continue
-            self.filtered_certs.append(c)
+        self.filtered_certs = filter_certs(self.all_certs, nr, search, period)
 
         self._update_cards()
 

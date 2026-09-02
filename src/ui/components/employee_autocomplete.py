@@ -62,6 +62,9 @@ class EmployeeAutocomplete(ctk.CTkFrame):
         except Exception:
             pass
 
+        # clique FORA do campo/dropdown fecha a lista (bind permanente, inerte quando fechada)
+        self.bind_all("<Button-1>", self._on_global_click, add="+")
+
     def _on_keyrelease(self, event):
         if event.keysym in ("Up", "Down", "Return", "Escape", "Tab", "Shift_L", "Shift_R", "Control_L", "Control_R", "Alt_L", "Alt_R"):
             return
@@ -77,15 +80,19 @@ class EmployeeAutocomplete(ctk.CTkFrame):
             self._show_dropdown(query)
 
     def _on_focus_out(self, event):
-        # Delay para permitir clique no dropdown
-        self.after(200, self._check_hide_dropdown)
+        # revalida apos pausa curta: clicar num item muda o foco por um instante
+        self.after(250, self._check_focus)
+
+    def _check_focus(self):
+        if self.dropdown_frame and not self._focus_inside() and not self._pointer_inside():
+            self._hide_dropdown()
 
     def _on_click(self, event):
         if self.entry.cget("state") == "readonly":
             self.clear()
 
     def _check_hide_dropdown(self):
-        if self.dropdown_frame and not self.dropdown_frame.winfo_containing(self.winfo_pointerxy()[0], self.winfo_pointerxy()[1]):
+        if self.dropdown_frame and not self._focus_inside() and not self._pointer_inside():
             self._hide_dropdown()
 
     def _on_down(self, event):
@@ -228,17 +235,35 @@ class EmployeeAutocomplete(ctk.CTkFrame):
         except Exception:
             self._hide_dropdown()
 
+    def _on_global_click(self, event):
+        """Clique em qualquer lugar: se foi fora do campo e do dropdown, fecha."""
+        if not self.dropdown_frame:
+            return
+        try:
+            w = event.widget
+            ws = str(w) if w is not None else ""
+            if ws.startswith(str(self.entry)):
+                return
+            if self.dropdown_frame and ws.startswith(str(self.dropdown_frame)):
+                return
+            self._hide_dropdown()
+        except Exception:
+            self._hide_dropdown()
+
     def _start_watchdog(self):
         if self._watchdog_id:
             try:
                 self.after_cancel(self._watchdog_id)
             except Exception:
                 pass
-        self._watchdog_id = self.after(250, self._watchdog_tick)
+        self._watchdog_id = self.after(300, self._watchdog_tick)
 
     def _watchdog_tick(self):
-        """Fecha o dropdown se: app minimizado, outro programa/janela em foco,
-        ou mouse e foco longe do campo (auto-recuperacao em 250ms)."""
+        """
+        Mantem o dropdown aberto enquanto o foco estiver no campo/dropdown OU o
+        mouse estiver sobre eles; fecha quando o usuario tira o foco (inclusive
+        para outro programa) ou a janela minimiza. Rede de seguranca a cada 300ms.
+        """
         self._watchdog_id = None
         if not self.dropdown_frame:
             return
@@ -247,37 +272,38 @@ class EmployeeAutocomplete(ctk.CTkFrame):
             if not root.viewable() or root.state() != "normal":
                 self._hide_dropdown()
                 return
-            if not self._app_is_active():
-                self._hide_dropdown()
-                return
-            px, py = self.winfo_pointerxy()
-            over_drop = self.dropdown_frame.winfo_containing(px, py)
-            over_self = self.winfo_containing(px, py)
-            if not over_drop and not over_self and not self._focus_in_entry():
+            if not self._focus_inside() and not self._pointer_inside():
                 self._hide_dropdown()
                 return
         except Exception:
             self._hide_dropdown()
             return
-        self._watchdog_id = self.after(250, self._watchdog_tick)
+        self._watchdog_id = self.after(300, self._watchdog_tick)
 
-    def _app_is_active(self) -> bool:
-        """True se a janela principal do app esta ativa (Windows)."""
-        try:
-            import ctypes
-
-            root = self.winfo_toplevel()
-            return ctypes.windll.user32.GetActiveWindow() == root.winfo_id()
-        except Exception:
-            return True  # sem certeza: outros gatilhos continuam valendo
-
-    def _focus_in_entry(self) -> bool:
+    def _focus_inside(self) -> bool:
+        """Foco dentro do campo de busca ou do dropdown."""
         try:
             w = self.focus_get()
             if w is None:
                 return False
-            ws, es = str(w), str(self.entry)
-            return ws == es or ws.startswith(es + ".")
+            ws = str(w)
+            if ws.startswith(str(self.entry)):
+                return True
+            if self.dropdown_frame and ws.startswith(str(self.dropdown_frame)):
+                return True
+            return False
+        except Exception:
+            return False
+
+    def _pointer_inside(self) -> bool:
+        """Mouse sobre o dropdown ou sobre o campo de busca."""
+        try:
+            px, py = self.winfo_pointerxy()
+            if self.dropdown_frame and self.dropdown_frame.winfo_containing(px, py):
+                return True
+            if self.winfo_containing(px, py):
+                return True
+            return False
         except Exception:
             return False
 

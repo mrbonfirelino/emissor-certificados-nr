@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.3.3] - 2026-09-01
+
+### Corrigido
+- **Autocomplete de funcionários**: a lista agora permanece aberta até o
+  usuário tirar o foco ou clicar fora (antes o watchdog fechava cedo demais);
+  removida a checagem de janela ativa que causava fechamento precoce; novo
+  gatilho global de clique-fora
+- **Filtro de vencimentos (7/15/30/90 dias)**: certificados já vencidos
+  apareciam nos filtros de período futuro — agora cada filtro exige
+  `0 ≤ dias ≤ limite` (vencidos só em "Vencidos"/"Todos"); lógica extraída
+  para `filter_certs` testável
+
+### Alterado
+- **Backup externo em dois destinos**: além do histórico local, cada backup é
+  copiado para `Documentos\NormaTech-Backup` e `C:\NormaTech-Backup` (pastas
+  criadas automaticamente; falha num destino não interrompe os outros e fica
+  registrada no `data/backup.log`); retenção igual à local aplicada nos
+  destinos; antiga `Documents\BackupsNormaTech` descontinuada
+
+### Adicionado
+- `docs/SUGESTOES.md`: lista priorizada de melhorias (rede, log de erros,
+  toast de vencimentos, CI, instalador, validador de templates etc.)
+- `test_vencimentos.py`: testes do filtro por período/NR/busca
+
 ## [1.3.2] - 2026-09-01
 
 ### Corrigido

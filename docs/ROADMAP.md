@@ -1,7 +1,7 @@
 # Roadmap - NormaTech
 
 ## Status do Projeto
-- Versao atual: 1.3.2
+- Versao atual: 1.3.3
 - NRs disponiveis: 17 (01, 05, 06, 09, 10, 11, 12, 17, 18, 26, 33, 34, 35 + FDS, BRIGADISTA-NR23, PTA, MOTOSERRA, MUNCK, PONTE-ROLANTE, DIR-DEFENSIVA, CIPAA)
 
 ---

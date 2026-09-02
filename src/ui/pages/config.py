@@ -192,7 +192,7 @@ class ConfigPage(ctk.CTkFrame):
 
         self._backup_duplo_var = ctk.BooleanVar(value=True)
         ctk.CTkCheckBox(
-            form, text="Backup duplo (copia adicional em Documentos\\BackupsNormaTech)",
+            form, text="Backup externo (copias em Documentos\\NormaTech-Backup e C:\\NormaTech-Backup)",
             variable=self._backup_duplo_var,
             font=fonts["body"], text_color=COLORS["text"],
             fg_color=COLORS["primary"], hover_color=COLORS["secondary"],
