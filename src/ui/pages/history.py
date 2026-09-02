@@ -226,6 +226,12 @@ class HistoryPage(ctk.CTkFrame):
             command=lambda c=cert: self._attach_signed(c)
         ).pack(side="left", padx=2)
 
+        ctk.CTkButton(btn_frame, text="Digitalizar", width=72, height=26,
+            font=fonts["small"], fg_color=COLORS["secondary"],
+            hover_color=COLORS["primary"],
+            command=lambda c=cert: self._digitalizar(c)
+        ).pack(side="left", padx=2)
+
         btn_baixar = ctk.CTkButton(btn_frame, text="Baixar", width=52, height=26,
             font=fonts["small"], fg_color=COLORS["success"],
             hover_color="#256B28",
@@ -239,6 +245,29 @@ class HistoryPage(ctk.CTkFrame):
         sep.grid(row=row_idx + 1, column=0, sticky="ew", padx=12, pady=0)
 
     # ── Documento assinado (escaneado) ───────────────────────
+
+    def _digitalizar(self, cert: CertificateRecord):
+        """Digitaliza (scanner ou foto) e anexa direto ao certificado (roadmap 2.9)."""
+        from src.ui.components.scan_dialog import ScanDialog
+        dlg = ScanDialog(self, cert)
+        self.wait_window(dlg)
+        if not dlg.resultado:
+            return
+        data, tipo = dlg.resultado
+        try:
+            substituindo = cert.has_signed_doc
+            self.history_repo.attach_signed_doc(cert.id, data, tipo)
+            msg = "Documento digitalizado anexado ao certificado."
+            if substituindo:
+                msg = "Documento assinado substituido pela nova digitalizacao."
+            messagebox.showinfo("Sucesso", msg, parent=self)
+            self._refresh_list()
+        except ValueError as e:
+            messagebox.showerror("Erro", str(e), parent=self)
+        except Exception as e:
+            from src.utils.error_log import log_error
+            log_error("digitalizar-anexar", e)
+            self._show_error(f"Erro ao anexar digitalizacao: {e}")
 
     def _attach_signed(self, cert: CertificateRecord):
         if cert.has_signed_doc:

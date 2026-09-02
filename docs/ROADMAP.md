@@ -1,7 +1,7 @@
 # Roadmap - NormaTech
 
 ## Status do Projeto
-- Versao atual: 1.4.0
+- Versao atual: 1.5.0
 - NRs disponiveis: 17 (01, 05, 06, 09, 10, 11, 12, 17, 18, 26, 33, 34, 35 + FDS, BRIGADISTA-NR23, PTA, MOTOSERRA, MUNCK, PONTE-ROLANTE, DIR-DEFENSIVA, CIPAA)
 
 ---
@@ -129,15 +129,16 @@ Requisitos: Microsoft PowerPoint instalado na máquina (conversão via COM).
 | Substituir/Remover | Permitir substituir ou remover o scan anexado | Media | Concluído |
 | Indicador Visual | Marcar na lista de histórico quais certificados possuem documento assinado anexado | Media | Concluído |
 
-### 2.9 Digitalização e Inserção Direta no Histórico
+### 2.9 Digitalização e Inserção Direta no Histórico (v1.5.0)
 
 | Item | Descricao | Prioridade | Status |
 |------|-----------|------------|--------|
-| Upload de Scan | Digitalizar (escanear ou fotografar) um certificado assinado e anexar direto a partir de uma opção acessível | Alta | Pendente |
-| Preview Antes de Inserir | Exibir preview da imagem/PDF digitalizado antes de confirmar a inserção no registro | Alta | Pendente |
-| Inserção no Registro | Inserir o documento digitalizado vinculado ao registro correto no histórico (mesmo fluxo do item 2.8, mas com tela dedicada de digitalização) | Alta | Pendente |
-| Crop/Ajuste | Opção de recortar, girar ou ajustar brilho/contraste antes de inserir | Media | Pendente |
-| Histórico de Digitalizações | Permitir visualizar digitalizações anteriores de um certificado (múltiplos scans) | Baixa | Pendente |
+| Upload de Scan | Digitalizar (escanear ou fotografar) um certificado assinado e anexar direto a partir de uma opção acessível | Alta | Concluído |
+| Preview Antes de Inserir | Exibir preview da imagem/PDF digitalizado antes de confirmar a inserção no registro | Alta | Concluído |
+| Inserção no Registro | Inserir o documento digitalizado vinculado ao registro correto no histórico (mesmo fluxo do item 2.8, mas com tela dedicada de digitalização) | Alta | Concluído |
+| Crop/Ajuste | Opção de recortar, girar ou ajustar brilho/contraste antes de inserir | Media | Concluído |
+| Multi-página | Frente/verso: páginas digitalizadas combinadas em um único PDF anexado | Alta | Concluído (v1.5.0) |
+| Histórico de Digitalizações | Permitir visualizar digitalizações anteriores de um certificado (múltiplos scans) | Baixa | Pendente (exige mudança de esquema) |
 
 ### 2.10 Notificações Windows (Toast) (CONCLUÍDA)
 

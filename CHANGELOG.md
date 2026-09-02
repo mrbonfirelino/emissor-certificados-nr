@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.5.0] - 2026-09-01
+
+### Adicionado
+- **Digitalização direta no app** (roadmap 2.9): botão "Digitalizar" por
+  certificado no histórico abre tela dedicada com:
+  - **Escanear no scanner** via WIA (comtypes — sem dependências novas;
+    cancelamento e ausência de scanner tratados com mensagem clara + error.log)
+  - **Escolher arquivo / foto** do celular (JPG/PNG/PDF)
+  - **Multi-página**: loop de páginas combinadas em **um único PDF** anexado
+  - **Ajustes de imagem**: girar ±90°, brilho, contraste e **recorte por
+    arraste** no preview (com desfazer)
+  - Preview antes de confirmar; inserção pelo mesmo fluxo do item 2.8
+    (substitui scan anterior)
+- **Novo ícone do programa** ("ICONE RECORTADO"): `assets/logo.ico` convertido
+  para ICO verdadeiro multi-resolução (16–256px) — o anterior era um JPEG
+  renomeado e não funcionava; `setup_assets.py` regenera a partir da imagem
+
+### Pendente (roadmap 2.9)
+- Histórico de digitalizações (múltiplos scans por certificado) — exige
+  mudança de esquema do banco
+
 ## [1.4.0] - 2026-09-01
 
 ### Corrigido
