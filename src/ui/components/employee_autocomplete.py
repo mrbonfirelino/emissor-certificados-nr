@@ -51,6 +51,16 @@ class EmployeeAutocomplete(ctk.CTkFrame):
         self.dropdown_frame = None
         self.dropdown_buttons: List[ctk.CTkButton] = []
         self._selected_index = -1
+        self._employees_cache: List[Employee] = []
+        self._watchdog_id = None
+
+        # dropdown nunca fica orfao: fecha ao minimizar e acompanha a janela ao mover
+        try:
+            top = self.winfo_toplevel()
+            top.bind("<Unmap>", self._on_root_unmap, add="+")
+            top.bind("<Configure>", self._on_root_configure, add="+")
+        except Exception:
+            pass
 
     def _on_keyrelease(self, event):
         if event.keysym in ("Up", "Down", "Return", "Escape", "Tab", "Shift_L", "Shift_R", "Control_L", "Control_R", "Alt_L", "Alt_R"):
@@ -102,13 +112,14 @@ class EmployeeAutocomplete(ctk.CTkFrame):
     def _show_dropdown(self, query: str):
         if self.dropdown_frame:
             self.dropdown_frame.destroy()
-        
+
         employees = self.employee_repo.search(query, limit=10)
         if not employees:
             self._hide_dropdown()
             return
-        
+
         self._selected_index = -1
+        self._employees_cache = employees
         
         # Cria frame dropdown posicionado abaixo do entry
         self.dropdown_frame = ctk.CTkToplevel(self)
@@ -158,26 +169,32 @@ class EmployeeAutocomplete(ctk.CTkFrame):
             btn.pack(fill="x", padx=4, pady=2)
             btn.bind("<Enter>", lambda e, idx=i: self._on_hover(idx))
             self.dropdown_buttons.append(btn)
-        
+
         self._dropdown_visible = True
+        self._start_watchdog()
 
     def _on_hover(self, index: int):
         self._selected_index = index
         self._update_selection()
 
     def _select_employee(self, index: int):
-        if 0 <= index < len(self.dropdown_buttons):
-            employees = self.employee_repo.search(self.entry_var.get().strip(), limit=10)
-            if index < len(employees):
-                emp = employees[index]
-                self.selected_employee = emp
-                self.entry_var.set(f"{emp.nome} ({emp.cpf})" if emp.cpf else emp.nome)
-                self.entry.configure(state="readonly")
-                self._hide_dropdown()
-                if self.on_select:
-                    self.on_select(emp)
+        # usa o cache da lista EXIBIDA (garante o item certo sem re-buscar)
+        if 0 <= index < len(self._employees_cache):
+            emp = self._employees_cache[index]
+            self.selected_employee = emp
+            self.entry_var.set(f"{emp.nome} ({emp.cpf})" if emp.cpf else emp.nome)
+            self.entry.configure(state="readonly")
+            self._hide_dropdown()
+            if self.on_select:
+                self.on_select(emp)
 
     def _hide_dropdown(self):
+        if self._watchdog_id:
+            try:
+                self.after_cancel(self._watchdog_id)
+            except Exception:
+                pass
+            self._watchdog_id = None
         if self.dropdown_frame:
             try:
                 self.dropdown_frame.destroy()
@@ -187,6 +204,82 @@ class EmployeeAutocomplete(ctk.CTkFrame):
             self.dropdown_buttons = []
             self._dropdown_visible = False
             self._selected_index = -1
+
+    # ── Anti-orfao: watchdog + eventos da janela principal ────
+
+    def _on_root_unmap(self, _event=None):
+        """Janela principal minimizou -> fecha o dropdown na hora."""
+        self._hide_dropdown()
+
+    def _on_root_configure(self, event=None):
+        """Janela principal moveu/redimensionou -> dropdown acompanha o campo."""
+        if self.dropdown_frame and event is not None and event.widget is self.winfo_toplevel():
+            self._position_dropdown()
+
+    def _position_dropdown(self):
+        if not self.dropdown_frame:
+            return
+        try:
+            x = self.entry.winfo_rootx()
+            y = self.entry.winfo_rooty() + self.entry.winfo_height()
+            w = self.dropdown_frame.winfo_width()
+            h = self.dropdown_frame.winfo_height()
+            self.dropdown_frame.tk.call("wm", "geometry", self.dropdown_frame._w, f"{w}x{h}+{x}+{y}")
+        except Exception:
+            self._hide_dropdown()
+
+    def _start_watchdog(self):
+        if self._watchdog_id:
+            try:
+                self.after_cancel(self._watchdog_id)
+            except Exception:
+                pass
+        self._watchdog_id = self.after(250, self._watchdog_tick)
+
+    def _watchdog_tick(self):
+        """Fecha o dropdown se: app minimizado, outro programa/janela em foco,
+        ou mouse e foco longe do campo (auto-recuperacao em 250ms)."""
+        self._watchdog_id = None
+        if not self.dropdown_frame:
+            return
+        try:
+            root = self.winfo_toplevel()
+            if not root.viewable() or root.state() != "normal":
+                self._hide_dropdown()
+                return
+            if not self._app_is_active():
+                self._hide_dropdown()
+                return
+            px, py = self.winfo_pointerxy()
+            over_drop = self.dropdown_frame.winfo_containing(px, py)
+            over_self = self.winfo_containing(px, py)
+            if not over_drop and not over_self and not self._focus_in_entry():
+                self._hide_dropdown()
+                return
+        except Exception:
+            self._hide_dropdown()
+            return
+        self._watchdog_id = self.after(250, self._watchdog_tick)
+
+    def _app_is_active(self) -> bool:
+        """True se a janela principal do app esta ativa (Windows)."""
+        try:
+            import ctypes
+
+            root = self.winfo_toplevel()
+            return ctypes.windll.user32.GetActiveWindow() == root.winfo_id()
+        except Exception:
+            return True  # sem certeza: outros gatilhos continuam valendo
+
+    def _focus_in_entry(self) -> bool:
+        try:
+            w = self.focus_get()
+            if w is None:
+                return False
+            ws, es = str(w), str(self.entry)
+            return ws == es or ws.startswith(es + ".")
+        except Exception:
+            return False
 
     def clear(self):
         """Limpa seleção e permite nova busca."""

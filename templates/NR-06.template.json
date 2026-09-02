@@ -1,10 +1,10 @@
 {
   "nr_code": "NR-06",
   "nr_name": "Equipamento de Proteção Individual (EPI)",
-  "carga_horaria_minima": 4,
+  "carga_horaria_minima": 6,
   "validade_meses": 12,
   "riscos": ["Acidente", "Fisico"],
-  "descricao_padrao": "Treinamento de Uso e Conservação de EPI - NR-06",
+  "descricao_padrao": "TREINAMENTO DE EQUIPAMENTO DE PROTEÇÃO INDIVIDUAL (EPIs)",
   "campos_extra": [
     {
       "id": "cargo",
@@ -29,16 +29,18 @@
     }
   ],
   "conteudo_programatico": [
-    "1. Definição e classificação de EPI",
-    "2. Obrigatoriedade do fornecimento e uso de EPI",
-    "3. Responsabilidades do empregador e do empregado",
-    "4. Tipos de EPI: proteção da cabeça, olhos/face, audição, respiratória, tronco, membros superiores/inferiores, corpo inteiro",
-    "5. Seleção adequada de EPI conforme risco",
-    "6. Uso correto, conservação, higienização e armazenamento",
-    "7. Substituição e descarte de EPI danificado ou vencido",
-    "8. Certificado de Aprovação (CA) do MTE"
+    "1. DEFINIÇÕES E INTRODUÇÃO A SEGURANÇA DO TRABALHO NA NR-06",
+    "2. O QUE É EQUIPAMENTO DE PROTEÇÃO INDIVIDUAL (EPIs) E EQUIPAMENTO DE PROTEÇÃO COLETIVA (EPCs)",
+    "3. RESPONSABILIDADES DO EMPREGADOR E DO TRABALHADOR",
+    "4. RESPONSABILIDADES DOS FABRICANTES E IMPORTADORES - C.A. - CERTIFICADO DE APROVAÇÃO DOS EPIs",
+    "5. DA COMPETÊNCIA DO MINISTÉRIO DO TRABALHO E EMPREGO - MTE",
+    "6. USO ADEQUADO, GUARDA, CONSERVAÇÃO E INSPEÇÃO DE PRÉ-USO",
+    "7. RISCOS POTENCIAIS DE NÃO USO DOS EPIs E TIPOS DE ACIDENTES",
+    "8. TABELA DE EPIs x FUNÇÕES",
+	"9. ANÁLISE DE RISCO E FICHA DE CONTROLE DE EPIs",
+	"10. EPIs PARA AS SEGUINTES PROTEÇÕES: CABEÇA, OLHOS E FACE, PROTEÇÃO AUDITIVA, PROTEÇÃO RESPIRATÓRIA, TRONCO, MEMBROS SUPERIORES E INFERIORES, CORPO INTEIRO, CONTRA QUEDAS DO MESMO NÍVEL E COM DIFERENÇA DE NÍVEL"
   ],
-  "texto_certificado": "Certificamos que {nome_funcionario}, portador do CPF no {cpf}, da empresa {empresa}, inscrito no CNPJ sob no {cnpj}, concluiu com aproveitamento o {descricao_treinamento}, com carga horaria de {carga_horaria} horas, no dia {data_treinamento}, nas dependencias de {local_treinamento}, atendendo aos requisitos da Norma Regulatoria no 06 (NR-06) do Ministerio do Trabalho e Emprego.",
+  "texto_certificado": "Certificamos que {nome_funcionario}, portador do CPF {cpf}, da empresa {empresa}, sob o CNPJ {cnpj}, concluiu com aproveitamento o {descricao_treinamento}, com carga horaria de {carga_horaria} horas, no dia {data_treinamento}, situada na {local_treinamento}, atendendo aos requisitos da Norma Regulatoria nº 06 (NR-06) do Ministerio do Trabalho e Emprego.",
   "assinaturas": [
     {
       "role": "instrutor",

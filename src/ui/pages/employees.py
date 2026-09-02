@@ -70,7 +70,14 @@ class EmployeesPage(ctk.CTkFrame):
             placeholder_text="Buscar por nome ou CPF..."
         )
         self.search_entry.grid(row=0, column=0, sticky="ew", padx=(0, 8))
-        self.search_var.trace_add("write", lambda *args: self._on_search())
+        self.search_entry.bind("<Return>", lambda *args: self._on_search())
+
+        ctk.CTkButton(
+            search_frame, text="Buscar", width=80, height=36,
+            font=fonts["body_bold"], fg_color=COLORS["secondary"],
+            hover_color=COLORS["primary"],
+            command=self._on_search
+        ).grid(row=0, column=1, padx=(0, 8))
 
         funcoes_disponiveis = ["Todas"] + self.employee_repo.get_all_funcoes()
         self._funcao_filter_var = ctk.StringVar(value="Todas")
@@ -82,14 +89,14 @@ class EmployeesPage(ctk.CTkFrame):
             button_hover_color=COLORS["primary"],
             command=lambda _: self._refresh_list()
         )
-        self._funcao_filter_menu.grid(row=0, column=1, padx=(0, 8))
+        self._funcao_filter_menu.grid(row=0, column=2, padx=(0, 8))
 
         ctk.CTkButton(
             search_frame, text="X", width=36, height=36,
             font=fonts["body"], fg_color=COLORS["muted"],
             hover_color=COLORS["text_secondary"],
             command=self._clear_search
-        ).grid(row=0, column=2)
+        ).grid(row=0, column=3)
 
         # Row 1 — Lista (weight=1 preenche resto)
         self.list_frame = ctk.CTkScrollableFrame(self, fg_color=COLORS["surface"], corner_radius=12, height=200)

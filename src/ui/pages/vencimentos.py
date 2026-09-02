@@ -43,7 +43,7 @@ class VencimentosPage(ctk.CTkFrame):
         self._header = ctk.CTkFrame(self, fg_color="transparent")
         self._header.grid(row=0, column=0, sticky="ew", padx=20, pady=(15, 5))
         self._header.grid_columnconfigure(1, weight=1)
-        ctk.CTkLabel(self._header, text="Vencimentos",
+        ctk.CTkLabel(self._header, text="Controle de Vencimentos",
                       font=fonts["title"], text_color=COLORS["text"]).grid(row=0, column=0, sticky="w")
         ctk.CTkLabel(self._header, text=date.today().strftime("%d/%m/%Y"),
                       font=fonts["small"], text_color=COLORS["muted"]).grid(row=0, column=1, sticky="e", padx=(10, 0))
@@ -56,11 +56,11 @@ class VencimentosPage(ctk.CTkFrame):
         self._card_labels = {}
         for i, (key, label, color) in enumerate([
             ("total", "TOTAL de certificados emitidos", COLORS["primary"]),
-            ("vencidos", "Vencidos", COLORS["error"]),
-            ("dias_7", "7 Dias", COLORS["error"]),
-            ("dias_15", "15 Dias", "#E65100"),
-            ("mes_1", "1 Mes", COLORS["warning"]),
-            ("meses_3", "3 Meses", COLORS["success"]),
+            ("vencidos", "Total de VENCIDOS", COLORS["error"]),
+            ("dias_7", "Vencem em 7 Dias", COLORS["error"]),
+            ("dias_15", "Vencem em 15 Dias", "#E65100"),
+            ("mes_1", "Vencem em 1 Mes", COLORS["warning"]),
+            ("meses_3", "Vencem em 3 Meses", COLORS["success"]),
         ]):
             card = ctk.CTkFrame(self._cards_frame, fg_color=COLORS["surface"],
                                 corner_radius=10, border_width=1, border_color=COLORS["border"])
@@ -77,14 +77,20 @@ class VencimentosPage(ctk.CTkFrame):
         self._filters.grid_columnconfigure(0, weight=1)
 
         self._search_var = ctk.StringVar()
-        self._search_var.trace_add("write", lambda *_: self._on_search())
-        ctk.CTkEntry(self._filters, textvariable=self._search_var,
+        self._search_entry = ctk.CTkEntry(self._filters, textvariable=self._search_var,
                      placeholder_text="Buscar funcionario, CPF ou NR...",
                      font=fonts["body"], height=36, corner_radius=8,
-                     border_color=COLORS["border"]).grid(row=0, column=0, sticky="ew", padx=(0, 15))
+                     border_color=COLORS["border"])
+        self._search_entry.grid(row=0, column=0, sticky="ew", padx=(0, 8))
+        self._search_entry.bind("<Return>", lambda *_: self._on_search())
+
+        ctk.CTkButton(self._filters, text="Buscar", width=80, height=36,
+                      font=fonts["body_bold"], fg_color=COLORS["secondary"],
+                      hover_color=COLORS["primary"],
+                      command=self._on_search).grid(row=0, column=1, padx=(0, 15))
 
         ctk.CTkLabel(self._filters, text="NR:", font=fonts["small_bold"],
-                     text_color=COLORS["text"]).grid(row=0, column=1, padx=(0, 3))
+                     text_color=COLORS["text"]).grid(row=0, column=2, padx=(0, 3))
         self._nr_var = ctk.StringVar(value="TODAS")
         ctk.CTkOptionMenu(self._filters, variable=self._nr_var,
                           values=["TODAS", "NR-01", "NR-06", "NR-10", "NR-12", "NR-18",
@@ -94,10 +100,10 @@ class VencimentosPage(ctk.CTkFrame):
                           command=lambda *_: self._on_filter(),
                           font=fonts["small"], width=100, height=32, corner_radius=6,
                           fg_color=COLORS["primary"], button_color=COLORS["secondary"]
-                          ).grid(row=0, column=2, padx=(0, 10))
+                          ).grid(row=0, column=3, padx=(0, 10))
 
         periods = ctk.CTkFrame(self._filters, fg_color="transparent")
-        periods.grid(row=0, column=3, sticky="e")
+        periods.grid(row=0, column=4, sticky="e")
         self._period_btns = {}
         for key, label in [("all", "Todos"), ("vencidos", "Vencidos"),
                            ("dias_7", "7d"), ("dias_15", "15d"),

@@ -30,7 +30,7 @@ class BatchImportPage(ctk.CTkFrame):
         header.grid_columnconfigure(1, weight=1)
 
         ctk.CTkLabel(
-            header, text="Importacao em Lote",
+            header, text="Importação em Lote (Certificados)",
             font=fonts["title"], text_color=COLORS["primary"]
         ).grid(row=0, column=0, sticky="w")
 

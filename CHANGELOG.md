@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.3.2] - 2026-09-01
+
+### Corrigido
+- **Autocomplete de funcionários flutuante**: dropdown ganhava watchdog (250ms)
+  que o fecha se o app minimizar, outro programa ficar em foco, ou mouse/foco
+  saírem do campo; fecha imediato ao minimizar (`<Unmap>`) e acompanha a janela
+  ao mover (`<Configure>`); seleção usa o cache da lista exibida (sem re-buscar)
+- **Erro "bad stickiness value 'center'" ao anexar assinado**: badge "ASSINADO"
+  usava `sticky="center"` (inválido no tkinter) — o anexo era salvo, mas o
+  refresh da lista quebrava. Corrigido para centrar via grid padrão
+
+### Alterado
+- **Busca mais fluida (CPU fraca)**: as abas Funcionários, Histórico, Cartões e
+  Vencimentos agora pesquisam somente no **Enter** ou no novo botão **Buscar**
+  — fim do re-render por tecla digitada (autocomplete do certificado segue ao
+  vivo, máximo 10 resultados)
+
+### Adicionado
+- **Busca na aba Funções**: barra com o mesmo padrão (Enter + Buscar + X),
+  filtro client-side com edição/exclusão mapeadas para o índice original
+- `docs/UI_GPU.md`: estudo de interface com aceleração GPU (Flet/Flutter,
+  PySide6+QML, Dear PyGui, Tauri/Electron) para o cenário CPU fraca + GPU
+  integrada, com recomendação e quick-wins
+
 ## [1.3.1] - 2026-09-01
 
 ### Corrigido

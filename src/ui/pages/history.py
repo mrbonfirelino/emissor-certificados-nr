@@ -33,7 +33,7 @@ class HistoryPage(ctk.CTkFrame):
         self._header.grid_columnconfigure(1, weight=1)
 
         ctk.CTkLabel(
-            self._header, text="Historico de Certificados",
+            self._header, text="Histórico de Emissões (Certificados)",
             font=fonts["title"], text_color=COLORS["primary"]
         ).grid(row=0, column=0, sticky="w")
 
@@ -54,14 +54,21 @@ class HistoryPage(ctk.CTkFrame):
             placeholder_text="Buscar por nome, CPF, numero ou NR..."
         )
         self.search_entry.grid(row=0, column=0, sticky="ew", padx=(0, 8))
-        self.search_var.trace_add("write", lambda *args: self._on_search())
+        self.search_entry.bind("<Return>", lambda *args: self._on_search())
+
+        ctk.CTkButton(
+            filter_frame, text="Buscar", width=80, height=36,
+            font=fonts["body_bold"], fg_color=COLORS["secondary"],
+            hover_color=COLORS["primary"],
+            command=self._on_search
+        ).grid(row=0, column=1, sticky="e", padx=(0, 8))
 
         ctk.CTkButton(
             filter_frame, text="Limpar", width=80, height=36,
             font=fonts["body"], fg_color=COLORS["muted"],
             hover_color=COLORS["text_secondary"],
-            command=lambda: self.search_var.set("")
-        ).grid(row=0, column=1, sticky="e")
+            command=lambda: (self.search_var.set(""), self._on_search())
+        ).grid(row=0, column=2, sticky="e")
 
         # Row 1 — Lista (weight=1 preenche resto)
         self.list_frame = ctk.CTkScrollableFrame(self, fg_color=COLORS["surface"], corner_radius=12, height=200)
@@ -191,8 +198,8 @@ class HistoryPage(ctk.CTkFrame):
         if cert.has_signed_doc:
             badge = ctk.CTkLabel(row, text="ASSINADO", font=fonts["tiny"],
                                  text_color=COLORS["success"], fg_color="#E6F2E6",
-                                 corner_radius=4, padx=0)
-            badge.grid(row=0, column=5, sticky="center", padx=8, pady=4)
+                                 corner_radius=4)
+            badge.grid(row=0, column=5, padx=8, pady=4)
         else:
             ctk.CTkLabel(row, text="—", font=fonts["small"],
                          text_color=COLORS["muted"], anchor="center"

@@ -111,7 +111,7 @@ class BlockingCardsPage(ctk.CTkFrame):
         self._header.grid_columnconfigure(1, weight=1)
 
         ctk.CTkLabel(
-            self._header, text="Emissao de Cartoes de Bloqueio",
+            self._header, text="Emissor de Cartões de Bloqueio",
             font=fonts["title"], text_color=COLORS["primary"]
         ).grid(row=0, column=0, sticky="w")
 
@@ -145,18 +145,26 @@ class BlockingCardsPage(ctk.CTkFrame):
         self._grid_info = ctk.CTkLabel(cfg, text="", font=fonts["small"], text_color=COLORS["muted"])
         self._grid_info.grid(row=0, column=2, padx=(0, 12), sticky="w")
 
-        # busca (ampliada, expande)
+        # busca (ampliada, expande) — pesquisa no Enter ou botao Buscar
         self._search_var = ctk.StringVar()
-        self._search_var.trace_add("write", lambda *_: self._on_search())
-        ctk.CTkEntry(
+        self._search_entry = ctk.CTkEntry(
             cfg, textvariable=self._search_var, font=fonts["body"],
             height=34, corner_radius=6,
             placeholder_text="Buscar funcionario, CPF ou telefone..."
-        ).grid(row=0, column=3, sticky="ew", padx=(0, 8))
+        )
+        self._search_entry.grid(row=0, column=3, sticky="ew", padx=(0, 8))
+        self._search_entry.bind("<Return>", lambda *_: self._on_search())
+
+        ctk.CTkButton(
+            cfg, text="Buscar", width=74, height=34,
+            font=fonts["body_bold"], fg_color=COLORS["secondary"],
+            hover_color=COLORS["primary"],
+            command=self._on_search
+        ).grid(row=0, column=4, padx=(0, 12))
 
         # seletor de itens por pagina (ao lado da busca)
         ctk.CTkLabel(cfg, text="Por pagina:", font=fonts["small"],
-                     text_color=COLORS["muted"]).grid(row=0, column=4, padx=(4, 4), sticky="e")
+                     text_color=COLORS["muted"]).grid(row=0, column=5, padx=(4, 4), sticky="e")
         self._per_page_var = ctk.StringVar(value=str(self._per_page))
         self._per_page_menu = ctk.CTkOptionMenu(
             cfg, variable=self._per_page_var,
@@ -166,7 +174,7 @@ class BlockingCardsPage(ctk.CTkFrame):
             button_color=COLORS["secondary"], button_hover_color=COLORS["primary"],
             command=lambda *_: self._change_per_page()
         )
-        self._per_page_menu.grid(row=0, column=5, sticky="e")
+        self._per_page_menu.grid(row=0, column=6, sticky="e")
 
         # Row 2 — Lista de funcionarios com checkboxes
         self.list_frame = ctk.CTkScrollableFrame(self, fg_color=COLORS["surface"], corner_radius=12, height=200)

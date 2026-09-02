@@ -33,6 +33,7 @@ class FuncoesPage(ctk.CTkFrame):
         super().__init__(master, fg_color=COLORS["background"], **kwargs)
         self.funcoes = load_funcoes()
         self.current_page = 1
+        self._filter = ""
 
         self._build_ui()
 
@@ -40,7 +41,7 @@ class FuncoesPage(ctk.CTkFrame):
         fonts = get_fonts()
 
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(1, weight=1)
+        self.grid_rowconfigure(2, weight=1)
         self.grid_propagate(False)
 
         # Row 0 — Header
@@ -83,14 +84,40 @@ class FuncoesPage(ctk.CTkFrame):
             command=self._add_funcao
         ).pack(side="left")
 
-        # Row 1 — Lista (weight=1 preenche resto)
+        # Row 1 — Busca (Enter ou botao; filtro client-side)
+        search_frame = ctk.CTkFrame(self, fg_color="transparent")
+        search_frame.grid(row=1, column=0, sticky="ew", padx=20, pady=(0, 8))
+        search_frame.grid_columnconfigure(0, weight=1)
+
+        self._search_var = ctk.StringVar()
+        self._search_entry = ctk.CTkEntry(
+            search_frame, textvariable=self._search_var,
+            font=fonts["body"], height=34, corner_radius=6,
+            placeholder_text="Buscar funcao..."
+        )
+        self._search_entry.grid(row=0, column=0, sticky="ew")
+        self._search_entry.bind("<Return>", lambda *_: self._apply_filter())
+
+        ctk.CTkButton(
+            search_frame, text="Buscar", width=80, height=34,
+            font=fonts["body_bold"], fg_color=COLORS["secondary"],
+            hover_color=COLORS["primary"], command=self._apply_filter
+        ).grid(row=0, column=1, padx=(8, 8))
+
+        ctk.CTkButton(
+            search_frame, text="X", width=34, height=34,
+            font=fonts["body"], fg_color=COLORS["muted"],
+            hover_color=COLORS["text_secondary"], command=self._clear_filter
+        ).grid(row=0, column=2)
+
+        # Row 2 — Lista (weight=1 preenche resto)
         self.list_frame = ctk.CTkScrollableFrame(self, fg_color=COLORS["surface"], corner_radius=12, height=200)
-        self.list_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 5))
+        self.list_frame.grid(row=2, column=0, sticky="nsew", padx=20, pady=(0, 5))
         self.list_frame.grid_columnconfigure(0, weight=1)
 
-        # Row 2 — Paginacao custom
+        # Row 3 — Paginacao custom
         self.pagination_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.pagination_frame.grid(row=2, column=0, sticky="ew", padx=20, pady=(0, 5))
+        self.pagination_frame.grid(row=3, column=0, sticky="ew", padx=20, pady=(0, 5))
         self.pagination_frame.grid_columnconfigure(0, weight=1)
 
         self.lbl_page = ctk.CTkLabel(
@@ -139,15 +166,33 @@ class FuncoesPage(ctk.CTkFrame):
         if min(header_h, pag_h) < 5 and _retry < 5:
             self.after(300, lambda r=_retry + 1: self._fit_scroll_height(r))
             return
-        margins = 30
+        margins = 43
         available = h - header_h - pag_h - margins
         self.list_frame.configure(height=max(available, 150))
 
+    # ── Filtro de busca (client-side) ─────────────────────────
+
+    def _apply_filter(self):
+        self._filter = self._search_var.get().strip().lower()
+        self.current_page = 1
+        self._refresh_list()
+
+    def _clear_filter(self):
+        self._search_var.set("")
+        self._apply_filter()
+
+    def _visible_items(self) -> list:
+        """[(indice_original, nome)] das funcoes que passam no filtro."""
+        if not self._filter:
+            return list(enumerate(self.funcoes))
+        return [(i, f) for i, f in enumerate(self.funcoes) if self._filter in f.lower()]
+
     @property
     def total_pages(self) -> int:
-        if not self.funcoes:
+        visible = self._visible_items()
+        if not visible:
             return 1
-        return max(1, (len(self.funcoes) + self.ITEMS_PER_PAGE - 1) // self.ITEMS_PER_PAGE)
+        return max(1, (len(visible) + self.ITEMS_PER_PAGE - 1) // self.ITEMS_PER_PAGE)
 
     def _go_page(self, page):
         self.current_page = max(1, min(page, self.total_pages))
@@ -165,10 +210,12 @@ class FuncoesPage(ctk.CTkFrame):
             widget.destroy()
 
         fonts = get_fonts()
+        visible = self._visible_items()
 
-        if not self.funcoes:
+        if not visible:
             ctk.CTkLabel(
-                self.list_frame, text="Nenhuma funcao cadastrada",
+                self.list_frame,
+                text="Nenhuma funcao encontrada" if self._filter else "Nenhuma funcao cadastrada",
                 font=fonts["body"], text_color=COLORS["muted"]
             ).grid(row=0, column=0, pady=40, padx=20)
             self.lbl_page.configure(text="")
@@ -176,17 +223,19 @@ class FuncoesPage(ctk.CTkFrame):
             self.btn_next.configure(state="disabled")
             return
 
-        total = len(self.funcoes)
+        total = len(visible)
         start = (self.current_page - 1) * self.ITEMS_PER_PAGE
         end = min(start + self.ITEMS_PER_PAGE, total)
-        page_funcoes = self.funcoes[start:end]
+        page_items = visible[start:end]
 
-        self.lbl_page.configure(text=f"Pagina {self.current_page}/{self.total_pages} | {total} funcoes")
+        self.lbl_page.configure(
+            text=f"Pagina {self.current_page}/{self.total_pages} | {total} funcao(es)"
+            + (f" (filtro: '{self._filter}')" if self._filter else "")
+        )
         self.btn_prev.configure(state="normal" if self.current_page > 1 else "disabled")
         self.btn_next.configure(state="normal" if self.current_page < self.total_pages else "disabled")
 
-        for i, func in enumerate(page_funcoes):
-            global_idx = start + i
+        for i, (orig_idx, func) in enumerate(page_items):
             row = ctk.CTkFrame(self.list_frame, fg_color="transparent")
             row.grid(row=i, column=0, sticky="ew", pady=2, padx=8)
             row.grid_columnconfigure(0, weight=1)
@@ -202,14 +251,14 @@ class FuncoesPage(ctk.CTkFrame):
                 btn_frame, text="Editar", width=50, height=26,
                 font=fonts["small"], fg_color=COLORS["secondary"],
                 hover_color=COLORS["primary"],
-                command=lambda idx=global_idx: self._edit_funcao(idx)
+                command=lambda idx=orig_idx: self._edit_funcao(idx)
             ).pack(side="left", padx=2)
 
             ctk.CTkButton(
                 btn_frame, text="Excluir", width=50, height=26,
                 font=fonts["small"], fg_color=COLORS["error"],
                 hover_color="#B71C1C",
-                command=lambda idx=global_idx: self._delete_funcao(idx)
+                command=lambda idx=orig_idx: self._delete_funcao(idx)
             ).pack(side="left", padx=2)
 
     def _add_funcao(self):

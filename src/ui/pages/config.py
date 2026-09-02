@@ -26,13 +26,13 @@ class ConfigPage(ctk.CTkFrame):
         header.grid(row=0, column=0, sticky="ew", padx=20, pady=20)
 
         ctk.CTkLabel(
-            header, text="Configuracao da Empresa",
+            header, text="Configurações do programa",
             font=fonts["title"], text_color=COLORS["primary"]
         ).pack(anchor="w")
 
         ctk.CTkLabel(
             header,
-            text="Dados fixos usados em todos os certificados",
+            text="Dados para os certificados e configurações gerais.",
             font=fonts["body"], text_color=COLORS["text_secondary"]
         ).pack(anchor="w", pady=(4, 0))
 
