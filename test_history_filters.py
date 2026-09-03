@@ -189,6 +189,28 @@ def test_exportador():
     print("[OK] exportacao xlsx + csv (BOM, ;, acentos)")
 
 
+def test_ultima_emissao_por_nr():
+    repo = make_repo()
+    # mesmo funcionario: NR-35 antiga (sem CPF, vencida) renovada com CPF + NR-10 vigente
+    add(repo, 10, "NR-35", "Joao Pedro", "", "2024-01-10")
+    add(repo, 11, "NR-35", "Joao Pedro", "529.982.247-25", "2027-01-01")
+    add(repo, 12, "NR-10", "Joao Pedro", "529.982.247-25", "2027-01-01")
+
+    certs = repo.get_certificates_with_expiration()
+    assert len(certs) == 2, certs
+    nr35 = next(c for c in certs if c["nr_code"] == "NR-35")
+    assert nr35["data_fim"] == "2027-01-01" and nr35["funcionario_cpf"] == "529.982.247-25"
+    assert all(c["dias_para_vencer"] >= 0 for c in certs)  # renovada nao fica vencida
+
+    todos = repo.get_certificates_with_expiration(only_latest=False)
+    assert len(todos) == 3
+    assert any(c["dias_para_vencer"] < 0 for c in todos)  # a antiga so aparece sem dedupe
+
+    stats = repo.get_dashboard_stats()
+    assert stats["vencidos"] == 0  # dashboard nao conta emissao renovada como vencida
+    print("[OK] vencimentos/dashboard: apenas a ultima emissao por NR (renovacao)")
+
+
 if __name__ == "__main__":
     test_distinct_nrs()
     test_texto_normalizado()
@@ -198,5 +220,6 @@ if __name__ == "__main__":
     test_sem_filtros_equivale_get_all()
     test_filtro_assinado()
     test_dashboard_stats()
+    test_ultima_emissao_por_nr()
     test_exportador()
     print("\nTodos os testes de filtros/dashboard/export do historico passaram.")

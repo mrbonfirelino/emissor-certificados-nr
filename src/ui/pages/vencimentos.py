@@ -101,7 +101,7 @@ class VencimentosPage(ctk.CTkFrame):
             self._cards_frame.grid_columnconfigure(i, weight=1)
         self._card_labels = {}
         for i, (key, label, color) in enumerate([
-            ("total", "TOTAL de certificados emitidos", COLORS["primary"]),
+            ("total", "TOTAL de certificados ativos", COLORS["primary"]),
             ("vencidos", "Total de VENCIDOS", COLORS["error"]),
             ("dias_7", "Vencem em 7 Dias", COLORS["error"]),
             ("dias_15", "Vencem em 15 Dias", "#E65100"),
@@ -229,10 +229,16 @@ class VencimentosPage(ctk.CTkFrame):
 
         groups = {}
         for c in self.filtered_certs:
-            key = (c["employee_id"], c["funcionario_nome"],
-                   c["funcionario_cpf"], c.get("funcionario_funcao", ""))
-            groups.setdefault(key, []).append(c)
-        self._employees_list = list(groups.items())
+            # agrupa SOMENTE por funcionario (snapshots de CPF/nome variam
+            # entre emissoes e duplicavam o card)
+            groups.setdefault(c["employee_id"], []).append(c)
+        self._employees_list = []
+        for emp_id, certs in groups.items():
+            # exibicao usa o snapshot mais completo (prefere o que tem CPF)
+            ref = next((c for c in certs if c["funcionario_cpf"]), certs[0])
+            key = (emp_id, ref["funcionario_nome"], ref["funcionario_cpf"],
+                   ref.get("funcionario_funcao", ""))
+            self._employees_list.append((key, certs))
         self._pagination.set_total(len(self._employees_list))
         self._render_list()
 

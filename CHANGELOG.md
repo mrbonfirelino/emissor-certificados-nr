@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.8.1] - 2026-09-03
+
+### Corrigido
+- **Card duplicado em Vencimentos**: certificados antigos (emitidos antes do
+  CPF ser cadastrado) geravam um segundo card do mesmo funcionário, pois o
+  agrupamento usava o CPF/nome registrados no momento da emissão — agora
+  agrupa apenas por funcionário, exibindo o snapshot mais completo
+- **Vencimentos/Dashboard/toast contam apenas a última emissão de cada NR**:
+  emissão renovada deixa de constar como vencida (renovação substitui a
+  antiga no controle de vencimentos, indicadores da tela inicial e notificação
+  de startup); card TOTAL renomeado para "TOTAL de certificados ativos"
+
 ## [1.8.0] - 2026-09-03
 
 ### Adicionado

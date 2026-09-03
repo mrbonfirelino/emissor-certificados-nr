@@ -296,7 +296,7 @@ class HistoryRepository:
             )
             return True
 
-    def get_certificates_with_expiration(self) -> List[Dict[str, Any]]:
+    def get_certificates_with_expiration(self, only_latest: bool = True) -> List[Dict[str, Any]]:
         from src.core.template_loader import load_all_templates
         templates = load_all_templates()
         today = date.today()
@@ -349,6 +349,18 @@ class HistoryRepository:
                 "dias_para_vencer": dias_para_vencer,
                 "status": status,
             })
+
+        if only_latest:
+            # renovacao substitui a emissao antiga: mantem apenas a emissao
+            # mais recente de cada (funcionario, NR) para vencimentos/dashboard
+            latest: Dict[tuple, Dict[str, Any]] = {}
+            for c in results:
+                key = (c["employee_id"], c["nr_code"])
+                atual = latest.get(key)
+                if atual is None or (c["data_fim"], c["id"]) > (atual["data_fim"], atual["id"]):
+                    latest[key] = c
+            results = sorted(latest.values(),
+                             key=lambda c: (c["funcionario_nome"], c["nr_code"]))
 
         return results
 
