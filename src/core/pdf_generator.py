@@ -339,15 +339,14 @@ def generate_certificate_pdf(
                         _hex(sig_block_cfg.get('detail_color', '#000000'))
                     )
 
-        # Numero do certificado (canto inferior direito, apenas pagina 1)
-        if doc.page == 1:
-            canvas.setFillColor(_hex(sig_data['cert_color']))
-            canvas.setFont('Helvetica', sig_data['cert_font_size'])
-            canvas.drawRightString(
-                page_width - margins["right"] * mm,
-                border_inset + 8 * mm,
-                sig_data['cert_number']
-            )
+        # Numero do certificado (canto inferior direito, EM TODAS as paginas)
+        canvas.setFillColor(_hex(sig_data['cert_color']))
+        canvas.setFont('Helvetica', sig_data['cert_font_size'])
+        canvas.drawRightString(
+            page_width - margins["right"] * mm,
+            border_inset + 8 * mm,
+            sig_data['cert_number']
+        )
 
         canvas.restoreState()
 

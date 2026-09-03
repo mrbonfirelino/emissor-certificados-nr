@@ -40,7 +40,6 @@ class EmployeeAutocomplete(ctk.CTkFrame):
         # Bind events
         self.entry.bind("<KeyRelease>", self._on_keyrelease)
         self.entry.bind("<FocusIn>", self._on_focus_in)
-        self.entry.bind("<FocusOut>", self._on_focus_out)
         self.entry.bind("<Down>", self._on_down)
         self.entry.bind("<Up>", self._on_up)
         self.entry.bind("<Return>", self._on_return)
@@ -52,7 +51,7 @@ class EmployeeAutocomplete(ctk.CTkFrame):
         self.dropdown_buttons: List[ctk.CTkButton] = []
         self._selected_index = -1
         self._employees_cache: List[Employee] = []
-        self._watchdog_id = None
+        self._auto_close_id = None
 
         # dropdown nunca fica orfao: fecha ao minimizar e acompanha a janela ao mover
         try:
@@ -86,21 +85,9 @@ class EmployeeAutocomplete(ctk.CTkFrame):
         if len(query) >= 2:
             self._show_dropdown(query)
 
-    def _on_focus_out(self, event):
-        # revalida apos pausa curta: clicar num item muda o foco por um instante
-        self.after(250, self._check_focus)
-
-    def _check_focus(self):
-        if self.dropdown_frame and not self._focus_inside() and not self._pointer_inside():
-            self._hide_dropdown()
-
     def _on_click(self, event):
         if self.entry.cget("state") == "readonly":
             self.clear()
-
-    def _check_hide_dropdown(self):
-        if self.dropdown_frame and not self._focus_inside() and not self._pointer_inside():
-            self._hide_dropdown()
 
     def _on_down(self, event):
         if self.dropdown_buttons:
@@ -185,7 +172,7 @@ class EmployeeAutocomplete(ctk.CTkFrame):
             self.dropdown_buttons.append(btn)
 
         self._dropdown_visible = True
-        self._start_watchdog()
+        self._schedule_auto_close()
 
     def _on_hover(self, index: int):
         self._selected_index = index
@@ -203,12 +190,12 @@ class EmployeeAutocomplete(ctk.CTkFrame):
                 self.on_select(emp)
 
     def _hide_dropdown(self):
-        if self._watchdog_id:
+        if self._auto_close_id:
             try:
-                self.after_cancel(self._watchdog_id)
+                self.after_cancel(self._auto_close_id)
             except Exception:
                 pass
-            self._watchdog_id = None
+            self._auto_close_id = None
         if self.dropdown_frame:
             try:
                 self.dropdown_frame.destroy()
@@ -219,7 +206,7 @@ class EmployeeAutocomplete(ctk.CTkFrame):
             self._dropdown_visible = False
             self._selected_index = -1
 
-    # ── Anti-orfao: watchdog + eventos da janela principal ────
+    # ── Anti-orfao: eventos da janela principal + fallback 60s ────
 
     def _on_root_unmap(self, _event=None):
         """Janela principal minimizou -> fecha o dropdown na hora."""
@@ -256,62 +243,19 @@ class EmployeeAutocomplete(ctk.CTkFrame):
         except Exception:
             self._hide_dropdown()
 
-    def _start_watchdog(self):
-        if self._watchdog_id:
+    def _schedule_auto_close(self):
+        """
+        Fallback unico de 60s: a lista NAO fecha por perda de foco/timers
+        curtos (comportamento decidido pelo usuario — a lista so fecha por
+        acao explicita). O fallback apenas evita uma lista orfa flutuando
+        (topmost) caso o usuario esqueca aberto, ex. ao trocar de programa.
+        """
+        if self._auto_close_id:
             try:
-                self.after_cancel(self._watchdog_id)
+                self.after_cancel(self._auto_close_id)
             except Exception:
                 pass
-        self._watchdog_id = self.after(300, self._watchdog_tick)
-
-    def _watchdog_tick(self):
-        """
-        Mantem o dropdown aberto enquanto o foco estiver no campo/dropdown OU o
-        mouse estiver sobre eles; fecha quando o usuario tira o foco (inclusive
-        para outro programa) ou a janela minimiza. Rede de seguranca a cada 300ms.
-        """
-        self._watchdog_id = None
-        if not self.dropdown_frame:
-            return
-        try:
-            root = self.winfo_toplevel()
-            if not root.viewable() or root.state() != "normal":
-                self._hide_dropdown()
-                return
-            if not self._focus_inside() and not self._pointer_inside():
-                self._hide_dropdown()
-                return
-        except Exception:
-            self._hide_dropdown()
-            return
-        self._watchdog_id = self.after(300, self._watchdog_tick)
-
-    def _focus_inside(self) -> bool:
-        """Foco dentro do campo de busca ou do dropdown."""
-        try:
-            w = self.focus_get()
-            if w is None:
-                return False
-            ws = str(w)
-            if ws.startswith(str(self.entry)):
-                return True
-            if self.dropdown_frame and ws.startswith(str(self.dropdown_frame)):
-                return True
-            return False
-        except Exception:
-            return False
-
-    def _pointer_inside(self) -> bool:
-        """Mouse sobre o dropdown ou sobre o campo de busca."""
-        try:
-            px, py = self.winfo_pointerxy()
-            if self.dropdown_frame and self.dropdown_frame.winfo_containing(px, py):
-                return True
-            if self.winfo_containing(px, py):
-                return True
-            return False
-        except Exception:
-            return False
+        self._auto_close_id = self.after(60000, self._hide_dropdown)
 
     def clear(self):
         """Limpa seleção e permite nova busca."""

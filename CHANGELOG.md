@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.5.1] - 2026-09-03
+
+### Corrigido
+- **Autocomplete de funcionários não fecha mais sozinho**: removidos os
+  timers de fechamento automático (FocusOut 250ms e watchdog 300ms) que
+  faziam a lista sumir durante a emissão; agora a lista fecha apenas por
+  ação explícita — clique fora, Esc, seleção de funcionário ou minimizar —
+  com um fallback de segurança de 60 segundos
+- **Número do certificado em todas as folhas**: "CERT-XXXX" agora é
+  impresso no canto inferior direito de todas as páginas do PDF (antes
+  só na primeira); assinaturas continuam apenas na página 1
+
+### Adicionado
+- Teste `test_cert_number.py`: valida presença do número em todas as
+  páginas de um certificado multi-página
+
 ## [1.5.0] - 2026-09-01
 
 ### Adicionado
