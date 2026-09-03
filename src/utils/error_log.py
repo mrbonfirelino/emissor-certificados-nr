@@ -52,6 +52,36 @@ def _truncate_if_needed():
         pass
 
 
+def read_log_tail(max_lines: int = 200, max_bytes: int = 64 * 1024) -> str:
+    """Le as ultimas linhas do error.log (para exibir no visualizador)."""
+    try:
+        if not ERROR_LOG.exists():
+            return ""
+        with open(ERROR_LOG, "rb") as f:
+            f.seek(0, 2)
+            size = f.tell()
+            f.seek(max(0, size - max_bytes))
+            data = f.read()
+        text = data.decode("utf-8", errors="replace")
+        lines = text.splitlines()
+        if size > max_bytes and lines:
+            lines = lines[1:]  # descarta linha parcial do corte
+        return "\n".join(lines[-max_lines:])
+    except Exception:
+        return ""
+
+
+def clear_log() -> bool:
+    """Apaga o conteudo do error.log."""
+    try:
+        ERROR_LOG.parent.mkdir(parents=True, exist_ok=True)
+        with open(ERROR_LOG, "w", encoding="utf-8") as f:
+            f.write("")
+        return True
+    except Exception:
+        return False
+
+
 def install_error_hooks(root_window):
     """
     Instala captura global de erros:

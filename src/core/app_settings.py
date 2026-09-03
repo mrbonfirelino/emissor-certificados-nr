@@ -18,6 +18,7 @@ DEFAULTS: Dict[str, Any] = {
     "backup_duplo": True,
     "backup_rede_ativo": True,
     "backup_rede_caminho": r"Z:\SEGURANÇA\NORMATECH-BACKUP",
+    "painel_inicial_visivel": True,
 }
 
 

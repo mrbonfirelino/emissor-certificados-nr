@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.7.0] - 2026-09-03
+
+### Adicionado
+- **Painel de indicadores na tela inicial**: vencidos, vencem em 7/30 dias,
+  percentual de assinados, emissões por NR (top 5) e por mês (últimos 6) —
+  com botão para ocultar/mostrar persistido entre sessões
+- **Tema claro/escuro**: botão na sidebar (persistido em `data/appearance.json`,
+  atalho Ctrl+T); paleta escura completa sem reiniciar o app
+- **Atalhos de teclado**: Ctrl+1..9 navega entre as páginas, Ctrl+T alterna
+  o tema, F5 atualiza a página atual
+- **Visualizador do log de erros**: nova seção "Diagnóstico" na tela de
+  Configurações com as últimas linhas de `data/error.log` e botões
+  Atualizar/Limpar/Abrir Pasta
+- **Filtro "Assinado" no Histórico**: Todos/Sim/Não combinável com os
+  filtros existentes (texto, NR, período) e respeitado na exportação
+- `HistoryRepository.get_dashboard_stats()` (indicadores do painel)
+- Docs de planejamento: `docs/QR_CODE.md`, `docs/CI_GITHUB_ACTIONS.md`,
+  `docs/MULTIUSUARIO.md`
+
 ## [1.6.0] - 2026-09-03
 
 ### Adicionado

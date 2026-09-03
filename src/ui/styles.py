@@ -41,14 +41,15 @@ def _s(size: int) -> int:
     return max(6, int(size * _FONT_SCALE))
 
 
-# Tema de cores azul corporativo
-COLORS = {
+# Temas de cores azul corporativo (claro e escuro)
+COLORS_LIGHT = {
     "primary": "#1B3A5C",
     "primary_hover": "#152D4A",
     "secondary": "#2C5F8A",
     "accent": "#3A7BC8",
     "background": "#F0F4F8",
     "surface": "#FFFFFF",
+    "on_primary": "#FFFFFF",
     "text": "#1A1A2E",
     "text_secondary": "#4A4A6A",
     "muted": "#999999",
@@ -58,14 +59,76 @@ COLORS = {
     "warning": "#EF6C00",
 }
 
+COLORS_DARK = {
+    "primary": "#1B3A5C",
+    "primary_hover": "#152D4A",
+    "secondary": "#3D6E9E",
+    "accent": "#4A8AD4",
+    "background": "#141922",
+    "surface": "#1E2530",
+    "on_primary": "#FFFFFF",
+    "text": "#E8ECF1",
+    "text_secondary": "#B8C2CE",
+    "muted": "#7A8798",
+    "border": "#323C4C",
+    "success": "#4CAF50",
+    "error": "#EF5350",
+    "warning": "#FF9801",
+}
 
-def setup_theme():
-    ctk.set_appearance_mode("light")
+# dict mutavel em-place: todas as paginas fazem `from src.ui.styles import COLORS`
+# e recebem a mesma referencia, entao trocar o conteudo aqui muda o palette global.
+COLORS = dict(COLORS_LIGHT)
+
+_APPEARANCE_FILE = get_data_dir() / "appearance.json"
+_appearance_mode = "light"
+
+
+def get_appearance_mode() -> str:
+    return _appearance_mode
+
+
+def set_appearance_mode(mode: str, persist: bool = True):
+    """Aplica modo claro/escuro: troca o palette COLORS in-place, atualiza o
+    CustomTkinter e (opcionalmente) persiste em data/appearance.json."""
+    global _appearance_mode
+    mode = "dark" if mode == "dark" else "light"
+    _appearance_mode = mode
+    COLORS.update(COLORS_DARK if mode == "dark" else COLORS_LIGHT)
+    ctk.set_appearance_mode(mode)
+    _apply_theme_to_ctk()
+    if persist:
+        try:
+            _APPEARANCE_FILE.write_text(
+                json.dumps({"mode": mode}), encoding="utf-8"
+            )
+        except Exception:
+            pass
+
+
+def toggle_appearance_mode() -> str:
+    """Alterna claro/escuro e retorna o novo modo."""
+    new = "dark" if _appearance_mode == "light" else "light"
+    set_appearance_mode(new)
+    return new
+
+
+def _load_appearance_mode() -> str:
+    try:
+        if _APPEARANCE_FILE.exists():
+            mode = json.loads(_APPEARANCE_FILE.read_text(encoding="utf-8")).get("mode")
+            return "dark" if mode == "dark" else "light"
+    except Exception:
+        pass
+    return "light"
+
+
+def _apply_theme_to_ctk():
     ctk.set_default_color_theme("blue")
     ctk.ThemeManager.theme["CTkFrame"]["fg_color"] = COLORS["surface"]
     ctk.ThemeManager.theme["CTkButton"]["fg_color"] = COLORS["primary"]
     ctk.ThemeManager.theme["CTkButton"]["hover_color"] = COLORS["primary_hover"]
-    ctk.ThemeManager.theme["CTkButton"]["text_color"] = COLORS["surface"]
+    ctk.ThemeManager.theme["CTkButton"]["text_color"] = COLORS["on_primary"]
     ctk.ThemeManager.theme["CTkEntry"]["fg_color"] = COLORS["surface"]
     ctk.ThemeManager.theme["CTkEntry"]["border_color"] = COLORS["border"]
     ctk.ThemeManager.theme["CTkEntry"]["text_color"] = COLORS["text"]
@@ -76,6 +139,10 @@ def setup_theme():
     ctk.ThemeManager.theme["CTkComboBox"]["button_hover_color"] = COLORS["primary_hover"]
     ctk.ThemeManager.theme["CTkScrollableFrame"]["fg_color"] = COLORS["surface"]
     ctk.ThemeManager.theme["CTkScrollbar"]["button_color"] = COLORS["primary"]
+
+
+def setup_theme():
+    set_appearance_mode(_load_appearance_mode(), persist=False)
 
 
 def get_fonts() -> dict:

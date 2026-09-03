@@ -113,6 +113,19 @@ class HistoryPage(ctk.CTkFrame):
         ate_entry.pack(side="left", padx=(4, 0))
         ate_entry.bind("<Return>", lambda *args: self._on_search())
 
+        ctk.CTkLabel(filters_row, text="Assinado:", font=fonts["small"],
+                     text_color=COLORS["text_secondary"]).pack(side="left", padx=(16, 0))
+
+        self.assinado_var = ctk.StringVar(value="Todos")
+        ctk.CTkOptionMenu(
+            filters_row, values=["Todos", "Sim", "Não"], variable=self.assinado_var,
+            width=90, height=32, font=fonts["small"],
+            fg_color=COLORS["surface"], button_color=COLORS["secondary"],
+            button_hover_color=COLORS["primary"],
+            text_color=COLORS["text"],
+            command=lambda _v: self._on_search()
+        ).pack(side="left", padx=(6, 0))
+
         # Row 1 — Lista (weight=1 preenche resto)
         self.list_frame = ctk.CTkScrollableFrame(self, fg_color=COLORS["surface"], corner_radius=12, height=200)
         self.list_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 5))
@@ -157,6 +170,7 @@ class HistoryPage(ctk.CTkFrame):
         self.nr_var.set("Todas")
         self.data_de_var.set("")
         self.data_ate_var.set("")
+        self.assinado_var.set("Todos")
         self._on_search()
 
     def _get_periodo(self) -> Optional[tuple]:
@@ -183,17 +197,19 @@ class HistoryPage(ctk.CTkFrame):
         return de_iso, ate_iso
 
     def _current_filters(self) -> Optional[tuple]:
-        """(query, nr_code, data_de, data_ate) atuais; None se periodo invalido."""
+        """(query, nr_code, data_de, data_ate, assinado) atuais; None se periodo invalido."""
         periodo = self._get_periodo()
         if periodo is None:
             return None
         de_iso, ate_iso = periodo
         nr = self.nr_var.get()
+        assinado = self.assinado_var.get()
         return (
             self.search_var.get().strip(),
             None if nr == "Todas" else nr,
             de_iso,
             ate_iso,
+            {"Sim": "sim", "Não": "nao"}.get(assinado),
         )
 
     def _update_nr_options(self):
@@ -212,7 +228,7 @@ class HistoryPage(ctk.CTkFrame):
         filters = self._current_filters()
         if filters is None:
             return
-        query, nr_code, data_de, data_ate = filters
+        query, nr_code, data_de, data_ate, assinado = filters
 
         self._update_nr_options()
 
@@ -220,15 +236,17 @@ class HistoryPage(ctk.CTkFrame):
             widget.destroy()
 
         total = self.history_repo.count_query(
-            query=query, nr_code=nr_code, data_de=data_de, data_ate=data_ate)
+            query=query, nr_code=nr_code, data_de=data_de, data_ate=data_ate,
+            assinado=assinado)
         certs = self.history_repo.query(
             query=query, nr_code=nr_code, data_de=data_de, data_ate=data_ate,
+            assinado=assinado,
             limit=PaginationBar.ITEMS_PER_PAGE, offset=self.pagination.offset)
 
         self.pagination.set_total(total)
         self.lbl_count.configure(text=f"Total: {total}")
 
-        tem_filtro = bool(query or nr_code or data_de or data_ate)
+        tem_filtro = bool(query or nr_code or data_de or data_ate or assinado)
         if not certs:
             ctk.CTkLabel(
                 self.list_frame,
@@ -354,10 +372,11 @@ class HistoryPage(ctk.CTkFrame):
         filters = self._current_filters()
         if filters is None:
             return
-        query, nr_code, data_de, data_ate = filters
+        query, nr_code, data_de, data_ate, assinado = filters
 
         total = self.history_repo.count_query(
-            query=query, nr_code=nr_code, data_de=data_de, data_ate=data_ate)
+            query=query, nr_code=nr_code, data_de=data_de, data_ate=data_ate,
+            assinado=assinado)
         if total == 0:
             messagebox.showwarning("Exportar", "Nenhum resultado para exportar.", parent=self)
             return
@@ -374,7 +393,7 @@ class HistoryPage(ctk.CTkFrame):
 
         certs = self.history_repo.query(
             query=query, nr_code=nr_code, data_de=data_de, data_ate=data_ate,
-            limit=total, offset=0)
+            assinado=assinado, limit=total, offset=0)
         try:
             from src.utils.history_exporter import export_certificates_to_file
             n = export_certificates_to_file(certs, path)

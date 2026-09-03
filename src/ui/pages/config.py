@@ -18,6 +18,41 @@ class ConfigPage(ctk.CTkFrame):
 
         self._build_ui()
         self._load_config()
+        self._refresh_log()
+
+    def _refresh_log(self):
+        from src.utils.error_log import read_log_tail
+        text = read_log_tail()
+        self.log_box.configure(state="normal")
+        self.log_box.delete("1.0", "end")
+        if text:
+            self.log_box.insert("1.0", text)
+        else:
+            self.log_box.insert("1.0", "(nenhum erro registrado)")
+        self.log_box.configure(state="disabled")
+
+    def _limpar_log(self):
+        if not messagebox.askyesno("Limpar log", "Apagar todo o conteúdo do log de erros?", parent=self):
+            return
+        from src.utils.error_log import clear_log
+        if clear_log():
+            self._refresh_log()
+        else:
+            messagebox.showerror("Erro", "Não foi possível limpar o log.", parent=self)
+
+    def _abrir_pasta_dados(self):
+        import os
+        import sys
+        from src.utils.paths import get_data_dir
+        pasta = str(get_data_dir())
+        try:
+            if sys.platform == "win32":
+                os.startfile(pasta)
+            else:
+                import subprocess
+                subprocess.run(["xdg-open", pasta])
+        except Exception as e:
+            messagebox.showerror("Erro", f"Não foi possível abrir a pasta:\n{e}", parent=self)
 
     def _build_ui(self):
         fonts = get_fonts()
@@ -219,6 +254,47 @@ class ConfigPage(ctk.CTkFrame):
         ctk.CTkEntry(rede_frame, textvariable=self._backup_rede_path_var,
                      font=fonts["body"], height=32, corner_radius=6
                      ).pack(side="left", fill="x", expand=True)
+
+        # Separador
+        ctk.CTkFrame(form, height=2, fg_color=COLORS["border"]).grid(row=row, column=0, sticky="ew", pady=20)
+        row += 1
+
+        # Diagnostico — Log de erros
+        ctk.CTkLabel(form, text="Diagnóstico — Log de Erros", font=fonts["heading"], text_color=COLORS["primary"]).grid(row=row, column=0, sticky="w", pady=(0, 4))
+        row += 1
+        ctk.CTkLabel(form, text="Últimos erros capturados pelo programa (data/error.log).",
+                     font=fonts["small"], text_color=COLORS["muted"]).grid(row=row, column=0, sticky="w", pady=(0, 8))
+        row += 1
+
+        self.log_box = ctk.CTkTextbox(
+            form, height=180, font=fonts["mono"],
+            fg_color=COLORS["background"], corner_radius=6,
+            text_color=COLORS["text_secondary"]
+        )
+        self.log_box.grid(row=row, column=0, sticky="ew", pady=(0, 8))
+        row += 1
+
+        log_btns = ctk.CTkFrame(form, fg_color="transparent")
+        log_btns.grid(row=row, column=0, sticky="w", pady=(0, 10))
+        row += 1
+
+        ctk.CTkButton(
+            log_btns, text="Atualizar", width=90, height=30,
+            font=fonts["small"], fg_color=COLORS["secondary"],
+            hover_color=COLORS["primary"], command=self._refresh_log
+        ).pack(side="left", padx=(0, 8))
+
+        ctk.CTkButton(
+            log_btns, text="Limpar", width=80, height=30,
+            font=fonts["small"], fg_color=COLORS["error"],
+            hover_color="#8E1E1E", command=self._limpar_log
+        ).pack(side="left", padx=(0, 8))
+
+        ctk.CTkButton(
+            log_btns, text="Abrir Pasta", width=96, height=30,
+            font=fonts["small"], fg_color=COLORS["muted"],
+            hover_color=COLORS["text_secondary"], command=self._abrir_pasta_dados
+        ).pack(side="left")
 
         # Botao salvar
         ctk.CTkButton(

@@ -6,7 +6,7 @@ from src.ui.pages.employees import EmployeesPage
 from src.ui.pages.history import HistoryPage
 from src.ui.pages.backup import BackupPage
 from src.ui.pages.batch_import import BatchImportPage
-from src.ui.styles import setup_theme, COLORS, get_fonts, load_font_scale
+from src.ui.styles import setup_theme, COLORS, get_fonts, load_font_scale, get_appearance_mode, toggle_appearance_mode
 from src.core.certificate_service import CertificateService
 from src.core.employee_repo import EmployeeRepository
 from src.core.history_repo import HistoryRepository
@@ -51,6 +51,7 @@ class NormaTechApp(ctk.CTk):
         ensure_default_restore_password()
         self.certificate_service.refresh_config()
         self._build_ui()
+        self._install_shortcuts()
         self.protocol("WM_DELETE_WINDOW", self._on_closing)
 
         # erros deixam de ser invisiveis (data/error.log)
@@ -60,11 +61,23 @@ class NormaTechApp(ctk.CTk):
         self.after(3000, self._notify_expirations)
 
     def _build_ui(self):
-        fonts = get_fonts()
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
-        # === SIDEBAR ===
+        self._build_sidebar()
+
+        # === CONTENT ===
+        self.content_frame = ctk.CTkFrame(self, fg_color=COLORS["background"], corner_radius=0)
+        self.content_frame.grid(row=0, column=1, sticky="nsew")
+        self.content_frame.grid_columnconfigure(0, weight=1)
+        self.content_frame.grid_rowconfigure(0, weight=1)
+
+        self.pages = {}
+        self.current_page = None
+        self._show_home()
+
+    def _build_sidebar(self):
+        fonts = get_fonts()
         self.sidebar = ctk.CTkFrame(self, fg_color=COLORS["primary"], corner_radius=0, width=SIDEBAR_WIDTH_EXPANDED)
         self.sidebar.grid(row=0, column=0, sticky="nsew")
         self.sidebar.grid_propagate(False)
@@ -74,10 +87,19 @@ class NormaTechApp(ctk.CTk):
         self.btn_toggle = ctk.CTkButton(
             self.sidebar, text="\u2630", font=("Segoe UI", 18),
             width=36, height=36, fg_color="transparent",
-            text_color=COLORS["surface"], hover_color=COLORS["secondary"],
+            text_color=COLORS["on_primary"], hover_color=COLORS["secondary"],
             command=self._toggle_sidebar
         )
         self.btn_toggle.grid(row=0, column=0, padx=6, pady=(8, 4), sticky="w")
+
+        # Botao de tema (claro/escuro)
+        self.btn_theme = ctk.CTkButton(
+            self.sidebar, text=self._theme_icon(), font=("Segoe UI", 14),
+            width=28, height=28, fg_color="transparent",
+            text_color=COLORS["on_primary"], hover_color=COLORS["secondary"],
+            command=self._toggle_theme
+        )
+        self.btn_theme.grid(row=0, column=0, sticky="e", padx=6, pady=(8, 4))
 
         # Logo/Title
         self.logo_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
@@ -85,7 +107,7 @@ class NormaTechApp(ctk.CTk):
 
         self.lbl_title = ctk.CTkLabel(
             self.logo_frame, text="NormaTech",
-            font=fonts["sidebar_title"], text_color=COLORS["surface"]
+            font=fonts["sidebar_title"], text_color=COLORS["on_primary"]
         )
         self.lbl_title.pack(anchor="w")
 
@@ -122,14 +144,14 @@ class NormaTechApp(ctk.CTk):
             btn = ctk.CTkButton(
                 nav_frame, text=icon, font=("Segoe UI", 14),
                 width=30, height=34, fg_color="transparent",
-                text_color=COLORS["surface"], corner_radius=6,
+                text_color=COLORS["on_primary"], corner_radius=6,
                 hover_color=COLORS["secondary"], command=cmd
             )
             btn.grid(row=0, column=0, padx=4, pady=3, sticky="w")
 
             lbl = ctk.CTkLabel(
                 nav_frame, text=label,
-                font=fonts["sidebar_nav"], text_color=COLORS["surface"],
+                font=fonts["sidebar_nav"], text_color=COLORS["on_primary"],
                 cursor="hand2"
             )
             lbl.grid(row=0, column=1, padx=2, pady=3, sticky="w")
@@ -162,14 +184,14 @@ class NormaTechApp(ctk.CTk):
         btn = ctk.CTkButton(
             nav_frame, text=backup_icon, font=("Segoe UI", 14),
             width=30, height=34, fg_color="transparent",
-            text_color=COLORS["surface"], corner_radius=6,
+            text_color=COLORS["on_primary"], corner_radius=6,
             hover_color=COLORS["secondary"], command=backup_cmd
         )
         btn.grid(row=0, column=0, padx=4, pady=3, sticky="w")
 
         lbl = ctk.CTkLabel(
             nav_frame, text=backup_label,
-            font=fonts["sidebar_nav"], text_color=COLORS["surface"],
+            font=fonts["sidebar_nav"], text_color=COLORS["on_primary"],
             cursor="hand2"
         )
         lbl.grid(row=0, column=1, padx=2, pady=3, sticky="w")
@@ -198,14 +220,14 @@ class NormaTechApp(ctk.CTk):
         btn = ctk.CTkButton(
             nav_frame, text=config_icon, font=("Segoe UI", 14),
             width=30, height=34, fg_color="transparent",
-            text_color=COLORS["surface"], corner_radius=6,
+            text_color=COLORS["on_primary"], corner_radius=6,
             hover_color=COLORS["secondary"], command=config_cmd
         )
         btn.grid(row=0, column=0, padx=4, pady=3, sticky="w")
 
         lbl = ctk.CTkLabel(
             nav_frame, text=config_label,
-            font=fonts["sidebar_nav"], text_color=COLORS["surface"],
+            font=fonts["sidebar_nav"], text_color=COLORS["on_primary"],
             cursor="hand2"
         )
         lbl.grid(row=0, column=1, padx=2, pady=3, sticky="w")
@@ -245,6 +267,8 @@ class NormaTechApp(ctk.CTk):
             lbl.grid_remove()
         self.logo_frame.grid_remove()
         self.lbl_version.grid_remove()
+        # recolhido: tema ocupa a linha do logo (sem espaco na linha do hamburger)
+        self.btn_theme.grid(row=1, column=0, sticky="w", padx=6, pady=2)
 
     def _expand_sidebar(self):
         self.sidebar_expanded = True
@@ -254,6 +278,64 @@ class NormaTechApp(ctk.CTk):
         for key, lbl in self.nav_labels.items():
             lbl.grid(row=0, column=1, padx=2, pady=3, sticky="w")
         self.lbl_version.grid(row=14, column=0, sticky="s", pady=8)
+        self.btn_theme.grid(row=0, column=0, sticky="e", padx=6, pady=(8, 4))
+
+    # ── Tema claro/escuro ──────────────────────────────────────
+
+    @staticmethod
+    def _theme_icon() -> str:
+        return "\u2600" if get_appearance_mode() == "dark" else "\U0001F319"
+
+    def _toggle_theme(self):
+        """Alterna claro/escuro e reconstrói a interface com o novo palette."""
+        toggle_appearance_mode()
+        for page in self.pages.values():
+            page.destroy()
+        self.pages.clear()
+        self.current_page = None
+        self.sidebar.destroy()
+        self.content_frame.configure(fg_color=COLORS["background"])
+        self._build_sidebar()
+        self._show_home()
+
+    # ── Atalhos de teclado ─────────────────────────────────────
+
+    _HOTKEY_PAGES = (
+        ("1", "_show_home"),
+        ("2", "_show_certificates"),
+        ("3", "_show_employees"),
+        ("4", "_show_history"),
+        ("5", "_show_funcoes"),
+        ("6", "_show_vencimentos"),
+        ("7", "_show_blocking_cards"),
+        ("8", "_show_batch_import"),
+        ("9", "_show_backup"),
+    )
+
+    def _install_shortcuts(self):
+        cb = self.register(self._on_hotkey)
+        specs = [f"<Control-Key-{k}>" for k, _ in self._HOTKEY_PAGES]
+        specs += ["<Control-Key-t>", "<Control-Key-T>", "<F5>"]
+        for spec in specs:
+            self.tk.call("bind", "all", spec, f"{cb} %K")
+
+    def _on_hotkey(self, keysym: str):
+        try:
+            if keysym.lower() == "t":
+                self._toggle_theme()
+                return
+            if keysym == "F5":
+                page = self.current_page
+                if page is not None and hasattr(page, "refresh"):
+                    page.refresh()
+                return
+            for key, method in self._HOTKEY_PAGES:
+                if keysym == key:
+                    getattr(self, method)()
+                    return
+        except Exception as e:
+            from src.utils.error_log import log_error
+            log_error("atalho-teclado", e)
 
     def _set_active_nav(self, key: str):
         for k, frame in self.nav_frames.items():

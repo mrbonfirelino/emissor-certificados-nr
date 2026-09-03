@@ -136,7 +136,8 @@ class HistoryRepository:
             return [r[0] for r in rows]
 
     def _build_filters(self, query: str, nr_code: Optional[str],
-                       data_de: Optional[str], data_ate: Optional[str]) -> tuple:
+                       data_de: Optional[str], data_ate: Optional[str],
+                       assinado: Optional[str] = None) -> tuple:
         where, params = [], []
         q = (query or "").strip()
         if q:
@@ -158,13 +159,19 @@ class HistoryRepository:
         if data_ate:
             where.append("data_fim <= ?")
             params.append(data_ate)
+        if assinado == "sim":
+            where.append("(signed_doc IS NOT NULL) = 1")
+        elif assinado == "nao":
+            where.append("(signed_doc IS NOT NULL) = 0")
         return where, params
 
     def query(self, query: str = "", nr_code: Optional[str] = None,
               data_de: Optional[str] = None, data_ate: Optional[str] = None,
+              assinado: Optional[str] = None,
               limit: int = 10, offset: int = 0) -> List[CertificateRecord]:
-        """Busca combinada: texto (nome/CPF/numero/NR) + NR exata + periodo por data_fim (ISO)."""
-        where, params = self._build_filters(query, nr_code, data_de, data_ate)
+        """Busca combinada: texto (nome/CPF/numero/NR) + NR exata + periodo por
+        data_fim (ISO) + assinado ('sim'/'nao'/None)."""
+        where, params = self._build_filters(query, nr_code, data_de, data_ate, assinado)
         sql = f"SELECT {self._LIST_COLS} FROM certificates"
         if where:
             sql += " WHERE " + " AND ".join(where)
@@ -174,14 +181,55 @@ class HistoryRepository:
             return [self._row_to_record(r) for r in rows]
 
     def count_query(self, query: str = "", nr_code: Optional[str] = None,
-                    data_de: Optional[str] = None, data_ate: Optional[str] = None) -> int:
+                    data_de: Optional[str] = None, data_ate: Optional[str] = None,
+                    assinado: Optional[str] = None) -> int:
         """Conta resultados da busca combinada."""
-        where, params = self._build_filters(query, nr_code, data_de, data_ate)
+        where, params = self._build_filters(query, nr_code, data_de, data_ate, assinado)
         sql = "SELECT COUNT(*) FROM certificates"
         if where:
             sql += " WHERE " + " AND ".join(where)
         with self._get_conn() as conn:
             return conn.execute(sql, params).fetchone()[0]
+
+    def get_dashboard_stats(self) -> Dict[str, Any]:
+        """Indicadores para o painel da tela inicial."""
+        with self._get_conn() as conn:
+            total = conn.execute("SELECT COUNT(*) FROM certificates").fetchone()[0]
+            assinados = conn.execute(
+                "SELECT COUNT(*) FROM certificates WHERE signed_doc IS NOT NULL"
+            ).fetchone()[0]
+            por_nr = conn.execute("""
+                SELECT nr_code, COUNT(*) AS n FROM certificates
+                GROUP BY nr_code ORDER BY n DESC, nr_code ASC LIMIT 5
+            """).fetchall()
+            por_mes = conn.execute("""
+                SELECT substr(data_fim, 1, 7) AS mes, COUNT(*) AS n FROM certificates
+                GROUP BY mes ORDER BY mes DESC LIMIT 6
+            """).fetchall()
+
+        vencidos = vencer_7 = vencer_30 = 0
+        try:
+            certs = self.get_certificates_with_expiration()
+            for c in certs:
+                d = c["dias_para_vencer"]
+                if d < 0:
+                    vencidos += 1
+                elif d <= 7:
+                    vencer_7 += 1
+                elif d <= 30:
+                    vencer_30 += 1
+        except Exception:
+            pass
+
+        return {
+            "total": total,
+            "assinados": assinados,
+            "por_nr": [(r["nr_code"], r["n"]) for r in por_nr],
+            "por_mes": [(r["mes"], r["n"]) for r in por_mes],
+            "vencidos": vencidos,
+            "vencer_7": vencer_7,
+            "vencer_30": vencer_30,
+        }
 
     def count_total(self) -> int:
         with self._get_conn() as conn:

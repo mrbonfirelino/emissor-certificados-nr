@@ -1,5 +1,6 @@
 """
-Testes dos filtros do historico (texto + NR + periodo) e da exportacao xlsx/csv.
+Testes dos filtros do historico (texto + NR + periodo + assinado),
+do painel de indicadores (dashboard stats) e da exportacao xlsx/csv.
 
 Uso:  python test_history_filters.py
 """
@@ -16,7 +17,11 @@ from src.core.models import CertificateRecord
 
 def make_repo() -> HistoryRepository:
     tmp = Path(tempfile.mkdtemp(prefix="test_hist_filters_"))
-    return HistoryRepository(tmp / "test.db")
+    repo = HistoryRepository(tmp / "test.db")
+    # stub da tabela employees (so funcao) p/ o LEFT JOIN da expiracao
+    with repo._get_conn() as conn:
+        conn.execute("CREATE TABLE IF NOT EXISTS employees (id INTEGER PRIMARY KEY, funcao TEXT)")
+    return repo
 
 
 def add(repo: HistoryRepository, num: int, nr: str, nome: str, cpf: str,
@@ -113,6 +118,43 @@ def test_sem_filtros_equivale_get_all():
     print("[OK] query sem filtros = listagem completa")
 
 
+def test_filtro_assinado():
+    repo = make_repo()
+    seed(repo)
+    certs = repo.query(assinado="sim")
+    assert [c.cert_number for c in certs] == ["CERT-000001"]
+    certs = repo.query(assinado="nao")
+    assert len(certs) == 4 and all(not c.has_signed_doc for c in certs)
+    assert repo.count_query(assinado="sim") == 1
+    assert repo.count_query(assinado="nao") == 4
+    # combinado com texto
+    certs = repo.query(query="jose", assinado="nao")
+    assert [c.funcionario_nome for c in certs] == ["José Ferreira"]
+    print("[OK] filtro assinado (sim/nao + combinado com texto)")
+
+
+def test_dashboard_stats():
+    repo = make_repo()
+    seed(repo)
+    stats = repo.get_dashboard_stats()
+    assert stats["total"] == 5
+    assert stats["assinados"] == 1
+    assert dict(stats["por_nr"]) == {"NR-10": 2, "NR-12": 1, "NR-35": 2}
+    assert stats["por_nr"][0][1] == 2  # ordenado por n DESC
+    meses = dict(stats["por_mes"])
+    assert meses.get("2026-01") == 1 and meses.get("2026-02") == 1
+    assert meses.get("2026-03") == 1 and meses.get("2026-05") == 1
+    # contagens de vencimento coerentes com a lista de expiracao
+    certs = repo.get_certificates_with_expiration()
+    vencidos = sum(1 for c in certs if c["dias_para_vencer"] < 0)
+    v7 = sum(1 for c in certs if 0 <= c["dias_para_vencer"] <= 7)
+    v30 = sum(1 for c in certs if 7 < c["dias_para_vencer"] <= 30)
+    assert stats["vencidos"] == vencidos
+    assert stats["vencer_7"] == v7
+    assert stats["vencer_30"] == v30
+    print("[OK] dashboard stats (total/assinados/NR/mes/vencimentos)")
+
+
 def test_exportador():
     from src.utils.history_exporter import export_certificates_to_file
     repo = make_repo()
@@ -154,5 +196,7 @@ if __name__ == "__main__":
     test_filtro_periodo()
     test_combinados()
     test_sem_filtros_equivale_get_all()
+    test_filtro_assinado()
+    test_dashboard_stats()
     test_exportador()
-    print("\nTodos os testes de filtros/export do historico passaram.")
+    print("\nTodos os testes de filtros/dashboard/export do historico passaram.")

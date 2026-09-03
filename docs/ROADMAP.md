@@ -1,7 +1,7 @@
 # Roadmap - NormaTech
 
 ## Status do Projeto
-- Versao atual: 1.6.0
+- Versao atual: 1.7.0
 - NRs disponiveis: 17 (01, 05, 06, 09, 10, 11, 12, 17, 18, 26, 33, 34, 35 + FDS, BRIGADISTA-NR23, PTA, MOTOSERRA, MUNCK, PONTE-ROLANTE, DIR-DEFENSIVA, CIPAA)
 
 ---
@@ -148,6 +148,25 @@ Requisitos: Microsoft PowerPoint instalado na máquina (conversão via COM).
 | Eventos Notificados | Emissão de certificados/cartões concluída, backup concluído, erros de importação/exportação | Media | Concluído |
 | Fallback | Se toast indisponível, manter comportamento atual (messagebox/status) | Media | Concluído |
 | Configuração | Opção de ativar/desativar notificações na página de configurações | Baixa | Concluído |
+
+### 2.11 Experiência do Usuário (CONCLUÍDA)
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Tema claro/escuro | Botão na sidebar + Ctrl+T, persistido (`data/appearance.json`), troca a quente | Media | Concluído (v1.7.0) |
+| Atalhos de teclado | Ctrl+1..9 páginas, Ctrl+T tema, F5 atualizar | Media | Concluído (v1.7.0) |
+| Painel de indicadores | Cards de vencimento/assinados + gráficos NR/mês na tela inicial, ocultável e persistido | Media | Concluído (v1.7.0) |
+| Visualizador do log | Seção Diagnóstico na Config com `data/error.log` (Atualizar/Limpar/Abrir Pasta) | Media | Concluído (v1.7.0) |
+| Filtro Assinado | Histórico: Todos/Sim/Não combinável com texto/NR/período + exportação | Media | Concluído (v1.7.0) |
+
+### 2.12 Itens Planejados (docs dedicados)
+
+| Item | Documento | Status |
+|------|-----------|--------|
+| QR code de autenticidade | docs/QR_CODE.md | Planejado |
+| CI GitHub Actions | docs/CI_GITHUB_ACTIONS.md | Planejado |
+| Multiusuário/servidor | docs/MULTIUSUARIO.md | Estudo (pré: REDE.md) |
+| Interface GPU | docs/UI_GPU.md | Estudo |
 
 ---
 

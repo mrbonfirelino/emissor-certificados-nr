@@ -15,3 +15,5 @@ venv/
 data/*.db
 backups/
 data/backup.log
+data/*.db-wal
+data/*.db-shm

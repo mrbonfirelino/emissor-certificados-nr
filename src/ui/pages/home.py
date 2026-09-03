@@ -102,6 +102,41 @@ class WelcomePage(ctk.CTkFrame):
             state=state, command=lambda: nav("history")
         ).pack(side="left", expand=True, fill="x", padx=6)
 
+        # === PAINEL DE INDICADORES (ocultavel) ===
+        self.btn_painel = ctk.CTkButton(
+            center, text="", font=fonts["small"], height=24,
+            fg_color="transparent", hover_color=COLORS["border"],
+            text_color=COLORS["text_secondary"],
+            anchor="w", command=self._toggle_painel
+        )
+        self.btn_painel.grid(row=7, column=0, sticky="ew", padx=48, pady=(0, 2))
+
+        from src.ui.components.dashboard_panel import DashboardPanel
+        self.painel = DashboardPanel(center, self.history_repo)
+        self.painel.grid(row=8, column=0, sticky="ew", padx=48, pady=(0, 16))
+
+        from src.core.app_settings import get_setting
+        self._painel_visivel = bool(get_setting("painel_inicial_visivel", True))
+        self._apply_painel_state()
+
+    def _toggle_painel(self):
+        self._painel_visivel = not self._painel_visivel
+        try:
+            from src.core.app_settings import set_setting
+            set_setting("painel_inicial_visivel", self._painel_visivel)
+        except Exception:
+            pass
+        self._apply_painel_state()
+
+    def _apply_painel_state(self):
+        if self._painel_visivel:
+            self.painel.grid()
+            self.btn_painel.configure(text="\u25BC  Ocultar indicadores")
+            self.painel.refresh()
+        else:
+            self.painel.grid_remove()
+            self.btn_painel.configure(text="\u25B2  Mostrar indicadores")
+
     def _build_logo(self, parent):
         try:
             from PIL import Image
@@ -170,3 +205,9 @@ class WelcomePage(ctk.CTkFrame):
         self.lbl_cert_count.configure(text=str(certs))
         self.lbl_emp_count.configure(text=str(emps))
         self.lbl_nr_count.configure(text=str(nrs))
+
+        if getattr(self, "_painel_visivel", False):
+            try:
+                self.painel.refresh()
+            except Exception:
+                pass
