@@ -25,7 +25,8 @@ valor/esforço. Itens do ROADMAP concluídos não se repetem aqui.
 7. ~~Restauração de backup com auto-restart~~ — **feito na v1.4.0**
 8. **Instalador (Inno Setup)** — planejado e documentado em
    `docs/INSTALADOR.md` (script pronto); falta gerar a primeira build.
-9. **Histórico: filtros por NR/período + exportação Excel/CSV** da listagem.
+9. ~~Histórico: filtros por NR/período + exportação Excel/CSV~~ — **feito na
+   v1.6.0** (menu NR + período De/Até + botão Exportar xlsx/csv)
 10. ~~Exportar/importar fotos em massa~~ — **feito na v1.4.0** (aba Funcionários,
     casamento por CPF/nome com janela de conferência)
 11. **Validador de templates PPTX** (`tools/`) — abre cada `.pptx` e confere

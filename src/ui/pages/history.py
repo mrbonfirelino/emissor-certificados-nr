@@ -2,6 +2,7 @@ import customtkinter as ctk
 import os
 import subprocess
 import sys
+from datetime import datetime, date
 from typing import Optional
 from tkinter import messagebox, filedialog
 from src.ui.styles import COLORS, get_fonts
@@ -67,8 +68,50 @@ class HistoryPage(ctk.CTkFrame):
             filter_frame, text="Limpar", width=80, height=36,
             font=fonts["body"], fg_color=COLORS["muted"],
             hover_color=COLORS["text_secondary"],
-            command=lambda: (self.search_var.set(""), self._on_search())
+            command=self._limpar
         ).grid(row=0, column=2, sticky="e")
+
+        ctk.CTkButton(
+            filter_frame, text="Exportar", width=90, height=36,
+            font=fonts["body_bold"], fg_color=COLORS["success"],
+            hover_color="#256B28",
+            command=self._exportar
+        ).grid(row=0, column=3, sticky="e", padx=(8, 0))
+
+        # Filtros: NR + periodo (data do treinamento)
+        filters_row = ctk.CTkFrame(filter_frame, fg_color="transparent")
+        filters_row.grid(row=1, column=0, columnspan=4, sticky="w", pady=(10, 0))
+
+        ctk.CTkLabel(filters_row, text="NR:", font=fonts["small"],
+                     text_color=COLORS["text_secondary"]).pack(side="left")
+
+        self.nr_var = ctk.StringVar(value="Todas")
+        self.nr_menu = ctk.CTkOptionMenu(
+            filters_row, values=["Todas"], variable=self.nr_var,
+            width=140, height=32, font=fonts["small"],
+            fg_color=COLORS["surface"], button_color=COLORS["secondary"],
+            button_hover_color=COLORS["primary"],
+            text_color=COLORS["text"],
+            command=lambda _v: self._on_search()
+        )
+        self.nr_menu.pack(side="left", padx=(6, 16))
+
+        ctk.CTkLabel(filters_row, text="Período (dd/mm/aaaa):", font=fonts["small"],
+                     text_color=COLORS["text_secondary"]).pack(side="left")
+
+        self.data_de_var = ctk.StringVar()
+        de_entry = ctk.CTkEntry(filters_row, textvariable=self.data_de_var,
+                                font=fonts["small"], width=110, height=32,
+                                corner_radius=6, placeholder_text="De")
+        de_entry.pack(side="left", padx=(6, 4))
+        de_entry.bind("<Return>", lambda *args: self._on_search())
+
+        self.data_ate_var = ctk.StringVar()
+        ate_entry = ctk.CTkEntry(filters_row, textvariable=self.data_ate_var,
+                                 font=fonts["small"], width=110, height=32,
+                                 corner_radius=6, placeholder_text="Até")
+        ate_entry.pack(side="left", padx=(4, 0))
+        ate_entry.bind("<Return>", lambda *args: self._on_search())
 
         # Row 1 — Lista (weight=1 preenche resto)
         self.list_frame = ctk.CTkScrollableFrame(self, fg_color=COLORS["surface"], corner_radius=12, height=200)
@@ -109,26 +152,87 @@ class HistoryPage(ctk.CTkFrame):
         self.pagination.reset()
         self._refresh_list()
 
+    def _limpar(self):
+        self.search_var.set("")
+        self.nr_var.set("Todas")
+        self.data_de_var.set("")
+        self.data_ate_var.set("")
+        self._on_search()
+
+    def _get_periodo(self) -> Optional[tuple]:
+        """Valida De/Ate (dd/mm/aaaa) e converte para ISO. None se invalido."""
+        def parse(s: str):
+            s = s.strip()
+            if not s:
+                return None
+            try:
+                return datetime.strptime(s, "%d/%m/%Y").date().isoformat()
+            except ValueError:
+                return "INVALID"
+
+        de_iso = parse(self.data_de_var.get())
+        ate_iso = parse(self.data_ate_var.get())
+        if "INVALID" in (de_iso, ate_iso):
+            messagebox.showerror("Período inválido",
+                                 "Use o formato dd/mm/aaaa nos campos De/Até.", parent=self)
+            return None
+        if de_iso and ate_iso and de_iso > ate_iso:
+            messagebox.showerror("Período inválido",
+                                 "A data inicial é posterior à data final.", parent=self)
+            return None
+        return de_iso, ate_iso
+
+    def _current_filters(self) -> Optional[tuple]:
+        """(query, nr_code, data_de, data_ate) atuais; None se periodo invalido."""
+        periodo = self._get_periodo()
+        if periodo is None:
+            return None
+        de_iso, ate_iso = periodo
+        nr = self.nr_var.get()
+        return (
+            self.search_var.get().strip(),
+            None if nr == "Todas" else nr,
+            de_iso,
+            ate_iso,
+        )
+
+    def _update_nr_options(self):
+        try:
+            nrs = self.history_repo.distinct_nrs()
+        except Exception:
+            nrs = []
+        values = ["Todas"] + nrs
+        self.nr_menu.configure(values=values)
+        if self.nr_var.get() not in values:
+            self.nr_var.set("Todas")
+
     def _refresh_list(self):
         fonts = get_fonts()
+
+        filters = self._current_filters()
+        if filters is None:
+            return
+        query, nr_code, data_de, data_ate = filters
+
+        self._update_nr_options()
+
         for widget in self.list_frame.winfo_children():
             widget.destroy()
 
-        query = self.search_var.get().strip()
-        if query:
-            total = self.history_repo.count_search(query)
-            certs = self.history_repo.search(query, limit=PaginationBar.ITEMS_PER_PAGE, offset=self.pagination.offset)
-        else:
-            total = self.history_repo.count_all()
-            certs = self.history_repo.get_all(limit=PaginationBar.ITEMS_PER_PAGE, offset=self.pagination.offset)
+        total = self.history_repo.count_query(
+            query=query, nr_code=nr_code, data_de=data_de, data_ate=data_ate)
+        certs = self.history_repo.query(
+            query=query, nr_code=nr_code, data_de=data_de, data_ate=data_ate,
+            limit=PaginationBar.ITEMS_PER_PAGE, offset=self.pagination.offset)
 
         self.pagination.set_total(total)
         self.lbl_count.configure(text=f"Total: {total}")
 
+        tem_filtro = bool(query or nr_code or data_de or data_ate)
         if not certs:
             ctk.CTkLabel(
                 self.list_frame,
-                text="Nenhum certificado emitido" if not query else "Nenhum resultado encontrado",
+                text="Nenhum certificado emitido" if not tem_filtro else "Nenhum resultado encontrado",
                 font=fonts["body"], text_color=COLORS["muted"]
             ).grid(row=0, column=0, pady=40, padx=20)
             return
@@ -243,6 +347,42 @@ class HistoryPage(ctk.CTkFrame):
 
         sep = ctk.CTkFrame(self.list_frame, fg_color=COLORS["border"], height=1)
         sep.grid(row=row_idx + 1, column=0, sticky="ew", padx=12, pady=0)
+
+    # ── Exportacao (xlsx/csv) ────────────────────────────────
+
+    def _exportar(self):
+        filters = self._current_filters()
+        if filters is None:
+            return
+        query, nr_code, data_de, data_ate = filters
+
+        total = self.history_repo.count_query(
+            query=query, nr_code=nr_code, data_de=data_de, data_ate=data_ate)
+        if total == 0:
+            messagebox.showwarning("Exportar", "Nenhum resultado para exportar.", parent=self)
+            return
+
+        path = filedialog.asksaveasfilename(
+            title="Exportar histórico",
+            defaultextension=".xlsx",
+            filetypes=[("Planilha Excel", "*.xlsx"), ("CSV", "*.csv")],
+            initialfile=f"historico_certificados_{date.today():%Y%m%d}",
+            parent=self
+        )
+        if not path:
+            return
+
+        certs = self.history_repo.query(
+            query=query, nr_code=nr_code, data_de=data_de, data_ate=data_ate,
+            limit=total, offset=0)
+        try:
+            from src.utils.history_exporter import export_certificates_to_file
+            n = export_certificates_to_file(certs, path)
+            messagebox.showinfo("Exportar", f"{n} certificados exportados para:\n{path}", parent=self)
+        except Exception as e:
+            from src.utils.error_log import log_error
+            log_error("exportar-historico", e)
+            self._show_error(f"Erro ao exportar: {e}")
 
     # ── Documento assinado (escaneado) ───────────────────────
 

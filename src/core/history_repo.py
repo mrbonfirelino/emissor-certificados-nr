@@ -121,31 +121,67 @@ class HistoryRepository:
 
     def search(self, query: str, limit: int = 10, offset: int = 0) -> List[CertificateRecord]:
         """Busca por nome, CPF, numero ou NR (ignora acentos)."""
-        norm = normalize_text(query)
-        with self._get_conn() as conn:
-            like = f"%{norm}%"
-            rows = conn.execute(f"""
-                SELECT {self._LIST_COLS} FROM certificates
-                WHERE normalize(funcionario_nome) LIKE ?
-                   OR funcionario_cpf LIKE ?
-                   OR normalize(cert_number) LIKE ?
-                   OR nr_code LIKE ?
-                ORDER BY created_at DESC LIMIT ? OFFSET ?
-            """, (like, f"%{query}%", like, f"%{query}%", limit, offset)).fetchall()
-            return [self._row_to_record(r) for r in rows]
+        return self.query(query=query, limit=limit, offset=offset)
 
     def count_search(self, query: str) -> int:
         """Conta resultados de busca."""
-        norm = normalize_text(query)
+        return self.count_query(query=query)
+
+    def distinct_nrs(self) -> List[str]:
+        """NRs distintos presentes no historico (para filtro da listagem)."""
         with self._get_conn() as conn:
+            rows = conn.execute(
+                "SELECT DISTINCT nr_code FROM certificates ORDER BY nr_code"
+            ).fetchall()
+            return [r[0] for r in rows]
+
+    def _build_filters(self, query: str, nr_code: Optional[str],
+                       data_de: Optional[str], data_ate: Optional[str]) -> tuple:
+        where, params = [], []
+        q = (query or "").strip()
+        if q:
+            norm = normalize_text(q)
             like = f"%{norm}%"
-            return conn.execute("""
-                SELECT COUNT(*) FROM certificates
-                WHERE normalize(funcionario_nome) LIKE ?
-                   OR funcionario_cpf LIKE ?
-                   OR normalize(cert_number) LIKE ?
-                   OR nr_code LIKE ?
-            """, (like, f"%{query}%", like, f"%{query}%")).fetchone()[0]
+            where.append("""(
+                normalize(funcionario_nome) LIKE ?
+                OR funcionario_cpf LIKE ?
+                OR normalize(cert_number) LIKE ?
+                OR nr_code LIKE ?
+            )""")
+            params += [like, f"%{q}%", like, f"%{q}%"]
+        if nr_code:
+            where.append("nr_code = ?")
+            params.append(nr_code)
+        if data_de:
+            where.append("data_fim >= ?")
+            params.append(data_de)
+        if data_ate:
+            where.append("data_fim <= ?")
+            params.append(data_ate)
+        return where, params
+
+    def query(self, query: str = "", nr_code: Optional[str] = None,
+              data_de: Optional[str] = None, data_ate: Optional[str] = None,
+              limit: int = 10, offset: int = 0) -> List[CertificateRecord]:
+        """Busca combinada: texto (nome/CPF/numero/NR) + NR exata + periodo por data_fim (ISO)."""
+        where, params = self._build_filters(query, nr_code, data_de, data_ate)
+        sql = f"SELECT {self._LIST_COLS} FROM certificates"
+        if where:
+            sql += " WHERE " + " AND ".join(where)
+        sql += " ORDER BY created_at DESC LIMIT ? OFFSET ?"
+        with self._get_conn() as conn:
+            rows = conn.execute(sql, params + [limit, offset]).fetchall()
+            return [self._row_to_record(r) for r in rows]
+
+    def count_query(self, query: str = "", nr_code: Optional[str] = None,
+                    data_de: Optional[str] = None, data_ate: Optional[str] = None) -> int:
+        """Conta resultados da busca combinada."""
+        where, params = self._build_filters(query, nr_code, data_de, data_ate)
+        sql = "SELECT COUNT(*) FROM certificates"
+        if where:
+            sql += " WHERE " + " AND ".join(where)
+        with self._get_conn() as conn:
+            return conn.execute(sql, params).fetchone()[0]
 
     def count_total(self) -> int:
         with self._get_conn() as conn:

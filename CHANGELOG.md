@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.6.0] - 2026-09-03
+
+### Adicionado
+- **Filtros no Histórico de Emissões**: além da busca por texto, a listagem
+  agora filtra por **NR** (menu suspenso com as NRs existentes no banco) e por
+  **período do treinamento** (De/Até em dd/mm/aaaa, campos opcionais);
+  filtros combináveis entre si
+- **Exportação da listagem**: botão "Exportar" exporta **todos os resultados
+  dos filtros atuais** (não só a página visível) para **Excel (.xlsx)** ou
+  **CSV (.csv)** — formato escolhido no diálogo de salvar; CSV com `;` e
+  UTF-8 BOM para abrir corretamente no Excel brasileiro; colunas: Numero,
+  NR, Funcionario, CPF, Data Inicio, Data Fim, Carga (h), Descricao, Assinado
+- Novo `HistoryRepository.query()/count_query()/distinct_nrs()` (busca
+  combinada texto + NR + período); `search/count_search` passam a delegar
+- Teste `test_history_filters.py`: filtros (texto/NR/período/combinados),
+  contagens, `distinct_nrs` e exportação xlsx/csv
+
 ## [1.5.1] - 2026-09-03
 
 ### Corrigido
