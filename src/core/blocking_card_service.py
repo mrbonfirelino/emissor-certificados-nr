@@ -11,7 +11,7 @@ from reportlab.lib.colors import HexColor
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas as pdfcanvas
 
-from src.utils.paths import get_templates_dir, get_logo_path, get_certificados_dir
+from src.utils.paths import get_templates_dir, get_logo_path, get_cartoes_dir
 from src.utils.validators import formatar_telefone
 
 
@@ -324,7 +324,7 @@ def generate_cards(
         return [], missing
 
     card_code = template.get("card_code", "CARD")
-    cliente_dir = output_dir or (get_certificados_dir() / "CARTOES" / card_code)
+    cliente_dir = output_dir or get_cartoes_dir()
     cliente_dir.mkdir(parents=True, exist_ok=True)
 
     logo_path = get_logo_path()
@@ -340,7 +340,9 @@ def generate_cards(
 
     if single_pdf:
         cols, rows = compute_grid(template)
-        out = cliente_dir / f"CARTOES_{card_code}_{timestamp}.pdf"
+        lote_dir = output_dir or (get_cartoes_dir() / "LOTES")
+        lote_dir.mkdir(parents=True, exist_ok=True)
+        out = lote_dir / f"CARTOES_{card_code}_{timestamp}.pdf"
         c = pdfcanvas.Canvas(str(out), pagesize=A4)
         page_w, page_h = A4
         start_x = float(margins.get("left", 10)) * mm
@@ -359,7 +361,9 @@ def generate_cards(
     else:
         page_w, page_h = A4
         for emp in valid:
-            out = cliente_dir / f"CARTAO_{_sanitize_filename(emp.nome)}_{card_code}.pdf"
+            emp_dir = output_dir or (get_cartoes_dir() / _pasta_cartao(emp))
+            emp_dir.mkdir(parents=True, exist_ok=True)
+            out = emp_dir / f"CARTAO_{_sanitize_filename(emp.nome)}_{card_code}.pdf"
             c = pdfcanvas.Canvas(str(out), pagesize=A4)
             x = (page_w - cw) / 2
             y = (page_h - ch) / 2
@@ -368,4 +372,28 @@ def generate_cards(
             c.save()
             generated.append(out)
 
+    _disparar_sync(generated, valid, single_pdf)
+
     return generated, missing
+
+
+def _pasta_cartao(emp) -> str:
+    """Subpasta do funcionario em data/cartoes (CPF so em colisao)."""
+    from src.utils.folder_utils import employee_folder_name
+    from src.core.employee_repo import EmployeeRepository
+    return employee_folder_name(emp, EmployeeRepository().get_all(limit=1000000))
+
+
+def _disparar_sync(generated: List[Path], valid, single_pdf: bool):
+    """Espelha cartoes gerados na rede (best-effort, thread a parte)."""
+    try:
+        from src.core import network_sync
+        if not generated:
+            return
+        if single_pdf:
+            network_sync.run_async(network_sync.sync_card_lote, generated[0])
+        else:
+            for out, emp in zip(generated, valid):
+                network_sync.run_async(network_sync.sync_card, out, emp)
+    except Exception:
+        pass

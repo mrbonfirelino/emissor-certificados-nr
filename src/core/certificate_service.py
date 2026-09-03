@@ -14,6 +14,13 @@ from src.utils.paths import get_data_dir, get_certificados_dir
 from src.utils.date_utils import hoje
 
 
+def _pasta_funcionario(employee) -> str:
+    """Subpasta do funcionario em data/certificados (CPF so em colisao)."""
+    from src.utils.folder_utils import employee_folder_name
+    from src.core.employee_repo import EmployeeRepository
+    return employee_folder_name(employee, EmployeeRepository().get_all(limit=1000000))
+
+
 class CertificateService:
     def __init__(self):
         self.history = HistoryRepository()
@@ -64,7 +71,7 @@ class CertificateService:
             assinaturas=template.assinaturas
         )
 
-        output_dir = output_dir or get_certificados_dir() / employee.nome.replace(' ', '_')
+        output_dir = output_dir or get_certificados_dir() / _pasta_funcionario(employee) / template.nr_code
         output_dir.mkdir(parents=True, exist_ok=True)
         pdf_filename = f"{cert_number}_{nr_code}_{employee.nome.replace(' ', '_')}.pdf"
         pdf_path = output_dir / pdf_filename
@@ -85,6 +92,15 @@ class CertificateService:
             pdf_path=str(pdf_path)
         )
         self.history.save(record)
+
+        # espelha na pasta de rede (best-effort, nao bloqueia emissao)
+        try:
+            from src.core import network_sync
+            salvo = self.history.get_by_number(cert_number)
+            if salvo:
+                network_sync.run_async(network_sync.sync_certificate, salvo, employee)
+        except Exception:
+            pass
 
         return pdf_path
 

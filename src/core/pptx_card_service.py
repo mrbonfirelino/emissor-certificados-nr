@@ -25,7 +25,7 @@ from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
 from pptx.oxml.ns import qn
 
-from src.utils.paths import get_templates_dir, get_certificados_dir
+from src.utils.paths import get_templates_dir, get_cartoes_dir
 from src.utils.validators import formatar_telefone
 
 TOKEN_RE = re.compile(r"\{\{([A-Z_]+)\}\}")
@@ -648,7 +648,7 @@ def generate_pptx_cards(
         return [], missing
 
     card_code = template.get("card_code", "PPTX")
-    cliente_dir = output_dir or (get_certificados_dir() / "CARTOES" / card_code)
+    cliente_dir = output_dir or get_cartoes_dir()
     cliente_dir.mkdir(parents=True, exist_ok=True)
 
     pptx_path = Path(template["_pptx_path"])
@@ -676,7 +676,9 @@ def generate_pptx_cards(
         # 3. Montar saida conforme modo
         generated: List[Path] = []
         if single_pdf:
-            out = cliente_dir / f"CARTOES_{card_code}_{timestamp}.pdf"
+            lote_dir = output_dir or (get_cartoes_dir() / "LOTES")
+            lote_dir.mkdir(parents=True, exist_ok=True)
+            out = lote_dir / f"CARTOES_{card_code}_{timestamp}.pdf"
             if one_per_page:
                 _split_one_per_page(sheet_pdfs, valid, template, out)
             else:
@@ -684,12 +686,38 @@ def generate_pptx_cards(
             generated.append(out)
         else:
             for emp in valid:
-                out = cliente_dir / f"CARTAO_{_sanitize_filename(emp.nome)}_{card_code}.pdf"
+                emp_dir = output_dir or (get_cartoes_dir() / _pasta_cartao_pptx(emp))
+                emp_dir.mkdir(parents=True, exist_ok=True)
+                out = emp_dir / f"CARTAO_{_sanitize_filename(emp.nome)}_{card_code}.pdf"
                 _split_one_per_page(sheet_pdfs, valid, template, out, only_employee=emp)
                 generated.append(out)
+
+        _disparar_sync_pptx(generated, valid, single_pdf)
 
         return generated, missing
     finally:
         import shutil
 
         shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+def _pasta_cartao_pptx(emp) -> str:
+    """Subpasta do funcionario em data/cartoes (CPF so em colisao)."""
+    from src.utils.folder_utils import employee_folder_name
+    from src.core.employee_repo import EmployeeRepository
+    return employee_folder_name(emp, EmployeeRepository().get_all(limit=1000000))
+
+
+def _disparar_sync_pptx(generated: List[Path], valid, single_pdf: bool):
+    """Espelha cartoes gerados na rede (best-effort, thread a parte)."""
+    try:
+        from src.core import network_sync
+        if not generated:
+            return
+        if single_pdf:
+            network_sync.run_async(network_sync.sync_card_lote, generated[0])
+        else:
+            for out, emp in zip(generated, valid):
+                network_sync.run_async(network_sync.sync_card, out, emp)
+    except Exception:
+        pass

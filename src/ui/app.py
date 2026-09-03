@@ -60,6 +60,25 @@ class NormaTechApp(ctk.CTk):
         # toast de vencimentos (7 dias) pouco apos abrir
         self.after(3000, self._notify_expirations)
 
+        # migracao unica para a nova estrutura de pastas (v1.8.0)
+        try:
+            from src.core.storage_migration import migrate_storage_if_needed
+            migrate_storage_if_needed()
+        except Exception as e:
+            from src.utils.error_log import log_error
+            log_error("migracao-storage-boot", e)
+        # espelho completo dos documentos na rede (se ativo)
+        self.after(8000, self._sync_rede_startup)
+
+    def _sync_rede_startup(self):
+        try:
+            from src.core import network_sync
+            if network_sync.rede_ativo():
+                network_sync.run_async(network_sync.sync_all)
+        except Exception as e:
+            from src.utils.error_log import log_error
+            log_error("rede-sync-startup", e)
+
     def _build_ui(self):
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
@@ -81,11 +100,9 @@ class NormaTechApp(ctk.CTk):
         self.sidebar = ctk.CTkFrame(self, fg_color=COLORS["primary"], corner_radius=0, width=SIDEBAR_WIDTH_EXPANDED)
         self.sidebar.grid(row=0, column=0, sticky="nsew")
         self.sidebar.grid_propagate(False)
-        self.sidebar.grid_rowconfigure(13, weight=1)
 
-        # Header da sidebar: hamburger (esquerda) + tema (direita) em frame
-        # proprio — celulas de grid compartilhadas se sobrepõem em alguns
-        # escalamentos e escondiam o botao de tema com a barra aberta
+        # Header da sidebar: apenas hamburger (o botao de tema virou linha
+        # de navegacao acima de Config — sem risco de sobreposicao)
         header = ctk.CTkFrame(self.sidebar, fg_color="transparent", height=40)
         header.grid(row=0, column=0, sticky="ew", padx=2, pady=(4, 0))
         header.grid_propagate(False)
@@ -98,15 +115,6 @@ class NormaTechApp(ctk.CTk):
             command=self._toggle_sidebar
         )
         self.btn_toggle.pack(side="left", padx=(4, 0), pady=(2, 0))
-
-        # Botao de tema (claro/escuro)
-        self.btn_theme = ctk.CTkButton(
-            header, text=self._theme_icon(), font=("Segoe UI", 16),
-            width=30, height=30, fg_color="transparent",
-            text_color=COLORS["on_primary"], hover_color=COLORS["secondary"],
-            command=self._toggle_theme
-        )
-        self.btn_theme.pack(side="right", padx=(0, 4), pady=(5, 0))
 
         # Logo/Title
         self.logo_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
@@ -208,14 +216,44 @@ class NormaTechApp(ctk.CTk):
         self.nav_labels[backup_key] = lbl
         self.nav_frames[backup_key] = nav_frame
 
-        # Configuracoes (abaixo do Backup)
+        # Tema claro/escuro (linha acima de Config)
+        tema_key = "theme"
+        tema_icon = self._theme_icon()
+        tema_label = "Tema"
+
+        nav_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent", height=42, cursor="hand2")
+        nav_frame.grid(row=13, column=0, sticky="ew", padx=4, pady=2)
+        nav_frame.grid_propagate(False)
+        nav_frame.columnconfigure(1, weight=1)
+
+        btn = ctk.CTkButton(
+            nav_frame, text=tema_icon, font=("Segoe UI", 14),
+            width=30, height=34, fg_color="transparent",
+            text_color=COLORS["on_primary"], corner_radius=6,
+            hover_color=COLORS["secondary"], command=self._toggle_theme
+        )
+        btn.grid(row=0, column=0, padx=4, pady=3, sticky="w")
+
+        lbl = ctk.CTkLabel(
+            nav_frame, text=tema_label,
+            font=fonts["sidebar_nav"], text_color=COLORS["on_primary"],
+            cursor="hand2"
+        )
+        lbl.grid(row=0, column=1, padx=2, pady=3, sticky="w")
+        lbl.bind("<Button-1>", lambda e: self._toggle_theme())
+
+        self.nav_buttons[tema_key] = btn
+        self.nav_labels[tema_key] = lbl
+        self.nav_frames[tema_key] = nav_frame
+
+        # Configuracoes (abaixo do Tema)
         config_key = "config"
         config_icon = "\u2699"
         config_label = "Config"
         config_cmd = self._show_config
 
         nav_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent", height=42, cursor="hand2")
-        nav_frame.grid(row=13, column=0, sticky="ews", padx=4, pady=2)
+        nav_frame.grid(row=14, column=0, sticky="ews", padx=4, pady=2)
         nav_frame.grid_propagate(False)
         nav_frame.columnconfigure(1, weight=1)
 
@@ -244,12 +282,13 @@ class NormaTechApp(ctk.CTk):
         self.nav_labels[config_key] = lbl
         self.nav_frames[config_key] = nav_frame
 
-        # Version
+        # Version (no fundo; row 15 e espacador com weight)
+        self.sidebar.grid_rowconfigure(15, weight=1)
         self.lbl_version = ctk.CTkLabel(
             self.sidebar, text=f"v{APP_VERSION}",
             font=fonts["sidebar_version"], text_color=COLORS["muted"]
         )
-        self.lbl_version.grid(row=14, column=0, sticky="s", pady=8)
+        self.lbl_version.grid(row=16, column=0, sticky="s", pady=8)
 
     def _toggle_sidebar(self):
         if self.sidebar_expanded:
@@ -264,10 +303,6 @@ class NormaTechApp(ctk.CTk):
             lbl.grid_remove()
         self.logo_frame.grid_remove()
         self.lbl_version.grid_remove()
-        # recolhido: sem espaco para dois botoes no header, tema vai para a
-        # linha do logo (que fica oculta quando recolhida)
-        self.btn_theme.pack_forget()
-        self.btn_theme.grid(row=1, column=0, sticky="w", padx=6, pady=2)
 
     def _expand_sidebar(self):
         self.sidebar_expanded = True
@@ -276,9 +311,7 @@ class NormaTechApp(ctk.CTk):
         self.lbl_title.pack(anchor="w")
         for key, lbl in self.nav_labels.items():
             lbl.grid(row=0, column=1, padx=2, pady=3, sticky="w")
-        self.lbl_version.grid(row=14, column=0, sticky="s", pady=8)
-        self.btn_theme.grid_forget()
-        self.btn_theme.pack(side="right", padx=(0, 4), pady=(5, 0))
+        self.lbl_version.grid(row=16, column=0, sticky="s", pady=8)
 
     # ── Tema claro/escuro ──────────────────────────────────────
 

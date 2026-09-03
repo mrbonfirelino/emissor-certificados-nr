@@ -52,6 +52,67 @@ class EmployeeRepository:
                 conn.execute("SELECT cpf FROM employees WHERE cpf IS NULL LIMIT 1")
             except Exception:
                 pass
+            # documentos gerais do funcionario ("Outros": CNH, identidade, etc.)
+            conn.executescript("""
+                CREATE TABLE IF NOT EXISTS employee_docs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    employee_id INTEGER NOT NULL,
+                    filename TEXT NOT NULL,
+                    tipo TEXT NOT NULL,
+                    tamanho INTEGER NOT NULL DEFAULT 0,
+                    dados BLOB,
+                    created_at TEXT DEFAULT (datetime('now')),
+                    FOREIGN KEY (employee_id) REFERENCES employees(id)
+                );
+                CREATE INDEX IF NOT EXISTS idx_empdocs_employee ON employee_docs(employee_id);
+            """)
+
+    # --- Documentos gerais ("Outros") ---
+
+    DOC_MAX_BYTES = 10 * 1024 * 1024  # 10MB
+    DOC_TIPOS = {"pdf", "jpg", "jpeg", "png"}
+
+    def add_doc(self, employee_id: int, filename: str, data: bytes, tipo: str) -> int:
+        """Anexa documento do funcionario. tipo: pdf|jpg|jpeg|png. Retorna id."""
+        tipo = (tipo or "").lower().strip()
+        if tipo not in self.DOC_TIPOS:
+            raise ValueError(f"Formato invalido: {tipo} (aceitos: PDF, JPG, PNG)")
+        if len(data) > self.DOC_MAX_BYTES:
+            raise ValueError("Arquivo maior que 10MB")
+        if tipo == "jpeg":
+            tipo = "jpg"
+        with self._get_conn() as conn:
+            cursor = conn.execute(
+                "INSERT INTO employee_docs (employee_id, filename, tipo, tamanho, dados) VALUES (?, ?, ?, ?, ?)",
+                (employee_id, filename, tipo, len(data), sqlite3.Binary(data))
+            )
+            return cursor.lastrowid
+
+    def list_docs(self, employee_id: int) -> List[dict]:
+        """Lista documentos do funcionario (sem o BLOB)."""
+        with self._get_conn() as conn:
+            rows = conn.execute(
+                "SELECT id, filename, tipo, tamanho, created_at FROM employee_docs "
+                "WHERE employee_id = ? ORDER BY filename",
+                (employee_id,)
+            ).fetchall()
+            return [dict(r) for r in rows]
+
+    def get_doc(self, doc_id: int) -> Optional[tuple]:
+        """Retorna (employee_id, filename, bytes, tipo) do documento ou None."""
+        with self._get_conn() as conn:
+            row = conn.execute(
+                "SELECT employee_id, filename, dados, tipo FROM employee_docs WHERE id = ?",
+                (doc_id,)
+            ).fetchone()
+            if row and row["dados"]:
+                return row["employee_id"], row["filename"], row["dados"], (row["tipo"] or "pdf")
+            return None
+
+    def delete_doc(self, doc_id: int) -> bool:
+        with self._get_conn() as conn:
+            conn.execute("DELETE FROM employee_docs WHERE id = ?", (doc_id,))
+            return True
 
     def create(self, nome: str, cpf: str = None, funcao: str = None, foto: Optional[bytes] = None, telefone: Optional[str] = None) -> Optional[int]:
         try:

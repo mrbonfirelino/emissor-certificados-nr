@@ -79,7 +79,26 @@ def get_config_dir() -> Path:
 
 
 def get_certificados_dir() -> Path:
-    """Pasta de certificados emitidos, organizados por funcionário."""
-    cert_dir = get_project_root() / "CERTIFICADOS"
+    """Pasta de certificados emitidos (data/certificados, por funcionário/NR)."""
+    cert_dir = get_data_dir() / "certificados"
     cert_dir.mkdir(parents=True, exist_ok=True)
     return cert_dir
+
+
+def get_legacy_certificados_dir() -> Path:
+    """Pasta antiga de certificados (raiz/CERTIFICADOS) — usada só na migração."""
+    return get_project_root() / "CERTIFICADOS"
+
+
+def get_cartoes_dir() -> Path:
+    """Pasta de cartões de bloqueio (data/cartoes)."""
+    cartoes_dir = get_data_dir() / "cartoes"
+    cartoes_dir.mkdir(parents=True, exist_ok=True)
+    return cartoes_dir
+
+
+def get_assinados_dir() -> Path:
+    """Pasta de certificados assinados exportados (data/assinados)."""
+    assinados_dir = get_data_dir() / "assinados"
+    assinados_dir.mkdir(parents=True, exist_ok=True)
+    return assinados_dir

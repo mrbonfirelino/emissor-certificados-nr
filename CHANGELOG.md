@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.8.0] - 2026-09-03
+
+### Adicionado
+- **Documentos em rede**: nova seção em Configurações — espelha certificados,
+  cartões, certificados assinados e outros documentos em pasta/caminho de rede
+  organizados por funcionário (`{Func}/Certificados/{NR}`, vencidos em
+  `00_Certificados_OLD`, `{Func}/Cartoes`, `{Func}/Certificados Assinados`,
+  `{Func}/Outros`, lotes em `Cartoes_Gerais`); sincronização no startup +
+  botão "Sincronizar Agora"; toast e log de erro se a rede falhar
+- **Documentos do funcionário ("Outros")**: botão **Docs** na aba Funcionários
+  — identidade, CNH etc. salvos no banco (BLOB até 10MB, PDF/JPG/PNG) e
+  espelhados na rede em `{Func}/Outros`
+- **Nova estrutura de pastas local**: `data/certificados/{Func}/{NR}`,
+  `data/cartoes/{Func}` + `data/cartoes/LOTES`, `data/assinados/{Func}`;
+  migração automática única dos PDFs antigos de `CERTIFICADOS/` com
+  atualização dos caminhos no banco (idempotente; não casados vão para
+  `_ORFAOS`)
+- **Contraste do modo escuro aumentado**: textos secundários, textos muted,
+  bordas e verde de sucesso mais claros/legíveis
+
+### Alterado
+- **Botão do tema**: agora é uma linha "Tema" na barra lateral, acima de
+  Configurações (antes sobreponha o botão hamburger no header)
+
 ## [1.7.1] - 2026-09-03
 
 ### Corrigido

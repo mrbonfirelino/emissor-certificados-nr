@@ -1,7 +1,7 @@
 # Roadmap - NormaTech
 
 ## Status do Projeto
-- Versao atual: 1.7.1
+- Versao atual: 1.8.0
 - NRs disponiveis: 17 (01, 05, 06, 09, 10, 11, 12, 17, 18, 26, 33, 34, 35 + FDS, BRIGADISTA-NR23, PTA, MOTOSERRA, MUNCK, PONTE-ROLANTE, DIR-DEFENSIVA, CIPAA)
 
 ---
@@ -167,6 +167,17 @@ Requisitos: Microsoft PowerPoint instalado na máquina (conversão via COM).
 | CI GitHub Actions | docs/CI_GITHUB_ACTIONS.md | Planejado |
 | Multiusuário/servidor | docs/MULTIUSUARIO.md | Estudo (pré: REDE.md) |
 | Interface GPU | docs/UI_GPU.md | Estudo |
+
+### 2.13 Documentos em Rede + Estrutura de Pastas (CONCLUÍDA)
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Espelhamento em rede | Config: caminho de rede + Sincronizar Agora + sync no startup; toast/log em falha | Alta | Concluído (v1.8.0) |
+| Estrutura por funcionário | `{Func}/Certificados/{NR}` com `00_Certificados_OLD` p/ vencidos, `Cartoes`, `Certificados Assinados`, `Outros`, `Cartoes_Gerais` | Alta | Concluído (v1.8.0) |
+| Outros documentos | Botão Docs (BLOB no banco ≤10MB PDF/JPG/PNG) espelhado em `{Func}/Outros` | Alta | Concluído (v1.8.0) |
+| Estrutura local nova | `data/certificados/{Func}/{NR}`, `data/cartoes/{Func}+LOTES`, `data/assinados/{Func}`; migração única idempotente de `CERTIFICADOS/` | Alta | Concluído (v1.8.0) |
+| Contraste modo escuro | Paleta dark com textos/bordas mais claros | Media | Concluído (v1.8.0) |
+| Tema na sidebar | Linha "Tema" acima de Config (fim da sobreposição com o hamburger) | Media | Concluído (v1.8.0) |
 
 ---
 

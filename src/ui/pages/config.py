@@ -259,6 +259,58 @@ class ConfigPage(ctk.CTkFrame):
         ctk.CTkFrame(form, height=2, fg_color=COLORS["border"]).grid(row=row, column=0, sticky="ew", pady=20)
         row += 1
 
+        # Documentos em rede
+        ctk.CTkLabel(form, text="Documentos em Rede", font=fonts["heading"], text_color=COLORS["primary"]).grid(row=row, column=0, sticky="w", pady=(0, 8))
+        row += 1
+        ctk.CTkLabel(form, text="Copia de certificados, cartoes, assinados e outros documentos em pastas por funcionario.",
+                     font=fonts["small"], text_color=COLORS["muted"]).grid(row=row, column=0, sticky="w", pady=(0, 12))
+        row += 1
+
+        self._rede_docs_var = ctk.BooleanVar(value=False)
+        ctk.CTkCheckBox(
+            form, text="Salvar copia dos documentos em pasta de rede",
+            variable=self._rede_docs_var,
+            font=fonts["body"], text_color=COLORS["text"],
+            fg_color=COLORS["primary"], hover_color=COLORS["secondary"],
+            checkbox_height=20, checkbox_width=20
+        ).grid(row=row, column=0, sticky="w", pady=(0, 6))
+        row += 1
+
+        rede_docs_frame = ctk.CTkFrame(form, fg_color="transparent")
+        rede_docs_frame.grid(row=row, column=0, sticky="ew", pady=(0, 10))
+        rede_docs_frame.grid_columnconfigure(1, weight=1)
+        row += 1
+        ctk.CTkLabel(rede_docs_frame, text="Caminho na rede:", font=fonts["body"],
+                     text_color=COLORS["text"]).grid(row=0, column=0, sticky="w", padx=(0, 8))
+        self._rede_docs_path_var = ctk.StringVar(value="")
+        ctk.CTkEntry(rede_docs_frame, textvariable=self._rede_docs_path_var,
+                     font=fonts["body"], height=32, corner_radius=6
+                     ).grid(row=0, column=1, sticky="ew", padx=(0, 8))
+        ctk.CTkButton(rede_docs_frame, text="Procurar...", width=90, height=32,
+                      font=fonts["small"], fg_color=COLORS["muted"],
+                      hover_color=COLORS["text_secondary"],
+                      command=self._procurar_rede_docs).grid(row=0, column=2)
+
+        rede_docs_hint = ctk.CTkLabel(
+            form,
+            text="Estrutura: {Funcionario}/Certificados/{NR} (vencidos em 00_Certificados_OLD), "
+                 "Cartoes, Certificados Assinados e Outros; lotes em Cartoes_Gerais.",
+            font=fonts["small"], text_color=COLORS["muted"], wraplength=520, justify="left"
+        )
+        rede_docs_hint.grid(row=row, column=0, sticky="w", pady=(0, 8))
+        row += 1
+
+        ctk.CTkButton(
+            form, text="Sincronizar Agora", width=140, height=32,
+            font=fonts["body_bold"], fg_color=COLORS["accent"], hover_color=COLORS["secondary"],
+            command=self._sincronizar_agora
+        ).grid(row=row, column=0, sticky="w", pady=(0, 4))
+        row += 1
+
+        # Separador
+        ctk.CTkFrame(form, height=2, fg_color=COLORS["border"]).grid(row=row, column=0, sticky="ew", pady=20)
+        row += 1
+
         # Diagnostico — Log de erros
         ctk.CTkLabel(form, text="Diagnóstico — Log de Erros", font=fonts["heading"], text_color=COLORS["primary"]).grid(row=row, column=0, sticky="w", pady=(0, 4))
         row += 1
@@ -304,6 +356,31 @@ class ConfigPage(ctk.CTkFrame):
             command=self._save_config
         ).grid(row=row, column=0, sticky="e")
         row += 1
+
+    def _procurar_rede_docs(self):
+        from tkinter import filedialog
+        path = filedialog.askdirectory(title="Pasta de rede para os documentos", parent=self)
+        if path:
+            self._rede_docs_path_var.set(path)
+
+    def _sincronizar_agora(self):
+        if not self._rede_docs_var.get():
+            messagebox.showwarning("Aviso", "Ative o salvamento em rede antes de sincronizar.", parent=self)
+            return
+        caminho = self._rede_docs_path_var.get().strip()
+        if not caminho:
+            messagebox.showwarning("Aviso", "Informe o caminho na rede.", parent=self)
+            return
+        import threading
+        from src.core import network_sync
+        from src.core.app_settings import set_setting
+        set_setting("rede_documentos_ativo", True)
+        set_setting("rede_documentos_caminho", caminho)
+        messagebox.showinfo("Sincronizacao", "Sincronizacao iniciada em segundo plano.\n"
+                            "Voce recebera uma notificacao ao terminar.", parent=self)
+        threading.Thread(
+            target=network_sync.sync_all, kwargs={"notify_success": True}, daemon=True
+        ).start()
 
     def _change_font_scale(self, delta):
         new_val = round(self.font_scale_var.get() + delta, 1)
@@ -354,6 +431,8 @@ class ConfigPage(ctk.CTkFrame):
         self._backup_rede_var.set(bool(settings.get("backup_rede_ativo", True)))
         self._backup_rede_path_var.set(str(settings.get(
             "backup_rede_caminho", r"Z:\SEGURANÇA\NORMATECH-BACKUP")))
+        self._rede_docs_var.set(bool(settings.get("rede_documentos_ativo", False)))
+        self._rede_docs_path_var.set(str(settings.get("rede_documentos_caminho", "") or ""))
 
     def _save_config(self):
         empresa = self.empresa_var.get().strip()
@@ -407,6 +486,8 @@ class ConfigPage(ctk.CTkFrame):
             "backup_rede_ativo": bool(self._backup_rede_var.get()),
             "backup_rede_caminho": self._backup_rede_path_var.get().strip()
                                    or r"Z:\SEGURANÇA\NORMATECH-BACKUP",
+            "rede_documentos_ativo": bool(self._rede_docs_var.get()),
+            "rede_documentos_caminho": self._rede_docs_path_var.get().strip(),
         }
         save_app_settings(app_settings)
 

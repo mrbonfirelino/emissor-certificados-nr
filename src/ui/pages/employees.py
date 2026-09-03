@@ -265,6 +265,13 @@ class EmployeesPage(ctk.CTkFrame):
         ).pack(side="left", padx=2)
 
         ctk.CTkButton(
+            btn_frame, text="Docs", width=48, height=26,
+            font=fonts["small"], fg_color=COLORS["accent"],
+            hover_color=COLORS["secondary"],
+            command=lambda e=emp: self._open_docs_dialog(e)
+        ).pack(side="left", padx=2)
+
+        ctk.CTkButton(
             btn_frame, text="Excluir", width=60, height=26,
             font=fonts["small"], fg_color=COLORS["error"],
             hover_color="#B71C1C",
@@ -276,6 +283,10 @@ class EmployeesPage(ctk.CTkFrame):
 
     def _open_new_dialog(self):
         self._open_employee_dialog()
+
+    def _open_docs_dialog(self, employee: Employee):
+        from src.ui.components.employee_docs_dialog import EmployeeDocsDialog
+        EmployeeDocsDialog(self, self.employee_repo, employee)
 
     def _open_edit_dialog(self, employee: Employee):
         self._open_employee_dialog(employee)

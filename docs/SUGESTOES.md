@@ -2,7 +2,7 @@
 
 Levantamento de melhorias candidatas a próximas versões, ordenadas por
 valor/esforço. Itens do ROADMAP concluídos não se repetem aqui.
-Última revisão: v1.7.0.
+Última revisão: v1.8.0.
 
 ---
 
@@ -10,8 +10,9 @@ valor/esforço. Itens do ROADMAP concluídos não se repetem aqui.
 
 1. **Validar uso em rede (drive mapeado)** — executar o checklist do
    `docs/REDE.md` no ambiente real antes de qualquer decisão de arquitetura
-   (2 máquinas simultâneas, lock do SQLite, latência). *(O backup em rede já
-   existe desde a v1.4.0 — falta validar o BANCO em rede.)*
+   (2 máquinas simultâneas, lock do SQLite, latência). *(O backup em rede
+   existe desde a v1.4.0 e o espelhamento de documentos desde a v1.8.0 —
+   falta validar o BANCO em rede.)*
 2. ~~Filtro "Assinado sim/não" no Histórico~~ — **feito na v1.7.0**
    (combinável com texto/NR/período; respeitado na exportação)
 3. ~~Log de erros central~~ — **feito na v1.4.0** (`data/error.log`)

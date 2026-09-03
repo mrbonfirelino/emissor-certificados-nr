@@ -19,6 +19,9 @@ DEFAULTS: Dict[str, Any] = {
     "backup_rede_ativo": True,
     "backup_rede_caminho": r"Z:\SEGURANÇA\NORMATECH-BACKUP",
     "painel_inicial_visivel": True,
+    "rede_documentos_ativo": False,
+    "rede_documentos_caminho": "",
+    "migracao_pastas_v2": False,
 }
 
 

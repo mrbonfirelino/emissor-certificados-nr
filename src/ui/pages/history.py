@@ -406,6 +406,14 @@ class HistoryPage(ctk.CTkFrame):
 
     # ── Documento assinado (escaneado) ───────────────────────
 
+    def _espelhar_assinado(self, cert, data: bytes, tipo: str):
+        """Copia local (data/assinados) + espelho na rede (best-effort)."""
+        try:
+            from src.core import network_sync
+            network_sync.run_async(network_sync.salvar_assinado, cert, data, tipo)
+        except Exception:
+            pass
+
     def _digitalizar(self, cert: CertificateRecord):
         """Digitaliza (scanner ou foto) e anexa direto ao certificado (roadmap 2.9)."""
         from src.ui.components.scan_dialog import ScanDialog
@@ -417,6 +425,7 @@ class HistoryPage(ctk.CTkFrame):
         try:
             substituindo = cert.has_signed_doc
             self.history_repo.attach_signed_doc(cert.id, data, tipo)
+            self._espelhar_assinado(cert, data, tipo)
             msg = "Documento digitalizado anexado ao certificado."
             if substituindo:
                 msg = "Documento assinado substituido pela nova digitalizacao."
@@ -462,6 +471,7 @@ class HistoryPage(ctk.CTkFrame):
             with open(path, "rb") as f:
                 data = f.read()
             self.history_repo.attach_signed_doc(cert.id, data, ext)
+            self._espelhar_assinado(cert, data, ext)
             messagebox.showinfo("Sucesso", "Documento assinado anexado ao certificado.", parent=self)
             self._refresh_list()
         except ValueError as e:
