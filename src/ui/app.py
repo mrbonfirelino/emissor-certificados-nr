@@ -12,6 +12,7 @@ from src.core.employee_repo import EmployeeRepository
 from src.core.history_repo import HistoryRepository
 from src.core.backup_manager import BackupManager
 from src.core.config import is_configured, load_company_config, ensure_default_restore_password
+from src.core.version import APP_VERSION
 from src.utils.paths import get_data_dir
 
 SIDEBAR_WIDTH_EXPANDED = 150
@@ -216,7 +217,7 @@ class NormaTechApp(ctk.CTk):
 
         # Version
         self.lbl_version = ctk.CTkLabel(
-            self.sidebar, text="v1.1.0",
+            self.sidebar, text=f"v{APP_VERSION}",
             font=fonts["sidebar_version"], text_color=COLORS["muted"]
         )
         self.lbl_version.grid(row=14, column=0, sticky="s", pady=8)
