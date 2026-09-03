@@ -26,20 +26,21 @@ class WelcomePage(ctk.CTkFrame):
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
-        # === AREA CENTRAL ===
-        center = ctk.CTkFrame(self, fg_color="transparent")
-        center.grid(row=0, column=0, sticky="nsew")
+        # === AREA CENTRAL ROLAVEL ===
+        # tela inicial dentro de frame rolavel: com o painel de indicadores
+        # aberto em telas pequenas o conteudo era cortado sem scrollbar
+        self._scroll = ctk.CTkScrollableFrame(self, fg_color="transparent")
+        self._scroll.grid(row=0, column=0, sticky="nsew")
+
+        center = ctk.CTkFrame(self._scroll, fg_color="transparent")
+        center.pack(fill="both", expand=True)
         center.grid_columnconfigure(0, weight=1)
-        center.grid_rowconfigure(0, weight=1)
-        center.grid_rowconfigure(6, weight=1)
 
         card = ctk.CTkFrame(center, fg_color=COLORS["surface"], corner_radius=16, border_width=1, border_color=COLORS["border"])
-        card.grid(row=1, column=0, sticky="nsew", padx=40, pady=24)
+        card.grid(row=1, column=0, sticky="nsew", padx=40, pady=(32, 24))
         card.grid_columnconfigure(0, weight=1)
         for r in range(7):
             card.grid_rowconfigure(r, weight=0)
-        card.grid_rowconfigure(0, weight=1)
-        card.grid_rowconfigure(6, weight=1)
 
         # Logo
         logo_label = self._build_logo(card)
@@ -103,13 +104,16 @@ class WelcomePage(ctk.CTkFrame):
         ).pack(side="left", expand=True, fill="x", padx=6)
 
         # === PAINEL DE INDICADORES (ocultavel) ===
+        # botao com corpo proprio (surface + borda): antes era transparente
+        # e discreto demais, o usuario nao encontrava
         self.btn_painel = ctk.CTkButton(
-            center, text="", font=fonts["small"], height=24,
-            fg_color="transparent", hover_color=COLORS["border"],
-            text_color=COLORS["text_secondary"],
-            anchor="w", command=self._toggle_painel
+            center, text="", font=fonts["body_bold"], height=36,
+            fg_color=COLORS["surface"], hover_color=COLORS["border"],
+            border_width=1, border_color=COLORS["border"], corner_radius=8,
+            text_color=COLORS["primary"],
+            anchor="center", command=self._toggle_painel
         )
-        self.btn_painel.grid(row=7, column=0, sticky="ew", padx=48, pady=(0, 2))
+        self.btn_painel.grid(row=7, column=0, sticky="ew", padx=48, pady=(10, 4))
 
         from src.ui.components.dashboard_panel import DashboardPanel
         self.painel = DashboardPanel(center, self.history_repo)

@@ -9,6 +9,7 @@ from src.ui.styles import COLORS, get_fonts
 from src.core.history_repo import HistoryRepository
 from src.core.models import CertificateRecord
 from src.ui.components.pagination import PaginationBar
+from src.ui.components.scroll_frame import ScrollListFrame
 
 
 class HistoryPage(ctk.CTkFrame):
@@ -127,7 +128,7 @@ class HistoryPage(ctk.CTkFrame):
         ).pack(side="left", padx=(6, 0))
 
         # Row 1 — Lista (weight=1 preenche resto)
-        self.list_frame = ctk.CTkScrollableFrame(self, fg_color=COLORS["surface"], corner_radius=12, height=200)
+        self.list_frame = ScrollListFrame(self, fg_color=COLORS["surface"], corner_radius=12, height=200)
         self.list_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 5))
         self.list_frame.grid_columnconfigure(0, weight=1)
 

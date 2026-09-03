@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.7.1] - 2026-09-03
+
+### Corrigido
+- **Botão de tema visível com a sidebar aberta**: hamburger e tema dividiam
+  a mesma célula do grid e se sobrepunham em alguns escalamentos; agora
+  vivem em um header próprio (hamburger à esquerda, tema à direita)
+- **Duplicação do content_frame**: `_build_sidebar` recriava a área de
+  conteúdo e a Home a cada boot/troca de tema (frames empilhados)
+- **Tela inicial rolável**: com o painel de indicadores aberto em telas
+  pequenas o conteúdo era cortado — agora a página tem scrollbar
+- **Botão "Mostrar/Ocultar indicadores" em destaque**: altura 36, fundo
+  `surface` com borda e texto centralizado bold (antes era transparente e
+  discreto demais)
+
+### Alterado
+- **Scrollbar visível nas listas**: novo `ScrollListFrame`
+  (`src/ui/components/scroll_frame.py`) com trilho e thumb nas cores
+  corporativas — aplicado nas listas do Histórico e dos Cartões de
+  Bloqueio (a scrollbar do CTK é cinza flat e se confundia com a superfície)
+
 ## [1.7.0] - 2026-09-03
 
 ### Adicionado

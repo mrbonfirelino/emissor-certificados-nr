@@ -14,6 +14,7 @@ from src.core.blocking_card_service import (
     generate_cards,
 )
 from src.ui.components.pagination import PaginationBar
+from src.ui.components.scroll_frame import ScrollListFrame
 from src.ui.components.generation_options_dialog import EmissionReviewDialog
 
 PER_PAGE_OPTIONS = [10, 25, 40]
@@ -177,7 +178,7 @@ class BlockingCardsPage(ctk.CTkFrame):
         self._per_page_menu.grid(row=0, column=6, sticky="e")
 
         # Row 2 — Lista de funcionarios com checkboxes
-        self.list_frame = ctk.CTkScrollableFrame(self, fg_color=COLORS["surface"], corner_radius=12, height=200)
+        self.list_frame = ScrollListFrame(self, fg_color=COLORS["surface"], corner_radius=12, height=200)
         self.list_frame.grid(row=2, column=0, sticky="nsew", padx=20, pady=(8, 2))
         self.list_frame.grid_columnconfigure(0, weight=1)
 

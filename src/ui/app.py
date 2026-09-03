@@ -83,23 +83,30 @@ class NormaTechApp(ctk.CTk):
         self.sidebar.grid_propagate(False)
         self.sidebar.grid_rowconfigure(13, weight=1)
 
-        # Toggle button
+        # Header da sidebar: hamburger (esquerda) + tema (direita) em frame
+        # proprio — celulas de grid compartilhadas se sobrepõem em alguns
+        # escalamentos e escondiam o botao de tema com a barra aberta
+        header = ctk.CTkFrame(self.sidebar, fg_color="transparent", height=40)
+        header.grid(row=0, column=0, sticky="ew", padx=2, pady=(4, 0))
+        header.grid_propagate(False)
+        self._sidebar_header = header
+
         self.btn_toggle = ctk.CTkButton(
-            self.sidebar, text="\u2630", font=("Segoe UI", 18),
+            header, text="\u2630", font=("Segoe UI", 18),
             width=36, height=36, fg_color="transparent",
             text_color=COLORS["on_primary"], hover_color=COLORS["secondary"],
             command=self._toggle_sidebar
         )
-        self.btn_toggle.grid(row=0, column=0, padx=6, pady=(8, 4), sticky="w")
+        self.btn_toggle.pack(side="left", padx=(4, 0), pady=(2, 0))
 
         # Botao de tema (claro/escuro)
         self.btn_theme = ctk.CTkButton(
-            self.sidebar, text=self._theme_icon(), font=("Segoe UI", 14),
-            width=28, height=28, fg_color="transparent",
+            header, text=self._theme_icon(), font=("Segoe UI", 16),
+            width=30, height=30, fg_color="transparent",
             text_color=COLORS["on_primary"], hover_color=COLORS["secondary"],
             command=self._toggle_theme
         )
-        self.btn_theme.grid(row=0, column=0, sticky="e", padx=6, pady=(8, 4))
+        self.btn_theme.pack(side="right", padx=(0, 4), pady=(5, 0))
 
         # Logo/Title
         self.logo_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
@@ -244,16 +251,6 @@ class NormaTechApp(ctk.CTk):
         )
         self.lbl_version.grid(row=14, column=0, sticky="s", pady=8)
 
-        # === CONTENT ===
-        self.content_frame = ctk.CTkFrame(self, fg_color=COLORS["background"], corner_radius=0)
-        self.content_frame.grid(row=0, column=1, sticky="nsew")
-        self.content_frame.grid_columnconfigure(0, weight=1)
-        self.content_frame.grid_rowconfigure(0, weight=1)
-
-        self.pages = {}
-        self.current_page = None
-        self._show_home()
-
     def _toggle_sidebar(self):
         if self.sidebar_expanded:
             self._collapse_sidebar()
@@ -267,7 +264,9 @@ class NormaTechApp(ctk.CTk):
             lbl.grid_remove()
         self.logo_frame.grid_remove()
         self.lbl_version.grid_remove()
-        # recolhido: tema ocupa a linha do logo (sem espaco na linha do hamburger)
+        # recolhido: sem espaco para dois botoes no header, tema vai para a
+        # linha do logo (que fica oculta quando recolhida)
+        self.btn_theme.pack_forget()
         self.btn_theme.grid(row=1, column=0, sticky="w", padx=6, pady=2)
 
     def _expand_sidebar(self):
@@ -278,7 +277,8 @@ class NormaTechApp(ctk.CTk):
         for key, lbl in self.nav_labels.items():
             lbl.grid(row=0, column=1, padx=2, pady=3, sticky="w")
         self.lbl_version.grid(row=14, column=0, sticky="s", pady=8)
-        self.btn_theme.grid(row=0, column=0, sticky="e", padx=6, pady=(8, 4))
+        self.btn_theme.grid_forget()
+        self.btn_theme.pack(side="right", padx=(0, 4), pady=(5, 0))
 
     # ── Tema claro/escuro ──────────────────────────────────────
 
