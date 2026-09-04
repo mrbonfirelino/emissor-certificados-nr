@@ -1,7 +1,7 @@
 # Roadmap - NormaTech
 
 ## Status do Projeto
-- Versao atual: 1.8.1
+- Versao atual: 1.9.0
 - NRs disponiveis: 17 (01, 05, 06, 09, 10, 11, 12, 17, 18, 26, 33, 34, 35 + FDS, BRIGADISTA-NR23, PTA, MOTOSERRA, MUNCK, PONTE-ROLANTE, DIR-DEFENSIVA, CIPAA)
 
 ---
@@ -178,6 +178,15 @@ Requisitos: Microsoft PowerPoint instalado na máquina (conversão via COM).
 | Estrutura local nova | `data/certificados/{Func}/{NR}`, `data/cartoes/{Func}+LOTES`, `data/assinados/{Func}`; migração única idempotente de `CERTIFICADOS/` | Alta | Concluído (v1.8.0) |
 | Contraste modo escuro | Paleta dark com textos/bordas mais claros | Media | Concluído (v1.8.0) |
 | Tema na sidebar | Linha "Tema" acima de Config (fim da sobreposição com o hamburger) | Media | Concluído (v1.8.0) |
+
+### 2.14 Expansão da Pasta Virtual do Funcionário (CONCLUÍDA)
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Formatos Universais | Permitir envio de arquivos de **qualquer formato** (DOCX, XLSX, ZIP, MP4, etc.) para a pasta virtual do funcionário (além de PDF/JPG/PNG atuais) | Alta | Concluído (v1.9.0) |
+| Limite de Tamanho | Definir novo limite máximo por arquivo (atual: 10MB para PDF/JPG/PNG) — sugerido: **50MB** para formatos universais | Alta | Concluído (v1.9.0, 50MB) |
+| Tipos MIME | Validar tipos MIME no upload para prevenir arquivos maliciosos | Media | Concluído (v1.9.0, blocklist ext+MIME) |
+| Armazenamento | Manter BLOB no banco + espelhamento em rede (`{Func}/Outros`) | Alta | Concluído (v1.8.0, inalterado) |
 
 ---
 

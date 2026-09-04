@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.9.0] - 2026-09-04
+
+### Adicionado
+- **Pasta virtual universal (2.14)**: os "Outros documentos" do funcionário
+  (botão Docs) agora aceitam **qualquer formato** (DOCX, XLSX, ZIP, MP4 etc.),
+  com limite de **50MB** por arquivo (antes: 10MB e apenas PDF/JPG/PNG)
+- **Validação de segurança no upload**: extensões executáveis/scripts
+  (EXE, BAT, CMD, JS, VBS, PS1, MSI etc.) e tipos MIME correlatos são
+  bloqueados; arquivos sem extensão também são rejeitados
+
+### Alterado
+- Tamanho exibido na lista de documentos em KB/MB conforme o arquivo
+- Diálogo "Adicionar" abre para todos os arquivos (`*.*`)
+
+## [1.8.2] - 2026-09-04
+
+### Adicionado
+- **Roadmap**: nova seção 2.14 "Expansão da Pasta Virtual do Funcionário" — envio de arquivos de qualquer formato (DOCX, XLSX, ZIP, etc.) com limite de 50MB por arquivo
+
 ## [1.8.1] - 2026-09-03
 
 ### Corrigido

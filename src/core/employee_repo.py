@@ -69,16 +69,43 @@ class EmployeeRepository:
 
     # --- Documentos gerais ("Outros") ---
 
-    DOC_MAX_BYTES = 10 * 1024 * 1024  # 10MB
-    DOC_TIPOS = {"pdf", "jpg", "jpeg", "png"}
+    DOC_MAX_BYTES = 50 * 1024 * 1024  # 50MB (qualquer formato nao bloqueado)
+
+    # extensoes executaveis/scripts bloqueadas por seguranca
+    DOC_EXT_BLOQUEADAS = {
+        "exe", "msi", "msp", "mst", "bat", "cmd", "com", "scr", "pif", "cpl",
+        "msc", "hta", "jar", "vbs", "vbe", "js", "jse", "ws", "wsf", "wsh",
+        "ps1", "psm1", "psd1", "sh", "bash", "reg", "dll", "sys", "drv",
+        "lnk", "url", "apk", "gadget",
+    }
+
+    # tipos MIME bloqueados (executaveis/scripts Windows)
+    _MIME_BLOQUEADOS = {
+        "application/x-msdownload", "application/x-msdos-program",
+        "application/x-msi", "application/x-ms-installer",
+        "application/x-bat", "application/x-sh", "application/x-sh",
+        "application/x-windows-script", "text/vbscript", "text/javascript",
+    }
+
+    @classmethod
+    def _validar_doc(cls, filename: str, data: bytes, tipo: str) -> str:
+        """Valida extensao/MIME/tamanho. Retorna extensao normalizada."""
+        import mimetypes
+        tipo = (tipo or "").lower().strip().lstrip(".")
+        if not tipo:
+            raise ValueError("Arquivo sem extensao")
+        if tipo in cls.DOC_EXT_BLOQUEADAS:
+            raise ValueError(f"Formato bloqueado por seguranca: .{tipo}")
+        mime, _ = mimetypes.guess_type(filename or f"arquivo.{tipo}")
+        if mime and (mime in cls._MIME_BLOQUEADOS or mime.startswith("application/x-ms")):
+            raise ValueError(f"Tipo de arquivo bloqueado: {mime}")
+        if len(data) > cls.DOC_MAX_BYTES:
+            raise ValueError("Arquivo maior que 50MB")
+        return tipo
 
     def add_doc(self, employee_id: int, filename: str, data: bytes, tipo: str) -> int:
-        """Anexa documento do funcionario. tipo: pdf|jpg|jpeg|png. Retorna id."""
-        tipo = (tipo or "").lower().strip()
-        if tipo not in self.DOC_TIPOS:
-            raise ValueError(f"Formato invalido: {tipo} (aceitos: PDF, JPG, PNG)")
-        if len(data) > self.DOC_MAX_BYTES:
-            raise ValueError("Arquivo maior que 10MB")
+        """Anexa documento do funcionario (qualquer formato nao bloqueado, ate 50MB)."""
+        tipo = self._validar_doc(filename, data, tipo)
         if tipo == "jpeg":
             tipo = "jpg"
         with self._get_conn() as conn:

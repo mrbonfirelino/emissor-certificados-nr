@@ -250,16 +250,42 @@ def test_employee_docs(tmp: Path):
     emp_repo.delete_doc(doc_id)
     check("delete doc", emp_repo.list_docs(emp.id) == [] and emp_repo.get_doc(doc_id) is None)
 
+    # formatos universais (2.14): qualquer extensao nao bloqueada, ate 50MB
+    emp_repo.add_doc(emp.id, "grande.pdf", b"x" * (11 * 1024 * 1024), "pdf")
+    emp_repo.add_doc(emp.id, "contrato.docx", b"DOCX", "docx")
+    emp_repo.add_doc(emp.id, "planilha.xlsx", b"XLSX", "xlsx")
+    emp_repo.add_doc(emp.id, "video.mp4", b"MP4", "mp4")
+    check("formatos universais aceitos (11MB pdf/docx/xlsx/mp4)",
+          len(emp_repo.list_docs(emp.id)) == 4)
+
     try:
-        emp_repo.add_doc(emp.id, "x.txt", b"...", "txt")
-        check("tipo invalido rejeitado", False)
+        emp_repo.add_doc(emp.id, "malicioso.exe", b"MZ", "exe")
+        check("exe bloqueado", False)
     except ValueError:
-        check("tipo invalido rejeitado", True)
+        check("exe bloqueado", True)
     try:
-        emp_repo.add_doc(emp.id, "grande.pdf", b"x" * (11 * 1024 * 1024), "pdf")
-        check("limite 10MB", False)
+        emp_repo.add_doc(emp.id, "script.bat", b"@echo", "bat")
+        check("bat bloqueado", False)
     except ValueError:
-        check("limite 10MB", True)
+        check("bat bloqueado", True)
+    try:
+        emp_repo.add_doc(emp.id, "codigo.js", b"alert", "js")
+        check("js bloqueado (extensao/MIME)", False)
+    except ValueError:
+        check("js bloqueado (extensao/MIME)", True)
+    try:
+        emp_repo.add_doc(emp.id, "sem_ext", b"x", "")
+        check("arquivo sem extensao rejeitado", False)
+    except ValueError:
+        check("arquivo sem extensao rejeitado", True)
+    try:
+        emp_repo.add_doc(emp.id, "gigante.zip", b"x" * (51 * 1024 * 1024), "zip")
+        check("limite 50MB", False)
+    except ValueError:
+        check("limite 50MB", True)
+    check("bloqueados nao foram gravados",
+          len([d for d in emp_repo.list_docs(emp.id)
+               if d["filename"] in ("malicioso.exe", "script.bat", "codigo.js", "gigante.zip")]) == 0)
 
 
 # ── 8. Migracao de pastas ────────────────────────────────────

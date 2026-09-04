@@ -11,7 +11,12 @@ from tkinter import filedialog, messagebox
 
 from src.ui.styles import COLORS, get_fonts
 
-_EXT_TIPOS = {"pdf", "jpg", "jpeg", "png"}
+
+def _fmt_tamanho(bytes_: int) -> str:
+    b = bytes_ or 0
+    if b >= 1024 * 1024:
+        return f"{b / (1024 * 1024):.1f} MB"
+    return f"{b / 1024:.0f} KB"
 
 
 class EmployeeDocsDialog(ctk.CTkToplevel):
@@ -38,7 +43,7 @@ class EmployeeDocsDialog(ctk.CTkToplevel):
             font=fonts["heading"], text_color=COLORS["primary"]
         ).grid(row=0, column=0, sticky="w")
         ctk.CTkLabel(
-            header, text="Salvos no banco de dados e espelhados na pasta de rede (Funcionario/Outros).",
+            header, text="Qualquer formato (ate 50MB). Salvo no banco e espelhado na rede (Funcionario/Outros).",
             font=fonts["small"], text_color=COLORS["muted"]
         ).grid(row=1, column=0, sticky="w")
 
@@ -77,12 +82,11 @@ class EmployeeDocsDialog(ctk.CTkToplevel):
             row.grid(row=i, column=0, sticky="ew", padx=10, pady=4)
             row.grid_columnconfigure(1, weight=1)
             ctk.CTkLabel(
-                row, text=doc["tipo"].upper(), width=44,
+                row, text=doc["tipo"].upper(), width=52,
                 font=fonts["small_bold"], text_color=COLORS["primary"]
             ).grid(row=0, column=0, padx=(4, 8))
-            kb = (doc["tamanho"] or 0) / 1024
             ctk.CTkLabel(
-                row, text=f"{doc['filename']}  ({kb:.0f} KB)",
+                row, text=f"{doc['filename']}  ({_fmt_tamanho(doc['tamanho'])})",
                 font=fonts["small"], text_color=COLORS["text"], anchor="w"
             ).grid(row=0, column=1, sticky="ew")
             ctk.CTkButton(
@@ -100,7 +104,7 @@ class EmployeeDocsDialog(ctk.CTkToplevel):
     def _adicionar(self):
         path = filedialog.askopenfilename(
             title=f"Adicionar documento ({self.employee.nome})",
-            filetypes=[("Documentos", "*.pdf *.jpg *.jpeg *.png"), ("Todos", "*.*")],
+            filetypes=[("Todos os arquivos", "*.*")],
             parent=self
         )
         if not path:
@@ -125,8 +129,7 @@ class EmployeeDocsDialog(ctk.CTkToplevel):
             messagebox.showwarning("Aviso", "Documento nao encontrado.", parent=self)
             return
         _, fname, data, tipo = res
-        ext_map = {"pdf": ".pdf", "jpg": ".jpg", "jpeg": ".jpg", "png": ".png"}
-        ext = ext_map.get(tipo, ".pdf")
+        ext = "." + (tipo or "dat")
         path = filedialog.asksaveasfilename(
             title="Salvar documento",
             defaultextension=ext,
