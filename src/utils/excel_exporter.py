@@ -13,22 +13,29 @@ def export_employees_to_excel(employee_repo, output_path: str) -> int:
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Funcionarios"
-    ws.append(["ID", "Nome", "CPF", "Telefone", "Data Nascimento", "Funcao", "Data Cadastro"])
+    ws.append(["ID", "Nome", "CPF", "Telefone", "Data Nascimento", "Tipo Sanguineo",
+               "Data Admissao", "Registro CTPS", "CNH EAR", "Funcao", "Data Cadastro"])
+
+    def iso_to_br(v):
+        if v and len(v) == 10 and v[4] == "-":
+            return f"{v[8:10]}/{v[5:7]}/{v[0:4]}"
+        return v or ""
 
     for emp in employees:
-        nasc = emp.data_nascimento or ""
-        if nasc and len(nasc) == 10 and nasc[4] == "-":
-            nasc = f"{nasc[8:10]}/{nasc[5:7]}/{nasc[0:4]}"
-        ws.append([emp.id, emp.nome, emp.cpf, emp.telefone or "", nasc, emp.funcao or "", emp.created_at or ""])
+        ws.append([
+            emp.id, emp.nome, emp.cpf, emp.telefone or "",
+            iso_to_br(getattr(emp, "data_nascimento", None)),
+            getattr(emp, "tipo_sanguineo", None) or "",
+            iso_to_br(getattr(emp, "data_admissao", None)),
+            getattr(emp, "registro_ctps", None) or "",
+            "Sim" if getattr(emp, "cnh_ear", False) else "Nao",
+            emp.funcao or "", emp.created_at or ""
+        ])
 
     # Ajusta largura das colunas
-    ws.column_dimensions['A'].width = 8
-    ws.column_dimensions['B'].width = 40
-    ws.column_dimensions['C'].width = 18
-    ws.column_dimensions['D'].width = 16
-    ws.column_dimensions['E'].width = 16
-    ws.column_dimensions['F'].width = 30
-    ws.column_dimensions['G'].width = 20
+    widths = [8, 40, 18, 16, 16, 14, 16, 16, 10, 30, 20]
+    for letra, w in zip("ABCDEFGHIJK", widths):
+        ws.column_dimensions[letra].width = w
 
     wb.save(output_path)
     wb.close()

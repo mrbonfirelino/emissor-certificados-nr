@@ -8,6 +8,8 @@ Estrutura no destino (quando ativado em Configuracoes):
         Certificados/{NR}/00_Certificados_OLD/...        <- certificados vencidos
         Cartoes/CARTAO_...pdf
         Certificados Assinados/CERT-..._assinado.pdf|jpg|png
+        ASOs/ASO-...pdf + ASO-..._ASO.pdf                <- modelo + documento anexado
+        EPIs/Ficha de EPI - ...pdf + digitalizacoes
         Outros/CNH.PNG ...
       Cartoes_Gerais/                                    <- PDFs de lote
 
@@ -222,6 +224,102 @@ def _copy_bytes(dst: Path, data: bytes) -> None:
     dst.write_bytes(data)
 
 
+# ── ASOs e EPIs (roadmap 2.16) ────────────────────────────────
+
+def sync_aso(aso: dict, employee=None) -> bool:
+    """Espelha o PDF modelo do ASO em {Func}/ASOs."""
+    destino = _destino()
+    if not destino:
+        return False
+    try:
+        from src.core.employee_repo import EmployeeRepository
+        repo = EmployeeRepository()
+        employee = employee or repo.get_by_id(aso["employee_id"])
+        pasta = (employee_folder_name(employee, _employees_all(repo))
+                 if employee else sanitize_folder_name(aso.get("funcionario_nome") or "SEM_NOME"))
+        if aso.get("pdf_path") and Path(aso["pdf_path"]).exists():
+            _copy_file(Path(aso["pdf_path"]), destino / pasta / "ASOs" / Path(aso["pdf_path"]).name)
+        return True
+    except Exception as e:
+        _notify_fail(f"o ASO {aso.get('aso_number', '')}", e)
+        return False
+
+
+def sync_aso_doc(aso_id: int) -> bool:
+    """Espelha o documento anexado do ASO em {Func}/ASOs."""
+    destino = _destino()
+    if not destino:
+        return False
+    try:
+        from src.core.aso_repo import AsoRepository
+        from src.core.employee_repo import EmployeeRepository
+        repo = AsoRepository()
+        aso = repo.get_by_id(aso_id)
+        if not aso or not aso.get("has_doc"):
+            return False
+        res = repo.get_doc(aso_id)
+        if not res:
+            return False
+        data, tipo = res
+        emp = EmployeeRepository().get_by_id(aso["employee_id"])
+        pasta = sanitize_folder_name(aso.get("funcionario_nome") or "SEM_NOME")
+        if emp:
+            pasta = employee_folder_name(emp, _employees_all(EmployeeRepository()))
+        ext = {"pdf": "pdf", "jpg": "jpg", "jpeg": "jpg", "png": "png"}.get(tipo, "pdf")
+        fname = f"{aso['aso_number']}_ASO.{ext}"
+        _copy_bytes(destino / pasta / "ASOs" / fname, bytes(data))
+        return True
+    except Exception as e:
+        _notify_fail("o documento do ASO", e)
+        return False
+
+
+def sync_epi(epi: dict, employee=None) -> bool:
+    """Espelha o PDF da ficha de EPI em {Func}/EPIs."""
+    destino = _destino()
+    if not destino:
+        return False
+    try:
+        from src.core.employee_repo import EmployeeRepository
+        repo = EmployeeRepository()
+        employee = employee or repo.get_by_id(epi["employee_id"])
+        pasta = (employee_folder_name(employee, _employees_all(repo))
+                 if employee else sanitize_folder_name(epi.get("funcionario_nome") or "SEM_NOME"))
+        if epi.get("pdf_path") and Path(epi["pdf_path"]).exists():
+            _copy_file(Path(epi["pdf_path"]), destino / pasta / "EPIs" / Path(epi["pdf_path"]).name)
+        return True
+    except Exception as e:
+        _notify_fail(f"a ficha de EPI {epi.get('epi_number', '')}", e)
+        return False
+
+
+def sync_epi_doc(epi_id: int, doc_id: int) -> bool:
+    """Espelha uma digitalizacao da ficha em {Func}/EPIs (multiplas versoes)."""
+    destino = _destino()
+    if not destino:
+        return False
+    try:
+        from src.core.epi_repo import EpiRepository
+        from src.core.employee_repo import EmployeeRepository
+        repo = EpiRepository()
+        res = repo.get_doc(doc_id)
+        if not res:
+            return False
+        _, filename, data, tipo = res
+        ficha = repo.get_by_id(epi_id)
+        if not ficha:
+            return False
+        emp = EmployeeRepository().get_by_id(ficha["employee_id"])
+        pasta = sanitize_folder_name(ficha.get("funcionario_nome") or "SEM_NOME")
+        if emp:
+            pasta = employee_folder_name(emp, _employees_all(EmployeeRepository()))
+        _copy_bytes(destino / pasta / "EPIs" / Path(filename).name, bytes(data))
+        return True
+    except Exception as e:
+        _notify_fail("a digitalizacao da ficha de EPI", e)
+        return False
+
+
 # ── Sincronizacao completa (startup / manual) ────────────────
 
 def sync_all(notify_success: bool = False) -> dict:
@@ -285,6 +383,26 @@ def sync_all(notify_success: bool = False) -> dict:
             if cart_dir.exists():
                 for f in cart_dir.glob("*.pdf"):
                     _copy_file(f, destino / pasta / "Cartoes" / f.name)
+                    stats["copiados"] += 1
+        except Exception as e:
+            log_error("rede-sync", e)
+            stats["erros"] += 1
+        try:
+            from src.utils.paths import get_asos_dir, get_epis_dir
+            aso_dir = get_asos_dir() / pasta
+            if aso_dir.exists():
+                for f in aso_dir.glob("*.pdf"):
+                    _copy_file(f, destino / pasta / "ASOs" / f.name)
+                    stats["copiados"] += 1
+        except Exception as e:
+            log_error("rede-sync", e)
+            stats["erros"] += 1
+        try:
+            from src.utils.paths import get_epis_dir
+            epi_dir = get_epis_dir() / pasta
+            if epi_dir.exists():
+                for f in epi_dir.glob("*.pdf"):
+                    _copy_file(f, destino / pasta / "EPIs" / f.name)
                     stats["copiados"] += 1
         except Exception as e:
             log_error("rede-sync", e)

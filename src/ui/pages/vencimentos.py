@@ -76,6 +76,11 @@ class VencimentosPage(ctk.CTkFrame):
             self._on_navigate("history", {"busca": nome})
         self._load_data()
 
+    def _action_aso(self, emp_id: int):
+        """Abre a aba ASO com o funcionario pre-carregado."""
+        if self._on_navigate:
+            self._on_navigate("aso", {"employee_id": emp_id})
+
     # ── Layout ───────────────────────────────────────────────
 
     def _build_ui(self):
@@ -139,10 +144,10 @@ class VencimentosPage(ctk.CTkFrame):
                      text_color=COLORS["text"]).grid(row=0, column=2, padx=(0, 3))
         self._nr_var = ctk.StringVar(value="TODAS")
         ctk.CTkOptionMenu(self._filters, variable=self._nr_var,
-                          values=["TODAS", "NR-01", "NR-06", "NR-10", "NR-12", "NR-18",
-                                  "NR-26", "NR-33", "NR-34", "NR-35", "FDS", "PTA",
-                                  "MOTOSERRA", "MUNCK", "PONTE-ROLANTE", "DIR-DEFENSIVA",
-                                  "CIPAA", "BRIGADISTA-NR23"],
+                          values=["TODAS", "ASO", "NR-01", "NR-06", "NR-10", "NR-12", "NR-18",
+                                   "NR-26", "NR-33", "NR-34", "NR-35", "FDS", "PTA",
+                                   "MOTOSERRA", "MUNCK", "PONTE-ROLANTE", "DIR-DEFENSIVA",
+                                   "CIPAA", "BRIGADISTA-NR23"],
                           command=lambda *_: self._on_filter(),
                           font=fonts["small"], width=100, height=32, corner_radius=6,
                           fg_color=COLORS["primary"], button_color=COLORS["secondary"]
@@ -216,6 +221,12 @@ class VencimentosPage(ctk.CTkFrame):
 
     def _load_data(self):
         self.all_certs = self.history_repo.get_certificates_with_expiration()
+        try:
+            from src.core.aso_repo import AsoRepository
+            self.all_certs += AsoRepository().get_asos_with_expiration()
+        except Exception as e:
+            from src.utils.error_log import log_error
+            log_error("vencimentos-aso", e)
         self._apply_filters()
 
     def _apply_filters(self):
@@ -331,7 +342,9 @@ class VencimentosPage(ctk.CTkFrame):
                      ).grid(row=1, column=1, sticky="nw", padx=5, pady=(0, 5))
 
         # Contagem
-        ctk.CTkLabel(card, text=f"{len(certs)} certificado(s)",
+        n_asos = sum(1 for c in certs if c.get("nr_code") == "ASO")
+        n_certs = len(certs) - n_asos
+        ctk.CTkLabel(card, text=f"{n_certs} cert. | {n_asos} ASO(s)",
                      font=fonts["small"], text_color=COLORS["secondary"]
                      ).grid(row=0, column=2, rowspan=2, padx=(10, 4), pady=8, sticky="e")
 
@@ -343,6 +356,11 @@ class VencimentosPage(ctk.CTkFrame):
                 btns, text="Emitir", width=58, height=26, corner_radius=4,
                 font=fonts["small"], fg_color=COLORS["success"], hover_color="#256B28",
                 command=lambda eid=emp_id: self._action_emit(eid)
+            ).pack(side="left", padx=2)
+            ctk.CTkButton(
+                btns, text="ASO", width=48, height=26, corner_radius=4,
+                font=fonts["small"], fg_color=COLORS["accent"], hover_color=COLORS["secondary"],
+                command=lambda eid=emp_id: self._action_aso(eid)
             ).pack(side="left", padx=2)
             ctk.CTkButton(
                 btns, text="Historico", width=72, height=26, corner_radius=4,

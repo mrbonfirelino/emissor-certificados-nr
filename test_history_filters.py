@@ -134,9 +134,22 @@ def test_filtro_assinado():
 
 
 def test_dashboard_stats():
+    import src.core.aso_repo as ar_mod
+    from src.core.aso_repo import AsoRepository
+    from datetime import date, timedelta
     repo = make_repo()
     seed(repo)
-    stats = repo.get_dashboard_stats()
+    # ASOs entram nos mesmos contadores (redireciona o repo interno p/ db do teste)
+    aso = AsoRepository(db_path=repo.db_path)
+    aso.save("ASO-000001", 1, "Periódico", date.today().isoformat(), validade_meses=12)
+    aso.save("ASO-000002", 1, "Periódico",
+             (date.today() - timedelta(days=400)).isoformat(), validade_meses=12)
+    orig_get_db = ar_mod.get_db_path
+    ar_mod.get_db_path = lambda: repo.db_path
+    try:
+        stats = repo.get_dashboard_stats()
+    finally:
+        ar_mod.get_db_path = orig_get_db
     assert stats["total"] == 5
     assert stats["assinados"] == 1
     assert dict(stats["por_nr"]) == {"NR-10": 2, "NR-12": 1, "NR-35": 2}
@@ -144,15 +157,15 @@ def test_dashboard_stats():
     meses = dict(stats["por_mes"])
     assert meses.get("2026-01") == 1 and meses.get("2026-02") == 1
     assert meses.get("2026-03") == 1 and meses.get("2026-05") == 1
-    # contagens de vencimento coerentes com a lista de expiracao
+    # contagens de vencimento coerentes com a lista de expiracao (+ ASO vencido)
     certs = repo.get_certificates_with_expiration()
     vencidos = sum(1 for c in certs if c["dias_para_vencer"] < 0)
     v7 = sum(1 for c in certs if 0 <= c["dias_para_vencer"] <= 7)
     v30 = sum(1 for c in certs if 7 < c["dias_para_vencer"] <= 30)
-    assert stats["vencidos"] == vencidos
+    assert stats["vencidos"] == vencidos + 1  # ASO-000002 (400 dias, val. 12m)
     assert stats["vencer_7"] == v7
     assert stats["vencer_30"] == v30
-    print("[OK] dashboard stats (total/assinados/NR/mes/vencimentos)")
+    print("[OK] dashboard stats (total/assinados/NR/mes/vencimentos + ASO)")
 
 
 def test_exportador():

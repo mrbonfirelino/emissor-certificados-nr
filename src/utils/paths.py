@@ -102,3 +102,17 @@ def get_assinados_dir() -> Path:
     assinados_dir = get_data_dir() / "assinados"
     assinados_dir.mkdir(parents=True, exist_ok=True)
     return assinados_dir
+
+
+def get_asos_dir() -> Path:
+    """Pasta de ASOs gerados (data/asos, por funcionário)."""
+    asos_dir = get_data_dir() / "asos"
+    asos_dir.mkdir(parents=True, exist_ok=True)
+    return asos_dir
+
+
+def get_epis_dir() -> Path:
+    """Pasta de fichas de EPI (data/epis, por funcionário)."""
+    epis_dir = get_data_dir() / "epis"
+    epis_dir.mkdir(parents=True, exist_ok=True)
+    return epis_dir

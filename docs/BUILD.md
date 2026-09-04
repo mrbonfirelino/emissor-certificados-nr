@@ -129,7 +129,9 @@ EMISSOR DE CERTIFICADOS NR\
 │   ├── backups\              # backups automáticos (.db.gz)
 │   ├── certificados\         # PDFs por funcionário/NR (v1.8.0)
 │   ├── cartoes\              # cartões por funcionário + LOTES (v1.8.0)
-│   └── assinados\            # docs assinados exportados por funcionário (v1.8.0)
+│   ├── assinados\            # docs assinados exportados por funcionário (v1.8.0)
+│   ├── asos\                 # ASOs por funcionário — ASO-XXXXXX.pdf (v1.11.0)
+│   └── epis\                 # Fichas de EPI por funcionário (v1.11.0)
 ├── dist\                     # SAÍDA DA BUILD
 └── CERTIFICADOS\             # legado (v1.7.x) — migrado automaticamente p/ data\
 ```
@@ -144,6 +146,8 @@ O app procura dados **ao lado do exe** (`src/utils/paths.py`):
 | `data\certificados\` | PDFs emitidos por `{Funcionario}\{NR}` | saída do app (v1.8.0) |
 | `data\cartoes\` | cartões `{Funcionario}\` + `LOTES\` | saída do app (v1.8.0) |
 | `data\assinados\` | assinados exportados `{Funcionario}\` | saída do app (v1.8.0) |
+| `data\asos\` | ASOs `{Funcionario}\ASO-XXXXXX.pdf` | saída do app (v1.11.0) |
+| `data\epis\` | fichas de EPI `{Funcionario}\Ficha de EPI - dd-mm-aaaa (EPI-XXXXXX).pdf` | saída do app (v1.11.0) |
 | `templates\` | JSONs de NR + `_layout.json` + `cards\*.card.json` + `cards\pptx\` (PPTX) | **SIM** — editar e reiniciar o app |
 | `assets\` | embutidos no exe (via `_MEIPASS`) | não |
 | `CERTIFICADOS\` | legado v1.7.x — migração automática no 1º boot (v1.8.0) | migração única |

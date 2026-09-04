@@ -10,6 +10,7 @@ from src.ui.styles import setup_theme, COLORS, get_fonts, load_font_scale, get_a
 from src.core.certificate_service import CertificateService
 from src.core.employee_repo import EmployeeRepository
 from src.core.history_repo import HistoryRepository
+from src.core.aso_repo import AsoRepository
 from src.core.backup_manager import BackupManager
 from src.core.config import is_configured, load_company_config, ensure_default_restore_password
 from src.core.version import APP_VERSION
@@ -45,6 +46,7 @@ class NormaTechApp(ctk.CTk):
         self.certificate_service = CertificateService()
         self.employee_repo = EmployeeRepository()
         self.history_repo = HistoryRepository()
+        self.aso_repo = AsoRepository()
         self.backup_manager = BackupManager()
         self.sidebar_expanded = True
 
@@ -140,6 +142,7 @@ class NormaTechApp(ctk.CTk):
             ("history", "\U0001F4CB", "Historico", self._show_history),
             ("funcoes", "\U0001F4DD", "Funcoes", self._show_funcoes),
             ("vencimentos", "\U0001F4C5", "Vencimentos", self._show_vencimentos),
+            ("aso", "\U0001F3E5", "ASO", self._show_aso),
             ("blocking_cards", "\U0001F4C3", "Cartoes", self._show_blocking_cards),
             ("batch_import", "\U0001F4DD", "Import Lote", self._show_batch_import),
         ]
@@ -178,7 +181,7 @@ class NormaTechApp(ctk.CTk):
 
         # Separador antes do Backup
         sep_bottom = ctk.CTkFrame(self.sidebar, height=1, fg_color=COLORS["secondary"])
-        sep_bottom.grid(row=11, column=0, sticky="ew", padx=8, pady=4)
+        sep_bottom.grid(row=12, column=0, sticky="ew", padx=8, pady=4)
 
         # Backup (positioned below separator, above version)
         backup_key = "backup"
@@ -187,7 +190,7 @@ class NormaTechApp(ctk.CTk):
         backup_cmd = self._show_backup
 
         nav_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent", height=42, cursor="hand2")
-        nav_frame.grid(row=12, column=0, sticky="ews", padx=4, pady=2)
+        nav_frame.grid(row=13, column=0, sticky="ews", padx=4, pady=2)
         nav_frame.grid_propagate(False)
         nav_frame.columnconfigure(1, weight=1)
 
@@ -222,7 +225,7 @@ class NormaTechApp(ctk.CTk):
         tema_label = "Tema"
 
         nav_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent", height=42, cursor="hand2")
-        nav_frame.grid(row=13, column=0, sticky="ew", padx=4, pady=2)
+        nav_frame.grid(row=14, column=0, sticky="ew", padx=4, pady=2)
         nav_frame.grid_propagate(False)
         nav_frame.columnconfigure(1, weight=1)
 
@@ -253,7 +256,7 @@ class NormaTechApp(ctk.CTk):
         config_cmd = self._show_config
 
         nav_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent", height=42, cursor="hand2")
-        nav_frame.grid(row=14, column=0, sticky="ews", padx=4, pady=2)
+        nav_frame.grid(row=15, column=0, sticky="ews", padx=4, pady=2)
         nav_frame.grid_propagate(False)
         nav_frame.columnconfigure(1, weight=1)
 
@@ -282,13 +285,13 @@ class NormaTechApp(ctk.CTk):
         self.nav_labels[config_key] = lbl
         self.nav_frames[config_key] = nav_frame
 
-        # Version (no fundo; row 15 e espacador com weight)
-        self.sidebar.grid_rowconfigure(15, weight=1)
+        # Version (no fundo; row 16 e espacador com weight)
+        self.sidebar.grid_rowconfigure(16, weight=1)
         self.lbl_version = ctk.CTkLabel(
             self.sidebar, text=f"v{APP_VERSION}",
             font=fonts["sidebar_version"], text_color=COLORS["muted"]
         )
-        self.lbl_version.grid(row=16, column=0, sticky="s", pady=8)
+        self.lbl_version.grid(row=17, column=0, sticky="s", pady=8)
 
     def _toggle_sidebar(self):
         if self.sidebar_expanded:
@@ -311,7 +314,7 @@ class NormaTechApp(ctk.CTk):
         self.lbl_title.pack(anchor="w")
         for key, lbl in self.nav_labels.items():
             lbl.grid(row=0, column=1, padx=2, pady=3, sticky="w")
-        self.lbl_version.grid(row=16, column=0, sticky="s", pady=8)
+        self.lbl_version.grid(row=17, column=0, sticky="s", pady=8)
 
     # ── Tema claro/escuro ──────────────────────────────────────
 
@@ -340,9 +343,10 @@ class NormaTechApp(ctk.CTk):
         ("4", "_show_history"),
         ("5", "_show_funcoes"),
         ("6", "_show_vencimentos"),
-        ("7", "_show_blocking_cards"),
-        ("8", "_show_batch_import"),
-        ("9", "_show_backup"),
+        ("7", "_show_aso"),
+        ("8", "_show_blocking_cards"),
+        ("9", "_show_batch_import"),
+        ("0", "_show_backup"),
     )
 
     def _install_shortcuts(self):
@@ -427,6 +431,11 @@ class NormaTechApp(ctk.CTk):
             self._show_employees()
         elif key == "vencimentos":
             self._show_vencimentos()
+        elif key == "aso":
+            self._show_aso()
+            emp_id = payload.get("employee_id")
+            if emp_id is not None and "aso" in self.pages:
+                self.pages["aso"].preload_employee_by_id(emp_id)
 
     def _notify_expirations(self):
         """Toasts informativos: certificados que vencem nos proximos 7 dias + aniversariantes de hoje."""
@@ -434,9 +443,14 @@ class NormaTechApp(ctk.CTk):
             from src.utils.notifications import notify
             certs = self.history_repo.get_certificates_with_expiration()
             n = sum(1 for c in certs if 0 <= c["dias_para_vencer"] <= 7)
+            try:
+                asos = self.aso_repo.get_asos_with_expiration()
+                n += sum(1 for a in asos if 0 <= a["dias_para_vencer"] <= 7)
+            except Exception:
+                pass
             if n > 0:
-                notify("Vencimentos",
-                       f"{n} certificado(s) vencem nos proximos 7 dias. Veja a aba Vencimentos.")
+                notify("Vencimentos (certificados e ASOs)",
+                       f"{n} certificado(s)/ASO(s) vencem nos proximos 7 dias. Veja a aba Vencimentos.")
         except Exception as e:
             from src.utils.error_log import log_error
             log_error("toast-vencimentos", e)
@@ -476,6 +490,12 @@ class NormaTechApp(ctk.CTk):
         self._show_page("vencimentos", VencimentosPage, self.history_repo, on_navigate=self._navigate)
         if "vencimentos" in self.pages:
             self.pages["vencimentos"].refresh()
+
+    def _show_aso(self):
+        from src.ui.pages.aso import AsoPage
+        self._show_page("aso", AsoPage, self.aso_repo, self.employee_repo)
+        if "aso" in self.pages:
+            self.pages["aso"].refresh()
 
     def _show_blocking_cards(self):
         from src.ui.pages.blocking_cards import BlockingCardsPage

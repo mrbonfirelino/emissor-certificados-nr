@@ -272,6 +272,13 @@ class EmployeesPage(ctk.CTkFrame):
         ).pack(side="left", padx=2)
 
         ctk.CTkButton(
+            btn_frame, text="EPI", width=44, height=26,
+            font=fonts["small"], fg_color=COLORS["warning"],
+            hover_color="#BF5300",
+            command=lambda e=emp: self._open_epi_dialog(e)
+        ).pack(side="left", padx=2)
+
+        ctk.CTkButton(
             btn_frame, text="Excluir", width=60, height=26,
             font=fonts["small"], fg_color=COLORS["error"],
             hover_color="#B71C1C",
@@ -287,6 +294,10 @@ class EmployeesPage(ctk.CTkFrame):
     def _open_docs_dialog(self, employee: Employee):
         from src.ui.components.employee_docs_dialog import EmployeeDocsDialog
         EmployeeDocsDialog(self, self.employee_repo, employee)
+
+    def _open_epi_dialog(self, employee: Employee):
+        from src.ui.components.epi_manager_dialog import EpiManagerDialog
+        EpiManagerDialog(self, employee)
 
     def _open_edit_dialog(self, employee: Employee):
         self._open_employee_dialog(employee)
@@ -449,7 +460,49 @@ class EmployeesPage(ctk.CTkFrame):
                 nasc_var.set(val)
         nasc_var.trace_add("write", format_nasc_entry)
 
-        ctk.CTkLabel(form, text="Funcao", font=fonts["body_bold"], text_color=COLORS["text"]).grid(row=11, column=0, sticky="w", pady=(0, 4))
+        def iso_to_br(iso: str) -> str:
+            return f"{iso[8:10]}/{iso[5:7]}/{iso[0:4]}" if iso else ""
+
+        ctk.CTkLabel(form, text="Data de Admissao (dd/mm/aaaa)", font=fonts["body_bold"], text_color=COLORS["text"]).grid(row=11, column=0, sticky="w", pady=(0, 4))
+        adm_var = ctk.StringVar(value=iso_to_br(employee.data_admissao) if (is_edit and employee.data_admissao) else "")
+        ctk.CTkEntry(form, textvariable=adm_var, font=fonts["body"], height=36, corner_radius=6, placeholder_text="01/03/2020 (opcional)").grid(row=12, column=0, sticky="ew", pady=(0, 10))
+
+        def format_adm_entry(*args):
+            import re as _re3
+            val = _re3.sub(r'\D', '', adm_var.get())
+            if len(val) > 8:
+                val = val[:8]
+            if len(val) > 4:
+                val = f"{val[:2]}/{val[2:4]}/{val[4:]}"
+            elif len(val) > 2:
+                val = f"{val[:2]}/{val[2:]}"
+            if val != adm_var.get():
+                adm_var.set(val)
+        adm_var.trace_add("write", format_adm_entry)
+
+        ctk.CTkLabel(form, text="Tipo Sanguineo", font=fonts["body_bold"], text_color=COLORS["text"]).grid(row=13, column=0, sticky="w", pady=(0, 4))
+        ts_opcoes = ["Nao informado", "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
+        ts_atual = (employee.tipo_sanguineo or "") if is_edit else ""
+        ts_var = ctk.StringVar(value=ts_atual if ts_atual in ts_opcoes else "Nao informado")
+        ctk.CTkOptionMenu(
+            form, variable=ts_var, values=ts_opcoes,
+            font=fonts["body"], height=36, corner_radius=6, width=180,
+            fg_color=COLORS["surface"], text_color=COLORS["text"],
+            button_color=COLORS["secondary"], button_hover_color=COLORS["primary"]
+        ).grid(row=14, column=0, sticky="w", pady=(0, 10))
+
+        ctk.CTkLabel(form, text="Registro CTPS", font=fonts["body_bold"], text_color=COLORS["text"]).grid(row=15, column=0, sticky="w", pady=(0, 4))
+        ctps_var = ctk.StringVar(value=(employee.registro_ctps or "") if is_edit else "")
+        ctk.CTkEntry(form, textvariable=ctps_var, font=fonts["body"], height=36, corner_radius=6, placeholder_text="00000/0000-0 (opcional)").grid(row=16, column=0, sticky="ew", pady=(0, 10))
+
+        ear_var = ctk.BooleanVar(value=bool(employee.cnh_ear) if is_edit else False)
+        ctk.CTkCheckBox(
+            form, text="Possui CNH com E.A.R. (Exame de Aptidao e Responsabilidade)",
+            variable=ear_var, font=fonts["body"],
+            fg_color=COLORS["secondary"], hover_color=COLORS["primary"], checkmark_color=COLORS["surface"]
+        ).grid(row=17, column=0, sticky="w", pady=(0, 10))
+
+        ctk.CTkLabel(form, text="Funcao", font=fonts["body_bold"], text_color=COLORS["text"]).grid(row=18, column=0, sticky="w", pady=(0, 4))
         from src.ui.pages.funcoes import load_funcoes
         funcoes_list = load_funcoes()
         funcao_var = ctk.StringVar(value=employee.funcao if (is_edit and employee.funcao) else "")
@@ -461,7 +514,7 @@ class EmployeesPage(ctk.CTkFrame):
             button_color=COLORS["secondary"], button_hover_color=COLORS["primary"],
             state="readonly"
         )
-        funcao_entry.grid(row=12, column=0, sticky="ew", pady=(0, 16))
+        funcao_entry.grid(row=19, column=0, sticky="ew", pady=(0, 16))
 
         def save():
             nome = nome_var.get().strip()
@@ -498,11 +551,30 @@ class EmployeesPage(ctk.CTkFrame):
                 except ValueError:
                     messagebox.showerror("Erro", "Data de nascimento invalida (use dd/mm/aaaa)", parent=dialog)
                     return
+            adm_fmt = None
+            adm_raw = adm_var.get().strip()
+            if adm_raw:
+                try:
+                    from datetime import date as _date2
+                    dia, mes, ano = adm_raw.split("/")
+                    _date2(int(ano), int(mes), int(dia))
+                    adm_fmt = f"{ano}-{mes}-{dia}"
+                except ValueError:
+                    messagebox.showerror("Erro", "Data de admissao invalida (use dd/mm/aaaa)", parent=dialog)
+                    return
+            ts_val = ts_var.get()
+            ts_val = ts_val if ts_val and ts_val != "Nao informado" else None
+            ctps_val = ctps_var.get().strip() or None
+            ear_val = bool(ear_var.get())
             try:
                 if is_edit:
                     success = self.employee_repo.update(
                         employee.id, nome, cpf_fmt, funcao, telefone=tel_fmt,
-                        data_nascimento=nasc_fmt, limpar_nascimento=(nasc_fmt is None)
+                        data_nascimento=nasc_fmt, limpar_nascimento=(nasc_fmt is None),
+                        tipo_sanguineo=ts_val, limpar_tipo_sanguineo=(ts_val is None),
+                        data_admissao=adm_fmt, limpar_admissao=(adm_fmt is None),
+                        registro_ctps=ctps_val, limpar_ctps=(ctps_val is None),
+                        cnh_ear=ear_val
                     )
                     if not success:
                         messagebox.showerror("Erro", "Erro ao atualizar funcionario", parent=dialog)
@@ -511,7 +583,7 @@ class EmployeesPage(ctk.CTkFrame):
                         self.employee_repo.update_foto(employee.id, foto_bytes)
                     messagebox.showinfo("Sucesso", "Funcionario atualizado!", parent=dialog)
                 else:
-                    emp_id = self.employee_repo.create(nome, cpf_fmt, funcao, foto_bytes if foto_changed["val"] or foto_bytes else None, telefone=tel_fmt, data_nascimento=nasc_fmt)
+                    emp_id = self.employee_repo.create(nome, cpf_fmt, funcao, foto_bytes if foto_changed["val"] or foto_bytes else None, telefone=tel_fmt, data_nascimento=nasc_fmt, tipo_sanguineo=ts_val, data_admissao=adm_fmt, registro_ctps=ctps_val, cnh_ear=ear_val)
                     if emp_id:
                         messagebox.showinfo("Sucesso", "Funcionario cadastrado!", parent=dialog)
                     else:
@@ -629,7 +701,7 @@ class EmployeesPage(ctk.CTkFrame):
 
         ctk.CTkLabel(
             content,
-            text="Formato: Coluna A = Nome, Coluna B = CPF (opcional), Coluna C = Funcao (opcional),\nColuna D = Telefone celular (opcional, 11 digitos: 21984209236),\nColuna E = Data de Nascimento (opcional, dd/mm/aaaa)\nA primeira linha (cabecalho) sera ignorada.",
+            text="Formato: Coluna A = Nome, Coluna B = CPF (opcional), Coluna C = Funcao (opcional),\nColuna D = Telefone celular (opcional, 11 digitos: 21984209236),\nColuna E = Data de Nascimento (opcional, dd/mm/aaaa), Coluna F = Tipo Sanguineo (ex: O+),\nColuna G = Data de Admissao (opcional, dd/mm/aaaa), Coluna H = Registro CTPS (opcional),\nColuna I = CNH E.A.R. (opcional, Sim/Nao)\nA primeira linha (cabecalho) sera ignorada.",
             font=fonts["small"], text_color=COLORS["text_secondary"], justify="left"
         ).grid(row=1, column=0, sticky="w", pady=(0, 16))
 

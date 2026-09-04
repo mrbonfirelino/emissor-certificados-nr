@@ -35,6 +35,10 @@ class Employee(BaseModel):
     foto: Optional[bytes] = None
     telefone: Optional[str] = None
     data_nascimento: Optional[str] = None
+    tipo_sanguineo: Optional[str] = None
+    data_admissao: Optional[str] = None
+    registro_ctps: Optional[str] = None
+    cnh_ear: bool = False
     created_at: Optional[str] = None
 
     @field_validator('data_nascimento')
@@ -51,6 +55,31 @@ class Employee(BaseModel):
             date.fromisoformat(v)
         except ValueError:
             raise ValueError("Data de nascimento invalida (use dd/mm/aaaa)")
+        return v
+
+    @field_validator('tipo_sanguineo')
+    @classmethod
+    def validar_tipo_sanguineo(cls, v: Optional[str]) -> Optional[str]:
+        if not v or not str(v).strip():
+            return None
+        v = str(v).strip().upper().replace(" ", "")
+        if v not in {"A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"}:
+            raise ValueError("Tipo sanguineo invalido (use A+, A-, B+, B-, AB+, AB-, O+ ou O-)")
+        return v
+
+    @field_validator('data_admissao')
+    @classmethod
+    def validar_admissao(cls, v: Optional[str]) -> Optional[str]:
+        if not v or not str(v).strip():
+            return None
+        v = str(v).strip()
+        m = re.match(r'^(\d{2})/(\d{2})/(\d{4})$', v)
+        if m:
+            v = f"{m.group(3)}-{m.group(2)}-{m.group(1)}"
+        try:
+            date.fromisoformat(v)
+        except ValueError:
+            raise ValueError("Data de admissao invalida (use dd/mm/aaaa)")
         return v
 
     @field_validator('cpf')

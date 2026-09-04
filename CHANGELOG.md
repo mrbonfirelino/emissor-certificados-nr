@@ -1,5 +1,38 @@
 # Changelog
 
+## [1.11.0] - 2026-09-04
+
+### Adicionado
+- **Novos campos do funcionário (2.16)**: Tipo Sanguíneo (lista), Data de
+  Admissão (máscara dd/mm/aaaa), Registro CTPS e checkbox "Possui CNH com
+  E.A.R." no cadastro
+- **Import Excel colunas F-I**: Tipo Sanguíneo, Data de Admissão, Registro
+  CTPS e CNH EAR (Sim/Não) com validação por linha; export ganha as mesmas
+  colunas
+- **Aba ASO (2.16)**: Atestado de Saúde Ocupacional com numeração sequencial
+  (ASO-XXXXXX), tipo (Admissional, Periódico, Mudança de Função, Retorno ao
+  Trabalho, Demissional), validade em meses (padrão 12) e PDF com espaço
+  reservado para colar/digitalizar o exame real; anexar arquivo ou digitalizar
+  direto pelo scanner; busca, paginação e download do documento
+- **ASO em Vencimentos**: ASOs aparecem na aba Vencimentos (filtro NR "ASO"),
+  no painel de indicadores da Home e no toast de vencimentos (certificados +
+  ASOs que vencem em 7 dias); botão "ASO" no card emite direto para o
+  funcionário
+- **Ficha de EPI (2.16)**: botão "EPI" na linha do funcionário abre o gerente
+  de fichas — cada ficha tem código próprio (EPI-XXXXXX), itens de Entrega
+  (CA / Descrição / Qtde / Data / Visto) e Devolução (Qtde / Data / Visto),
+  PDF A4 regenerável a cada edição com linhas em branco para assinatura à mão
+- **EPI — anexos múltiplos**: fichas digitalizadas podem ser anexadas em
+  várias versões (devoluções parciais) sem apagar as anteriores; status
+  Em Aberto/Fechado alternável a qualquer momento
+- **Rede**: ASOs e fichas de EPI espelhados na estrutura de documentos em rede
+  (`{Funcionário}/ASOs` e `{Funcionário}/EPIs`)
+- Atalho Ctrl+7 abre a aba ASO (Ctrl+8 Cartões, Ctrl+9 Importação em Lote,
+  Ctrl+0 Backups)
+
+### Corrigido
+- SQL ambíguo (`created_at`) na listagem de ASOs com JOIN de funcionários
+
 ## [1.10.0] - 2026-09-04
 
 ### Corrigido

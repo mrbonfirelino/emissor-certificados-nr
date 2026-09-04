@@ -221,6 +221,20 @@ class HistoryRepository:
         except Exception:
             pass
 
+        # ASOs entram nos mesmos contadores de vencimento
+        try:
+            from src.core.aso_repo import AsoRepository
+            for a in AsoRepository().get_asos_with_expiration():
+                d = a["dias_para_vencer"]
+                if d < 0:
+                    vencidos += 1
+                elif d <= 7:
+                    vencer_7 += 1
+                elif d <= 30:
+                    vencer_30 += 1
+        except Exception:
+            pass
+
         return {
             "total": total,
             "assinados": assinados,

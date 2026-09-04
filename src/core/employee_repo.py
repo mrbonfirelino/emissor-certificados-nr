@@ -52,6 +52,23 @@ class EmployeeRepository:
                 conn.execute("SELECT data_nascimento FROM employees LIMIT 1")
             except sqlite3.OperationalError:
                 conn.execute("ALTER TABLE employees ADD COLUMN data_nascimento TEXT")
+            # campos complementares do funcionario (roadmap 2.16)
+            try:
+                conn.execute("SELECT tipo_sanguineo FROM employees LIMIT 1")
+            except sqlite3.OperationalError:
+                conn.execute("ALTER TABLE employees ADD COLUMN tipo_sanguineo TEXT")
+            try:
+                conn.execute("SELECT data_admissao FROM employees LIMIT 1")
+            except sqlite3.OperationalError:
+                conn.execute("ALTER TABLE employees ADD COLUMN data_admissao TEXT")
+            try:
+                conn.execute("SELECT registro_ctps FROM employees LIMIT 1")
+            except sqlite3.OperationalError:
+                conn.execute("ALTER TABLE employees ADD COLUMN registro_ctps TEXT")
+            try:
+                conn.execute("SELECT cnh_ear FROM employees LIMIT 1")
+            except sqlite3.OperationalError:
+                conn.execute("ALTER TABLE employees ADD COLUMN cnh_ear INTEGER DEFAULT 0")
             # nota: coluna matricula pode existir em bancos antigos — permanece ignorada
             try:
                 conn.execute("SELECT cpf FROM employees WHERE cpf IS NULL LIMIT 1")
@@ -146,7 +163,7 @@ class EmployeeRepository:
             conn.execute("DELETE FROM employee_docs WHERE id = ?", (doc_id,))
             return True
 
-    def create(self, nome: str, cpf: str = None, funcao: str = None, foto: Optional[bytes] = None, telefone: Optional[str] = None, data_nascimento: Optional[str] = None) -> Optional[int]:
+    def create(self, nome: str, cpf: str = None, funcao: str = None, foto: Optional[bytes] = None, telefone: Optional[str] = None, data_nascimento: Optional[str] = None, tipo_sanguineo: Optional[str] = None, data_admissao: Optional[str] = None, registro_ctps: Optional[str] = None, cnh_ear: bool = False) -> Optional[int]:
         try:
             cpf_val = cpf.strip() if cpf and cpf.strip() else None
             tel_val = telefone.strip() if telefone and telefone.strip() else None
@@ -155,25 +172,41 @@ class EmployeeRepository:
                 tel_val = re.sub(r'\D', '', tel_val)
                 if tel_val == "":
                     tel_val = None
-            nasc_val = self._normalizar_nascimento(data_nascimento)
+            nasc_val = self._normalizar_data(data_nascimento)
+            adm_val = self._normalizar_data(data_admissao)
+            ts_val = self._normalizar_tipo_sanguineo(tipo_sanguineo)
+            ctps_val = registro_ctps.strip() if registro_ctps and registro_ctps.strip() else None
             with self._get_conn() as conn:
                 cursor = conn.execute(
-                    "INSERT INTO employees (nome, cpf, funcao, foto, telefone, data_nascimento) VALUES (?, ?, ?, ?, ?, ?)",
-                    (nome.strip(), cpf_val, funcao.strip() if funcao else None, foto, tel_val, nasc_val)
+                    "INSERT INTO employees (nome, cpf, funcao, foto, telefone, data_nascimento, tipo_sanguineo, data_admissao, registro_ctps, cnh_ear) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (nome.strip(), cpf_val, funcao.strip() if funcao else None, foto, tel_val, nasc_val, ts_val, adm_val, ctps_val, 1 if cnh_ear else 0)
                 )
                 return cursor.lastrowid
         except sqlite3.IntegrityError:
             return None
 
     @staticmethod
-    def _normalizar_nascimento(data_nascimento: Optional[str]) -> Optional[str]:
+    def _normalizar_data(valor: Optional[str]) -> Optional[str]:
         """Normaliza dd/mm/aaaa -> ISO aaaa-mm-dd (None/vazio -> None)."""
-        if not data_nascimento or not str(data_nascimento).strip():
+        if not valor or not str(valor).strip():
             return None
-        s = str(data_nascimento).strip()
+        s = str(valor).strip()
         if len(s) == 10 and s[2] == "/" and s[5] == "/":
             s = f"{s[6:10]}-{s[3:5]}-{s[0:2]}"
         return s
+
+    _TIPOS_SANGUINEOS = {"A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"}
+
+    @classmethod
+    def _normalizar_tipo_sanguineo(cls, valor: Optional[str]) -> Optional[str]:
+        if not valor or not str(valor).strip():
+            return None
+        s = str(valor).strip().upper().replace(" ", "")
+        return s if s in cls._TIPOS_SANGUINEOS else None
+
+    # compat: chamado por codigos antigos
+    _normalizar_nascimento = _normalizar_data
 
     def get_aniversariantes(self, mes: int, dia: Optional[int] = None) -> List[Employee]:
         """Aniversariantes do mes (ou do dia exato, se dia informado). Mes/dia: 1-12/1-31."""
@@ -239,7 +272,7 @@ class EmployeeRepository:
             ).fetchall()
             return [row["funcao"] for row in rows]
 
-    def update(self, emp_id: int, nome: str, cpf: str = None, funcao: str = None, foto: Optional[bytes] = None, telefone: Optional[str] = None, data_nascimento: Optional[str] = None, limpar_nascimento: bool = False) -> bool:
+    def update(self, emp_id: int, nome: str, cpf: str = None, funcao: str = None, foto: Optional[bytes] = None, telefone: Optional[str] = None, data_nascimento: Optional[str] = None, limpar_nascimento: bool = False, tipo_sanguineo: Optional[str] = None, limpar_tipo_sanguineo: bool = False, data_admissao: Optional[str] = None, limpar_admissao: bool = False, registro_ctps: Optional[str] = None, limpar_ctps: bool = False, cnh_ear: Optional[bool] = None) -> bool:
         try:
             cpf_val = cpf.strip() if cpf and cpf.strip() else None
             tel_val = telefone.strip() if telefone and telefone.strip() else None
@@ -248,8 +281,11 @@ class EmployeeRepository:
                 tel_val = re.sub(r'\D', '', tel_val)
                 if tel_val == "":
                     tel_val = None
-            nasc_val = self._normalizar_nascimento(data_nascimento)
-            # update sempre grava o nascimento: None com limpar_nascimento=True apaga,
+            nasc_val = self._normalizar_data(data_nascimento)
+            adm_val = self._normalizar_data(data_admissao)
+            ts_val = self._normalizar_tipo_sanguineo(tipo_sanguineo)
+            ctps_val = registro_ctps.strip() if registro_ctps and registro_ctps.strip() else None
+            # update sempre grava o nascimento: None com limpar=True apaga,
             # None sem flag mantem o valor atual (compat com chamadas antigas)
             with self._get_conn() as conn:
                 sql_cols = "nome = ?, cpf = ?, funcao = ?, telefone = ?"
@@ -259,6 +295,24 @@ class EmployeeRepository:
                     params.append(nasc_val)
                 elif limpar_nascimento:
                     sql_cols += ", data_nascimento = NULL"
+                if ts_val is not None:
+                    sql_cols += ", tipo_sanguineo = ?"
+                    params.append(ts_val)
+                elif limpar_tipo_sanguineo:
+                    sql_cols += ", tipo_sanguineo = NULL"
+                if adm_val is not None:
+                    sql_cols += ", data_admissao = ?"
+                    params.append(adm_val)
+                elif limpar_admissao:
+                    sql_cols += ", data_admissao = NULL"
+                if ctps_val is not None:
+                    sql_cols += ", registro_ctps = ?"
+                    params.append(ctps_val)
+                elif limpar_ctps:
+                    sql_cols += ", registro_ctps = NULL"
+                if cnh_ear is not None:
+                    sql_cols += ", cnh_ear = ?"
+                    params.append(1 if cnh_ear else 0)
                 if foto is not None:
                     sql_cols += ", foto = ?"
                     params.append(foto)
@@ -316,6 +370,22 @@ class EmployeeRepository:
             nasc_val = row["data_nascimento"]
         except Exception:
             nasc_val = None
+        try:
+            ts_val = row["tipo_sanguineo"]
+        except Exception:
+            ts_val = None
+        try:
+            adm_val = row["data_admissao"]
+        except Exception:
+            adm_val = None
+        try:
+            ctps_val = row["registro_ctps"]
+        except Exception:
+            ctps_val = None
+        try:
+            ear_val = bool(row["cnh_ear"])
+        except Exception:
+            ear_val = False
         return Employee(
             id=row["id"],
             nome=row["nome"],
@@ -324,5 +394,9 @@ class EmployeeRepository:
             foto=foto_val,
             telefone=tel_val or None,
             data_nascimento=nasc_val or None,
+            tipo_sanguineo=ts_val or None,
+            data_admissao=adm_val or None,
+            registro_ctps=ctps_val or None,
+            cnh_ear=ear_val,
             created_at=row["created_at"]
         )

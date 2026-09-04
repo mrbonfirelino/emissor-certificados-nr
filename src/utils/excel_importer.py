@@ -63,6 +63,33 @@ def _parse_nascimento(val):
     raise ValueError(s)
 
 
+_TIPOS_SANGUINEOS = {"A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"}
+
+
+def _parse_tipo_sanguineo(val):
+    """Normaliza tipo sanguineo (A+, AB-, ...). None se vazio, ValueError se invalido."""
+    if val is None or str(val).strip() == "":
+        return None
+    s = str(val).strip().upper().replace(" ", "")
+    if s not in _TIPOS_SANGUINEOS:
+        raise ValueError(s)
+    return s
+
+
+def _parse_ear(val) -> bool:
+    """Converte Sim/Nao/S/N/1/0 em bool. Vazio -> False; desconhecido -> ValueError."""
+    if val is None or str(val).strip() == "":
+        return False
+    s = str(val).strip().lower()
+    if s.endswith(".0"):
+        s = s[:-2]
+    if s in {"sim", "s", "1", "true", "x"}:
+        return True
+    if s in {"nao", "não", "n", "0", "false"}:
+        return False
+    raise ValueError(s)
+
+
 def import_employees_from_excel(
     filepath: str,
     employee_repo,
@@ -71,12 +98,18 @@ def import_employees_from_excel(
     funcao_col: int = 2,
     telefone_col: int = 3,
     nasc_col: int = 4,
+    ts_col: int = 5,
+    adm_col: int = 6,
+    ctps_col: int = 7,
+    ear_col: int = 8,
     skip_header: bool = True
 ) -> Tuple[int, int, int, List[str]]:
     """
     Importa funcionarios de um arquivo Excel (.xlsx).
     Colunas: A=Nome, B=CPF (opcional), C=Funcao (opcional), D=Telefone (opcional, 11 digitos),
-    E=Data de Nascimento (opcional, dd/mm/aaaa).
+    E=Data de Nascimento (opcional, dd/mm/aaaa), F=Tipo Sanguineo (opcional, ex: O+),
+    G=Data de Admissao (opcional, dd/mm/aaaa), H=Registro CTPS (opcional),
+    I=CNH EAR (opcional, Sim/Nao).
 
     Retorna (importados, duplicados, erros, erros_detalhe).
     - importados: numero de novos funcionarios cadastrados
@@ -105,6 +138,9 @@ def import_employees_from_excel(
     error_details = []
     funcoes_encontradas = set()
 
+    def cell(row, col):
+        return row[col] if col < len(row) else None
+
     for i, row in enumerate(ws.iter_rows(values_only=True)):
         if i == 0 and skip_header:
             continue
@@ -113,11 +149,15 @@ def import_employees_from_excel(
             continue
 
         try:
-            name_val = row[name_col] if name_col < len(row) else None
-            cpf_val = row[cpf_col] if cpf_col < len(row) else None
-            funcao_val = row[funcao_col] if funcao_col < len(row) else None
-            tel_val = row[telefone_col] if telefone_col < len(row) else None
-            nasc_val = row[nasc_col] if nasc_col < len(row) else None
+            name_val = cell(row, name_col)
+            cpf_val = cell(row, cpf_col)
+            funcao_val = cell(row, funcao_col)
+            tel_val = cell(row, telefone_col)
+            nasc_val = cell(row, nasc_col)
+            ts_val = cell(row, ts_col)
+            adm_val = cell(row, adm_col)
+            ctps_val = cell(row, ctps_col)
+            ear_val = cell(row, ear_col)
         except IndexError:
             errors += 1
             error_details.append(f"Linha {i+1}: coluna fora do intervalo")
@@ -159,6 +199,32 @@ def import_employees_from_excel(
             error_details.append(f"Linha {i+1}: data de nascimento invalida ({nasc_val}) - use dd/mm/aaaa")
             continue
 
+        ts_iso = None
+        try:
+            ts_iso = _parse_tipo_sanguineo(ts_val)
+        except ValueError:
+            errors += 1
+            error_details.append(f"Linha {i+1}: tipo sanguineo invalido ({ts_val}) - use A+, A-, B+, B-, AB+, AB-, O+ ou O-")
+            continue
+
+        admissao_iso = None
+        try:
+            admissao_iso = _parse_nascimento(adm_val)
+        except ValueError:
+            errors += 1
+            error_details.append(f"Linha {i+1}: data de admissao invalida ({adm_val}) - use dd/mm/aaaa")
+            continue
+
+        ctps = str(ctps_val).strip() if ctps_val is not None and str(ctps_val).strip() != "" else None
+
+        ear = False
+        try:
+            ear = _parse_ear(ear_val)
+        except ValueError:
+            errors += 1
+            error_details.append(f"Linha {i+1}: CNH EAR invalida ({ear_val}) - use Sim ou Nao")
+            continue
+
         # Verificar se ja existe funcionario com mesmo nome
         existing = employee_repo.search(name, limit=5)
         found = False
@@ -171,7 +237,9 @@ def import_employees_from_excel(
             duplicates += 1
             continue
 
-        result = employee_repo.create(name, cpf_formatted, funcao, None, telefone_val, data_nascimento=nascimento_iso)
+        result = employee_repo.create(name, cpf_formatted, funcao, None, telefone_val,
+                                      data_nascimento=nascimento_iso, tipo_sanguineo=ts_iso,
+                                      data_admissao=admissao_iso, registro_ctps=ctps, cnh_ear=ear)
         if result:
             imported += 1
         else:
