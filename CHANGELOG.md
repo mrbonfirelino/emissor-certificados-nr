@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.13.0] - 2026-09-04
+
+### Adicionado
+- **Crachá de Identificação 12x7,8cm**: novo modelo `CRACHA-ALTEC` na aba
+  Cartões de Bloqueio — réplica do modelo XLSX da ALTEC (título, foto 3x4,
+  texto de autorização, tabela Capacitação/Data/Validade até 8 NRs, emissão
+  editável, vencimento + número do ASO, campo de assinatura destacado e
+  rodapé de proibição)
+- **Revisão da emissão do crachá**: diálogo próprio com data de emissão
+  (padrão hoje) e seleção de NRs por funcionário (pré-marcadas com as 8 mais
+  recentes, limite máximo de 8), exibindo o ASO vigente
+- **Gravação das emissões**: tabela `crachas` com numeração sequencial
+  CRACHA-XXXXXX por funcionário; preview não consome numeração
+- **Lote**: PDF único multipágina (data/crachas/LOTES) ou um PDF por
+  funcionário (data/crachas/{Funcionario})
+- **Rede**: crachás espelhados em {Funcionario}/Crachas e lotes em
+  Crachas_Gerais
+
+### Corrigido
+- Dashboard: contagem de ASOs vencidos respeita apenas o ASO mais recente
+  de cada funcionário (teste atualizado para a semântica correta)
+
 ## [1.12.0] - 2026-09-04
 
 ### Adicionado

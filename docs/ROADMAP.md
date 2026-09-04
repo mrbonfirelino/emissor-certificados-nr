@@ -1,7 +1,7 @@
 # Roadmap - NormaTech
 
 ## Status do Projeto
- - Versao atual: 1.12.0
+ - Versao atual: 1.13.0
 - NRs disponiveis: 17 (01, 05, 06, 09, 10, 11, 12, 17, 18, 26, 33, 34, 35 + FDS, BRIGADISTA-NR23, PTA, MOTOSERRA, MUNCK, PONTE-ROLANTE, DIR-DEFENSIVA, CIPAA)
 
 ---
@@ -219,6 +219,14 @@ Requisitos: Microsoft PowerPoint instalado na máquina (conversão via COM).
 | Modelos de importação | Pasta MODELOS DE IMPORTACAO/ com planilhas de exemplo (Funcionários, Certificados, Cartões, ASO) + LEIA-ME; geradas por tools/make_import_templates.py | Alta | Concluído (v1.12.0) |
 | ASO em lote | Botão "Importar Excel" na aba ASO: casa CPF/nome, valida por linha e gera PDFs em lote | Alta | Concluído (v1.12.0) |
 | Atualização no cliente | ATUALIZAR.bat copiado no dist: troca a versão a partir da pasta "Atualizacao" preservando data/ com backup automático | Alta | Concluído (v1.12.0) |
+
+### 2.18 Crachá de Identificação (CONCLUÍDA)
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Template CRACHA-ALTEC | Crachá 12x7,8cm (1/folha) na aba Cartões: foto 3x4, autorização, tabela de até 8 NRs com data/validade, emissão editável, ASO (vencimento + número) e assinatura obrigatória | Alta | Concluído (v1.13.0) |
+| Revisão da emissão | Diálogo com data de emissão e checkboxes de NRs por funcionário (pré-marcadas 8 mais recentes), com ASO exibido; emissão individual e em lote | Alta | Concluído (v1.13.0) |
+| Gravação + rede | Emissões gravadas no banco (CRACHA-XXXXXX) em data/crachas/{Func} e LOTES; espelhadas na rede em {Func}/Crachas e Crachas_Gerais | Media | Concluído (v1.13.0) |
 
 ---
 

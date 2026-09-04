@@ -79,12 +79,18 @@ class BlockingCardsPage(ctk.CTkFrame):
         tpl = self._current_template()
         return bool(tpl and tpl.get("template_type") == "pptx")
 
+    def _is_cracha(self) -> bool:
+        tpl = self._current_template()
+        return bool(tpl and tpl.get("template_type") == "cracha")
+
     def _requirements(self):
         """(exige_telefone, exige_foto) conforme campos usados pelo template atual."""
         tpl = self._current_template()
         if tpl and tpl.get("template_type") == "pptx":
             used = set(tpl.get("used_fields") or [])
             return ("TELEFONE" in used, bool(tpl.get("uses_photo")))
+        if tpl and tpl.get("template_type") == "cracha":
+            return (False, False)
         return (True, True)
 
     def _missing_fields(self, emp):
@@ -261,6 +267,12 @@ class BlockingCardsPage(ctk.CTkFrame):
             extra = f" x {s} folhas" if s > 1 else ""
             self._grid_info.configure(text=f"PPTX — {k} cartao(oes)/folha{extra}")
             self._one_page_cb.configure(state="normal")
+        elif tpl.get("template_type") == "cracha":
+            self._grid_info.configure(
+                text=f"Crachá — {tpl.get('card_width_mm', 120)}x{tpl.get('card_height_mm', 78)}mm — 1/folha — até {tpl.get('max_nrs', 8)} NRs"
+            )
+            self._one_page_var.set(False)
+            self._one_page_cb.configure(state="disabled")
         else:
             cols, rows = compute_grid(tpl)
             self._grid_info.configure(
@@ -462,6 +474,16 @@ class BlockingCardsPage(ctk.CTkFrame):
             messagebox.showerror("Erro", f"Template '{self._template_var.get()}' nao encontrado.", parent=self)
             return None
 
+        # cracha: revisao propria (data de emissao + NRs por funcionario)
+        if template.get("template_type") == "cracha":
+            copies = [e.model_copy() for e in selected]
+            from src.ui.components.badge_review_dialog import BadgeReviewDialog
+            dlg = BadgeReviewDialog(self, copies, template)
+            self.wait_window(dlg)
+            if not dlg.selected:
+                return None
+            return dlg.selected["employees"], template, dlg.selected, False, []
+
         # copias transitórias — o banco nao e afetado
         copies = [e.model_copy() for e in selected]
         dlg = EmissionReviewDialog(self, copies, template, initial_setor=self._last_setor)
@@ -597,6 +619,16 @@ class BlockingCardsPage(ctk.CTkFrame):
 
             action = self._show_preview_dialog(template, paths[0], len(valid))
             if action == "edit":
+                if template.get("template_type") == "cracha":
+                    from src.ui.components.badge_review_dialog import BadgeReviewDialog
+                    dlg = BadgeReviewDialog(self, options["employees"], template)
+                    self.wait_window(dlg)
+                    if not dlg.selected:
+                        continue
+                    options = dlg.selected
+                    valid = options["employees"]
+                    continue
+
                 # reabre a revisao com as MESMAS copias (edicoes anteriores preservadas)
                 dlg = EmissionReviewDialog(self, options["employees"], template,
                                            initial_setor=options.get("setor", ""))

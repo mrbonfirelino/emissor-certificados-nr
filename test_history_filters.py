@@ -18,9 +18,10 @@ from src.core.models import CertificateRecord
 def make_repo() -> HistoryRepository:
     tmp = Path(tempfile.mkdtemp(prefix="test_hist_filters_"))
     repo = HistoryRepository(tmp / "test.db")
-    # stub da tabela employees (so funcao) p/ o LEFT JOIN da expiracao
+    # stub da tabela employees p/ os LEFT JOINs da expiracao (certs e ASOs)
     with repo._get_conn() as conn:
-        conn.execute("CREATE TABLE IF NOT EXISTS employees (id INTEGER PRIMARY KEY, funcao TEXT)")
+        conn.execute("""CREATE TABLE IF NOT EXISTS employees (
+            id INTEGER PRIMARY KEY, nome TEXT, cpf TEXT, funcao TEXT)""")
     return repo
 
 
@@ -140,8 +141,10 @@ def test_dashboard_stats():
     repo = make_repo()
     seed(repo)
     # ASOs entram nos mesmos contadores (redireciona o repo interno p/ db do teste)
+    # vigente no funcionario 2; vencido como unico ASO do funcionario 1
+    # (only_latest=True mantem apenas o ASO mais recente de cada funcionario)
     aso = AsoRepository(db_path=repo.db_path)
-    aso.save("ASO-000001", 1, "Periódico", date.today().isoformat(), validade_meses=12)
+    aso.save("ASO-000001", 2, "Periódico", date.today().isoformat(), validade_meses=12)
     aso.save("ASO-000002", 1, "Periódico",
              (date.today() - timedelta(days=400)).isoformat(), validade_meses=12)
     orig_get_db = ar_mod.get_db_path

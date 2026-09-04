@@ -116,3 +116,10 @@ def get_epis_dir() -> Path:
     epis_dir = get_data_dir() / "epis"
     epis_dir.mkdir(parents=True, exist_ok=True)
     return epis_dir
+
+
+def get_crachas_dir() -> Path:
+    """Pasta de crachás de identificação (data/crachas, por funcionário)."""
+    crachas_dir = get_data_dir() / "crachas"
+    crachas_dir.mkdir(parents=True, exist_ok=True)
+    return crachas_dir

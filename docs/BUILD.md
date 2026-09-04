@@ -49,8 +49,8 @@ python build/build_exe.py
 ```
 
 Tempo aproximado:
-- **onedir (modo atual, testes):** 2–3 minutos
-- **onefile (release):** ~5 minutos
+- **onedir (modo atual, testes):** 5–8 minutos
+- **onefile (release):** ~8 minutos
 
 ---
 
@@ -148,6 +148,7 @@ O app procura dados **ao lado do exe** (`src/utils/paths.py`):
 | `data\assinados\` | assinados exportados `{Funcionario}\` | saída do app (v1.8.0) |
 | `data\asos\` | ASOs `{Funcionario}\ASO-XXXXXX.pdf` | saída do app (v1.11.0) |
 | `data\epis\` | fichas de EPI `{Funcionario}\Ficha de EPI - dd-mm-aaaa (EPI-XXXXXX).pdf` | saída do app (v1.11.0) |
+| `data\crachas\` | crachás `{Funcionario}\CRACHA_*.pdf` + `LOTES\` | saída do app (v1.13.0) |
 | `templates\` | JSONs de NR + `_layout.json` + `cards\*.card.json` + `cards\pptx\` (PPTX) | **SIM** — editar e reiniciar o app |
 | `assets\` | embutidos no exe (via `_MEIPASS`) | não |
 | `CERTIFICADOS\` | legado v1.7.x — migração automática no 1º boot (v1.8.0) | migração única |

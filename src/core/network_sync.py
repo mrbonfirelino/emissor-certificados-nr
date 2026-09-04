@@ -320,6 +320,35 @@ def sync_epi_doc(epi_id: int, doc_id: int) -> bool:
         return False
 
 
+def sync_cracha(pdf_path, employee) -> bool:
+    """Espelha o PDF do cracha em {Func}/Crachas."""
+    destino = _destino()
+    if not destino:
+        return False
+    try:
+        from src.core.employee_repo import EmployeeRepository
+        repo = EmployeeRepository()
+        pasta = employee_folder_name(employee, _employees_all(repo))
+        _copy_file(Path(pdf_path), destino / pasta / "Crachas" / Path(pdf_path).name)
+        return True
+    except Exception as e:
+        _notify_fail(f"o cracha de {getattr(employee, 'nome', '')}", e)
+        return False
+
+
+def sync_cracha_lote(pdf_path) -> bool:
+    """Espelha o PDF de crachas em lote em Crachas_Gerais."""
+    destino = _destino()
+    if not destino:
+        return False
+    try:
+        _copy_file(Path(pdf_path), destino / "Crachas_Gerais" / Path(pdf_path).name)
+        return True
+    except Exception as e:
+        _notify_fail("o lote de crachas", e)
+        return False
+
+
 # ── Sincronizacao completa (startup / manual) ────────────────
 
 def sync_all(notify_success: bool = False) -> dict:
@@ -407,12 +436,33 @@ def sync_all(notify_success: bool = False) -> dict:
         except Exception as e:
             log_error("rede-sync", e)
             stats["erros"] += 1
+        try:
+            from src.utils.paths import get_crachas_dir
+            cracha_dir = get_crachas_dir() / pasta
+            if cracha_dir.exists():
+                for f in cracha_dir.glob("*.pdf"):
+                    _copy_file(f, destino / pasta / "Crachas" / f.name)
+                    stats["copiados"] += 1
+        except Exception as e:
+            log_error("rede-sync", e)
+            stats["erros"] += 1
 
     try:
         lote_dir = get_cartoes_dir() / "LOTES"
         if lote_dir.exists():
             for f in lote_dir.glob("*.pdf"):
                 _copy_file(f, destino / "Cartoes_Gerais" / f.name)
+                stats["copiados"] += 1
+    except Exception as e:
+        log_error("rede-sync", e)
+        stats["erros"] += 1
+
+    try:
+        from src.utils.paths import get_crachas_dir
+        cracha_lote_dir = get_crachas_dir() / "LOTES"
+        if cracha_lote_dir.exists():
+            for f in cracha_lote_dir.glob("*.pdf"):
+                _copy_file(f, destino / "Crachas_Gerais" / f.name)
                 stats["copiados"] += 1
     except Exception as e:
         log_error("rede-sync", e)

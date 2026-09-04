@@ -70,12 +70,15 @@ def validate_employees_for_cards(employees: list, template: Optional[dict] = Non
     """
     Separa funcionarios validos dos invalidos conforme o template:
     - PPTX: exige apenas os campos que o template usa (foto/telefone)
+    - Cracha: nenhum campo obrigatorio (foto opcional, vira placeholder)
     - JSON (default): exige telefone E foto
     Retorna (validos, mensagens_faltantes).
     """
     if template and template.get("template_type") == "pptx":
         from src.core.pptx_card_service import validate_employees_for_pptx
         return validate_employees_for_pptx(employees, template)
+    if template and template.get("template_type") == "cracha":
+        return list(employees), []
     valid, missing = [], []
     for emp in employees:
         faltas = []
@@ -316,6 +319,15 @@ def generate_cards(
             options=options,
             single_pdf=single_pdf,
             one_per_page=one_per_page,
+            output_dir=output_dir,
+        )
+
+    if template.get("template_type") == "cracha":
+        from src.core.badge_service import generate_badges
+        return generate_badges(
+            employees, template,
+            options=options or {},
+            single_pdf=single_pdf,
             output_dir=output_dir,
         )
 

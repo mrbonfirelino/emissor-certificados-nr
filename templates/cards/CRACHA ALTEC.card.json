@@ -1,0 +1,9 @@
+{
+    "card_code": "CRACHA-ALTEC",
+    "cliente_nome": "ALTEC",
+    "template_type": "cracha",
+    "card_width_mm": 120,
+    "card_height_mm": 78,
+    "max_nrs": 8,
+    "descricao": "Cracha de Identificacao 12x7,8cm com NRs, ASO e assinatura"
+}
