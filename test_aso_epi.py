@@ -271,6 +271,60 @@ def test_pdfs(tmp: Path):
           p_epi.exists() and "EPI-000001" in txt2 and "Luva nitrilica" in txt2)
 
 
+# ── 9. Importacao em lote de ASOs (v1.12.0) ──────────────────
+
+def test_aso_importer(tmp: Path):
+    import openpyxl
+    import src.utils.paths as paths_mod
+    from src.utils.aso_importer import import_asos_from_excel
+
+    db = make_db(tmp)
+    emp_repo = EmployeeRepository(db_path=db)
+    aso = AsoRepository(db_path=db)
+    emp_repo.create("Joao Pedro", "529.982.247-25")
+    emp_repo.create("Maria Silva", None)
+
+    xlsx = tmp / "asos.xlsx"
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append(["Nome", "CPF", "Tipo de ASO", "Data do Exame", "Validade (meses)"])
+    ws.append(["Joao Pedro", "529.982.247-25", "Admissional", "01/09/2026", 12])
+    ws.append(["Maria Silva", "", "periodico", "05/09/2026", ""])
+    ws.append(["Fantasma", "", "Admissional", "01/09/2026", 12])
+    ws.append(["Joao Pedro", "", "Tipo Inexistente", "01/09/2026", 12])
+    ws.append(["Maria Silva", "", "Admissional", "99/99/2026", 12])
+    wb.save(xlsx)
+
+    dest = tmp / "dados_asos"
+    orig_get_data_dir = paths_mod.get_data_dir
+    paths_mod.get_data_dir = lambda: dest
+    try:
+        res = import_asos_from_excel(xlsx, aso, emp_repo)
+    finally:
+        paths_mod.get_data_dir = orig_get_data_dir
+
+    check("import ASO: 2 criados / 3 erros",
+          len(res["criados"]) == 2 and res["erros"] == 3)
+    check("import ASO: detalhes apontam linha/motivo",
+          any("Fantasma" in d for d in res["detalhes"])
+          and any("tipo" in d.lower() for d in res["detalhes"])
+          and any("data" in d.lower() for d in res["detalhes"]))
+
+    todos = aso.get_all(limit=10)
+    check("import ASO: numeros sequenciais",
+          {a["aso_number"] for a in todos} == {"ASO-000001", "ASO-000002"})
+    joao = next(a for a in todos if a["funcionario_nome"] == "Joao Pedro")
+    maria = next(a for a in todos if a["funcionario_nome"] == "Maria Silva")
+    check("import ASO: match por CPF e nome",
+          joao["tipo_aso"] == "Admissional" and maria["tipo_aso"] == "Periódico")
+    check("import ASO: tipo normalizado e validade default",
+          maria["validade_meses"] == 12)
+    check("import ASO: PDFs gerados em data/asos/{pasta}",
+          joao["pdf_path"] and Path(joao["pdf_path"]).exists()
+          and Path(maria["pdf_path"]).exists()
+          and dest.as_posix() in Path(joao["pdf_path"]).as_posix())
+
+
 def main():
     with tempfile.TemporaryDirectory(prefix="normatech_asoepi_",
                                      ignore_cleanup_errors=True) as td:
@@ -283,6 +337,7 @@ def main():
         test_epi_docs_versoes(tmp / "t6")
         test_merge_vencimentos(tmp / "t7")
         test_pdfs(tmp / "t8")
+        test_aso_importer(tmp / "t9")
 
     falhas = [n for n, ok in PASSOS if not ok]
     print(f"\n{len(PASSOS) - len(falhas)}/{len(PASSOS)} testes OK")

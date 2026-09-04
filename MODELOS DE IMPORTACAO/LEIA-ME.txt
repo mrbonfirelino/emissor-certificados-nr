@@ -1,0 +1,30 @@
+MODELOS DE IMPORTACAO — NormaTech
+=====================================
+
+Como usar: preencha o modelo, apague as linhas de exemplo e importe no app.
+A primeira linha (azul) e o cabecalho — nao apague.
+
+1) MODELO FUNCIONARIOS.xlsx  →  aba Funcionarios > botao Importar
+   A Nome* | B CPF | C Funcao | D Telefone | E Data Nascimento (dd/mm/aaaa)
+   F Tipo Sanguineo (A+, A-, B+, B-, AB+, AB-, O+, O-) | G Data Admissao (dd/mm/aaaa)
+   H Registro CTPS | I CNH EAR (Sim/Nao)
+   * Nome e obrigatorio. CPF, se informado, deve ser valido.
+
+2) MODELO CERTIFICADOS.xlsx  →  aba Emissao em Massa > botao Procurar...
+   A Nome* | B NR* | C Data do Treinamento (dd/mm/aaaa)*
+   NRs disponiveis: BRIGADISTA-NR23, CIPAA, DIR-DEFENSIVA, FDS, MOTOSERRA, MUNCK, NR-01, NR-06, NR-10, NR-12, NR-18, NR-26, NR-33, NR-34, NR-35, PONTE-ROLANTE, PTA
+   Funcionario inexistente e cadastrado automaticamente (sem CPF gera so o registro).
+
+3) MODELO CARTOES BLOQUEIO.xlsx  →  aba Cartoes de Bloqueio > botao Importar Excel
+   A Nome* | B CPF
+   Marca na lista os funcionarios encontrados (por CPF ou nome exato).
+
+4) MODELO ASO.xlsx  →  aba ASO > botao Importar Excel
+   A Nome* | B CPF | C Tipo de ASO* | D Data do Exame (dd/mm/aaaa)* | E Validade em meses (1-120, vazio = 12)
+   Tipos validos: Admissional, Periódico, Mudança de Função, Retorno ao Trabalho, Demissional
+   O funcionario precisa estar cadastrado. Os PDFs sao gerados automaticamente.
+
+Dicas gerais:
+- Linhas com erro NAO param a importacao — o app mostra o resumo com os detalhes.
+- Datas podem ser digitadas como dd/mm/aaaa ou no formato de data do Excel.
+- Campos vazios nas colunas opcionais sao aceitos normalmente.

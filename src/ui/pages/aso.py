@@ -52,8 +52,14 @@ class AsoPage(ctk.CTkFrame):
             command=self._novo_aso
         ).grid(row=0, column=2, sticky="e", padx=(10, 0))
 
+        ctk.CTkButton(
+            self._header, text="Importar Excel", width=120, height=36,
+            font=fonts["body_bold"], fg_color=COLORS["accent"], hover_color=COLORS["secondary"],
+            command=self._importar_excel
+        ).grid(row=0, column=3, sticky="e", padx=(10, 0))
+
         filter_frame = ctk.CTkFrame(self._header, fg_color="transparent")
-        filter_frame.grid(row=1, column=0, columnspan=3, sticky="ew", pady=(12, 0))
+        filter_frame.grid(row=1, column=0, columnspan=4, sticky="ew", pady=(12, 0))
         filter_frame.grid_columnconfigure(0, weight=1)
 
         self.search_var = ctk.StringVar()
@@ -348,6 +354,51 @@ class AsoPage(ctk.CTkFrame):
         ctk.CTkButton(btns, text="Gerar ASO", height=36, font=fonts["body_bold"],
                       fg_color=COLORS["success"], hover_color="#256B28",
                       command=gerar).grid(row=0, column=1, sticky="e")
+
+    # ── Importar em lote ───────────────────────────────────────
+
+    def _importar_excel(self):
+        """Importa ASOs em lote (MODELO ASO.xlsx) e gera os PDFs."""
+        path = filedialog.askopenfilename(
+            title="Importar ASOs de planilha",
+            filetypes=[("Planilha Excel", "*.xlsx"), ("Todos", "*.*")],
+            parent=self
+        )
+        if not path:
+            return
+        if not messagebox.askyesno(
+            "Importar ASOs",
+            "Importar ASOs da planilha?\n\n"
+            "Colunas: A Nome | B CPF | C Tipo | D Data Exame | E Validade (meses)\n"
+            "Os PDFs sao gerados automaticamente e salvos na rede (se ativa).",
+            parent=self
+        ):
+            return
+
+        from src.utils.aso_importer import import_asos_from_excel
+        try:
+            resultado = import_asos_from_excel(path, self.aso_repo, self.employee_repo)
+        except Exception as e:
+            from src.utils.error_log import log_error
+            log_error("importar-aso", e)
+            messagebox.showerror("Erro", f"Erro ao importar: {e}", parent=self)
+            return
+
+        criados, erros, detalhes = resultado["criados"], resultado["erros"], resultado["detalhes"]
+        msg = f"ASOs criados: {len(criados)}"
+        if criados:
+            msg += "\n" + "\n".join(criados[:8])
+            if len(criados) > 8:
+                msg += f"\n... e mais {len(criados) - 8}"
+        if erros:
+            msg += f"\n\nLinhas com erro ({erros}):\n" + "\n".join(detalhes[:10])
+            if erros > 10:
+                msg += f"\n... e mais {erros - 10}"
+        if criados:
+            messagebox.showinfo("Importacao concluida", msg, parent=self)
+        else:
+            messagebox.showwarning("Importacao", f"Nenhum ASO criado.\n\n{msg}", parent=self)
+        self._refresh_list()
 
     # ── Acoes por linha ────────────────────────────────────────
 

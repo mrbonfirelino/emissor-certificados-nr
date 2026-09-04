@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.12.0] - 2026-09-04
+
+### Adicionado
+- **Modelos de importação**: pasta `MODELOS DE IMPORTACAO/` com planilhas de
+  exemplo (Funcionários A-I, Certificados A-C, Cartões de Bloqueio A-B e ASO
+  A-E) + LEIA-ME com colunas e valores válidos; geradas por
+  `tools/make_import_templates.py` (regenerável)
+- **Importação de ASOs em lote**: botão "Importar Excel" na aba ASO — casa por
+  CPF ou nome, valida tipo/data/validade por linha e gera os PDFs
+  automaticamente com espelhamento na rede; linhas com erro não param a
+  importação (resumo ao final)
+- **ATUALIZAR.bat** (`deploy/`, copiado para `dist/` no build): atualiza o
+  programa na máquina do cliente a partir da pasta "Atualizacao" — fecha o app,
+  faz backup automático de `data/`, substitui os arquivos com `robocopy /MIR`
+  **excluindo `data/`** e esvazia a pasta de atualização ao terminar
+
 ## [1.11.0] - 2026-09-04
 
 ### Adicionado

@@ -1,7 +1,7 @@
 # Roadmap - NormaTech
 
 ## Status do Projeto
- - Versao atual: 1.11.0
+ - Versao atual: 1.12.0
 - NRs disponiveis: 17 (01, 05, 06, 09, 10, 11, 12, 17, 18, 26, 33, 34, 35 + FDS, BRIGADISTA-NR23, PTA, MOTOSERRA, MUNCK, PONTE-ROLANTE, DIR-DEFENSIVA, CIPAA)
 
 ---
@@ -211,6 +211,14 @@ Requisitos: Microsoft PowerPoint instalado na máquina (conversão via COM).
 | Ficha de EPI | Botão EPI por funcionário: fichas com código próprio (EPI-XXXXXX), itens de Entrega (CA/Descrição/Qtde/Data/Visto) e Devolução, PDF regenerável, status Em Aberto/Fechado | Alta | Concluído (v1.11.0) |
 | EPI — Digitalizações múltiplas | Anexar fichas digitalizadas em várias versões (devoluções parciais) sem apagar anteriores | Media | Concluído (v1.11.0) |
 | Rede | ASOs e EPIs espelhados na estrutura de rede ({Func}/ASOs e {Func}/EPIs) | Media | Concluído (v1.11.0) |
+
+### 2.17 Modelos de Importação e Atualização (CONCLUÍDA)
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Modelos de importação | Pasta MODELOS DE IMPORTACAO/ com planilhas de exemplo (Funcionários, Certificados, Cartões, ASO) + LEIA-ME; geradas por tools/make_import_templates.py | Alta | Concluído (v1.12.0) |
+| ASO em lote | Botão "Importar Excel" na aba ASO: casa CPF/nome, valida por linha e gera PDFs em lote | Alta | Concluído (v1.12.0) |
+| Atualização no cliente | ATUALIZAR.bat copiado no dist: troca a versão a partir da pasta "Atualizacao" preservando data/ com backup automático | Alta | Concluído (v1.12.0) |
 
 ---
 

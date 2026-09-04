@@ -211,7 +211,21 @@ Relatório completo de warnings: `build\work\NormaTech\warn-NormaTech.txt`
 Para entregar a um usuário final (modo onedir):
 
 1. Buildar (`python build/build_exe.py`)
-2. Compactar/enviar a pasta `dist\NormaTech\` **inteira**
-3. Instruções ao usuário: extrair em pasta local (ex: `C:\NormaTech`), executar `NormaTech.exe`
-4. Primeira execução cria `CERTIFICADOS\` e `data\backups\` automaticamente
-5. Para atualizar templates depois: substituir apenas os JSONs em `templates\`
+2. Compactar/enviar a pasta `dist\` **inteira** — ela já contém:
+   - `CertificadosNR\` (o programa, com `data\` e `templates\`)
+   - `ATUALIZAR.bat` (copiado de `deploy\` automaticamente)
+3. Instruções ao usuário: extrair em pasta local (ex: `C:\NormaTech`) e executar
+   `CertificadosNR\CertificadosNR.exe`
+4. Requisitos na máquina: PowerPoint (cartões PPTX→PDF) e scanner com driver
+   WIA (opcional — digitalização tem fallback "Escolher arquivo")
+5. Modelos de importação para o usuário preencher: pasta do projeto
+   `MODELOS DE IMPORTACAO\` (regenerar com `python tools/make_import_templates.py`)
+
+### Atualizar a máquina do cliente (sem perder dados)
+
+1. Copie a nova pasta `CertificadosNR` para dentro da pasta `Atualizacao`
+   (crie-a ao lado de `CertificadosNR` e do `ATUALIZAR.bat`)
+2. Execute `ATUALIZAR.bat`: ele fecha o app, faz backup automático de `data\`,
+   atualiza os arquivos com `robocopy /MIR /XD data` (dados intocados) e
+   esvazia a pasta `Atualizacao` ao terminar
+3. Esquemas de banco evoluem sozinhos na 1ª abertura (migrações aditivas)
