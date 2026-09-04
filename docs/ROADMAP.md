@@ -1,7 +1,7 @@
 # Roadmap - NormaTech
 
 ## Status do Projeto
-- Versao atual: 1.9.0
+ - Versao atual: 1.10.0
 - NRs disponiveis: 17 (01, 05, 06, 09, 10, 11, 12, 17, 18, 26, 33, 34, 35 + FDS, BRIGADISTA-NR23, PTA, MOTOSERRA, MUNCK, PONTE-ROLANTE, DIR-DEFENSIVA, CIPAA)
 
 ---
@@ -187,6 +187,18 @@ Requisitos: Microsoft PowerPoint instalado na máquina (conversão via COM).
 | Limite de Tamanho | Definir novo limite máximo por arquivo (atual: 10MB para PDF/JPG/PNG) — sugerido: **50MB** para formatos universais | Alta | Concluído (v1.9.0, 50MB) |
 | Tipos MIME | Validar tipos MIME no upload para prevenir arquivos maliciosos | Media | Concluído (v1.9.0, blocklist ext+MIME) |
 | Armazenamento | Manter BLOB no banco + espelhamento em rede (`{Func}/Outros`) | Alta | Concluído (v1.8.0, inalterado) |
+
+### 2.15 Data de Nascimento e Aniversariantes (CONCLUÍDA)
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Campo Data Nascimento | Adicionar campo "Data de Nascimento" no card de cada funcionário (editável em caso de erro) | Alta | Concluído (v1.10.0) |
+| Import com Data Nascimento | Permitir importar a data de nascimento no import de funcionários (Excel) | Alta | Concluído (v1.10.0) |
+| Scrollbar Editar Funcionário | A janela "Editar Funcionário" não pode crescer mais — adicionar scrollbar | Media | Concluído (v1.10.0) |
+| Data e Hora Atual (Home) | Na tela Home, exibir data e hora atual de forma bem visível | Media | Concluído (v1.10.0) |
+| Aniversariantes do Mês | Na tela Home, adicionar campo "Aniversariantes deste mês" | Media | Concluído (v1.10.0) |
+| Aniversariantes de Hoje | Na tela Home, adicionar campo "Aniversariantes de hoje" | Media | Concluído (v1.10.0) |
+| Toast Aniversário | Exibir notificação (toast) quando alguém fizer aniversário no dia | Media | Concluído (v1.10.0) |
 
 ---
 

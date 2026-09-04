@@ -39,33 +39,47 @@ class WelcomePage(ctk.CTkFrame):
         card = ctk.CTkFrame(center, fg_color=COLORS["surface"], corner_radius=16, border_width=1, border_color=COLORS["border"])
         card.grid(row=1, column=0, sticky="nsew", padx=40, pady=(32, 24))
         card.grid_columnconfigure(0, weight=1)
-        for r in range(7):
+        for r in range(9):
             card.grid_rowconfigure(r, weight=0)
+
+        # === DATA E HORA ATUAL ===
+        self.lbl_data = ctk.CTkLabel(
+            card, text="",
+            font=fonts["body"], text_color=COLORS["text_secondary"]
+        )
+        self.lbl_data.grid(row=0, column=0, pady=(16, 0))
+
+        self.lbl_hora = ctk.CTkLabel(
+            card, text="",
+            font=fonts["title"], text_color=COLORS["primary"]
+        )
+        self.lbl_hora.grid(row=1, column=0, pady=(0, 4))
+        self._tick_clock()
 
         # Logo
         logo_label = self._build_logo(card)
         if logo_label:
-            logo_label.grid(row=1, column=0, pady=(12, 4))
+            logo_label.grid(row=2, column=0, pady=(12, 4))
         else:
             ctk.CTkLabel(
                 card, text="\U0001F4DC",
                 font=("Segoe UI", 48), text_color=COLORS["primary"]
-            ).grid(row=1, column=0, pady=(12, 4))
+            ).grid(row=2, column=0, pady=(12, 4))
 
         # Titulo + subtitulo
         ctk.CTkLabel(
             card, text="Bem-vindo ao NormaTech!",
             font=fonts["title"], text_color=COLORS["primary"]
-        ).grid(row=2, column=0, pady=(4, 2))
+        ).grid(row=3, column=0, pady=(4, 2))
 
         ctk.CTkLabel(
             card, text="Sistema de emissão e controle de certificados e cartões de bloqueio.",
             font=fonts["body"], text_color=COLORS["text_secondary"]
-        ).grid(row=3, column=0, pady=(0, 8))
+        ).grid(row=4, column=0, pady=(0, 8))
 
         # === CARDS DE RESUMO ===
         stats_frame = ctk.CTkFrame(card, fg_color="transparent")
-        stats_frame.grid(row=4, column=0, sticky="ew", padx=24, pady=(4, 12))
+        stats_frame.grid(row=5, column=0, sticky="ew", padx=24, pady=(4, 12))
         stats_frame.grid_columnconfigure((0, 1, 2), weight=1)
 
         self.lbl_cert_count = self._build_stat_card(stats_frame, 0, "\U0001F4C4", "0", "Total de Certificados Emitidos")
@@ -74,7 +88,7 @@ class WelcomePage(ctk.CTkFrame):
 
         # === ATALHOS ===
         shortcuts_frame = ctk.CTkFrame(card, fg_color="transparent")
-        shortcuts_frame.grid(row=5, column=0, sticky="ew", padx=24, pady=(0, 16))
+        shortcuts_frame.grid(row=6, column=0, sticky="ew", padx=24, pady=(0, 16))
 
         def nav(key: str):
             if self.on_navigate:
@@ -103,6 +117,44 @@ class WelcomePage(ctk.CTkFrame):
             state=state, command=lambda: nav("history")
         ).pack(side="left", expand=True, fill="x", padx=6)
 
+        # === ANIVERSARIANTES (hoje + mes) ===
+        aniv_frame = ctk.CTkFrame(center, fg_color="transparent")
+        aniv_frame.grid(row=2, column=0, sticky="ew", padx=48, pady=(8, 0))
+        aniv_frame.grid_columnconfigure((0, 1), weight=1)
+
+        hoje_card = ctk.CTkFrame(
+            aniv_frame, fg_color=COLORS["surface"], corner_radius=10,
+            border_width=1, border_color=COLORS["border"]
+        )
+        hoje_card.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
+        hoje_card.grid_columnconfigure(0, weight=1)
+        ctk.CTkLabel(
+            hoje_card, text="\U0001F382 Aniversariantes de hoje",
+            font=fonts["body_bold"], text_color=COLORS["success"]
+        ).grid(row=0, column=0, sticky="w", padx=12, pady=(8, 2))
+        self.lbl_aniv_hoje = ctk.CTkLabel(
+            hoje_card, text="-", font=fonts["small"],
+            text_color=COLORS["text_secondary"], justify="left", wraplength=280
+        )
+        self.lbl_aniv_hoje.grid(row=1, column=0, sticky="ew", padx=12, pady=(0, 10))
+
+        mes_card = ctk.CTkFrame(
+            aniv_frame, fg_color=COLORS["surface"], corner_radius=10,
+            border_width=1, border_color=COLORS["border"]
+        )
+        mes_card.grid(row=0, column=1, sticky="nsew", padx=(6, 0))
+        mes_card.grid_columnconfigure(0, weight=1)
+        self.lbl_aniv_mes_titulo = ctk.CTkLabel(
+            mes_card, text="\U0001F4C5 Aniversariantes do mes",
+            font=fonts["body_bold"], text_color=COLORS["accent"]
+        )
+        self.lbl_aniv_mes_titulo.grid(row=0, column=0, sticky="w", padx=12, pady=(8, 2))
+        self.lbl_aniv_mes = ctk.CTkLabel(
+            mes_card, text="-", font=fonts["small"],
+            text_color=COLORS["text_secondary"], justify="left", wraplength=280
+        )
+        self.lbl_aniv_mes.grid(row=1, column=0, sticky="ew", padx=12, pady=(0, 10))
+
         # === PAINEL DE INDICADORES (ocultavel) ===
         # botao com corpo proprio (surface + borda): antes era transparente
         # e discreto demais, o usuario nao encontrava
@@ -122,6 +174,51 @@ class WelcomePage(ctk.CTkFrame):
         from src.core.app_settings import get_setting
         self._painel_visivel = bool(get_setting("painel_inicial_visivel", True))
         self._apply_painel_state()
+
+    _MESES_PT = {
+        1: "janeiro", 2: "fevereiro", 3: "marco", 4: "abril",
+        5: "maio", 6: "junho", 7: "julho", 8: "agosto",
+        9: "setembro", 10: "outubro", 11: "novembro", 12: "dezembro",
+    }
+
+    def _tick_clock(self):
+        """Atualiza data e hora a cada segundo (para ao fechar a janela)."""
+        try:
+            from datetime import datetime
+            agora = datetime.now()
+            self.lbl_hora.configure(text=agora.strftime("%H:%M:%S"))
+            data_extensa = (
+                f"{agora.day} de {self._MESES_PT[agora.month]} de {agora.year}"
+            )
+            self.lbl_data.configure(text=data_extensa)
+            self._clock_job = self.after(1000, self._tick_clock)
+        except Exception:
+            pass
+
+    def _refresh_aniversarios(self):
+        """Preenche os blocos de aniversariantes de hoje e do mes."""
+        from datetime import date
+        hoje = date.today()
+        nomes_hoje = []
+        nomes_mes = []
+        try:
+            for emp in self.employee_repo.get_aniversariantes(hoje.month, hoje.day):
+                nomes_hoje.append(emp.nome)
+            for emp in self.employee_repo.get_aniversariantes(hoje.month):
+                iso = emp.data_nascimento or ""
+                dia = iso[8:10] if len(iso) >= 10 else ""
+                nomes_mes.append(f"{dia} - {emp.nome}" if dia else emp.nome)
+        except Exception:
+            pass
+        self.lbl_aniv_hoje.configure(
+            text=", ".join(nomes_hoje) if nomes_hoje else "Nenhum aniversariante hoje"
+        )
+        self.lbl_aniv_mes_titulo.configure(
+            text=f"\U0001F4C5 Aniversariantes de {self._MESES_PT[hoje.month]}"
+        )
+        self.lbl_aniv_mes.configure(
+            text="\n".join(nomes_mes) if nomes_mes else "Nenhum aniversariante este mes"
+        )
 
     def _toggle_painel(self):
         self._painel_visivel = not self._painel_visivel
@@ -209,6 +306,8 @@ class WelcomePage(ctk.CTkFrame):
         self.lbl_cert_count.configure(text=str(certs))
         self.lbl_emp_count.configure(text=str(emps))
         self.lbl_nr_count.configure(text=str(nrs))
+
+        self._refresh_aniversarios()
 
         if getattr(self, "_painel_visivel", False):
             try:

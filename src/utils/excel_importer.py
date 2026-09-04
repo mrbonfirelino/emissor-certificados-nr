@@ -47,6 +47,22 @@ def _is_valid_telefone_digits(tel: str) -> bool:
     return True
 
 
+def _parse_nascimento(val):
+    """Converte valor da planilha em ISO aaaa-mm-dd. Retorna None se vazio, ValueError se invalido."""
+    if val is None or str(val).strip() == "":
+        return None
+    import datetime as _dt
+    if isinstance(val, (_dt.datetime, _dt.date)):
+        return val.strftime("%Y-%m-%d")
+    s = str(val).strip()
+    for fmt in ("%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d"):
+        try:
+            return _dt.datetime.strptime(s, fmt).strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+    raise ValueError(s)
+
+
 def import_employees_from_excel(
     filepath: str,
     employee_repo,
@@ -54,11 +70,13 @@ def import_employees_from_excel(
     cpf_col: int = 1,
     funcao_col: int = 2,
     telefone_col: int = 3,
+    nasc_col: int = 4,
     skip_header: bool = True
 ) -> Tuple[int, int, int, List[str]]:
     """
     Importa funcionarios de um arquivo Excel (.xlsx).
-    Colunas: A=Nome, B=CPF (opcional), C=Funcao (opcional), D=Telefone (opcional, 11 digitos).
+    Colunas: A=Nome, B=CPF (opcional), C=Funcao (opcional), D=Telefone (opcional, 11 digitos),
+    E=Data de Nascimento (opcional, dd/mm/aaaa).
 
     Retorna (importados, duplicados, erros, erros_detalhe).
     - importados: numero de novos funcionarios cadastrados
@@ -99,6 +117,7 @@ def import_employees_from_excel(
             cpf_val = row[cpf_col] if cpf_col < len(row) else None
             funcao_val = row[funcao_col] if funcao_col < len(row) else None
             tel_val = row[telefone_col] if telefone_col < len(row) else None
+            nasc_val = row[nasc_col] if nasc_col < len(row) else None
         except IndexError:
             errors += 1
             error_details.append(f"Linha {i+1}: coluna fora do intervalo")
@@ -132,6 +151,14 @@ def import_employees_from_excel(
                 continue
             telefone_val = telefone
 
+        nascimento_iso = None
+        try:
+            nascimento_iso = _parse_nascimento(nasc_val)
+        except ValueError:
+            errors += 1
+            error_details.append(f"Linha {i+1}: data de nascimento invalida ({nasc_val}) - use dd/mm/aaaa")
+            continue
+
         # Verificar se ja existe funcionario com mesmo nome
         existing = employee_repo.search(name, limit=5)
         found = False
@@ -144,7 +171,7 @@ def import_employees_from_excel(
             duplicates += 1
             continue
 
-        result = employee_repo.create(name, cpf_formatted, funcao, None, telefone_val)
+        result = employee_repo.create(name, cpf_formatted, funcao, None, telefone_val, data_nascimento=nascimento_iso)
         if result:
             imported += 1
         else:

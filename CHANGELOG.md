@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.10.0] - 2026-09-04
+
+### Corrigido
+- **Digitalização em 2 máquinas (bug crítico)**: `ShowSelectItem` não existe na
+  API WIA — agora lista scanners via DeviceManager; sem scanner → erro amigável,
+  1 scanner conecta direto, 2+ abre o seletor nativo (`ShowSelectDevice`)
+
+### Adicionado
+- **Data de Nascimento (2.15)**: campo editável no cadastro de funcionários
+  (máscara dd/mm/aaaa, validação de data real), coluna E no import Excel e
+  coluna "Data Nascimento" no export
+- **Aniversariantes na Home**: blocos "Aniversariantes de hoje" e
+  "Aniversariantes do mês" com nome e dia
+- **Data e hora atuais na Home**: relógio (HH:MM:SS) e data por extenso,
+  atualizados a cada segundo
+- **Toast de aniversário**: notificação no início do app quando alguém faz
+  aniversário no dia
+
+### Alterado
+- Janela Cadastrar/Editar Funcionário com campos roláveis e botões fixos no
+  rodapé (cabe em telas menores mesmo com o novo campo)
+
 ## [1.9.0] - 2026-09-04
 
 ### Adicionado

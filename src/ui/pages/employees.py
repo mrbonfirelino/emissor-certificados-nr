@@ -307,8 +307,14 @@ class EmployeesPage(ctk.CTkFrame):
         y = self.winfo_rooty() + (self.winfo_height() // 2) - (680 // 2)
         dialog.geometry(f"+{x}+{y}")
 
-        form = ctk.CTkFrame(dialog, fg_color="transparent")
-        form.pack(fill="both", expand=True, padx=24, pady=24)
+        # rodape fixo com os botoes (empacotado ANTES do scroll: sempre visivel)
+        btn_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        btn_frame.pack(side="bottom", fill="x", padx=24, pady=(0, 20))
+        btn_frame.grid_columnconfigure(0, weight=1)
+
+        # campos rolaveis: a janela nao cresce mais com campos novos
+        form = ctk.CTkScrollableFrame(dialog, fg_color="transparent")
+        form.pack(fill="both", expand=True, padx=8, pady=(20, 4))
         form.grid_columnconfigure(0, weight=1)
 
         ctk.CTkLabel(
@@ -422,7 +428,28 @@ class EmployeesPage(ctk.CTkFrame):
             tel_var.set(f"({dig[:2]}) {dig[2:7]}-{dig[7:]}")
         tel_var.trace_add("write", format_tel_entry)
 
-        ctk.CTkLabel(form, text="Funcao", font=fonts["body_bold"], text_color=COLORS["text"]).grid(row=9, column=0, sticky="w", pady=(0, 4))
+        ctk.CTkLabel(form, text="Data de Nascimento (dd/mm/aaaa)", font=fonts["body_bold"], text_color=COLORS["text"]).grid(row=9, column=0, sticky="w", pady=(0, 4))
+        nasc_display = ""
+        if is_edit and employee.data_nascimento:
+            iso = employee.data_nascimento
+            nasc_display = f"{iso[8:10]}/{iso[5:7]}/{iso[0:4]}"
+        nasc_var = ctk.StringVar(value=nasc_display)
+        ctk.CTkEntry(form, textvariable=nasc_var, font=fonts["body"], height=36, corner_radius=6, placeholder_text="01/01/1990 (opcional)").grid(row=10, column=0, sticky="ew", pady=(0, 10))
+
+        def format_nasc_entry(*args):
+            import re as _re2
+            val = _re2.sub(r'\D', '', nasc_var.get())
+            if len(val) > 8:
+                val = val[:8]
+            if len(val) > 4:
+                val = f"{val[:2]}/{val[2:4]}/{val[4:]}"
+            elif len(val) > 2:
+                val = f"{val[:2]}/{val[2:]}"
+            if val != nasc_var.get():
+                nasc_var.set(val)
+        nasc_var.trace_add("write", format_nasc_entry)
+
+        ctk.CTkLabel(form, text="Funcao", font=fonts["body_bold"], text_color=COLORS["text"]).grid(row=11, column=0, sticky="w", pady=(0, 4))
         from src.ui.pages.funcoes import load_funcoes
         funcoes_list = load_funcoes()
         funcao_var = ctk.StringVar(value=employee.funcao if (is_edit and employee.funcao) else "")
@@ -434,17 +461,14 @@ class EmployeesPage(ctk.CTkFrame):
             button_color=COLORS["secondary"], button_hover_color=COLORS["primary"],
             state="readonly"
         )
-        funcao_entry.grid(row=10, column=0, sticky="ew", pady=(0, 12))
-
-        btn_frame = ctk.CTkFrame(form, fg_color="transparent")
-        btn_frame.grid(row=11, column=0, sticky="ew", pady=(8, 0))
-        btn_frame.grid_columnconfigure(0, weight=1)
+        funcao_entry.grid(row=12, column=0, sticky="ew", pady=(0, 16))
 
         def save():
             nome = nome_var.get().strip()
             cpf = cpf_var.get().strip()
             funcao = funcao_var.get().strip() if funcao_var.get() else None
             tel_raw = tel_var.get().strip()
+            nasc_raw = nasc_var.get().strip()
             if not nome:
                 messagebox.showerror("Erro", "Nome e obrigatorio", parent=dialog)
                 return
@@ -462,9 +486,24 @@ class EmployeesPage(ctk.CTkFrame):
                     return
                 import re as _re
                 tel_fmt = _re.sub(r'\D', '', tel_raw)
+            nasc_fmt = None
+            if nasc_raw:
+                try:
+                    from datetime import date as _date
+                    dia, mes, ano = nasc_raw.split("/")
+                    _date(int(ano), int(mes), int(dia))
+                    nasc_fmt = f"{ano}-{mes}-{dia}"
+                    if _date.fromisoformat(nasc_fmt).year < 1900:
+                        raise ValueError
+                except ValueError:
+                    messagebox.showerror("Erro", "Data de nascimento invalida (use dd/mm/aaaa)", parent=dialog)
+                    return
             try:
                 if is_edit:
-                    success = self.employee_repo.update(employee.id, nome, cpf_fmt, funcao, telefone=tel_fmt)
+                    success = self.employee_repo.update(
+                        employee.id, nome, cpf_fmt, funcao, telefone=tel_fmt,
+                        data_nascimento=nasc_fmt, limpar_nascimento=(nasc_fmt is None)
+                    )
                     if not success:
                         messagebox.showerror("Erro", "Erro ao atualizar funcionario", parent=dialog)
                         return
@@ -472,7 +511,7 @@ class EmployeesPage(ctk.CTkFrame):
                         self.employee_repo.update_foto(employee.id, foto_bytes)
                     messagebox.showinfo("Sucesso", "Funcionario atualizado!", parent=dialog)
                 else:
-                    emp_id = self.employee_repo.create(nome, cpf_fmt, funcao, foto_bytes if foto_changed["val"] or foto_bytes else None, telefone=tel_fmt)
+                    emp_id = self.employee_repo.create(nome, cpf_fmt, funcao, foto_bytes if foto_changed["val"] or foto_bytes else None, telefone=tel_fmt, data_nascimento=nasc_fmt)
                     if emp_id:
                         messagebox.showinfo("Sucesso", "Funcionario cadastrado!", parent=dialog)
                     else:
@@ -590,7 +629,7 @@ class EmployeesPage(ctk.CTkFrame):
 
         ctk.CTkLabel(
             content,
-            text="Formato: Coluna A = Nome, Coluna B = CPF (opcional), Coluna C = Funcao (opcional),\nColuna D = Telefone celular (opcional, 11 digitos: 21984209236)\nA primeira linha (cabecalho) sera ignorada.",
+            text="Formato: Coluna A = Nome, Coluna B = CPF (opcional), Coluna C = Funcao (opcional),\nColuna D = Telefone celular (opcional, 11 digitos: 21984209236),\nColuna E = Data de Nascimento (opcional, dd/mm/aaaa)\nA primeira linha (cabecalho) sera ignorada.",
             font=fonts["small"], text_color=COLORS["text_secondary"], justify="left"
         ).grid(row=1, column=0, sticky="w", pady=(0, 16))
 

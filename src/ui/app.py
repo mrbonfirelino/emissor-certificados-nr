@@ -429,7 +429,7 @@ class NormaTechApp(ctk.CTk):
             self._show_vencimentos()
 
     def _notify_expirations(self):
-        """Toast informativo: certificados que vencem nos proximos 7 dias."""
+        """Toasts informativos: certificados que vencem nos proximos 7 dias + aniversariantes de hoje."""
         try:
             from src.utils.notifications import notify
             certs = self.history_repo.get_certificates_with_expiration()
@@ -440,6 +440,17 @@ class NormaTechApp(ctk.CTk):
         except Exception as e:
             from src.utils.error_log import log_error
             log_error("toast-vencimentos", e)
+        try:
+            from src.utils.notifications import notify
+            from datetime import date
+            hoje = date.today()
+            aniversariantes = self.employee_repo.get_aniversariantes(hoje.month, hoje.day)
+            if aniversariantes:
+                nomes = ", ".join(e.nome for e in aniversariantes)
+                notify("Aniversariantes de hoje", nomes)
+        except Exception as e:
+            from src.utils.error_log import log_error
+            log_error("toast-aniversarios", e)
 
     def _show_certificates(self):
         self._show_page("certificates", CertificatesPage, self.certificate_service, self.employee_repo)

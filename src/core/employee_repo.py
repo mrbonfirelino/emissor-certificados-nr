@@ -47,6 +47,11 @@ class EmployeeRepository:
                 conn.execute("SELECT telefone FROM employees LIMIT 1")
             except sqlite3.OperationalError:
                 conn.execute("ALTER TABLE employees ADD COLUMN telefone TEXT")
+            # data de nascimento (aniversariantes) — bancos antigos nao tem
+            try:
+                conn.execute("SELECT data_nascimento FROM employees LIMIT 1")
+            except sqlite3.OperationalError:
+                conn.execute("ALTER TABLE employees ADD COLUMN data_nascimento TEXT")
             # nota: coluna matricula pode existir em bancos antigos — permanece ignorada
             try:
                 conn.execute("SELECT cpf FROM employees WHERE cpf IS NULL LIMIT 1")
@@ -141,7 +146,7 @@ class EmployeeRepository:
             conn.execute("DELETE FROM employee_docs WHERE id = ?", (doc_id,))
             return True
 
-    def create(self, nome: str, cpf: str = None, funcao: str = None, foto: Optional[bytes] = None, telefone: Optional[str] = None) -> Optional[int]:
+    def create(self, nome: str, cpf: str = None, funcao: str = None, foto: Optional[bytes] = None, telefone: Optional[str] = None, data_nascimento: Optional[str] = None) -> Optional[int]:
         try:
             cpf_val = cpf.strip() if cpf and cpf.strip() else None
             tel_val = telefone.strip() if telefone and telefone.strip() else None
@@ -150,14 +155,38 @@ class EmployeeRepository:
                 tel_val = re.sub(r'\D', '', tel_val)
                 if tel_val == "":
                     tel_val = None
+            nasc_val = self._normalizar_nascimento(data_nascimento)
             with self._get_conn() as conn:
                 cursor = conn.execute(
-                    "INSERT INTO employees (nome, cpf, funcao, foto, telefone) VALUES (?, ?, ?, ?, ?)",
-                    (nome.strip(), cpf_val, funcao.strip() if funcao else None, foto, tel_val)
+                    "INSERT INTO employees (nome, cpf, funcao, foto, telefone, data_nascimento) VALUES (?, ?, ?, ?, ?, ?)",
+                    (nome.strip(), cpf_val, funcao.strip() if funcao else None, foto, tel_val, nasc_val)
                 )
                 return cursor.lastrowid
         except sqlite3.IntegrityError:
             return None
+
+    @staticmethod
+    def _normalizar_nascimento(data_nascimento: Optional[str]) -> Optional[str]:
+        """Normaliza dd/mm/aaaa -> ISO aaaa-mm-dd (None/vazio -> None)."""
+        if not data_nascimento or not str(data_nascimento).strip():
+            return None
+        s = str(data_nascimento).strip()
+        if len(s) == 10 and s[2] == "/" and s[5] == "/":
+            s = f"{s[6:10]}-{s[3:5]}-{s[0:2]}"
+        return s
+
+    def get_aniversariantes(self, mes: int, dia: Optional[int] = None) -> List[Employee]:
+        """Aniversariantes do mes (ou do dia exato, se dia informado). Mes/dia: 1-12/1-31."""
+        with self._get_conn() as conn:
+            sql = ("SELECT * FROM employees WHERE data_nascimento IS NOT NULL "
+                   "AND substr(data_nascimento, 6, 2) = ?")
+            params = [f"{mes:02d}"]
+            if dia is not None:
+                sql += " AND substr(data_nascimento, 9, 2) = ?"
+                params.append(f"{dia:02d}")
+            sql += " ORDER BY substr(data_nascimento, 9, 2), nome"
+            rows = conn.execute(sql, params).fetchall()
+            return [self._row_to_employee(r) for r in rows]
 
     def get_by_id(self, emp_id: int) -> Optional[Employee]:
         with self._get_conn() as conn:
@@ -210,7 +239,7 @@ class EmployeeRepository:
             ).fetchall()
             return [row["funcao"] for row in rows]
 
-    def update(self, emp_id: int, nome: str, cpf: str = None, funcao: str = None, foto: Optional[bytes] = None, telefone: Optional[str] = None) -> bool:
+    def update(self, emp_id: int, nome: str, cpf: str = None, funcao: str = None, foto: Optional[bytes] = None, telefone: Optional[str] = None, data_nascimento: Optional[str] = None, limpar_nascimento: bool = False) -> bool:
         try:
             cpf_val = cpf.strip() if cpf and cpf.strip() else None
             tel_val = telefone.strip() if telefone and telefone.strip() else None
@@ -219,17 +248,22 @@ class EmployeeRepository:
                 tel_val = re.sub(r'\D', '', tel_val)
                 if tel_val == "":
                     tel_val = None
+            nasc_val = self._normalizar_nascimento(data_nascimento)
+            # update sempre grava o nascimento: None com limpar_nascimento=True apaga,
+            # None sem flag mantem o valor atual (compat com chamadas antigas)
             with self._get_conn() as conn:
+                sql_cols = "nome = ?, cpf = ?, funcao = ?, telefone = ?"
+                params = [nome.strip(), cpf_val, funcao.strip() if funcao else None, tel_val]
+                if nasc_val is not None:
+                    sql_cols += ", data_nascimento = ?"
+                    params.append(nasc_val)
+                elif limpar_nascimento:
+                    sql_cols += ", data_nascimento = NULL"
                 if foto is not None:
-                    conn.execute(
-                        "UPDATE employees SET nome = ?, cpf = ?, funcao = ?, foto = ?, telefone = ? WHERE id = ?",
-                        (nome.strip(), cpf_val, funcao.strip() if funcao else None, foto, tel_val, emp_id)
-                    )
-                else:
-                    conn.execute(
-                        "UPDATE employees SET nome = ?, cpf = ?, funcao = ?, telefone = ? WHERE id = ?",
-                        (nome.strip(), cpf_val, funcao.strip() if funcao else None, tel_val, emp_id)
-                    )
+                    sql_cols += ", foto = ?"
+                    params.append(foto)
+                params.append(emp_id)
+                conn.execute(f"UPDATE employees SET {sql_cols} WHERE id = ?", params)
                 return True
         except sqlite3.IntegrityError:
             return False
@@ -278,6 +312,10 @@ class EmployeeRepository:
             tel_val = row["telefone"]
         except Exception:
             tel_val = None
+        try:
+            nasc_val = row["data_nascimento"]
+        except Exception:
+            nasc_val = None
         return Employee(
             id=row["id"],
             nome=row["nome"],
@@ -285,5 +323,6 @@ class EmployeeRepository:
             funcao=row["funcao"],
             foto=foto_val,
             telefone=tel_val or None,
+            data_nascimento=nasc_val or None,
             created_at=row["created_at"]
         )

@@ -34,7 +34,24 @@ class Employee(BaseModel):
     funcao: Optional[str] = None
     foto: Optional[bytes] = None
     telefone: Optional[str] = None
+    data_nascimento: Optional[str] = None
     created_at: Optional[str] = None
+
+    @field_validator('data_nascimento')
+    @classmethod
+    def validar_nascimento(cls, v: Optional[str]) -> Optional[str]:
+        if not v or not str(v).strip():
+            return None
+        v = str(v).strip()
+        # aceita dd/mm/aaaa e normaliza para ISO (aaaa-mm-dd)
+        m = re.match(r'^(\d{2})/(\d{2})/(\d{4})$', v)
+        if m:
+            v = f"{m.group(3)}-{m.group(2)}-{m.group(1)}"
+        try:
+            date.fromisoformat(v)
+        except ValueError:
+            raise ValueError("Data de nascimento invalida (use dd/mm/aaaa)")
+        return v
 
     @field_validator('cpf')
     @classmethod
