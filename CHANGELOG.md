@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.14.0] - 2026-09-05
+
+### Adicionado
+- **Crachá de Identificação vertical 7,8x12cm**: novo modelo
+  `CRACHA-VERTICAL` na aba Cartões de Bloqueio — mesmo conteúdo do modelo
+  paisagem (NRs com validade, ASO, emissão, assinatura) em layout retrato;
+  dimensões lidas do template (qualquer card.json cracha pode definir
+  largura/altura)
+
+### Inalterado
+- Modelo paisagem `CRACHA-ALTEC` (12x7,8cm) mantido intacto
+
 ## [1.13.0] - 2026-09-04
 
 ### Adicionado

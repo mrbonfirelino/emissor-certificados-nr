@@ -32,6 +32,8 @@ def check(nome, cond):
 
 
 TEMPLATE = {"card_code": "CRACHA-ALTEC", "template_type": "cracha", "max_nrs": 8}
+TEMPLATE_VERTICAL = {"card_code": "CRACHA-VERTICAL", "template_type": "cracha",
+                     "card_width_mm": 78, "card_height_mm": 120, "max_nrs": 8}
 
 
 class Ctx:
@@ -82,11 +84,11 @@ class Ctx:
     def restore(self):
         (badge.get_crachas_dir, badge.get_logo_path, er_mod.get_db_path) = self._orig
 
-    def gerar(self, single, output_dir=None, nrs1=None, nrs2=None):
+    def gerar(self, single, output_dir=None, nrs1=None, nrs2=None, template=None):
         nrs1 = nrs1 if nrs1 is not None else ["NR-10", "NR-12", "NR-35", "NR-99"]
         nrs2 = nrs2 if nrs2 is not None else ["NR-35", "NR-11"]
         return badge.generate_badges(
-            [self.e1, self.e2], TEMPLATE, single_pdf=single,
+            [self.e1, self.e2], template or TEMPLATE, single_pdf=single,
             options=self.options(nrs1, nrs2), output_dir=output_dir,
             history_repo=self.hist, aso_repo=self.aso, cracha_repo=self.cracha,
         )
@@ -191,6 +193,65 @@ def test_preview_nao_grava(tmp: Path):
         ctx.restore()
 
 
+def test_vertical(tmp: Path):
+    """Cracha retrato 7,8x12cm (CRACHA-VERTICAL) — v1.14.0."""
+    ctx = Ctx(tmp)
+    try:
+        paths, msgs = ctx.gerar(single=True, template=TEMPLATE_VERTICAL)
+        check("vertical: 1 arquivo de lote", len(paths) == 1 and not msgs)
+        doc = fitz.open(paths[0])
+        check("vertical: 2 paginas", doc.page_count == 2)
+        r = doc[0].rect
+        check("vertical: pagina 78x120mm (~221.10x340.16 pts)",
+              abs(r.width - 221.10) <= 1 and abs(r.height - 340.16) <= 1)
+        t1 = doc[0].get_text().upper()
+        t2 = doc[1].get_text().upper()
+        check("vertical: conteudo cracha 1", all(s in t1 for s in (
+            "CARTÃO DE IDENTIFICAÇÃO", "JOAO PEDRO", "NR-35",
+            "ASS COLABORADOR:", "CRACHA-0000", "PROIBIDO", "EMISSÃO:")))
+        check("vertical: ASO no cracha 1", "ASO" in t1)
+        check("vertical: conteudo cracha 2 (vencida presente)",
+              "MARIA SILVA" in t2 and "NR-11" in t2)
+        doc.close()
+        check("vertical: gravou 2 registros", ctx.cracha.count_all() == 2)
+        check("vertical: nrs gravadas",
+              ctx.cracha.get_by_employee(ctx.e1.id)[0]["nrs"] == ["NR-12", "NR-35", "NR-10"])
+    finally:
+        ctx.restore()
+
+
+def test_vertical_individual_preview(tmp: Path):
+    ctx = Ctx(tmp)
+    try:
+        paths, _ = ctx.gerar(single=False, template=TEMPLATE_VERTICAL)
+        check("vertical individual: 2 arquivos", len(paths) == 2
+              and all(p.name.startswith("CRACHA_") for p in paths))
+        check("vertical individual: pastas por funcionario",
+              {p.parent.name for p in paths} == {"Joao Pedro", "Maria Silva"})
+
+        out = tmp / "preview"
+        paths1, _ = ctx.gerar(single=True, output_dir=out, template=TEMPLATE_VERTICAL)
+        check("vertical preview: NAO grava nem consome sequencia",
+              ctx.cracha.count_all() == 2)  # apenas os 2 do individual acima
+        t = fitz.open(paths1[0])[0].get_text()
+        check("vertical preview: numero peek CRACHA-000003 (apos 2 consumidos)",
+              "CRACHA-000003" in t)
+    finally:
+        ctx.restore()
+
+
+def test_paisagem_intacta(tmp: Path):
+    """O template paisagem original continua idêntico (mesma pagina)."""
+    ctx = Ctx(tmp)
+    try:
+        paths, _ = ctx.gerar(single=True)
+        r = fitz.open(paths[0])[0].rect
+        check("paisagem intacta: 120x78mm",
+              abs(r.width - 340.16) <= 1 and abs(r.height - 221.10) <= 1)
+    finally:
+        ctx.restore()
+
+
 def main():
     with tempfile.TemporaryDirectory(prefix="normatech_cracha_",
                                      ignore_cleanup_errors=True) as td:
@@ -200,6 +261,9 @@ def main():
         test_single_pdf(tmp / "t3")
         test_individual(tmp / "t4")
         test_preview_nao_grava(tmp / "t5")
+        test_vertical(tmp / "t6")
+        test_vertical_individual_preview(tmp / "t7")
+        test_paisagem_intacta(tmp / "t8")
 
     falhas = [n for n, ok in PASSOS if not ok]
     print(f"\n{len(PASSOS) - len(falhas)}/{len(PASSOS)} testes OK")

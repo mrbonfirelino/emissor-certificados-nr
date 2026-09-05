@@ -123,7 +123,10 @@ EMISSOR DE CERTIFICADOS NR\
 │   ├── *.template.json       # 17 templates de NR
 │   ├── _layout.json          # layout do certificado (margens, fontes, cores)
 │   └── cards\
-│       └── ALTEC.card.json   # template do cartão de bloqueio (90x120mm)
+│       ├── ALTEC.card.json             # template do cartão de bloqueio (90x120mm)
+│       ├── CRACHA ALTEC.card.json      # crachá paisagem 12x7,8cm (v1.13.0)
+│       ├── CRACHA ALTEC VERTICAL.card.json  # crachá retrato 7,8x12cm (v1.14.0)
+│       └── pptx\                       # templates PPTX de cartões
 ├── assets\                   # logo.ico, LOGO TIPO ALTEC.png, fontes
 ├── data\                     # certificados.db, company_config.json, funcoes.json
 │   ├── backups\              # backups automáticos (.db.gz)

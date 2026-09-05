@@ -1,9 +1,14 @@
-"""Cracha de Identificacao 12x7,8cm (ReportLab) — NRs capacitadas + ASO + assinatura.
+"""Cracha de Identificacao (ReportLab) — NRs capacitadas + ASO + assinatura.
 
-Layout baseado no modelo XLSX do cliente (CRACHA ALTEC DETALHADO):
-cabecalho com logo + titulo, NOME/FUNCAO, foto 3x4 (esquerda) com bloco ASO
-abaixo, texto de autorizacao + tabela de NRs (ate 8) a direita, emissao +
-espaco de assinatura do colaborador e rodape de proibicao (vermelho).
+Layout paisagem 12x7,8cm baseado no modelo XLSX do cliente (CRACHA ALTEC
+DETALHADO): cabecalho com logo + titulo, NOME/FUNCAO, foto 3x4 (esquerda) com
+bloco ASO abaixo, texto de autorizacao + tabela de NRs (ate 8) a direita,
+emissao + espaco de assinatura do colaborador e rodape de proibicao (vermelho).
+
+Layout retrato 7,8x12cm (CRACHA-VERTICAL): mesmo conteudo reorganizado em
+coluna unica — foto maior a esquerda com bloco ASO/Emissao ao lado, tabela de
+NRs em tela cheia e assinatura em tela cheia. A orientacao e definida pelas
+dimensoes do template (card_width_mm/card_height_mm).
 """
 
 import re
@@ -291,6 +296,159 @@ def _aso_vencido(data_validade_iso) -> bool:
     return _vencido(data_validade_iso)
 
 
+# ── Layout RETRATO 7,8x12cm (CRACHA-VERTICAL) ────────────────────────────────
+
+VW_MM, VH_MM = 78.0, 120.0
+
+
+def draw_badge_vertical(c: pdfcanvas.Canvas, emp, badge: dict, cracha_number: str,
+                        logo_path: Optional[Path]):
+    """Desenha um cracha retrato ocupando a pagina inteira (78x120mm)."""
+    c.saveState()
+
+    # fundo + borda
+    c.setFillColor(HexColor("#FFFFFF"))
+    c.setStrokeColor(TEXT)
+    c.setLineWidth(0.8)
+    c.roundRect(0.4 * mm, 0.4 * mm, (VW_MM - 0.8) * mm, (VH_MM - 0.8) * mm, 1.5 * mm,
+                stroke=1, fill=1)
+
+    # ── Cabecalho (titulo + logo) ──
+    if logo_path and Path(logo_path).exists():
+        try:
+            c.drawImage(ImageReader(str(logo_path)), 4 * mm, 112.5 * mm,
+                        20 * mm, 7 * mm, mask="auto", preserveAspectRatio=True)
+        except Exception:
+            pass
+    c.setFont("Helvetica-Bold", 9)
+    c.setFillColor(PRIMARY)
+    c.drawCentredString(40 * mm, 115 * mm, "Cartão de Identificação")
+    c.setStrokeColor(TEXT)
+    c.setLineWidth(0.6)
+    c.line(2 * mm, 111.5 * mm, (VW_MM - 2) * mm, 111.5 * mm)
+
+    # ── Nome / Funcao ──
+    c.setFillColor(TEXT)
+    c.setFont("Helvetica-Bold", 6.5)
+    c.drawString(4 * mm, 107.5 * mm, "NOME:")
+    c.setFont("Helvetica-Bold", 7.5)
+    c.drawString(15 * mm, 107.5 * mm, (emp.nome or "").upper()[:36])
+    c.setFont("Helvetica-Bold", 6.5)
+    c.drawString(4 * mm, 103.5 * mm, "FUNÇÃO:")
+    c.setFont("Helvetica-Bold", 7)
+    c.drawString(16.5 * mm, 103.5 * mm, (emp.funcao or "-").upper()[:32])
+    c.setLineWidth(0.4)
+    c.line(2 * mm, 101.5 * mm, (VW_MM - 2) * mm, 101.5 * mm)
+
+    # ── Foto 3x4 (esquerda) + bloco ASO/Emissao (direita) ──
+    fx, fy, fw, fh = 4 * mm, 67 * mm, 24 * mm, 32 * mm
+    drawn = False
+    if getattr(emp, "foto", None):
+        try:
+            import io
+            img = ImageReader(io.BytesIO(emp.foto))
+            c.setFillColor(HexColor("#FFFFFF"))
+            c.rect(fx, fy, fw, fh, stroke=0, fill=1)
+            _fit_image(img, fx, fy, fw, fh, c)
+            drawn = True
+        except Exception:
+            drawn = False
+    if not drawn:
+        c.setFillColor(HexColor("#F0F0F0"))
+        c.setStrokeColor(HexColor("#999999"))
+        c.setLineWidth(0.5)
+        c.rect(fx, fy, fw, fh, stroke=1, fill=1)
+        c.setFillColor(HexColor("#999999"))
+        c.setFont("Helvetica", 6)
+        c.drawCentredString(fx + fw / 2, fy + fh / 2 - 2, "SEM FOTO")
+    c.setStrokeColor(TEXT)
+    c.setLineWidth(0.5)
+    c.rect(fx, fy, fw, fh, stroke=1, fill=0)
+
+    bx = 30 * mm
+    c.setFillColor(TEXT)
+    c.setFont("Helvetica-Bold", 6)
+    c.drawString(bx, 95 * mm, "ASO Vence:")
+    c.setFont("Helvetica-Bold", 7.5)
+    c.setFillColor(RED if _aso_vencido(badge.get("aso_validade")) else TEXT)
+    c.drawString(bx, 91.5 * mm, _iso_to_br(badge.get("aso_validade")))
+    c.setFont("Helvetica", 5)
+    c.setFillColor(MUTED)
+    c.drawString(bx, 88 * mm, f"Nº {badge.get('aso_number') or '—'}")
+    c.setFillColor(TEXT)
+    c.setFont("Helvetica-Bold", 6.5)
+    c.drawString(bx, 84 * mm, f"Emissão: {_iso_to_br(badge['data_emissao'])}")
+
+    # ── Autorizacao (tela cheia) ──
+    tx0, tx1 = 4 * mm, 74 * mm
+    auth = ("O portador desta identificação está autorizado a operar os "
+            "equipamentos e/ou áreas abaixo relacionadas, conforme capacitações:")
+    c.setFont("Helvetica", 5.2)
+    c.setFillColor(TEXT)
+    y = 63.5 * mm
+    for ln in _wrap_text(c, auth, "Helvetica", 5.2, tx1 - tx0)[:3]:
+        c.drawString(tx0, y, ln)
+        y -= 3 * mm
+
+    # ── Tabela de NRs (tela cheia, 8 linhas) ──
+    ty = 54 * mm
+    row_h = 4.2 * mm
+    c.setFillColor(PRIMARY)
+    c.rect(tx0, ty, tx1 - tx0, 4.2 * mm, stroke=0, fill=1)
+    c.setFillColor(HexColor("#FFFFFF"))
+    c.setFont("Helvetica-Bold", 6)
+    c.drawString(tx0 + 1.5 * mm, ty + 1.3 * mm, "Capacitação")
+    c.drawCentredString(49 * mm, ty + 1.3 * mm, "Data")
+    c.drawCentredString(68 * mm, ty + 1.3 * mm, "Validade")
+
+    for i in range(MAX_NRS):
+        ry = ty - row_h * (i + 1)
+        if i % 2 == 1:
+            c.setFillColor(ZEBRA)
+            c.rect(tx0, ry, tx1 - tx0, row_h, stroke=0, fill=1)
+        c.setStrokeColor(GRID)
+        c.setLineWidth(0.25)
+        c.line(tx0, ry, tx1, ry)
+        if i < len(badge["nrs"]):
+            nr = badge["nrs"][i]
+            vencido = _vencido(nr["data_validade"])
+            c.setFillColor(TEXT)
+            c.setFont("Helvetica-Bold", 6.2)
+            c.drawString(tx0 + 1.5 * mm, ry + 1.4 * mm, nr["nr_code"])
+            c.setFont("Helvetica", 6.2)
+            c.setFillColor(RED if vencido else TEXT)
+            c.drawCentredString(49 * mm, ry + 1.4 * mm, _iso_to_br(nr["data_capacitacao"]))
+            c.drawCentredString(68 * mm, ry + 1.4 * mm, _iso_to_br(nr["data_validade"]))
+    c.setStrokeColor(TEXT)
+    c.setLineWidth(0.5)
+    c.rect(tx0, ty - row_h * MAX_NRS, tx1 - tx0, 4.2 * mm + row_h * MAX_NRS, stroke=1, fill=0)
+
+    # ── Assinatura (tela cheia) ──
+    c.setFillColor(TEXT)
+    c.setFont("Helvetica", 6.5)
+    c.drawString(4 * mm, 16.5 * mm, "Ass Colaborador:")
+    c.setFillColor(YELLOW)
+    c.rect(4 * mm, 8 * mm, 70 * mm, 6.5 * mm, stroke=0, fill=1)
+    c.setStrokeColor(TEXT)
+    c.setLineWidth(0.4)
+    c.rect(4 * mm, 8 * mm, 70 * mm, 6.5 * mm, stroke=1, fill=0)
+
+    # ── Rodape ──
+    proib = "É expressamente proibido executar atividades com treinamento e ASO fora do prazo"
+    size = 5.0
+    while size > 3.5 and c.stringWidth(proib, "Helvetica-Bold", size) > 72 * mm:
+        size -= 0.2
+    c.setFont("Helvetica-Bold", size)
+    c.setFillColor(RED)
+    c.drawCentredString(VW_MM / 2 * mm, 4.5 * mm, proib)
+    c.setFont("Helvetica", 4.5)
+    c.setFillColor(MUTED)
+    c.drawRightString(75 * mm, 1.8 * mm, cracha_number)
+    c.drawString(3 * mm, 1.8 * mm, "ALTEC")
+
+    c.restoreState()
+
+
 def generate_badges(
     employees: list,
     template: dict,
@@ -302,7 +460,8 @@ def generate_badges(
     cracha_repo=None,
 ) -> Tuple[List[Path], List[str]]:
     """
-    Gera crachas 12x7,8cm (1 por pagina).
+    Gera crachas (1 por pagina; orientacao e tamanho vem do template:
+    card_width_mm x card_height_mm — paisagem 12x7,8 ou retrato 7,8x12).
 
     - single_pdf=True: um PDF multipagina (lote) em data/crachas/LOTES
     - single_pdf=False: um PDF por funcionario em data/crachas/{Func}/
@@ -321,7 +480,10 @@ def generate_badges(
     if not dados:
         return [], []
 
-    page_size = (W_MM * mm, H_MM * mm)
+    w_mm = float(template.get("card_width_mm", W_MM))
+    h_mm = float(template.get("card_height_mm", H_MM))
+    page_size = (w_mm * mm, h_mm * mm)
+    draw_fn = draw_badge_vertical if h_mm > w_mm else draw_badge
     logo_path = get_logo_path()
     if not Path(logo_path).exists():
         logo_path = None
@@ -344,7 +506,7 @@ def generate_badges(
         for badge in dados:
             num = _numero(record)
             numeros.append((badge, num))
-            draw_badge(c, badge["employee"], badge, num, logo_path)
+            draw_fn(c, badge["employee"], badge, num, logo_path)
             c.showPage()
         c.save()
         generated.append(out)
@@ -368,7 +530,7 @@ def generate_badges(
             num = _numero(record)
             out = emp_dir / f"CRACHA_{_sanitize_filename(emp.nome)}_{num}.pdf"
             c = pdfcanvas.Canvas(str(out), pagesize=page_size)
-            draw_badge(c, emp, badge, num, logo_path)
+            draw_fn(c, emp, badge, num, logo_path)
             c.showPage()
             c.save()
             generated.append(out)

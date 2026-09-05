@@ -1,7 +1,7 @@
 # Roadmap - NormaTech
 
 ## Status do Projeto
- - Versao atual: 1.13.0
+ - Versao atual: 1.14.0
 - NRs disponiveis: 17 (01, 05, 06, 09, 10, 11, 12, 17, 18, 26, 33, 34, 35 + FDS, BRIGADISTA-NR23, PTA, MOTOSERRA, MUNCK, PONTE-ROLANTE, DIR-DEFENSIVA, CIPAA)
 
 ---
@@ -225,8 +225,18 @@ Requisitos: Microsoft PowerPoint instalado na máquina (conversão via COM).
 | Item | Descricao | Prioridade | Status |
 |------|-----------|------------|--------|
 | Template CRACHA-ALTEC | Crachá 12x7,8cm (1/folha) na aba Cartões: foto 3x4, autorização, tabela de até 8 NRs com data/validade, emissão editável, ASO (vencimento + número) e assinatura obrigatória | Alta | Concluído (v1.13.0) |
+| Template vertical CRACHA-VERTICAL | Mesmo crachá em retrato 7,8x12cm como novo template (paisagem inalterada); dimensões lidas do card.json | Alta | Concluído (v1.14.0) |
 | Revisão da emissão | Diálogo com data de emissão e checkboxes de NRs por funcionário (pré-marcadas 8 mais recentes), com ASO exibido; emissão individual e em lote | Alta | Concluído (v1.13.0) |
 | Gravação + rede | Emissões gravadas no banco (CRACHA-XXXXXX) em data/crachas/{Func} e LOTES; espelhadas na rede em {Func}/Crachas e Crachas_Gerais | Media | Concluído (v1.13.0) |
+
+### 2.19 Backup via Tarefa Agendada do Windows
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Tarefa Agendada | Criar tarefa agendada no Windows Task Scheduler para executar backup automaticamente, mesmo com o programa fechado | Alta | Pendente |
+| Configuração da Tarefa | Interface para configurar horário/frequência da tarefa agendada (diário, semanal, etc.) | Alta | Pendente |
+| Registro/Remoção | Registrar e remover a tarefa agendada diretamente pelo programa | Alta | Pendente |
+| Verificação de Status | Indicar na UI se a tarefa agendada está ativa ou não | Media | Pendente |
 
 ---
 
