@@ -1,7 +1,7 @@
 # Roadmap - NormaTech
 
 ## Status do Projeto
- - Versao atual: 1.14.0
+ - Versao atual: 1.15.0
 - NRs disponiveis: 17 (01, 05, 06, 09, 10, 11, 12, 17, 18, 26, 33, 34, 35 + FDS, BRIGADISTA-NR23, PTA, MOTOSERRA, MUNCK, PONTE-ROLANTE, DIR-DEFENSIVA, CIPAA)
 
 ---
@@ -228,15 +228,16 @@ Requisitos: Microsoft PowerPoint instalado na máquina (conversão via COM).
 | Template vertical CRACHA-VERTICAL | Mesmo crachá em retrato 7,8x12cm como novo template (paisagem inalterada); dimensões lidas do card.json | Alta | Concluído (v1.14.0) |
 | Revisão da emissão | Diálogo com data de emissão e checkboxes de NRs por funcionário (pré-marcadas 8 mais recentes), com ASO exibido; emissão individual e em lote | Alta | Concluído (v1.13.0) |
 | Gravação + rede | Emissões gravadas no banco (CRACHA-XXXXXX) em data/crachas/{Func} e LOTES; espelhadas na rede em {Func}/Crachas e Crachas_Gerais | Media | Concluído (v1.13.0) |
+| Folha A4 + opção 86x54mm | Crachás (paisagem e vertical) em folha A4 com guia de corte (vários por folha; individual centrado) e opção de escala reduzida 86x54mm na revisão | Alta | Concluído (v1.15.0) |
 
-### 2.19 Backup via Tarefa Agendada do Windows
+### 2.19 Backup via Tarefa Agendada do Windows (CONCLUÍDA)
 
 | Item | Descricao | Prioridade | Status |
 |------|-----------|------------|--------|
-| Tarefa Agendada | Criar tarefa agendada no Windows Task Scheduler para executar backup automaticamente, mesmo com o programa fechado | Alta | Pendente |
-| Configuração da Tarefa | Interface para configurar horário/frequência da tarefa agendada (diário, semanal, etc.) | Alta | Pendente |
-| Registro/Remoção | Registrar e remover a tarefa agendada diretamente pelo programa | Alta | Pendente |
-| Verificação de Status | Indicar na UI se a tarefa agendada está ativa ou não | Media | Pendente |
+| Tarefa Agendada | Criar tarefa agendada no Windows Task Scheduler para executar backup automaticamente, mesmo com o programa fechado | Alta | Concluído (v1.15.0) |
+| Configuração da Tarefa | Interface para configurar horário/frequência da tarefa agendada (diário, semanal, etc) | Alta | Concluído (v1.15.0) |
+| Registro/Remoção | Registrar e remover a tarefa agendada diretamente pelo programa | Alta | Concluído (v1.15.0) |
+| Verificação de Status | Indicar na UI se a tarefa agendada está ativa ou não | Media | Concluído (v1.15.0) |
 
 ---
 

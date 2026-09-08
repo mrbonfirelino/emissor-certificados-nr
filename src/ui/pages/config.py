@@ -246,7 +246,7 @@ class ConfigPage(ctk.CTkFrame):
         row += 1
 
         rede_frame = ctk.CTkFrame(form, fg_color="transparent")
-        rede_frame.grid(row=row, column=0, sticky="ew", pady=(0, 16))
+        rede_frame.grid(row=row, column=0, sticky="ew", pady=(0, 6))
         row += 1
         ctk.CTkLabel(rede_frame, text="Caminho na rede:", font=fonts["body"],
                      text_color=COLORS["text"]).pack(side="left", padx=(0, 8))
@@ -254,6 +254,30 @@ class ConfigPage(ctk.CTkFrame):
         ctk.CTkEntry(rede_frame, textvariable=self._backup_rede_path_var,
                      font=fonts["body"], height=32, corner_radius=6
                      ).pack(side="left", fill="x", expand=True)
+
+        # Tarefa agendada do Windows (backup diário headless — item 2.19)
+        self._task_var = ctk.BooleanVar(value=False)
+        ctk.CTkSwitch(
+            form, text="Tarefa Agendada do Windows (backup diário com o programa fechado)",
+            variable=self._task_var, font=fonts["body"], text_color=COLORS["text"],
+            progress_color=COLORS["primary"], switch_height=22, switch_width=42
+        ).grid(row=row, column=0, sticky="w", pady=(2, 6))
+        row += 1
+
+        task_frame = ctk.CTkFrame(form, fg_color="transparent")
+        task_frame.grid(row=row, column=0, sticky="ew", pady=(0, 16))
+        row += 1
+        ctk.CTkLabel(task_frame, text="Horário (HH:MM):", font=fonts["body"],
+                     text_color=COLORS["text"]).pack(side="left", padx=(0, 8))
+        self._task_hora_var = ctk.StringVar(value="12:00")
+        ctk.CTkEntry(task_frame, textvariable=self._task_hora_var,
+                     width=70, height=32, font=fonts["body"], corner_radius=6
+                     ).pack(side="left")
+        self._task_status_lbl = ctk.CTkLabel(
+            task_frame, text="Tarefa inativa", font=fonts["small"],
+            text_color=COLORS["muted"]
+        )
+        self._task_status_lbl.pack(side="left", padx=(16, 0))
 
         # Separador
         ctk.CTkFrame(form, height=2, fg_color=COLORS["border"]).grid(row=row, column=0, sticky="ew", pady=20)
@@ -433,6 +457,21 @@ class ConfigPage(ctk.CTkFrame):
             "backup_rede_caminho", r"Z:\SEGURANÇA\NORMATECH-BACKUP")))
         self._rede_docs_var.set(bool(settings.get("rede_documentos_ativo", False)))
         self._rede_docs_path_var.set(str(settings.get("rede_documentos_caminho", "") or ""))
+        self._task_var.set(bool(settings.get("tarefa_agendada_ativo", False)))
+        self._task_hora_var.set(str(settings.get("tarefa_agendada_hora", "12:00") or "12:00"))
+        self._refresh_task_status()
+
+    def _refresh_task_status(self):
+        """Indica na UI se a tarefa agendada do Windows esta ativa."""
+        try:
+            from src.core.scheduled_task import is_active
+            ativa = is_active()
+        except Exception:
+            ativa = False
+        self._task_status_lbl.configure(
+            text="Tarefa ativa — backup diário" if ativa else "Tarefa inativa",
+            text_color=COLORS["success"] if ativa else COLORS["muted"],
+        )
 
     def _save_config(self):
         empresa = self.empresa_var.get().strip()
@@ -479,6 +518,13 @@ class ConfigPage(ctk.CTkFrame):
         if not (1 <= intervalo <= 720):
             messagebox.showerror("Erro", "Intervalo de backup deve ficar entre 1 e 720 minutos", parent=self)
             return
+        task_hora = self._task_hora_var.get().strip() or "12:00"
+        task_ativo = bool(self._task_var.get())
+        if task_ativo:
+            from src.core.scheduled_task import validar_hora
+            if not validar_hora(task_hora):
+                messagebox.showerror("Erro", "Horário da tarefa agendada inválido (use HH:MM, 24h)", parent=self)
+                return
         app_settings = {
             "notificacoes_ativas": bool(self._notificacoes_var.get()),
             "backup_intervalo_min": intervalo,
@@ -488,8 +534,23 @@ class ConfigPage(ctk.CTkFrame):
                                    or r"Z:\SEGURANÇA\NORMATECH-BACKUP",
             "rede_documentos_ativo": bool(self._rede_docs_var.get()),
             "rede_documentos_caminho": self._rede_docs_path_var.get().strip(),
+            "tarefa_agendada_ativo": task_ativo,
+            "tarefa_agendada_hora": task_hora,
         }
         save_app_settings(app_settings)
+
+        # aplica (registra/remove) a tarefa agendada do Windows
+        try:
+            from src.core import scheduled_task
+            if task_ativo:
+                if not scheduled_task.register(task_hora):
+                    messagebox.showwarning(
+                        "Aviso", "Não foi possível registrar a tarefa agendada do Windows.", parent=self)
+            elif scheduled_task.is_active():
+                scheduled_task.remove()
+            self._refresh_task_status()
+        except Exception:
+            messagebox.showwarning("Aviso", "Erro ao aplicar a tarefa agendada.", parent=self)
 
         try:
             config = CompanyConfig(

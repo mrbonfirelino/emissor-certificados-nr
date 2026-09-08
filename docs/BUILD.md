@@ -151,10 +151,17 @@ O app procura dados **ao lado do exe** (`src/utils/paths.py`):
 | `data\assinados\` | assinados exportados `{Funcionario}\` | saída do app (v1.8.0) |
 | `data\asos\` | ASOs `{Funcionario}\ASO-XXXXXX.pdf` | saída do app (v1.11.0) |
 | `data\epis\` | fichas de EPI `{Funcionario}\Ficha de EPI - dd-mm-aaaa (EPI-XXXXXX).pdf` | saída do app (v1.11.0) |
-| `data\crachas\` | crachás `{Funcionario}\CRACHA_*.pdf` + `LOTES\` | saída do app (v1.13.0) |
+| `data\crachas\` | crachás `{Funcionario}\CRACHA_*.pdf` + `LOTES\` (folha A4 com guia de corte, v1.15.0) | saída do app (v1.13.0) |
 | `templates\` | JSONs de NR + `_layout.json` + `cards\*.card.json` + `cards\pptx\` (PPTX) | **SIM** — editar e reiniciar o app |
 | `assets\` | embutidos no exe (via `_MEIPASS`) | não |
 | `CERTIFICADOS\` | legado v1.7.x — migração automática no 1º boot (v1.8.0) | migração única |
+
+**Tarefa agendada do Windows (v1.15.0):** o app pode registrar a tarefa
+`NormaTechBackup` no Task Scheduler (switch na aba Configurações → Backups).
+A tarefa executa `CertificadosNR.exe --backup` (modo headless, sem janela) —
+backup diário com o programa fechado. `schtasks /Query /TN NormaTechBackup`
+mostra o estado; remoção pelo próprio app ou `schtasks /Delete /TN
+NormaTechBackup /F`.
 
 ---
 

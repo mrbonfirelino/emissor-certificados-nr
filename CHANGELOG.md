@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.15.0] - 2026-09-08
+
+### Adicionado
+- **Crachás em folha A4**: crachás (paisagem e vertical) agora saem em folha
+  A4 com guia de corte tracejada — vários por folha (paisagem real 3/folha,
+  vertical real 4/folha); PDF individual também em A4 com o crachá centrado
+- **Tamanho reduzido 86x54mm**: opção na revisão da emissão para escalar o
+  crachá ao tamanho de cartão de crédito sem alterar o layout (mais por folha)
+- **Backup via Tarefa Agendada do Windows** (item 2.19): switch na aba
+  Configurações para ligar/desligar backup diário com o programa fechado,
+  horário configurável (padrão 12:00) e indicador de status da tarefa;
+  registra via schtasks (NormaTechBackup) executando `--backup` headless
+
+### Alterado
+- `main.py` aceita `--backup` (backup sem interface, usado pela tarefa
+  agendada); BackupManager não inicia agendador interno no modo headless
+
 ## [1.14.0] - 2026-09-05
 
 ### Adicionado

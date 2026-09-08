@@ -77,21 +77,28 @@ class Ctx:
             campos_extra="{}", pdf_path=None,
         ))
 
-    def options(self, nrs1, nrs2):
-        return {"data_emissao": date.today().isoformat(),
-                "nrs": {self.e1.id: nrs1, self.e2.id: nrs2}}
+    def options(self, nrs1, nrs2, tamanho=None):
+        opt = {"data_emissao": date.today().isoformat(),
+               "nrs": {self.e1.id: nrs1, self.e2.id: nrs2}}
+        if tamanho:
+            opt["tamanho"] = tamanho
+        return opt
 
     def restore(self):
         (badge.get_crachas_dir, badge.get_logo_path, er_mod.get_db_path) = self._orig
 
-    def gerar(self, single, output_dir=None, nrs1=None, nrs2=None, template=None):
+    def gerar(self, single, output_dir=None, nrs1=None, nrs2=None, template=None,
+              tamanho=None):
         nrs1 = nrs1 if nrs1 is not None else ["NR-10", "NR-12", "NR-35", "NR-99"]
         nrs2 = nrs2 if nrs2 is not None else ["NR-35", "NR-11"]
         return badge.generate_badges(
             [self.e1, self.e2], template or TEMPLATE, single_pdf=single,
-            options=self.options(nrs1, nrs2), output_dir=output_dir,
+            options=self.options(nrs1, nrs2, tamanho), output_dir=output_dir,
             history_repo=self.hist, aso_repo=self.aso, cracha_repo=self.cracha,
         )
+
+
+A4_W_PT, A4_H_PT = 595.28, 841.89
 
 
 def test_repo(tmp: Path):
@@ -140,18 +147,17 @@ def test_single_pdf(tmp: Path):
         paths, msgs = ctx.gerar(single=True)
         check("1 arquivo de lote", len(paths) == 1 and not msgs)
         doc = fitz.open(paths[0])
-        check("2 paginas (1 cracha/folha)", doc.page_count == 2)
+        check("lote: 2 crachas na MESMA folha A4 (3/folha)", doc.page_count == 1)
         r = doc[0].rect
-        check("pagina 120x78mm (~340.16x221.10 pts)",
-              abs(r.width - 340.16) <= 1 and abs(r.height - 221.10) <= 1)
+        check("lote: folha A4 (~595.28x841.89 pts)",
+              abs(r.width - A4_W_PT) <= 1 and abs(r.height - A4_H_PT) <= 1)
         t1 = doc[0].get_text().upper()
-        t2 = doc[1].get_text().upper()
         check("conteudo cracha 1", all(s in t1 for s in (
             "CARTÃO DE IDENTIFICAÇÃO", "JOAO PEDRO", "NR-35",
             "ASS COLABORADOR:", "CRACHA-0000", "PROIBIDO")))
         check("ASO vencimento no cracha 1", "ASO" in t1)
-        check("conteudo cracha 2 (validade vencida presente)",
-              "MARIA SILVA" in t2 and "NR-11" in t2 and "CRACHA-0000" in t2)
+        check("conteudo cracha 2 na mesma folha (validade vencida presente)",
+              "MARIA SILVA" in t1 and "NR-11" in t1)
         doc.close()
         check("gravou 2 registros", ctx.cracha.count_all() == 2)
         nrs_db = json.loads(json.dumps(ctx.cracha.get_by_employee(ctx.e1.id)[0]["nrs"]))
@@ -168,6 +174,14 @@ def test_individual(tmp: Path):
               and all(p.name.startswith("CRACHA_") for p in paths))
         check("pastas por funcionario",
               {p.parent.name for p in paths} == {"Joao Pedro", "Maria Silva"})
+        doc = fitz.open(paths[0])
+        r = doc[0].rect
+        t = doc[0].get_text().upper()
+        check("individual: folha A4 com cracha centrado",
+              doc.page_count == 1
+              and abs(r.width - A4_W_PT) <= 1 and abs(r.height - A4_H_PT) <= 1
+              and "JOAO PEDRO" in t and "CARTÃO DE IDENTIFICAÇÃO" in t)
+        doc.close()
         check("get_by_employee apos gravar",
               ctx.cracha.count_all() == 2
               and len(ctx.cracha.get_by_employee(ctx.e2.id)) == 1)
@@ -194,24 +208,23 @@ def test_preview_nao_grava(tmp: Path):
 
 
 def test_vertical(tmp: Path):
-    """Cracha retrato 7,8x12cm (CRACHA-VERTICAL) — v1.14.0."""
+    """Cracha retrato 7,8x12cm (CRACHA-VERTICAL) — v1.14.0; folha A4 v1.15.0."""
     ctx = Ctx(tmp)
     try:
         paths, msgs = ctx.gerar(single=True, template=TEMPLATE_VERTICAL)
         check("vertical: 1 arquivo de lote", len(paths) == 1 and not msgs)
         doc = fitz.open(paths[0])
-        check("vertical: 2 paginas", doc.page_count == 2)
+        check("vertical: 2 crachas na MESMA folha A4 (4/folha)", doc.page_count == 1)
         r = doc[0].rect
-        check("vertical: pagina 78x120mm (~221.10x340.16 pts)",
-              abs(r.width - 221.10) <= 1 and abs(r.height - 340.16) <= 1)
+        check("vertical: folha A4 (~595.28x841.89 pts)",
+              abs(r.width - A4_W_PT) <= 1 and abs(r.height - A4_H_PT) <= 1)
         t1 = doc[0].get_text().upper()
-        t2 = doc[1].get_text().upper()
         check("vertical: conteudo cracha 1", all(s in t1 for s in (
             "CARTÃO DE IDENTIFICAÇÃO", "JOAO PEDRO", "NR-35",
             "ASS COLABORADOR:", "CRACHA-0000", "PROIBIDO", "EMISSÃO:")))
         check("vertical: ASO no cracha 1", "ASO" in t1)
-        check("vertical: conteudo cracha 2 (vencida presente)",
-              "MARIA SILVA" in t2 and "NR-11" in t2)
+        check("vertical: conteudo cracha 2 na mesma folha (vencida presente)",
+              "MARIA SILVA" in t1 and "NR-11" in t1)
         doc.close()
         check("vertical: gravou 2 registros", ctx.cracha.count_all() == 2)
         check("vertical: nrs gravadas",
@@ -224,10 +237,14 @@ def test_vertical_individual_preview(tmp: Path):
     ctx = Ctx(tmp)
     try:
         paths, _ = ctx.gerar(single=False, template=TEMPLATE_VERTICAL)
-        check("vertical individual: 2 arquivos", len(paths) == 2
+        check("vertical individual: 2 arquivos A4", len(paths) == 2
               and all(p.name.startswith("CRACHA_") for p in paths))
         check("vertical individual: pastas por funcionario",
               {p.parent.name for p in paths} == {"Joao Pedro", "Maria Silva"})
+        doc = fitz.open(paths[0])
+        check("vertical individual: folha A4",
+              abs(doc[0].rect.width - A4_W_PT) <= 1)
+        doc.close()
 
         out = tmp / "preview"
         paths1, _ = ctx.gerar(single=True, output_dir=out, template=TEMPLATE_VERTICAL)
@@ -240,14 +257,56 @@ def test_vertical_individual_preview(tmp: Path):
         ctx.restore()
 
 
-def test_paisagem_intacta(tmp: Path):
-    """O template paisagem original continua idêntico (mesma pagina)."""
+def test_paisagem_a4(tmp: Path):
+    """Template paisagem agora sai em folha A4 (grade 3/folha), conteudo intacto."""
     ctx = Ctx(tmp)
     try:
         paths, _ = ctx.gerar(single=True)
-        r = fitz.open(paths[0])[0].rect
-        check("paisagem intacta: 120x78mm",
-              abs(r.width - 340.16) <= 1 and abs(r.height - 221.10) <= 1)
+        doc = fitz.open(paths[0])
+        r = doc[0].rect
+        t = doc[0].get_text().upper()
+        check("paisagem A4: folha A4 com 2 crachas",
+              doc.page_count == 1
+              and abs(r.width - A4_W_PT) <= 1 and abs(r.height - A4_H_PT) <= 1
+              and "JOAO PEDRO" in t and "MARIA SILVA" in t)
+        doc.close()
+    finally:
+        ctx.restore()
+
+
+def test_tamanho_reduzido(tmp: Path):
+    """Opcao tamanho 'reduzido': escala p/ caber em 86x54mm (v1.15.0)."""
+    # metricas puras
+    m_real = badge._badge_metrics(TEMPLATE, "real")
+    m_red = badge._badge_metrics(TEMPLATE, "reduzido")
+    mv_red = badge._badge_metrics(TEMPLATE_VERTICAL, "reduzido")
+    check("metrics real: escala 1.0 slot nativo",
+          m_real == (120.0, 78.0, 1.0, 120.0, 78.0))
+    check("metrics reduzido paisagem: slot ~86x54",
+          abs(m_red[3] - 83.08) < 0.5 and abs(m_red[4] - 54.0) < 0.5
+          and abs(m_red[2] - min(86 / 120, 54 / 78)) < 1e-6)
+    check("metrics reduzido retrato: slot ~54x83",
+          abs(mv_red[3] - 54.0) < 0.5 and abs(mv_red[4] - 83.08) < 0.5)
+    check("grades A4: paisagem 1x3, retrato 2x2, reduzidos 2x5/3x3",
+          badge._a4_grid(120, 78) == (1, 3)
+          and badge._a4_grid(78, 120) == (2, 2)
+          and badge._a4_grid(83.08, 54) == (2, 5)
+          and badge._a4_grid(54, 83.08) == (3, 3))
+
+    ctx = Ctx(tmp)
+    try:
+        paths, _ = ctx.gerar(single=True, tamanho="reduzido")
+        doc = fitz.open(paths[0])
+        r = doc[0].rect
+        t = doc[0].get_text().upper()
+        check("reduzido: 2 crachas na mesma folha A4", doc.page_count == 1
+              and abs(r.width - A4_W_PT) <= 1 and abs(r.height - A4_H_PT) <= 1)
+        check("reduzido: conteudo integro (texto escalado)",
+              all(s in t for s in ("CARTÃO DE IDENTIFICAÇÃO", "JOAO PEDRO",
+                                   "MARIA SILVA", "ASS COLABORADOR:", "CRACHA-0000")))
+        doc.close()
+        check("reduzido: gravou 2 registros",
+              ctx.cracha.count_all() == 2)
     finally:
         ctx.restore()
 
@@ -263,7 +322,8 @@ def main():
         test_preview_nao_grava(tmp / "t5")
         test_vertical(tmp / "t6")
         test_vertical_individual_preview(tmp / "t7")
-        test_paisagem_intacta(tmp / "t8")
+        test_paisagem_a4(tmp / "t8")
+        test_tamanho_reduzido(tmp / "t9")
 
     falhas = [n for n, ok in PASSOS if not ok]
     print(f"\n{len(PASSOS) - len(falhas)}/{len(PASSOS)} testes OK")

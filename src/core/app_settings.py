@@ -22,6 +22,8 @@ DEFAULTS: Dict[str, Any] = {
     "rede_documentos_ativo": False,
     "rede_documentos_caminho": "",
     "migracao_pastas_v2": False,
+    "tarefa_agendada_ativo": False,
+    "tarefa_agendada_hora": "12:00",
 }
 
 

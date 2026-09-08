@@ -268,8 +268,11 @@ class BlockingCardsPage(ctk.CTkFrame):
             self._grid_info.configure(text=f"PPTX — {k} cartao(oes)/folha{extra}")
             self._one_page_cb.configure(state="normal")
         elif tpl.get("template_type") == "cracha":
+            from src.core.badge_service import _a4_grid, _badge_metrics
+            w, h, _esc, sw, sh = _badge_metrics(tpl, "real")
+            cols, rows = _a4_grid(sw, sh)
             self._grid_info.configure(
-                text=f"Crachá — {tpl.get('card_width_mm', 120)}x{tpl.get('card_height_mm', 78)}mm — 1/folha — até {tpl.get('max_nrs', 8)} NRs"
+                text=f"Crachá — folha A4 — {cols*rows}/folha ({w:g}x{h:g}mm ou reduzido 86x54mm) — até {tpl.get('max_nrs', 8)} NRs"
             )
             self._one_page_var.set(False)
             self._one_page_cb.configure(state="disabled")

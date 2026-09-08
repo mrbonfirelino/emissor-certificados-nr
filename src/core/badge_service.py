@@ -449,6 +449,50 @@ def draw_badge_vertical(c: pdfcanvas.Canvas, emp, badge: dict, cracha_number: st
     c.restoreState()
 
 
+# Folha A4 com grade de crachas em tamanho real + guia de corte
+A4_W_MM, A4_H_MM = 210.0, 297.0
+A4_MARGIN_MM, A4_GAP_MM = 6.0, 3.0
+# Alvo do tamanho reduzido (cartao de credito): paisagem 86x54, retrato 54x86
+REDUZIDO_W_MM, REDUZIDO_H_MM = 86.0, 54.0
+
+
+def _badge_metrics(template: dict, tamanho: str) -> tuple:
+    """Retorna (w_native, h_native, escala, w_slot, h_slot) para a geracao.
+
+    - tamanho 'real': escala 1.0, slot = dimensao nativa do template
+    - tamanho 'reduzido': escala uniforme min(tw/w, th/h) p/ caber no alvo
+      (86x54 paisagem / 54x86 retrato) sem alterar o layout
+    """
+    w_mm = float(template.get("card_width_mm", W_MM))
+    h_mm = float(template.get("card_height_mm", H_MM))
+    if tamanho == "reduzido":
+        tw, th = (REDUZIDO_H_MM, REDUZIDO_W_MM) if h_mm > w_mm else (REDUZIDO_W_MM, REDUZIDO_H_MM)
+        escala = min(tw / w_mm, th / h_mm)
+    else:
+        escala = 1.0
+    return w_mm, h_mm, escala, w_mm * escala, h_mm * escala
+
+
+def _a4_grid(box_w: float, box_h: float) -> tuple:
+    """Colunas x linhas de crachas que cabem numa folha A4."""
+    avail_w = A4_W_MM - 2 * A4_MARGIN_MM + A4_GAP_MM
+    avail_h = A4_H_MM - 2 * A4_MARGIN_MM + A4_GAP_MM
+    cols = max(1, int(avail_w // (box_w + A4_GAP_MM)))
+    rows = max(1, int(avail_h // (box_h + A4_GAP_MM)))
+    return cols, rows
+
+
+def _draw_cut_guide(c: pdfcanvas.Canvas, x: float, y: float, w: float, h: float):
+    """Guia de corte tracejada ao redor do cracha (coordenadas em mm)."""
+    c.saveState()
+    c.setDash(2, 2)
+    c.setStrokeColor(MUTED)
+    c.setLineWidth(0.25)
+    offset = 0.5 * mm
+    c.rect(x * mm + offset, y * mm + offset, w * mm - 2 * offset, h * mm - 2 * offset)
+    c.restoreState()
+
+
 def generate_badges(
     employees: list,
     template: dict,
@@ -460,11 +504,14 @@ def generate_badges(
     cracha_repo=None,
 ) -> Tuple[List[Path], List[str]]:
     """
-    Gera crachas (1 por pagina; orientacao e tamanho vem do template:
-    card_width_mm x card_height_mm — paisagem 12x7,8 ou retrato 7,8x12).
+    Gera crachas em folha A4 (tamanho real por escala, orientacao do template).
 
-    - single_pdf=True: um PDF multipagina (lote) em data/crachas/LOTES
-    - single_pdf=False: um PDF por funcionario em data/crachas/{Func}/
+    - single_pdf=True: um PDF A4 multipagina (varios crachas por folha) em
+      data/crachas/LOTES — paisagem 3/folha, retrato 4/folha (real);
+      reduzido 86x54 cabe mais por folha
+    - single_pdf=False: um PDF A4 por funcionario (1 cracha centrado) em
+      data/crachas/{Func}/
+    - options['tamanho']: 'real' (default) ou 'reduzido' (86x54mm por escala)
     - output_dir definido (preview): NAO consome numeracao nem grava no banco
     - gravacao no banco (tabela crachas) apenas na geracao definitiva
 
@@ -480,15 +527,24 @@ def generate_badges(
     if not dados:
         return [], []
 
-    w_mm = float(template.get("card_width_mm", W_MM))
-    h_mm = float(template.get("card_height_mm", H_MM))
-    page_size = (w_mm * mm, h_mm * mm)
+    w_mm, h_mm, escala, slot_w, slot_h = _badge_metrics(template, options.get("tamanho", "real"))
     draw_fn = draw_badge_vertical if h_mm > w_mm else draw_badge
+    a4_size = (A4_W_MM * mm, A4_H_MM * mm)
     logo_path = get_logo_path()
     if not Path(logo_path).exists():
         logo_path = None
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     card_code = template.get("card_code", "CRACHA")
+
+    def _draw_at(c: pdfcanvas.Canvas, x: float, y: float, emp, badge, num):
+        """Desenha o cracha escalado com canto inferior-esquerdo em (x, y) mm."""
+        c.saveState()
+        c.translate(x * mm, y * mm)
+        if escala != 1.0:
+            c.scale(escala, escala)
+        draw_fn(c, emp, badge, num, logo_path)
+        c.restoreState()
+        _draw_cut_guide(c, x, y, slot_w, slot_h)
 
     def _numero(recordar: bool) -> str:
         if recordar:
@@ -498,16 +554,23 @@ def generate_badges(
     generated: List[Path] = []
 
     if single_pdf:
+        cols, rows = _a4_grid(slot_w, slot_h)
+        per_page = cols * rows
         lote_dir = (output_dir or (get_crachas_dir() / "LOTES"))
         lote_dir.mkdir(parents=True, exist_ok=True)
         out = lote_dir / f"CRACHAS_{card_code}_{timestamp}.pdf"
-        c = pdfcanvas.Canvas(str(out), pagesize=page_size)
+        c = pdfcanvas.Canvas(str(out), pagesize=a4_size)
         numeros = []
-        for badge in dados:
+        for i, badge in enumerate(dados):
             num = _numero(record)
             numeros.append((badge, num))
-            draw_fn(c, badge["employee"], badge, num, logo_path)
-            c.showPage()
+            on_page = i % per_page
+            col, lin = on_page % cols, on_page // cols
+            x = A4_MARGIN_MM + col * (slot_w + A4_GAP_MM)
+            y = A4_H_MM - A4_MARGIN_MM - slot_h - lin * (slot_h + A4_GAP_MM)
+            _draw_at(c, x, y, badge["employee"], badge, num)
+            if on_page == per_page - 1 or i == len(dados) - 1:
+                c.showPage()
         c.save()
         generated.append(out)
         if record:
@@ -529,8 +592,8 @@ def generate_badges(
             emp_dir.mkdir(parents=True, exist_ok=True)
             num = _numero(record)
             out = emp_dir / f"CRACHA_{_sanitize_filename(emp.nome)}_{num}.pdf"
-            c = pdfcanvas.Canvas(str(out), pagesize=page_size)
-            draw_fn(c, emp, badge, num, logo_path)
+            c = pdfcanvas.Canvas(str(out), pagesize=a4_size)
+            _draw_at(c, (A4_W_MM - slot_w) / 2, (A4_H_MM - slot_h) / 2, emp, badge, num)
             c.showPage()
             c.save()
             generated.append(out)

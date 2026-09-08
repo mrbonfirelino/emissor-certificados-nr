@@ -64,24 +64,50 @@ class BadgeReviewDialog(ctk.CTkToplevel):
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
 
-        # topo: data de emissao global
+        # topo: data de emissao global + tamanho do cartao
         top = ctk.CTkFrame(self, fg_color=COLORS["surface"], corner_radius=10)
         top.grid(row=0, column=0, sticky="ew", padx=16, pady=(16, 8))
 
+        row_data = ctk.CTkFrame(top, fg_color="transparent")
+        row_data.pack(fill="x", padx=16, pady=(12, 4))
+
         ctk.CTkLabel(
-            top, text="Data de Emissão do Crachá (dd/mm/aaaa):",
+            row_data, text="Data de Emissão do Crachá (dd/mm/aaaa):",
             font=fonts["body_bold"], text_color=COLORS["text"]
-        ).pack(side="left", padx=(16, 8), pady=12)
+        ).pack(side="left", padx=(0, 8))
 
         self._emissao_var = ctk.StringVar(value=date.today().strftime("%d/%m/%Y"))
         ctk.CTkEntry(
-            top, textvariable=self._emissao_var, width=120, font=fonts["body"]
+            row_data, textvariable=self._emissao_var, width=120, font=fonts["body"]
         ).pack(side="left", padx=(0, 16))
 
         ctk.CTkLabel(
-            top, text=f"Marque até {self.max_nrs} NRs por funcionário (somente treinamentos existentes)",
+            row_data, text=f"Marque até {self.max_nrs} NRs por funcionário (somente treinamentos existentes)",
             font=fonts["small"], text_color=COLORS["muted"]
         ).pack(side="left", padx=(0, 16))
+
+        row_tam = ctk.CTkFrame(top, fg_color="transparent")
+        row_tam.pack(fill="x", padx=16, pady=(4, 12))
+
+        ctk.CTkLabel(
+            row_tam, text="Tamanho do cartão:",
+            font=fonts["body_bold"], text_color=COLORS["text"]
+        ).pack(side="left", padx=(0, 8))
+
+        self._tamanho_var = ctk.StringVar(value="Tamanho real")
+        ctk.CTkSegmentedButton(
+            row_tam,
+            values=["Tamanho real", "Reduzido 86x54mm"],
+            variable=self._tamanho_var,
+            font=fonts["small"],
+            selected_color=COLORS["primary"],
+            selected_hover_color=COLORS["secondary"],
+        ).pack(side="left", padx=(0, 16))
+
+        ctk.CTkLabel(
+            row_tam, text="Impressão em folha A4 com guia de corte (vários por folha)",
+            font=fonts["small"], text_color=COLORS["muted"]
+        ).pack(side="left")
 
         # meio: cards por funcionario
         self._scroll = ctk.CTkScrollableFrame(self, fg_color="transparent")
@@ -243,6 +269,7 @@ class BadgeReviewDialog(ctk.CTkToplevel):
             "data_emissao": emissao_iso,
             "nrs": nrs,
             "employees": list(self.employees),
+            "tamanho": "reduzido" if self._tamanho_var.get() == "Reduzido 86x54mm" else "real",
         }
         self.destroy()
 

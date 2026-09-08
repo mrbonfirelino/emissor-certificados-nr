@@ -40,12 +40,13 @@ class BackupManager:
     recebem backup). O IntervalTrigger mantem a cadencia enquanto o app fica
     aberto."""
 
-    def __init__(self):
+    def __init__(self, start_jobs: bool = True):
         self.db_path = get_db_path()
         self.backup_dir = get_backup_dir()
         self.scheduler = BackgroundScheduler(daemon=True)
-        self._start_auto_backup()
-        self._start_periodic_backup()
+        if start_jobs:
+            self._start_auto_backup()
+            self._start_periodic_backup()
 
     def _start_auto_backup(self):
         """Backup semanal — avalia (e executa se vencido) ja no startup."""
