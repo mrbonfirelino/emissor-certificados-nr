@@ -233,8 +233,7 @@ class HistoryPage(ctk.CTkFrame):
 
         self._update_nr_options()
 
-        for widget in self.list_frame.winfo_children():
-            widget.destroy()
+        self.list_frame.clear()
 
         total = self.history_repo.count_query(
             query=query, nr_code=nr_code, data_de=data_de, data_ate=data_ate,
@@ -250,7 +249,7 @@ class HistoryPage(ctk.CTkFrame):
         tem_filtro = bool(query or nr_code or data_de or data_ate or assinado)
         if not certs:
             ctk.CTkLabel(
-                self.list_frame,
+                self.list_frame.body,
                 text="Nenhum certificado emitido" if not tem_filtro else "Nenhum resultado encontrado",
                 font=fonts["body"], text_color=COLORS["muted"]
             ).grid(row=0, column=0, pady=40, padx=20)
@@ -263,7 +262,7 @@ class HistoryPage(ctk.CTkFrame):
 
     def _create_table_header(self):
         fonts = get_fonts()
-        header = ctk.CTkFrame(self.list_frame, fg_color=COLORS["primary"], corner_radius=6, height=36)
+        header = ctk.CTkFrame(self.list_frame.body, fg_color=COLORS["primary"], corner_radius=6, height=36)
         header.grid(row=0, column=0, sticky="ew", padx=8, pady=(8, 2))
         header.grid_propagate(False)
         header.grid_columnconfigure(0, weight=2)
@@ -285,7 +284,7 @@ class HistoryPage(ctk.CTkFrame):
     def _create_cert_row(self, cert: CertificateRecord, row_idx: int, alternate: bool = False):
         fonts = get_fonts()
         bg = COLORS["background"] if alternate else "transparent"
-        row = ctk.CTkFrame(self.list_frame, fg_color=bg, corner_radius=0, height=36)
+        row = ctk.CTkFrame(self.list_frame.body, fg_color=bg, corner_radius=0, height=36)
         row.grid(row=row_idx, column=0, sticky="ew", padx=8, pady=0)
         row.grid_propagate(False)
         row.grid_columnconfigure(0, weight=2)
@@ -364,7 +363,7 @@ class HistoryPage(ctk.CTkFrame):
             btn_baixar.configure(state="disabled")
         btn_baixar.pack(side="left", padx=2)
 
-        sep = ctk.CTkFrame(self.list_frame, fg_color=COLORS["border"], height=1)
+        sep = ctk.CTkFrame(self.list_frame.body, fg_color=COLORS["border"], height=1)
         sep.grid(row=row_idx + 1, column=0, sticky="ew", padx=12, pady=0)
 
     # ── Exportacao (xlsx/csv) ────────────────────────────────

@@ -3,6 +3,7 @@ import customtkinter as ctk
 from tkinter import messagebox, filedialog
 from src.ui.styles import COLORS, get_fonts
 from src.utils.paths import get_data_dir
+from src.ui.components.scroll_frame import ScrollListFrame
 
 FUNCOES_FILE = get_data_dir() / "funcoes.json"
 
@@ -111,7 +112,7 @@ class FuncoesPage(ctk.CTkFrame):
         ).grid(row=0, column=2)
 
         # Row 2 — Lista (weight=1 preenche resto)
-        self.list_frame = ctk.CTkScrollableFrame(self, fg_color=COLORS["surface"], corner_radius=12, height=200)
+        self.list_frame = ScrollListFrame(self, fg_color=COLORS["surface"], corner_radius=12, height=200)
         self.list_frame.grid(row=2, column=0, sticky="nsew", padx=20, pady=(0, 5))
         self.list_frame.grid_columnconfigure(0, weight=1)
 
@@ -206,15 +207,14 @@ class FuncoesPage(ctk.CTkFrame):
         self._refresh_list()
 
     def _refresh_list(self):
-        for widget in self.list_frame.winfo_children():
-            widget.destroy()
+        self.list_frame.clear()
 
         fonts = get_fonts()
         visible = self._visible_items()
 
         if not visible:
             ctk.CTkLabel(
-                self.list_frame,
+                self.list_frame.body,
                 text="Nenhuma funcao encontrada" if self._filter else "Nenhuma funcao cadastrada",
                 font=fonts["body"], text_color=COLORS["muted"]
             ).grid(row=0, column=0, pady=40, padx=20)
@@ -236,7 +236,7 @@ class FuncoesPage(ctk.CTkFrame):
         self.btn_next.configure(state="normal" if self.current_page < self.total_pages else "disabled")
 
         for i, (orig_idx, func) in enumerate(page_items):
-            row = ctk.CTkFrame(self.list_frame, fg_color="transparent")
+            row = ctk.CTkFrame(self.list_frame.body, fg_color="transparent")
             row.grid(row=i, column=0, sticky="ew", pady=2, padx=8)
             row.grid_columnconfigure(0, weight=1)
 

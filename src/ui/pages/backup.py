@@ -3,6 +3,7 @@ from tkinter import messagebox, filedialog
 from src.ui.styles import COLORS, FONTS
 from src.core.backup_manager import BackupManager
 from src.core.config import verify_restore_password, has_restore_password
+from src.ui.components.scroll_frame import ScrollListFrame
 
 
 class BackupPage(ctk.CTkFrame):
@@ -83,19 +84,18 @@ class BackupPage(ctk.CTkFrame):
         ).pack(side="left")
         
         # Lista de backups
-        self.list_frame = ctk.CTkScrollableFrame(self, fg_color=COLORS["surface"], corner_radius=12)
+        self.list_frame = ScrollListFrame(self, fg_color=COLORS["surface"], corner_radius=12)
         self.list_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 20))
         self.list_frame.grid_columnconfigure(0, weight=1)
 
     def _refresh_list(self):
-        for widget in self.list_frame.winfo_children():
-            widget.destroy()
+        self.list_frame.clear()
         
         backups = self.backup_manager.list_backups()
         
         if not backups:
             ctk.CTkLabel(
-                self.list_frame,
+                self.list_frame.body,
                 text="Nenhum backup encontrado",
                 font=FONTS["body"],
                 text_color=COLORS["muted"]
@@ -103,7 +103,7 @@ class BackupPage(ctk.CTkFrame):
             return
         
         # Header
-        header = ctk.CTkFrame(self.list_frame, fg_color=COLORS["primary"], corner_radius=6)
+        header = ctk.CTkFrame(self.list_frame.body, fg_color=COLORS["primary"], corner_radius=6)
         header.pack(fill="x", padx=8, pady=(8, 4))
         header.grid_columnconfigure((0,1,2), weight=1)
         
@@ -119,8 +119,13 @@ class BackupPage(ctk.CTkFrame):
         history = HistoryRepository()
         last = history.get_backup_meta('last_auto_backup')
         if last:
+            try:
+                from datetime import datetime as _dt
+                last_br = _dt.strptime(str(last), "%Y-%m-%d %H:%M").strftime("%d/%m/%Y %H:%M")
+            except ValueError:
+                last_br = str(last)
             self.lbl_auto_status.configure(
-                text=f"Último backup automático: {last}",
+                text=f"Último backup automático: {last_br}",
                 text_color=COLORS["success"]
             )
         else:
@@ -133,7 +138,7 @@ class BackupPage(ctk.CTkFrame):
         import os
         from datetime import datetime
         
-        row = ctk.CTkFrame(self.list_frame, fg_color="transparent")
+        row = ctk.CTkFrame(self.list_frame.body, fg_color="transparent")
         row.pack(fill="x", pady=2, padx=8)
         row.grid_columnconfigure((0,1,2), weight=1)
         

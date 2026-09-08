@@ -1,7 +1,7 @@
 # Roadmap - NormaTech
 
 ## Status do Projeto
- - Versao atual: 1.18.0
+ - Versao atual: 1.19.0
 - NRs disponiveis: 17 (01, 05, 06, 09, 10, 11, 12, 17, 18, 26, 33, 34, 35 + FDS, BRIGADISTA-NR23, PTA, MOTOSERRA, MUNCK, PONTE-ROLANTE, DIR-DEFENSIVA, CIPAA)
 
 ---
@@ -268,6 +268,20 @@ Requisitos: Microsoft PowerPoint instalado na máquina (conversão via COM).
 | Itens devolvidos no PDF | Itens devolvidos não estão aparecendo na tabela geral do PDF — corrigir para exibir todos os itens | Alta | Concluído (v1.17.0) |
 | Indicador de devolução | A Ficha de EPIs deve informar claramente se o item foi devolvido ou não (status visível para o usuário) | Alta | Concluído (v1.17.0) |
 | Revisão geral da Ficha de EPIs | Rever o funcionamento atual da ficha de EPIs, que está confuso e pode gerar confusão ao usuário | Alta | Concluído (v1.17.0) |
+
+### 2.23 Correções e Melhorias Gerais (v1.18.0) (CONCLUÍDA)
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Ajuste CNH EAR | Corrigir informação de CNH EAR — EAR significa "Exerce Atividade Remunerada" | Alta | Concluído (v1.19.0) |
+| Ajuda na sidebar | Colocar na barra lateral um pequeno texto "Ajuda - F1"; ao clicar, abrir o PDF de ajuda/guia | Media | Concluído (v1.19.0) |
+| Data default ficha EPI | Corrigir campo data ao adicionar ficha de EPI — deve vir com a data atual ao invés de "-" | Alta | Concluído (v1.19.0) |
+| Scroll horizontal tabela EPI | Adicionar barra de scroll horizontal na tabela da ficha de EPIs (itens estão saindo cortados) | Media | Concluído (v1.19.0) |
+| Tabela de códigos ASO | Na tabela de importação de ASOs, utilizar códigos (A,B,C,D...) para os tipos de ASO (admissional, demissional, etc.) para evitar erros na importação | Alta | Concluído (v1.19.0) |
+| Bug janela flutuante | Corrigir bug de janela flutuando indefinidamente em listas de pesquisa — aplicar correção já feita na lista de certificados às demais | Alta | Concluído (v1.19.0) |
+| Data/Hora Home — layout | Na tela Home, deixar data e hora maiores, ao lado do logotipo/título, separados como duas colunas com uma linha preta fina no meio | Media | Concluído (v1.19.0) |
+| Backup — hora e minuto | Na tela de backup, incluir hora e minuto no texto "Último Backup automático {data}" | Media | Concluído (v1.19.0) |
+| Guia em DOCX | Alterar o guia de introdução para ser um PDF baseado em um arquivo Word (.docx), que poderá ser editado ao longo do tempo | Media | Concluído (v1.19.0) |
 
 ---
 

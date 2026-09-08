@@ -276,7 +276,7 @@ def test_pdfs(tmp: Path):
 def test_aso_importer(tmp: Path):
     import openpyxl
     import src.utils.paths as paths_mod
-    from src.utils.aso_importer import import_asos_from_excel
+    from src.utils.aso_importer import import_asos_from_excel, _parse_tipo
 
     db = make_db(tmp)
     emp_repo = EmployeeRepository(db_path=db)
@@ -284,12 +284,19 @@ def test_aso_importer(tmp: Path):
     emp_repo.create("Joao Pedro", "529.982.247-25")
     emp_repo.create("Maria Silva", None)
 
+    check("ASO codigos: A/P/M/R/D mapeiam",
+          _parse_tipo("A") == "Admissional" and _parse_tipo("p") == "Periódico"
+          and _parse_tipo("M") == "Mudança de Função"
+          and _parse_tipo("R") == "Retorno ao Trabalho"
+          and _parse_tipo("D") == "Demissional")
+
     xlsx = tmp / "asos.xlsx"
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.append(["Nome", "CPF", "Tipo de ASO", "Data do Exame", "Validade (meses)"])
     ws.append(["Joao Pedro", "529.982.247-25", "Admissional", "01/09/2026", 12])
-    ws.append(["Maria Silva", "", "periodico", "05/09/2026", ""])
+    ws.append(["Maria Silva", "", "P", "05/09/2026", ""])
+    ws.append(["Joao Pedro", "", "M", "10/09/2026", 6])
     ws.append(["Fantasma", "", "Admissional", "01/09/2026", 12])
     ws.append(["Joao Pedro", "", "Tipo Inexistente", "01/09/2026", 12])
     ws.append(["Maria Silva", "", "Admissional", "99/99/2026", 12])
@@ -303,8 +310,8 @@ def test_aso_importer(tmp: Path):
     finally:
         paths_mod.get_data_dir = orig_get_data_dir
 
-    check("import ASO: 2 criados / 3 erros",
-          len(res["criados"]) == 2 and res["erros"] == 3)
+    check("import ASO: 3 criados / 3 erros",
+          len(res["criados"]) == 3 and res["erros"] == 3)
     check("import ASO: detalhes apontam linha/motivo",
           any("Fantasma" in d for d in res["detalhes"])
           and any("tipo" in d.lower() for d in res["detalhes"])
@@ -312,11 +319,15 @@ def test_aso_importer(tmp: Path):
 
     todos = aso.get_all(limit=10)
     check("import ASO: numeros sequenciais",
-          {a["aso_number"] for a in todos} == {"ASO-000001", "ASO-000002"})
-    joao = next(a for a in todos if a["funcionario_nome"] == "Joao Pedro")
+          {a["aso_number"] for a in todos} == {"ASO-000001", "ASO-000002", "ASO-000003"})
+    joao = next(a for a in todos if a["funcionario_nome"] == "Joao Pedro"
+                and a["tipo_aso"] == "Admissional")
     maria = next(a for a in todos if a["funcionario_nome"] == "Maria Silva")
     check("import ASO: match por CPF e nome",
           joao["tipo_aso"] == "Admissional" and maria["tipo_aso"] == "Periódico")
+    check("import ASO: codigo M vira Mudança de Função",
+          any(a["tipo_aso"] == "Mudança de Função" and a["validade_meses"] == 6
+              for a in todos))
     check("import ASO: tipo normalizado e validade default",
           maria["validade_meses"] == 12)
     check("import ASO: PDFs gerados em data/asos/{pasta}",
@@ -448,6 +459,80 @@ def test_devolucao(tmp: Path):
     doc.close()
 
 
+# ── 12. Ficha EPI v1.17.0: estado por item, quebra de pagina, merge ──
+
+def test_ficha_epi_v1170(tmp: Path):
+    tmp.mkdir(parents=True, exist_ok=True)
+    import fitz
+    from src.core.epi_pdf_generator import generate_epi_pdf
+    from src.ui.components.epi_manager_dialog import _merge_devolucoes
+    from src.core.models import Employee as Emp
+
+    emp = Emp(id=1, nome="Joao Pedro", cpf="529.982.247-25", funcao="Eletricista")
+
+    # (a) estado por item no PDF da ficha
+    items = [
+        {"ca": "1234", "descricao": "Luva nitrilica", "quantidade": "5",
+         "data_entrega": "2026-09-01", "dev_quantidade": "2",
+         "dev_data": "2026-09-08"},
+        {"ca": "5678", "descricao": "Oculos amber", "quantidade": "3",
+         "data_entrega": "2026-09-01", "dev_quantidade": "3",
+         "dev_data": "2026-09-08"},
+    ]
+    ficha = tmp / "Ficha de EPI - 01-09-2026 (EPI-000001).pdf"
+    generate_epi_pdf(str(ficha), "EPI-000001", emp, "2026-09-01", items)
+    doc = fitz.open(ficha)
+    txt = doc[0].get_text()
+    check("ficha: estado parcial por item", "Devolvido: 2/5 (Parcial)" in txt)
+    check("ficha: estado total por item", "(Total)" in txt)
+    check("ficha: numero presente", "EPI-000001" in txt)
+    doc.close()
+
+    # (b) 25 itens -> quebra de pagina DURANTE A TABELA com cabecalho repetido
+    many = [{"ca": f"CA{i:04d}", "descricao": f"Equipamento de teste numero {i}",
+             "quantidade": "1", "data_entrega": "2026-09-01",
+             "dev_quantidade": "", "dev_data": ""} for i in range(1, 26)]
+    ficha2 = tmp / "ficha_25_itens.pdf"
+    generate_epi_pdf(str(ficha2), "EPI-000002", emp, "2026-09-01", many)
+    doc = fitz.open(ficha2)
+    pgs_entrega = [p.get_text().count("ENTREGA DE EQUIPAMENTO") for p in doc]
+    check("ficha 25 itens: multipagina", doc.page_count >= 2)
+    check("ficha 25 itens: cabecalho repetido", sum(1 for n in pgs_entrega if n > 0) >= 2)
+    todo = "".join(p.get_text() for p in doc)
+    check("ficha 25 itens: ultimo item presente", "Equipamento de teste numero 25" in todo)
+    doc.close()
+
+    # (c) merge de devolucoes por conteudo
+    antigos = [
+        {"ca": "111", "descricao": "Capacete", "quantidade": "2",
+         "data_entrega": "2026-09-01", "dev_quantidade": "2", "dev_data": "2026-09-05"},
+        {"ca": "222", "descricao": "Luva", "quantidade": "5",
+         "data_entrega": "2026-09-01", "dev_quantidade": "1", "dev_data": "2026-09-05"},
+        {"ca": "333", "descricao": "Bota", "quantidade": "1",
+         "data_entrega": "2026-09-01", "dev_quantidade": "1", "dev_data": "2026-09-06"},
+    ]
+    # remover item do meio (Luva)
+    novos = [dict(antigos[0], quantidade="2"), dict(antigos[2])]
+    m = _merge_devolucoes(antigos, novos)
+    check("merge: remocao do meio preserva dev dos demais",
+          m[0]["dev_quantidade"] == "2" and m[1]["dev_quantidade"] == "1"
+          and m[0]["dev_data"] == "2026-09-05" and m[1]["dev_data"] == "2026-09-06")
+
+    # reordenar mantem dev junto do item certo
+    novos2 = [dict(antigos[2]), dict(antigos[0]), dict(antigos[1])]
+    m2 = _merge_devolucoes(antigos, novos2)
+    check("merge: reordenacao mantem dev por chave",
+          m2[0]["descricao"] == "Bota" and m2[0]["dev_quantidade"] == "1"
+          and m2[1]["descricao"] == "Capacete" and m2[1]["dev_quantidade"] == "2"
+          and m2[2]["descricao"] == "Luva" and m2[2]["dev_quantidade"] == "1")
+
+    # quantidade menor que devolucao descarta dev (Capacete: dev 2 > nova qtd 1)
+    novos3 = [dict(antigos[0], quantidade="1")]
+    m3 = _merge_devolucoes(antigos, novos3)
+    check("merge: qtd menor que dev descarta dev",
+          m3[0]["dev_quantidade"] == "" and m3[0]["dev_data"] == "")
+
+
 def main():
     with tempfile.TemporaryDirectory(prefix="normatech_asoepi_",
                                      ignore_cleanup_errors=True) as td:
@@ -463,6 +548,7 @@ def main():
         test_aso_importer(tmp / "t9")
         test_aso_pdf_embedded(tmp / "t10")
         test_devolucao(tmp / "t11")
+        test_ficha_epi_v1170(tmp / "t12")
 
     falhas = [n for n, ok in PASSOS if not ok]
     print(f"\n{len(PASSOS) - len(falhas)}/{len(PASSOS)} testes OK")

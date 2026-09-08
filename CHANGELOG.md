@@ -1,5 +1,37 @@
 # Changelog
 
+## [1.19.0] - 2026-09-08
+
+### Adicionado
+- **Ajuda na sidebar (2.23)**: nova linha "Ajuda (F1)" na barra lateral — abre
+  o Guia de Introdução (mesma ação do F1 e do botão da tela inicial)
+- **Guia em DOCX editável (2.23)**: o guia agora nasce de
+  `templates/GUIA_NORMATECH.docx` — quando o arquivo existe e é mais novo que
+  o PDF, o app converte via Word (COM) automaticamente; sem Word ou sem docx,
+  cai no gerador ReportLab embutido (fallback silencioso). Para editar o guia:
+  altere o .docx no Word (ou regenere com `python tools/make_guia_docx.py`)
+- **Códigos de tipo na importação de ASOs (2.23)**: coluna Tipo aceita
+  `A` Admissional, `P` Periódico, `M` Mudança de Função, `R` Retorno ao
+  Trabalho e `D` Demissional (nomes completos continuam aceitos); modelo
+  Excel atualizado com legenda
+- **Scroll horizontal em todas as tabelas/listas** (histórico, funcionários,
+  funções, backups, cartões, ASO, fichas e diálogos de EPI): nada mais sai
+  cortado em janelas estreitas
+
+### Corrigido
+- Data de entrega na ficha de EPI voltava com "—" ao adicionar item — agora
+  vem com a data atual (2.23)
+- Dropdown do autocomplete podia ficar flutuando na tela ao fechar o diálogo
+  pai (Novo ASO etc.) — agora é destruído junto (2.23)
+- CNH E.A.R. no cadastro: legenda corrigida para "Exerce Atividade Remunerada"
+  (2.23)
+
+### Alterado
+- Tela inicial: data e hora em destaque ao lado do logotipo, separados por
+  linha divisória fina (2.23)
+- Tela de backups: "Último Backup automático" agora mostra data **e hora**
+  (2.23)
+
 ## [1.18.0] - 2026-09-08
 
 ### Adicionado

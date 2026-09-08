@@ -53,11 +53,13 @@ class EmployeeAutocomplete(ctk.CTkFrame):
         self._employees_cache: List[Employee] = []
         self._auto_close_id = None
 
-        # dropdown nunca fica orfao: fecha ao minimizar e acompanha a janela ao mover
+        # dropdown nunca fica orfao: fecha ao minimizar, acompanha a janela ao mover
+        # e e DESTRUIDO junto com a janela pai (ex.: Novo ASO em dialogo).
         try:
             top = self.winfo_toplevel()
             top.bind("<Unmap>", self._on_root_unmap, add="+")
             top.bind("<Configure>", self._on_root_configure, add="+")
+            top.bind("<Destroy>", self._on_top_destroy, add="+")
         except Exception:
             pass
 
@@ -210,6 +212,15 @@ class EmployeeAutocomplete(ctk.CTkFrame):
 
     def _on_root_unmap(self, _event=None):
         """Janela principal minimizou -> fecha o dropdown na hora."""
+        self._hide_dropdown()
+
+    def _on_top_destroy(self, event=None):
+        """Janela pai fechada -> destrói o dropdown (não fica órfão topmost)."""
+        try:
+            if event is not None and event.widget is not self.winfo_toplevel():
+                return
+        except Exception:
+            pass
         self._hide_dropdown()
 
     def _on_root_configure(self, event=None):

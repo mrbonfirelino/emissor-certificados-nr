@@ -9,6 +9,7 @@ data/GUIA_NORMATECH.pdf.
 """
 
 from pathlib import Path
+import sys
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -28,14 +29,14 @@ _SECOES = [
         "O NormaTech organiza toda a parte de segurança do trabalho da empresa: "
         "cadastro de funcionários, certificados de treinamento (NRs), vencimentos, "
         "cartões de bloqueio, crachás, ASO e fichas de EPI.",
-        "Tudo que voce emite fica salvo no computador (pasta data) e, se configurado, "
+        "Tudo que voce emite fica salvo no computador (dentro da pasta 'data') e, se configurado, "
         "tambem e copiado automaticamente para a pasta de rede da empresa.",
     ]),
     ("2. Cadastro de Funcionários", [
         "Aba Funcionarios: use Novo Funcionario para cadastrar nome, CPF, funcao, "
         "telefone, data de nascimento, tipo sanguineo, data de admissao, CTPS e CNH EAR.",
         "A foto 3x4 e obrigatoria para cartoes de bloqueio e crachas — use Importar Fotos "
-        "para enviar varias de uma vez (nome o arquivo com o nome ou CPF do funcionario).",
+        "para enviar varias de uma vez (nomeie o arquivo (Foto) com o CPF do funcionario antes de importar).",
         "O botao Docs guarda documentos do funcionario (CNH, certificados, qualquer arquivo "
         "ate 50MB). O botao EPI abre as fichas de EPI dele.",
         "Importar/Exportar Excel: a planilha modelo esta na pasta MODELOS DE IMPORTACAO "
@@ -170,9 +171,57 @@ def guia_path() -> Path:
     return get_data_dir() / "GUIA_NORMATECH.pdf"
 
 
+def guia_docx_path() -> Path:
+    """Fonte editavel do guia (templates/GUIA_NORMATECH.docx)."""
+    from src.utils.paths import get_templates_dir
+    return get_templates_dir() / "GUIA_NORMATECH.docx"
+
+
+def _converter_docx_para_pdf(docx_path: Path, pdf_path: Path):
+    """Converte o DOCX do guia em PDF usando o Microsoft Word (COM).
+
+    Levanta excecao se o Word nao estiver instalado — o chamador faz
+    fallback para o PDF interno (ReportLab).
+    """
+    import comtypes.client
+
+    word = comtypes.client.CreateObject("Word.Application")
+    word.Visible = False
+    try:
+        doc = word.Documents.Open(str(docx_path), ReadOnly=True)
+        try:
+            doc.SaveAs2(str(pdf_path), FileFormat=17)  # 17 = wdFormatPDF
+        finally:
+            doc.Close(False)
+    finally:
+        word.Quit()
+
+
 def garantir_guia() -> Path:
-    """Gera o guia se ainda nao existe e retorna o caminho."""
+    """Garante o PDF do guia e retorna o caminho.
+
+    Se existir templates/GUIA_NORMATECH.docx (v1.19.0), converte via Word
+    (regenerando quando o DOCX for mais novo que o PDF). Sem Word, ou sem
+    DOCX, usa o PDF interno (ReportLab) como fallback.
+    """
     path = guia_path()
+    docx = guia_docx_path()
+    if docx.exists():
+        desatualizado = (
+            not path.exists()
+            or docx.stat().st_mtime > path.stat().st_mtime
+        )
+        if desatualizado:
+            try:
+                _converter_docx_para_pdf(docx, path)
+                return path
+            except Exception:
+                from src.utils.error_log import log_error
+                log_error("guia-docx-word", sys.exc_info()[1])
+                if path.exists():
+                    return path  # PDF antigo ainda serve
+        else:
+            return path
     if not path.exists():
         generate_guia_pdf(path)
     return path

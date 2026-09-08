@@ -1,8 +1,13 @@
 """Gera o PDF da Ficha de EPI (Entrega e Devolucao de Equipamentos).
 
-Formato A4 com tabela dupla: entrega (CA/Descalcao/Qtde/Data/Visto) e
-devolucao (Qtde/Data/Visto). Celas de visto ficam em branco para assinatura
+Formato A4 com tabela dupla: entrega (CA/Descricao/Qtde/Data/Visto) e
+devolucao (Qtde/Data/Visto). Celulas de visto ficam em branco para assinatura
 de punho. Regeneravel a cada edicao dos itens.
+
+v1.17.0: linha de item com 11mm (dado + estado da devolucao + separador sem
+sobreposicao), cabecalho de colunas em faixa propria, estado por item
+(Total/Parcial) destacado, linhas em branco dinamicas e quebra de pagina com
+repeticao do cabecalho da tabela.
 """
 from datetime import date
 from reportlab.lib.pagesizes import A4
@@ -14,6 +19,8 @@ TEXT = "#333333"
 MUTED = "#999999"
 BORDER = "#CCCCCC"
 ZEBRA = "#F2F5F8"
+SUCCESS = "#2E7D32"
+WARNING = "#BF5300"
 
 # larguras das colunas de entrega (mm) — total ~180
 COL_CA = 24 * mm
@@ -21,7 +28,9 @@ COL_DESC = 74 * mm
 COL_QTDE = 16 * mm
 COL_DATA = 26 * mm
 COL_VISTO = 40 * mm
-LINHAS_EXTRAS = 6
+LINHAS_MINIMAS = 6          # total de linhas (itens + brancas) no minimo
+PASSO_ITEM = 11 * mm        # dado + linha de devolucao + separador
+PASSO_BRANCO = 7 * mm
 
 
 def _br(iso: str) -> str:
@@ -30,25 +39,24 @@ def _br(iso: str) -> str:
     return iso or ""
 
 
-def generate_epi_pdf(output_path: str, epi_number: str, employee, data_emissao: str,
-                     items: list) -> str:
-    """Gera/regenera o PDF da ficha. items: [{ca, descricao, quantidade,
-    data_entrega, dev_quantidade, dev_data}]. Retorna o caminho."""
-    from src.utils.paths import get_logo_path
+def _estado(item) -> str:
+    """Pendente / Total / Parcial conforme dev_quantidade vs quantidade."""
+    qtd = str(item.get("quantidade", "")).strip()
+    dev = str(item.get("dev_quantidade", "")).strip()
+    if not dev:
+        return ""
+    if qtd and dev == qtd:
+        return "Total"
+    return "Parcial"
 
+
+def _cabecalho_pagina(c, W, H, margem, empresa):
+    logo = None
     try:
-        from src.core.config import load_company_config
-        cfg = load_company_config()
-        empresa = cfg.empresa_nome if cfg else "Configurar empresa em Configuracoes"
+        from src.utils.paths import get_logo_path
+        logo = get_logo_path()
     except Exception:
-        empresa = "Configurar empresa em Configuracoes"
-
-    c = pdfcanvas.Canvas(output_path, pagesize=A4)
-    W, H = A4
-    margem = 15 * mm
-
-    # ── Cabecalho ──
-    logo = get_logo_path()
+        logo = None
     if logo and logo.exists():
         try:
             from reportlab.lib.utils import ImageReader
@@ -62,6 +70,34 @@ def generate_epi_pdf(output_path: str, epi_number: str, employee, data_emissao: 
     c.setFont("Helvetica", 8)
     c.setFillColor(MUTED)
     c.drawRightString(W - margem, H - margem - 17 * mm, "Ficha de EPI — NR-6")
+
+
+def _rodape(c, W, margem, numero: str):
+    c.setFont("Helvetica", 7)
+    c.setFillColor("#CCCCCC")
+    c.drawRightString(W - margem, margem / 2, numero)
+    c.drawString(margem, margem / 2, date.today().strftime("Emitido em %d/%m/%Y"))
+
+
+def generate_epi_pdf(output_path: str, epi_number: str, employee, data_emissao: str,
+                     items: list) -> str:
+    """Gera/regenera o PDF da ficha. items: [{ca, descricao, quantidade,
+    data_entrega, dev_quantidade, dev_data}]. Retorna o caminho."""
+    try:
+        from src.core.config import load_company_config
+        cfg = load_company_config()
+        empresa = cfg.empresa_nome if cfg else "Configurar empresa em Configuracoes"
+    except Exception:
+        empresa = "Configurar empresa em Configuracoes"
+
+    c = pdfcanvas.Canvas(output_path, pagesize=A4)
+    W, H = A4
+    margem = 15 * mm
+    total_w = COL_CA + COL_DESC + COL_QTDE + COL_DATA + COL_VISTO
+    limite = margem + 12 * mm          # zona do rodape reservada
+
+    # ── Cabecalho da pagina 1 ──
+    _cabecalho_pagina(c, W, H, margem, empresa)
 
     # ── Titulo ──
     y = H - margem - 30 * mm
@@ -85,7 +121,6 @@ def generate_epi_pdf(output_path: str, epi_number: str, employee, data_emissao: 
 
     # ── Tabela ──
     y -= 14 * mm
-    total_w = COL_CA + COL_DESC + COL_QTDE + COL_DATA + COL_VISTO
 
     def cabecalho_grupo(yy, titulo):
         c.setFillColor(PRIMARY)
@@ -95,8 +130,11 @@ def generate_epi_pdf(output_path: str, epi_number: str, employee, data_emissao: 
         c.drawString(margem + 2 * mm, yy - 5 * mm, titulo)
 
     def linha_colunas(yy):
+        """Cabecalho das colunas em faixa propria (nao cola na faixa azul)."""
         cols = [("C.A.", COL_CA), ("Descricao do Material", COL_DESC),
                 ("Qtde", COL_QTDE), ("Data", COL_DATA), ("Visto Empregado", COL_VISTO)]
+        c.setFillColor(ZEBRA)
+        c.rect(margem, yy - 4 * mm, total_w, 6 * mm, fill=1, stroke=0)
         x = margem
         c.setStrokeColor(BORDER)
         c.setLineWidth(0.5)
@@ -104,13 +142,21 @@ def generate_epi_pdf(output_path: str, epi_number: str, employee, data_emissao: 
         c.setFont("Helvetica-Bold", 8)
         c.setFillColor(TEXT)
         for nome, w in cols:
-            c.drawCentredString(x + w / 2, yy, nome)
+            c.drawCentredString(x + w / 2, yy - 1 * mm, nome)
             x += w
 
+    def abre_tabela(yy):
+        """Faixa do grupo + cabecalho de colunas; retorna y da primeira linha."""
+        cabecalho_grupo(yy, "ENTREGA DE EQUIPAMENTO")
+        yy -= 7 * mm
+        linha_colunas(yy)
+        return yy - 4 * mm
+
     def linha_dados(yy, item, zebra: bool):
+        """Linha de 11mm: dado + estado da devolucao + separador."""
         if zebra:
             c.setFillColor(ZEBRA)
-            c.rect(margem, yy - 4 * mm, total_w, 6.5 * mm, fill=1, stroke=0)
+            c.rect(margem, yy - 3 * mm, total_w, 7 * mm, fill=1, stroke=0)
         c.setFont("Helvetica", 8)
         c.setFillColor(TEXT)
         x = margem
@@ -123,37 +169,60 @@ def generate_epi_pdf(output_path: str, epi_number: str, employee, data_emissao: 
             else:
                 c.drawCentredString(x + w / 2, yy, str(val))
             x += w
-        # devolucao na mesma linha (meio tom, abaixo)
-        c.setFont("Helvetica-Oblique", 7)
-        c.setFillColor(MUTED)
-        dev = []
-        if item.get("dev_quantidade"):
-            dev.append(f"Devolveu: {item['dev_quantidade']}")
-        if item.get("dev_data"):
-            dev.append(f"em {_br(item['dev_data'])}")
-        if dev:
-            c.drawCentredString(margem + total_w - (COL_QTDE + COL_DATA + COL_VISTO) / 2 - COL_VISTO / 2,
-                                yy - 8 * mm, "  |  ".join(dev))
+        # estado da devolucao destacado abaixo do dado
+        est = _estado(item)
+        if est:
+            cor = SUCCESS if est == "Total" else WARNING
+            txt = f"Devolvido: {item.get('dev_quantidade', '')}/{item.get('quantidade', '')} ({est})"
+            if item.get("dev_data"):
+                txt += f"  em {_br(item['dev_data'])}"
+            c.setFont("Helvetica-Bold", 7)
+            c.setFillColor(cor)
+            c.drawCentredString(margem + total_w - (COL_VISTO + COL_DATA + COL_QTDE) / 2,
+                                yy - 7 * mm, txt)
         c.setStrokeColor(BORDER)
-        c.line(margem, yy - 11 * mm, margem + total_w, yy - 11 * mm)
+        c.setLineWidth(0.4)
+        c.line(margem, yy - 10 * mm, margem + total_w, yy - 10 * mm)
 
-    # grupo ENTREGA
-    cabecalho_grupo(y, "ENTREGA DE EQUIPAMENTO")
-    y -= 7 * mm
-    linha_colunas(y)
-    y -= 4 * mm
-    # altura base das linhas: 11mm (espaco p/ devolucao manuscrita)
+    def linha_branca(yy, zebra: bool):
+        if zebra:
+            c.setFillColor(ZEBRA)
+            c.rect(margem, yy - 3 * mm, total_w, 7 * mm, fill=1, stroke=0)
+        c.setStrokeColor(BORDER)
+        c.setLineWidth(0.4)
+        c.line(margem, yy - 3 * mm, margem + total_w, yy - 3 * mm)
+
+    def nova_pagina_tabela():
+        _rodape(c, W, margem, epi_number)
+        c.showPage()
+        _cabecalho_pagina(c, W, H, margem, empresa)
+        return abre_tabela(H - margem - 18 * mm)
+
+    y = abre_tabela(y)
+
     itens = list(items or [])
     for idx, item in enumerate(itens):
-        y -= 7 * mm
+        if y - PASSO_ITEM < limite:
+            y = nova_pagina_tabela()
+        y -= PASSO_ITEM
         linha_dados(y, item, idx % 2 == 1)
-    # linhas em branco para preenchimento manual
-    for idx in range(LINHAS_EXTRAS):
-        y -= 7 * mm
-        linha_dados(y, {}, (len(itens) + idx) % 2 == 1)
-    y -= 7 * mm
 
-    # grupo DEVOLUCAO
+    # linhas em branco dinamicas (minimo LINHAS_MINIMAS no total)
+    for idx in range(max(0, LINHAS_MINIMAS - len(itens))):
+        if y - PASSO_BRANCO < limite:
+            y = nova_pagina_tabela()
+        y -= PASSO_BRANCO
+        linha_branca(y, (len(itens) + idx) % 2 == 1)
+    y -= 4 * mm
+
+    # grupo DEVOLUCAO (manual) — quebra se nao couber grupo + assinaturas
+    precisa = 7 * mm + 4 * mm + 6 * 8 * mm + 24 * mm + 8 * mm
+    if y - precisa < limite:
+        _rodape(c, W, margem, epi_number)
+        c.showPage()
+        _cabecalho_pagina(c, W, H, margem, empresa)
+        y = H - margem - 18 * mm
+
     cabecalho_grupo(y, "DEVOLUCAO DE EQUIPAMENTO")
     y -= 7 * mm
     cols_dev = [("Qtde", COL_QTDE + COL_CA), ("Data", COL_DATA),
@@ -164,7 +233,7 @@ def generate_epi_pdf(output_path: str, epi_number: str, employee, data_emissao: 
     c.setFont("Helvetica-Bold", 8)
     c.setFillColor(TEXT)
     for nome, w in cols_dev:
-        c.drawCentredString(x + w / 2, y, nome)
+        c.drawCentredString(x + w / 2, y - 1 * mm, nome)
         x += w
     for idx in range(6):
         y -= 8 * mm
@@ -175,6 +244,11 @@ def generate_epi_pdf(output_path: str, epi_number: str, employee, data_emissao: 
         c.line(margem, y - 4 * mm, margem + total_w, y - 4 * mm)
 
     # ── Assinaturas ──
+    if y - 24 * mm < limite:
+        _rodape(c, W, margem, epi_number)
+        c.showPage()
+        _cabecalho_pagina(c, W, H, margem, empresa)
+        y = H - margem - 24 * mm
     y -= 24 * mm
     c.setStrokeColor(TEXT)
     c.setLineWidth(0.6)
@@ -186,12 +260,7 @@ def generate_epi_pdf(output_path: str, epi_number: str, employee, data_emissao: 
     c.drawCentredString(margem + ass_w / 2, y - 5 * mm, "Assinatura do Empregado")
     c.drawCentredString(W - margem - ass_w / 2, y - 5 * mm, "Responsavel pela Entrega")
 
-    # ── Rodape ──
-    c.setFont("Helvetica", 7)
-    c.setFillColor("#CCCCCC")
-    c.drawRightString(W - margem, margem / 2, epi_number)
-    c.drawString(margem, margem / 2, date.today().strftime("Emitido em %d/%m/%Y"))
-
+    _rodape(c, W, margem, epi_number)
     c.showPage()
     c.save()
     return output_path
@@ -204,8 +273,6 @@ def generate_devolucao_pdf(output_path: str, epi_number: str, employee,
     items: mesma lista da ficha; usa dev_quantidade/dev_data de cada item.
     Retorna o caminho.
     """
-    from src.utils.paths import get_logo_path
-
     try:
         from src.core.config import load_company_config
         cfg = load_company_config()
@@ -216,22 +283,17 @@ def generate_devolucao_pdf(output_path: str, epi_number: str, employee,
     c = pdfcanvas.Canvas(output_path, pagesize=A4)
     W, H = A4
     margem = 15 * mm
+    limite = margem + 12 * mm
 
-    # ── Cabecalho ──
-    logo = get_logo_path()
-    if logo and logo.exists():
-        try:
-            from reportlab.lib.utils import ImageReader
-            c.drawImage(ImageReader(str(logo)), margem, H - margem - 16 * mm,
-                        width=26 * mm, height=16 * mm, mask='auto', preserveAspectRatio=True)
-        except Exception:
-            pass
-    c.setFillColor(PRIMARY)
-    c.setFont("Helvetica-Bold", 13)
-    c.drawRightString(W - margem, H - margem - 12 * mm, empresa)
-    c.setFont("Helvetica", 8)
-    c.setFillColor(MUTED)
-    c.drawRightString(W - margem, H - margem - 17 * mm, "Ficha de EPI — NR-6")
+    d_ca = 24 * mm
+    d_desc = 74 * mm
+    d_qe = 20 * mm
+    d_qd = 24 * mm
+    d_est = 38 * mm
+    total_w = d_ca + d_desc + d_qe + d_qd + d_est
+
+    # ── Cabecalho da pagina 1 ──
+    _cabecalho_pagina(c, W, H, margem, empresa)
 
     # ── Titulo ──
     y = H - margem - 30 * mm
@@ -255,65 +317,75 @@ def generate_devolucao_pdf(output_path: str, epi_number: str, employee,
 
     # ── Tabela de itens ──
     y -= 14 * mm
-    d_ca = 24 * mm
-    d_desc = 74 * mm
-    d_qe = 20 * mm
-    d_qd = 24 * mm
-    d_est = 38 * mm
-    total_w = d_ca + d_desc + d_qe + d_qd + d_est
 
-    def _estado(item) -> str:
-        qtd = str(item.get("quantidade", "")).strip()
-        dev = str(item.get("dev_quantidade", "")).strip()
-        if not dev:
-            return "Pendente"
-        if qtd and dev == qtd:
-            return "Total"
-        return "Parcial"
+    def abre_tabela(yy):
+        c.setFillColor(PRIMARY)
+        c.rect(margem, yy - 7 * mm, total_w, 7 * mm, fill=1, stroke=0)
+        c.setFillColor("#FFFFFF")
+        c.setFont("Helvetica-Bold", 9)
+        c.drawString(margem + 2 * mm, yy - 5 * mm, "ITENS DEVOLVIDOS")
+        yy -= 7 * mm
+        cols = [("C.A.", d_ca), ("Descricao do Material", d_desc),
+                ("Qtde Entregue", d_qe), ("Qtde Devolvida", d_qd), ("Estado", d_est)]
+        x = margem
+        c.setFillColor(ZEBRA)
+        c.rect(margem, yy - 4 * mm, total_w, 6 * mm, fill=1, stroke=0)
+        c.setStrokeColor(BORDER)
+        c.setLineWidth(0.5)
+        c.line(margem, yy - 4 * mm, margem + total_w, yy - 4 * mm)
+        c.setFont("Helvetica-Bold", 8)
+        c.setFillColor(TEXT)
+        for nome, w in cols:
+            c.drawCentredString(x + w / 2, yy - 1 * mm, nome)
+            x += w
+        return yy - 4 * mm
 
-    c.setFillColor(PRIMARY)
-    c.rect(margem, y - 7 * mm, total_w, 7 * mm, fill=1, stroke=0)
-    c.setFillColor("#FFFFFF")
-    c.setFont("Helvetica-Bold", 9)
-    c.drawString(margem + 2 * mm, y - 5 * mm, "ITENS DEVOLVIDOS")
+    def nova_pagina_tabela():
+        _rodape(c, W, margem, epi_number)
+        c.showPage()
+        _cabecalho_pagina(c, W, H, margem, empresa)
+        return abre_tabela(H - margem - 18 * mm)
 
-    y -= 7 * mm
-    cols = [("C.A.", d_ca), ("Descricao do Material", d_desc),
-            ("Qtde Entregue", d_qe), ("Qtde Devolvida", d_qd), ("Estado", d_est)]
-    x = margem
-    c.setStrokeColor(BORDER)
-    c.setLineWidth(0.5)
-    c.line(margem, y - 4 * mm, margem + total_w, y - 4 * mm)
-    c.setFont("Helvetica-Bold", 8)
-    c.setFillColor(TEXT)
-    for nome, w in cols:
-        c.drawCentredString(x + w / 2, y, nome)
-        x += w
-    y -= 4 * mm
+    y = abre_tabela(y)
 
     itens = list(items or [])
     for idx, item in enumerate(itens):
-        y -= 7 * mm
+        if y - 8 * mm < limite:
+            y = nova_pagina_tabela()
+        y -= 8 * mm
         if idx % 2 == 1:
             c.setFillColor(ZEBRA)
             c.rect(margem, y - 4 * mm, total_w, 7 * mm, fill=1, stroke=0)
         c.setFont("Helvetica", 8)
         c.setFillColor(TEXT)
         x = margem
+        est = _estado(item) or "Pendente"
         vals = [item.get("ca", ""), str(item.get("descricao", ""))[:48],
                 item.get("quantidade", ""), item.get("dev_quantidade", "") or "-",
-                _estado(item)]
+                est]
         widths = [d_ca, d_desc, d_qe, d_qd, d_est]
-        for val, w in zip(vals, widths):
+        for i, (val, w) in enumerate(zip(vals, widths)):
             if w == d_desc:
                 c.drawString(x + 2 * mm, y, str(val))
             else:
+                if i == 4:
+                    c.setFont("Helvetica-Bold", 8)
+                    c.setFillColor(SUCCESS if est == "Total"
+                                   else WARNING if est == "Parcial" else MUTED)
                 c.drawCentredString(x + w / 2, y, str(val))
+                if i == 4:
+                    c.setFont("Helvetica", 8)
+                    c.setFillColor(TEXT)
             x += w
         c.setStrokeColor(BORDER)
         c.line(margem, y - 4 * mm, margem + total_w, y - 4 * mm)
 
     # ── Assinaturas ──
+    if y - 26 * mm < limite:
+        _rodape(c, W, margem, epi_number)
+        c.showPage()
+        _cabecalho_pagina(c, W, H, margem, empresa)
+        y = H - margem - 24 * mm
     y -= 26 * mm
     c.setStrokeColor(TEXT)
     c.setLineWidth(0.6)
@@ -325,12 +397,7 @@ def generate_devolucao_pdf(output_path: str, epi_number: str, employee,
     c.drawCentredString(margem + ass_w / 2, y - 5 * mm, "Assinatura do Empregado")
     c.drawCentredString(W - margem - ass_w / 2, y - 5 * mm, "Responsavel pelo Recebimento")
 
-    # ── Rodape ──
-    c.setFont("Helvetica", 7)
-    c.setFillColor("#CCCCCC")
-    c.drawRightString(W - margem, margem / 2, epi_number)
-    c.drawString(margem, margem / 2, date.today().strftime("Emitido em %d/%m/%Y"))
-
+    _rodape(c, W, margem, epi_number)
     c.showPage()
     c.save()
     return output_path

@@ -13,6 +13,7 @@ from tkinter import messagebox, filedialog
 import customtkinter as ctk
 
 from src.ui.styles import COLORS, get_fonts
+from src.ui.components.scroll_frame import ScrollListFrame
 
 
 def _br(iso: str) -> str:
@@ -64,6 +65,44 @@ def _resolver_devolucao(items, escolhas, data_iso: str):
             novo["dev_data"] = ""
         novos.append(novo)
     return novos
+
+
+def _merge_devolucoes(antigos, novos):
+    """Preserva devolucoes ao editar itens da ficha por CONTEUDO (v1.17.0).
+
+    Casa cada item novo com o antigo pela chave CA+Descricao; a devolucao do
+    antigo e mantida apenas se ainda valida para a nova quantidade. Itens
+    removidos ou renomeados perdem a devolucao (registro historico fica nos
+    termos de devolucao ja emitidos em PDF).
+    """
+    def _chave(ca, desc):
+        return f"{str(ca or '').strip().upper()}|{str(desc or '').strip().upper()}"
+
+    pendentes = {}
+    for ant in antigos or []:
+        pendentes.setdefault(
+            _chave(ant.get("ca"), ant.get("descricao")), []).append(ant)
+
+    merged = []
+    for it in novos or []:
+        novo = {
+            "ca": it.get("ca", ""),
+            "descricao": it.get("descricao", ""),
+            "quantidade": it.get("quantidade", ""),
+            "data_entrega": it.get("data_entrega", ""),
+            "dev_quantidade": "",
+            "dev_data": "",
+        }
+        fila = pendentes.get(_chave(novo["ca"], novo["descricao"]))
+        if fila:
+            ant = fila.pop(0)
+            dev = str(ant.get("dev_quantidade", "")).strip()
+            qtd = str(novo.get("quantidade") or "0").strip()
+            if dev.isdigit() and 0 < int(dev) <= (int(qtd) if qtd.isdigit() else 0):
+                novo["dev_quantidade"] = dev
+                novo["dev_data"] = ant.get("dev_data", "")
+        merged.append(novo)
+    return merged
 
 
 def _pasta_funcionario(employee) -> str:
@@ -147,11 +186,27 @@ class EpiManagerDialog(ctk.CTkToplevel):
 
         n_docs = repo.count_docs(ficha["id"])
         n_items = len(ficha.get("items") or [])
-        ctk.CTkLabel(row, text=f"{n_items} item(ns) | {n_docs} anexo(s)", font=fonts["small"],
+
+        com_dev = [it for it in (ficha.get("items") or [])
+                   if str(it.get("dev_quantidade", "")).strip().isdigit()
+                   and int(it["dev_quantidade"]) > 0]
+        tudo = bool(com_dev) and len(com_dev) == n_items and all(
+            str(it["dev_quantidade"]).strip() == str(it["quantidade"]).strip() for it in com_dev
+        )
+        dev_txt = "tudo devolvido" if tudo else ("devolucao parcial" if com_dev else "sem devolucao")
+        ctk.CTkLabel(row, text=f"{n_items} item(ns) | {dev_txt} | {n_docs} anexo(s)", font=fonts["small"],
                      text_color=COLORS["text_secondary"]).grid(row=0, column=3, padx=6)
+        if tudo:
+            ctk.CTkLabel(row, text="TUDO DEVOLVIDO", font=fonts["tiny"],
+                         text_color=COLORS["success"], fg_color="#E6F2E6", corner_radius=4
+                         ).grid(row=0, column=4, padx=4)
+        elif com_dev:
+            ctk.CTkLabel(row, text="PARCIAL", font=fonts["tiny"],
+                         text_color=COLORS["warning"], fg_color="#FDF3E3", corner_radius=4
+                         ).grid(row=0, column=4, padx=4)
 
         btns = ctk.CTkFrame(row, fg_color="transparent")
-        btns.grid(row=0, column=4, sticky="e", padx=8)
+        btns.grid(row=0, column=5, sticky="e", padx=8)
         ctk.CTkButton(btns, text="PDF", width=40, height=24, font=fonts["small"],
                       fg_color=COLORS["secondary"], hover_color=COLORS["primary"],
                       command=lambda f=ficha: self._abrir_pdf(f)).pack(side="left", padx=2)
@@ -265,7 +320,7 @@ class EpiItemsDialog(ctk.CTkToplevel):
             ctk.CTkLabel(cab, text=texto, font=fonts["small_bold"],
                          text_color=COLORS["surface"], width=w).grid(row=0, column=col, padx=4)
 
-        self.scroll = ctk.CTkScrollableFrame(self, fg_color="transparent")
+        self.scroll = ScrollListFrame(self, fg_color="transparent")
         self.scroll.grid(row=2, column=0, sticky="nsew", padx=20, pady=6)
         for col in range(5):
             self.scroll.grid_columnconfigure(col, weight=0)
@@ -295,7 +350,7 @@ class EpiItemsDialog(ctk.CTkToplevel):
     def _add_linha(self, item=None):
         fonts = get_fonts()
         idx = len(self.linhas)
-        frame = ctk.CTkFrame(self.scroll, fg_color=COLORS["surface"] if idx % 2 == 0 else "transparent",
+        frame = ctk.CTkFrame(self.scroll.body,fg_color=COLORS["surface"] if idx % 2 == 0 else "transparent",
                              corner_radius=4)
         frame.grid(row=idx, column=0, sticky="ew", pady=1, columnspan=5)
 
@@ -304,7 +359,9 @@ class EpiItemsDialog(ctk.CTkToplevel):
         ca_var = ctk.StringVar(value=item.get("ca", ""))
         desc_var = ctk.StringVar(value=item.get("descricao", ""))
         qtde_var = ctk.StringVar(value=item.get("quantidade", ""))
-        ent_var = ctk.StringVar(value=_br(item.get("data_entrega", "")) or hoje)
+        ent_var = ctk.StringVar(
+            value=_br(item["data_entrega"]) if item.get("data_entrega") else hoje
+        )
 
         ctk.CTkEntry(frame, textvariable=ca_var, width=84, height=28, font=fonts["small"]).grid(row=0, column=0, padx=3, pady=2)
         ctk.CTkEntry(frame, textvariable=desc_var, width=294, height=28, font=fonts["small"]).grid(row=0, column=1, padx=3, pady=2)
@@ -359,20 +416,9 @@ class EpiItemsDialog(ctk.CTkToplevel):
             ):
                 return
 
-        # edit: preserva devolucoes registradas por indice (v1.16.0)
+        # edit: preserva devolucoes por CONTEUDO (chave ca+descricao) — v1.17.0
         if self.ficha:
-            antigos = self.ficha.get("items") or []
-            merged = []
-            for i, it in enumerate(itens):
-                antigo = antigos[i] if i < len(antigos) else {}
-                merged.append({
-                    **antigo,
-                    "ca": it["ca"],
-                    "descricao": it["descricao"],
-                    "quantidade": it["quantidade"],
-                    "data_entrega": it["data_entrega"],
-                })
-            itens = merged
+            itens = _merge_devolucoes(self.ficha.get("items") or [], itens)
 
         pasta = _pasta_funcionario(self.employee)
         try:
@@ -463,7 +509,7 @@ class DevolucaoDialog(ctk.CTkToplevel):
         ctk.CTkLabel(top, text="Marque Total, Parcial ou Pendente para cada item.",
                      font=fonts["small"], text_color=COLORS["muted"]).pack(side="left", padx=(16, 12))
 
-        self.scroll = ctk.CTkScrollableFrame(self, fg_color="transparent")
+        self.scroll = ScrollListFrame(self, fg_color="transparent")
         self.scroll.grid(row=2, column=0, sticky="nsew", padx=20, pady=6)
         self.scroll.grid_columnconfigure(0, weight=1)
 
@@ -480,14 +526,14 @@ class DevolucaoDialog(ctk.CTkToplevel):
         self._linhas = []  # {modo_var, qtde_var, frame_qtde}
         itens = ficha.get("items") or []
         if not itens:
-            ctk.CTkLabel(self.scroll, text="Esta ficha nao tem itens.",
+            ctk.CTkLabel(self.scroll.body, text="Esta ficha nao tem itens.",
                          font=fonts["body"], text_color=COLORS["muted"]).grid(row=0, column=0, pady=24)
         for i, it in enumerate(itens):
             self._add_linha(it, i)
 
     def _add_linha(self, item, idx):
         fonts = get_fonts()
-        frame = ctk.CTkFrame(self.scroll, fg_color=COLORS["surface"] if idx % 2 == 0 else "transparent",
+        frame = ctk.CTkFrame(self.scroll.body,fg_color=COLORS["surface"] if idx % 2 == 0 else "transparent",
                              corner_radius=4)
         frame.grid(row=idx, column=0, sticky="ew", pady=1)
         frame.grid_columnconfigure(0, weight=1)
@@ -643,7 +689,7 @@ class _EpiDocsDialog(ctk.CTkToplevel):
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
-        self.scroll = ctk.CTkScrollableFrame(self, fg_color=COLORS["surface"], corner_radius=10)
+        self.scroll = ScrollListFrame(self, fg_color=COLORS["surface"], corner_radius=10)
         self.scroll.grid(row=0, column=0, sticky="nsew", padx=16, pady=16)
         self.scroll.grid_columnconfigure(0, weight=1)
 
@@ -654,15 +700,14 @@ class _EpiDocsDialog(ctk.CTkToplevel):
 
     def _refresh(self):
         fonts = get_fonts()
-        for w in self.scroll.winfo_children():
-            w.destroy()
+        self.scroll.clear()
         docs = self.repo.list_docs(self.ficha["id"])
         if not docs:
-            ctk.CTkLabel(self.scroll, text="Nenhuma digitalizacao anexada.",
+            ctk.CTkLabel(self.scroll.body, text="Nenhuma digitalizacao anexada.",
                          font=fonts["body"], text_color=COLORS["muted"]).grid(row=0, column=0, pady=24)
             return
         for i, doc in enumerate(docs):
-            row = ctk.CTkFrame(self.scroll, fg_color="transparent")
+            row = ctk.CTkFrame(self.scroll.body,fg_color="transparent")
             row.grid(row=i, column=0, sticky="ew", padx=6, pady=2)
             row.grid_columnconfigure(0, weight=1)
             kb = max(doc["tamanho"] // 1024, 1)

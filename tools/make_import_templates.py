@@ -102,9 +102,9 @@ def main():
         ["Nome", "CPF", "Tipo de ASO", "Data do Exame", "Validade (meses)"],
         [32, 18, 22, 18, 16],
         [
-            ["Joao Pedro da Silva", "529.982.247-25", ASO_TIPOS[0], "01/08/2026", 12],
-            ["Maria Souza", "111.444.777-35", ASO_TIPOS[1], "05/08/2026", 24],
-            ["Carlos Oliveira", "", ASO_TIPOS[0], "", 12],
+            ["Joao Pedro da Silva", "529.982.247-25", "A", "01/08/2026", 12],
+            ["Maria Souza", "111.444.777-35", "P", "05/08/2026", 24],
+            ["Carlos Oliveira", "", "D", "", 12],
         ],
     )
     wb.save(PASTA / "MODELO ASO.xlsx")
@@ -133,8 +133,8 @@ A primeira linha (azul) e o cabecalho — nao apague.
    Marca na lista os funcionarios encontrados (por CPF ou nome exato).
 
 4) MODELO ASO.xlsx  →  aba ASO > botao Importar Excel
-   A Nome* | B CPF | C Tipo de ASO* | D Data do Exame (dd/mm/aaaa)* | E Validade em meses (1-120, vazio = 12)
-   Tipos validos: {", ".join(ASO_TIPOS)}
+   A Nome* | B CPF | C Tipo de ASO* (A/P/M/R/D ou nome completo) | D Data do Exame (dd/mm/aaaa)* | E Validade em meses (1-120, vazio = 12)
+   Tipos: A=Admissional | P=Periodico | M=Mudanca de Funcao | R=Retorno ao Trabalho | D=Demissional
    O funcionario precisa estar cadastrado. Os PDFs sao gerados automaticamente.
 
 Dicas gerais:

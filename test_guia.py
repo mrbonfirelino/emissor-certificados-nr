@@ -10,7 +10,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
-from src.core.guia_generator import generate_guia_pdf, guia_path
+from src.core import guia_generator as gg
+from src.core.guia_generator import generate_guia_pdf, guia_path, guia_docx_path
 
 PASSOS = []
 
@@ -43,6 +44,25 @@ def main():
 
         check("guia_path aponta para data",
               guia_path().name == "GUIA_NORMATECH.pdf" and "data" in str(guia_path()))
+
+        # v1.19.0: fonte DOCX em templates + fallback sem Word
+        check("guia_docx_path aponta para templates",
+              guia_docx_path().name == "GUIA_NORMATECH.docx"
+              and "templates" in str(guia_docx_path()))
+        check("GUIA_NORMATECH.docx existe no repo", guia_docx_path().exists())
+
+        import src.utils.paths as paths_mod
+        orig_data = gg.get_data_dir
+        orig_docx = gg.guia_docx_path
+        gg.get_data_dir = lambda: tmp
+        gg.guia_docx_path = lambda: tmp / "sem_guia.docx"
+        try:
+            fallback = gg.garantir_guia()
+        finally:
+            gg.get_data_dir = orig_data
+            gg.guia_docx_path = orig_docx
+        check("garantir_guia sem DOCX/Word gera PDF (fallback)",
+              fallback.exists() and fallback.parent == tmp)
 
     falhas = [n for n, ok in PASSOS if not ok]
     print(f"\n{len(PASSOS) - len(falhas)}/{len(PASSOS)} testes OK")

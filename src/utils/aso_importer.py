@@ -13,15 +13,28 @@ from src.utils.text_utils import normalize_text
 
 TIPO_NORMALIZADO = {normalize_text(t): t for t in ASO_TIPOS}
 
+# Códigos de uma letra (v1.19.0): A/P/M/R/D
+CODIGO_TIPO = {
+    "A": "Admissional",
+    "P": "Periódico",
+    "M": "Mudança de Função",
+    "R": "Retorno ao Trabalho",
+    "D": "Demissional",
+}
+
 
 def _parse_tipo(val) -> str:
     if val is None:
         raise ValueError("tipo de ASO vazio")
     chave = normalize_text(str(val))
+    if len(chave) == 1 and chave.upper() in CODIGO_TIPO:
+        return CODIGO_TIPO[chave.upper()]
     for k, oficial in TIPO_NORMALIZADO.items():
         if chave == k or chave == k.replace(" ", ""):
             return oficial
-    raise ValueError(f"tipo de ASO invalido ({val}) - use um dos: {', '.join(ASO_TIPOS)}")
+    raise ValueError(
+        f"tipo de ASO invalido ({val}) - use A, P, M, R, D ou um dos: {', '.join(ASO_TIPOS)}"
+    )
 
 
 def _parse_data(val) -> str:

@@ -99,8 +99,7 @@ class AsoPage(ctk.CTkFrame):
 
     def _refresh_list(self):
         fonts = get_fonts()
-        for widget in self.list_frame.winfo_children():
-            widget.destroy()
+        self.list_frame.clear()
 
         query = self.search_var.get().strip()
         if query:
@@ -115,7 +114,7 @@ class AsoPage(ctk.CTkFrame):
 
         if not asos:
             ctk.CTkLabel(
-                self.list_frame,
+                self.list_frame.body,
                 text="Nenhum ASO registrado" if not query else "Nenhum resultado encontrado",
                 font=fonts["body"], text_color=COLORS["muted"]
             ).grid(row=0, column=0, pady=40, padx=20)
@@ -127,7 +126,7 @@ class AsoPage(ctk.CTkFrame):
 
     def _create_table_header(self):
         fonts = get_fonts()
-        header = ctk.CTkFrame(self.list_frame, fg_color=COLORS["primary"], corner_radius=6, height=36)
+        header = ctk.CTkFrame(self.list_frame.body, fg_color=COLORS["primary"], corner_radius=6, height=36)
         header.grid(row=0, column=0, sticky="ew", padx=8, pady=(8, 2))
         header.grid_propagate(False)
         for col, peso in enumerate([2, 3, 2, 2, 2, 1, 1, 2]):
@@ -155,7 +154,7 @@ class AsoPage(ctk.CTkFrame):
     def _create_row(self, aso: dict, row_idx: int, alternate: bool):
         fonts = get_fonts()
         bg = COLORS["background"] if alternate else "transparent"
-        row = ctk.CTkFrame(self.list_frame, fg_color=bg, corner_radius=0, height=36)
+        row = ctk.CTkFrame(self.list_frame.body, fg_color=bg, corner_radius=0, height=36)
         row.grid(row=row_idx, column=0, sticky="ew", padx=8, pady=0)
         row.grid_propagate(False)
         for col, peso in enumerate([2, 3, 2, 2, 2, 1, 1, 2]):
@@ -230,7 +229,7 @@ class AsoPage(ctk.CTkFrame):
             btn_baixar.configure(state="disabled")
         btn_baixar.pack(side="left", padx=2)
 
-        sep = ctk.CTkFrame(self.list_frame, fg_color=COLORS["border"], height=1)
+        sep = ctk.CTkFrame(self.list_frame.body, fg_color=COLORS["border"], height=1)
         sep.grid(row=row_idx + 1, column=0, sticky="ew", padx=12, pady=0)
 
     @staticmethod
@@ -369,7 +368,7 @@ class AsoPage(ctk.CTkFrame):
         if not messagebox.askyesno(
             "Importar ASOs",
             "Importar ASOs da planilha?\n\n"
-            "Colunas: A Nome | B CPF | C Tipo | D Data Exame | E Validade (meses)\n"
+            "Colunas: A Nome | B CPF | C Tipo (A/P/M/R/D ou nome completo) | D Data Exame | E Validade (meses)\n"
             "Os PDFs sao gerados automaticamente e salvos na rede (se ativa).",
             parent=self
         ):

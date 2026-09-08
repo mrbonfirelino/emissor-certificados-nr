@@ -93,9 +93,11 @@ class BackupManager:
         history = HistoryRepository()
         last_backup = history.get_backup_meta('last_auto_backup')
         today = datetime.now().date().isoformat()
-        if last_backup != today:
+        if (last_backup or '')[:10] != today:
             self.create_backup(auto=True)
-            history.set_backup_meta('last_auto_backup', today)
+            # grava data + hora para exibir "Último backup: dd/mm/aaaa HH:MM"
+            stamp = datetime.now().strftime('%Y-%m-%d %H:%M')
+            history.set_backup_meta('last_auto_backup', stamp)
 
     def periodic_backup(self):
         """Backup periodico — executado no startup (se vencido) e a cada intervalo."""

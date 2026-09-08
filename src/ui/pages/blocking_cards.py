@@ -342,8 +342,7 @@ class BlockingCardsPage(ctk.CTkFrame):
 
     def _refresh_list(self):
         fonts = get_fonts()
-        for w in self.list_frame.winfo_children():
-            w.destroy()
+        self.list_frame.clear()
 
         query = self._search_var.get().strip()
         if query:
@@ -362,14 +361,14 @@ class BlockingCardsPage(ctk.CTkFrame):
 
         if not employees:
             ctk.CTkLabel(
-                self.list_frame,
+                self.list_frame.body,
                 text="Nenhum funcionario encontrado",
                 font=fonts["body"], text_color=COLORS["muted"]
             ).grid(row=0, column=0, pady=40, padx=20)
             self._update_count()
             return
 
-        header = ctk.CTkFrame(self.list_frame, fg_color=COLORS["primary"], corner_radius=6, height=30)
+        header = ctk.CTkFrame(self.list_frame.body, fg_color=COLORS["primary"], corner_radius=6, height=30)
         header.grid(row=0, column=0, sticky="ew", padx=8, pady=(8, 2))
         header.grid_propagate(False)
         header.grid_columnconfigure(1, weight=3)
@@ -390,7 +389,7 @@ class BlockingCardsPage(ctk.CTkFrame):
     def _create_row(self, emp, row_idx: int, alternate: bool):
         fonts = get_fonts()
         bg = COLORS["background"] if alternate else "transparent"
-        row = ctk.CTkFrame(self.list_frame, fg_color=bg, corner_radius=0)
+        row = ctk.CTkFrame(self.list_frame.body, fg_color=bg, corner_radius=0)
         row.grid(row=row_idx, column=0, sticky="ew", padx=8, pady=0)
         row.grid_columnconfigure(1, weight=3)
         row.grid_columnconfigure(2, weight=2)
@@ -424,7 +423,7 @@ class BlockingCardsPage(ctk.CTkFrame):
                      text_color=COLORS["text_secondary"] if emp.telefone else COLORS["muted"],
                      anchor="w").grid(row=0, column=4, sticky="ew", padx=8, pady=4)
 
-        sep = ctk.CTkFrame(self.list_frame, fg_color=COLORS["border"], height=1)
+        sep = ctk.CTkFrame(self.list_frame.body, fg_color=COLORS["border"], height=1)
         sep.grid(row=row_idx + 1, column=0, sticky="ew", padx=12, pady=0)
 
     def _toggle(self, emp, var):

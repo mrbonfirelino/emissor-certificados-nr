@@ -219,13 +219,49 @@ class NormaTechApp(ctk.CTk):
         self.nav_labels[backup_key] = lbl
         self.nav_frames[backup_key] = nav_frame
 
+        # Ajuda (F1) — abre o Guia de Introdução
+        ajuda_key = "ajuda"
+        ajuda_icon = "\U0001F4D6"
+        ajuda_label = "Ajuda (F1)"
+        ajuda_cmd = self._abrir_guia
+
+        nav_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent", height=42, cursor="hand2")
+        nav_frame.grid(row=14, column=0, sticky="ews", padx=4, pady=2)
+        nav_frame.grid_propagate(False)
+        nav_frame.columnconfigure(1, weight=1)
+
+        def on_ajuda_frame_click(e, c=ajuda_cmd):
+            c()
+
+        nav_frame.bind("<Button-1>", on_ajuda_frame_click)
+
+        btn = ctk.CTkButton(
+            nav_frame, text=ajuda_icon, font=("Segoe UI", 14),
+            width=30, height=34, fg_color="transparent",
+            text_color=COLORS["on_primary"], corner_radius=6,
+            hover_color=COLORS["secondary"], command=ajuda_cmd
+        )
+        btn.grid(row=0, column=0, padx=4, pady=3, sticky="w")
+
+        lbl = ctk.CTkLabel(
+            nav_frame, text=ajuda_label,
+            font=fonts["sidebar_nav"], text_color=COLORS["on_primary"],
+            cursor="hand2"
+        )
+        lbl.grid(row=0, column=1, padx=2, pady=3, sticky="w")
+        lbl.bind("<Button-1>", on_ajuda_frame_click)
+
+        self.nav_buttons[ajuda_key] = btn
+        self.nav_labels[ajuda_key] = lbl
+        self.nav_frames[ajuda_key] = nav_frame
+
         # Tema claro/escuro (linha acima de Config)
         tema_key = "theme"
         tema_icon = self._theme_icon()
         tema_label = "Tema"
 
         nav_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent", height=42, cursor="hand2")
-        nav_frame.grid(row=14, column=0, sticky="ew", padx=4, pady=2)
+        nav_frame.grid(row=15, column=0, sticky="ew", padx=4, pady=2)
         nav_frame.grid_propagate(False)
         nav_frame.columnconfigure(1, weight=1)
 
@@ -256,7 +292,7 @@ class NormaTechApp(ctk.CTk):
         config_cmd = self._show_config
 
         nav_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent", height=42, cursor="hand2")
-        nav_frame.grid(row=15, column=0, sticky="ews", padx=4, pady=2)
+        nav_frame.grid(row=16, column=0, sticky="ews", padx=4, pady=2)
         nav_frame.grid_propagate(False)
         nav_frame.columnconfigure(1, weight=1)
 
@@ -285,13 +321,13 @@ class NormaTechApp(ctk.CTk):
         self.nav_labels[config_key] = lbl
         self.nav_frames[config_key] = nav_frame
 
-        # Version (no fundo; row 16 e espacador com weight)
-        self.sidebar.grid_rowconfigure(16, weight=1)
+        # Version (no fundo; row 17 e espacador com weight)
+        self.sidebar.grid_rowconfigure(17, weight=1)
         self.lbl_version = ctk.CTkLabel(
             self.sidebar, text=f"v{APP_VERSION}",
             font=fonts["sidebar_version"], text_color=COLORS["muted"]
         )
-        self.lbl_version.grid(row=17, column=0, sticky="s", pady=8)
+        self.lbl_version.grid(row=18, column=0, sticky="s", pady=8)
 
     def _toggle_sidebar(self):
         if self.sidebar_expanded:
@@ -314,7 +350,7 @@ class NormaTechApp(ctk.CTk):
         self.lbl_title.pack(anchor="w")
         for key, lbl in self.nav_labels.items():
             lbl.grid(row=0, column=1, padx=2, pady=3, sticky="w")
-        self.lbl_version.grid(row=17, column=0, sticky="s", pady=8)
+        self.lbl_version.grid(row=18, column=0, sticky="s", pady=8)
 
     # ── Tema claro/escuro ──────────────────────────────────────
 

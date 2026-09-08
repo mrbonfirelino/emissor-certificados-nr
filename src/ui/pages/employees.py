@@ -6,6 +6,7 @@ from src.core.models import Employee
 from src.core.employee_repo import EmployeeRepository
 from src.utils.validators import validar_cpf, formatar_cpf
 from src.ui.components.pagination import PaginationBar
+from src.ui.components.scroll_frame import ScrollListFrame
 
 
 class EmployeesPage(ctk.CTkFrame):
@@ -106,7 +107,7 @@ class EmployeesPage(ctk.CTkFrame):
         ).grid(row=0, column=3)
 
         # Row 1 — Lista (weight=1 preenche resto)
-        self.list_frame = ctk.CTkScrollableFrame(self, fg_color=COLORS["surface"], corner_radius=12, height=200)
+        self.list_frame = ScrollListFrame(self, fg_color=COLORS["surface"], corner_radius=12, height=200)
         self.list_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 5))
         self.list_frame.grid_columnconfigure(0, weight=1)
 
@@ -165,8 +166,7 @@ class EmployeesPage(ctk.CTkFrame):
         query = self.search_var.get().strip()
         funcao_filter = self._funcao_filter_var.get()
 
-        for widget in self.list_frame.winfo_children():
-            widget.destroy()
+        self.list_frame.clear()
 
         # Buscar com paginacao
         if query:
@@ -188,14 +188,14 @@ class EmployeesPage(ctk.CTkFrame):
 
         if not employees:
             ctk.CTkLabel(
-                self.list_frame,
+                self.list_frame.body,
                 text="Nenhum funcionario cadastrado" if not query else "Nenhum resultado encontrado",
                 font=fonts["body"], text_color=COLORS["muted"]
             ).grid(row=0, column=0, pady=40, padx=20)
             return
 
         # Header da tabela
-        header = ctk.CTkFrame(self.list_frame, fg_color=COLORS["primary"], corner_radius=6, height=36)
+        header = ctk.CTkFrame(self.list_frame.body, fg_color=COLORS["primary"], corner_radius=6, height=36)
         header.grid(row=0, column=0, sticky="ew", padx=8, pady=(4, 2))
         header.grid_propagate(False)
         header.grid_columnconfigure(0, weight=0)
@@ -217,7 +217,7 @@ class EmployeesPage(ctk.CTkFrame):
     def _create_employee_row(self, emp: Employee, row_idx: int, alternate: bool = False):
         fonts = get_fonts()
         bg = COLORS["background"] if alternate else "transparent"
-        row = ctk.CTkFrame(self.list_frame, fg_color=bg, corner_radius=0, height=40)
+        row = ctk.CTkFrame(self.list_frame.body, fg_color=bg, corner_radius=0, height=40)
         row.grid(row=row_idx, column=0, sticky="ew", padx=8, pady=0)
         row.grid_propagate(False)
         row.grid_columnconfigure(0, weight=0)
@@ -285,7 +285,7 @@ class EmployeesPage(ctk.CTkFrame):
             command=lambda e=emp: self._confirm_delete(e)
         ).pack(side="left", padx=2)
 
-        sep = ctk.CTkFrame(self.list_frame, fg_color=COLORS["border"], height=1)
+        sep = ctk.CTkFrame(self.list_frame.body, fg_color=COLORS["border"], height=1)
         sep.grid(row=row_idx + 1, column=0, sticky="ew", padx=12, pady=0)
 
     def _open_new_dialog(self):
@@ -497,7 +497,7 @@ class EmployeesPage(ctk.CTkFrame):
 
         ear_var = ctk.BooleanVar(value=bool(employee.cnh_ear) if is_edit else False)
         ctk.CTkCheckBox(
-            form, text="Possui CNH com E.A.R. (Exame de Aptidao e Responsabilidade)",
+            form, text="Possui CNH com E.A.R. (Exerce Atividade Remunerada)",
             variable=ear_var, font=fonts["body"],
             fg_color=COLORS["secondary"], hover_color=COLORS["primary"], checkmark_color=COLORS["surface"]
         ).grid(row=17, column=0, sticky="w", pady=(0, 10))

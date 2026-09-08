@@ -42,44 +42,51 @@ class WelcomePage(ctk.CTkFrame):
         for r in range(9):
             card.grid_rowconfigure(r, weight=0)
 
-        # === DATA E HORA ATUAL ===
-        self.lbl_data = ctk.CTkLabel(
-            card, text="",
-            font=fonts["body"], text_color=COLORS["text_secondary"]
-        )
-        self.lbl_data.grid(row=0, column=0, pady=(16, 0))
+        # === LOGOTIPO + DATA E HORA (grandes, ao lado do logo) ===
+        topo = ctk.CTkFrame(card, fg_color="transparent")
+        topo.grid(row=0, column=0, pady=(18, 2))
 
-        self.lbl_hora = ctk.CTkLabel(
-            card, text="",
-            font=fonts["title"], text_color=COLORS["primary"]
-        )
-        self.lbl_hora.grid(row=1, column=0, pady=(0, 4))
-        self._tick_clock()
-
-        # Logo
-        logo_label = self._build_logo(card)
+        logo_label = self._build_logo(topo)
         if logo_label:
-            logo_label.grid(row=2, column=0, pady=(12, 4))
+            logo_label.pack(side="left", padx=(0, 20))
         else:
             ctk.CTkLabel(
-                card, text="\U0001F4DC",
+                topo, text="\U0001F4DC",
                 font=("Segoe UI", 48), text_color=COLORS["primary"]
-            ).grid(row=2, column=0, pady=(12, 4))
+            ).pack(side="left", padx=(0, 20))
+
+        self.lbl_data = ctk.CTkLabel(
+            topo, text="",
+            font=("Segoe UI", 17, "bold"), text_color=COLORS["text_secondary"]
+        )
+        self.lbl_data.pack(side="left")
+
+        # linha preta fina entre data e hora
+        linha = ctk.CTkFrame(topo, width=2, height=54, fg_color=COLORS["text"], corner_radius=1)
+        linha.pack(side="left", padx=20, fill="y")
+        linha.pack_propagate(False)
+
+        self.lbl_hora = ctk.CTkLabel(
+            topo, text="",
+            font=("Segoe UI", 32, "bold"), text_color=COLORS["primary"]
+        )
+        self.lbl_hora.pack(side="left")
+        self._tick_clock()
 
         # Titulo + subtitulo
         ctk.CTkLabel(
             card, text="Bem-vindo ao NormaTech!",
             font=fonts["title"], text_color=COLORS["primary"]
-        ).grid(row=3, column=0, pady=(4, 2))
+        ).grid(row=1, column=0, pady=(8, 2))
 
         ctk.CTkLabel(
             card, text="Sistema de emissão e controle de certificados e cartões de bloqueio.",
             font=fonts["body"], text_color=COLORS["text_secondary"]
-        ).grid(row=4, column=0, pady=(0, 8))
+        ).grid(row=2, column=0, pady=(0, 8))
 
         # === CARDS DE RESUMO ===
         stats_frame = ctk.CTkFrame(card, fg_color="transparent")
-        stats_frame.grid(row=5, column=0, sticky="ew", padx=24, pady=(4, 12))
+        stats_frame.grid(row=3, column=0, sticky="ew", padx=24, pady=(4, 12))
         stats_frame.grid_columnconfigure((0, 1, 2), weight=1)
 
         self.lbl_cert_count = self._build_stat_card(stats_frame, 0, "\U0001F4C4", "0", "Total de Certificados Emitidos")
@@ -88,7 +95,7 @@ class WelcomePage(ctk.CTkFrame):
 
         # === ATALHOS ===
         shortcuts_frame = ctk.CTkFrame(card, fg_color="transparent")
-        shortcuts_frame.grid(row=6, column=0, sticky="ew", padx=24, pady=(0, 16))
+        shortcuts_frame.grid(row=4, column=0, sticky="ew", padx=24, pady=(0, 16))
 
         def nav(key: str):
             if self.on_navigate:
@@ -172,11 +179,11 @@ class WelcomePage(ctk.CTkFrame):
             text_color=COLORS["primary"],
             anchor="center", command=self._toggle_painel
         )
-        self.btn_painel.grid(row=7, column=0, sticky="ew", padx=48, pady=(10, 4))
+        self.btn_painel.grid(row=5, column=0, sticky="ew", padx=48, pady=(10, 4))
 
         from src.ui.components.dashboard_panel import DashboardPanel
         self.painel = DashboardPanel(center, self.history_repo)
-        self.painel.grid(row=8, column=0, sticky="ew", padx=48, pady=(0, 16))
+        self.painel.grid(row=6, column=0, sticky="ew", padx=48, pady=(0, 16))
 
         from src.core.app_settings import get_setting
         self._painel_visivel = bool(get_setting("painel_inicial_visivel", True))
