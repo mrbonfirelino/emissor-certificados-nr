@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.20.1] - 2026-09-08
+
+### Corrigido
+- **Tabelas/listas quebradas (regressão v1.19.0)**: aninhar um
+  `CTkScrollableFrame` horizontal dentro de outro vertical colapsava o
+  conteúdo (tabela virava um quadro pequeno e cortado). O `ScrollListFrame`
+  agora usa **um único canvas** com scroll vertical + barra horizontal
+  manual: sem overflow a tabela estica até a largura disponível (como
+  antes da v1.19.0); com conteúdo mais largo que a janela, a barra
+  horizontal ativa de verdade (Shift + roda do mouse também rola).
+  Componente único — histórico, funcionários, funções, backups, cartões,
+  ASO e diálogos de EPI sem nenhuma mudança de código.
+
 ## [1.20.0] - 2026-09-08
 
 ### Adicionado
