@@ -3,8 +3,12 @@ Revisao da emissao de CRACHAS (template_type 'cracha').
 
 - Data de emissao global (default: hoje), editavel
 - Por funcionario: NRs disponiveis (somente certificados existentes,
-  vigentes por NR) com checkbox — pre-marcadas as MAX_NRS mais recentes
+  vigentes por NR) com checkbox — pre-marcadas as MAX_NRS mais recentes;
+  NRs VENCIDAS aparecem desabilitadas e nunca sao incluidas (v1.15.1)
 - ASO vigente exibido (numero + validade)
+- Funcionario BLOQUEADO (sem foto / sem NR valida / ASO vencido) fica com
+  card vermelho e é excluido da emissao (v1.15.1); .blocked_msgs lista os
+  motivos no formato "Nome: motivo e motivo"
 Retorna em .selected: {'data_emissao': ISO, 'nrs': {emp_id: [nr,...]}, 'employees': [...]}
 ou None se cancelado.
 """
@@ -51,6 +55,18 @@ class BadgeReviewDialog(ctk.CTkToplevel):
 
         self._aso_por_emp = {a["employee_id"]: a for a in asos}
 
+        # v1.15.1: motivos de bloqueio (sem foto / sem NR valida / ASO vencido)
+        from src.core.badge_service import cracha_block_reasons
+        self._blocked = {}
+        self.blocked_msgs: list = []
+        for emp in employees:
+            motivos = cracha_block_reasons(
+                emp, self._certs_por_emp.get(emp.id, []), self._aso_por_emp.get(emp.id)
+            )
+            if motivos:
+                self._blocked[emp.id] = motivos
+                self.blocked_msgs.append(f"{emp.nome}: " + " e ".join(motivos))
+
         self._nrs_sel = {}      # emp_id -> {nr_code: BooleanVar}
         self._build_ui()
 
@@ -82,7 +98,9 @@ class BadgeReviewDialog(ctk.CTkToplevel):
         ).pack(side="left", padx=(0, 16))
 
         ctk.CTkLabel(
-            row_data, text=f"Marque até {self.max_nrs} NRs por funcionário (somente treinamentos existentes)",
+            row_data,
+            text=(f"Marque até {self.max_nrs} NRs por funcionário "
+                  "(somente treinamentos válidos — NRs vencidas não entram)"),
             font=fonts["small"], text_color=COLORS["muted"]
         ).pack(side="left", padx=(0, 16))
 
@@ -139,8 +157,15 @@ class BadgeReviewDialog(ctk.CTkToplevel):
         ).pack(side="right")
 
     def _create_emp_card(self, emp, idx: int):
+        from src.core.badge_service import _dias_ok
         fonts = get_fonts()
-        card = ctk.CTkFrame(self._scroll, fg_color=COLORS["surface"], corner_radius=10)
+
+        bloqueado = emp.id in self._blocked
+        card = ctk.CTkFrame(
+            self._scroll, fg_color=COLORS["surface"], corner_radius=10,
+            border_width=1 if bloqueado else 0,
+            border_color=COLORS["error"] if bloqueado else None,
+        )
         card.grid(row=idx, column=0, sticky="ew", pady=4)
         card.grid_columnconfigure(1, weight=1)
 
@@ -172,11 +197,21 @@ class BadgeReviewDialog(ctk.CTkToplevel):
             text_color=COLORS["text_secondary"]
         ).grid(row=2, column=1, sticky="w")
 
-        # coluna direita: checkboxes das NRs
-        certs = self._certs_por_emp.get(emp.id, [])
+        # coluna direita
         right = ctk.CTkFrame(card, fg_color="transparent")
         right.grid(row=0, column=1, sticky="nw", padx=(8, 12), pady=10)
 
+        if bloqueado:
+            # v1.15.1: funcionario bloqueado nao gera cracha
+            self._nrs_sel[emp.id] = {}
+            ctk.CTkLabel(
+                right, text="BLOQUEADO — " + " e ".join(self._blocked[emp.id]),
+                font=fonts["body_bold"], text_color=COLORS["error"],
+                wraplength=420, justify="left"
+            ).pack(anchor="w", pady=6)
+            return
+
+        certs = self._certs_por_emp.get(emp.id, [])
         if not certs:
             ctk.CTkLabel(
                 right, text="nenhuma NR encontrada para este funcionário",
@@ -192,13 +227,28 @@ class BadgeReviewDialog(ctk.CTkToplevel):
         for col in range(3):
             grid.grid_columnconfigure(col, weight=1)
 
+        validas = 0  # pre-marca somente entre as NRs validas
         for i, cert in enumerate(certs):
-            var = ctk.BooleanVar(value=i < self.max_nrs)
-            cb = ctk.CTkCheckBox(
-                grid, text=f"{cert['nr_code']} (vence {self._br(cert.get('data_validade'))[:5]})",
-                variable=var, font=fonts["small"],
-                command=lambda e=emp.id, v=var: self._nr_toggled(e, v)
-            )
+            valida = _dias_ok(cert.get("dias_para_vencer"))
+            if valida:
+                pre = validas < self.max_nrs
+                validas += 1
+            else:
+                pre = False
+            var = ctk.BooleanVar(value=pre)
+            if valida:
+                cb = ctk.CTkCheckBox(
+                    grid, text=f"{cert['nr_code']} (vence {self._br(cert.get('data_validade'))[:5]})",
+                    variable=var, font=fonts["small"],
+                    command=lambda e=emp.id, v=var: self._nr_toggled(e, v)
+                )
+            else:
+                # v1.15.1: NR vencida nunca entra no cracha
+                cb = ctk.CTkCheckBox(
+                    grid, text=f"{cert['nr_code']} (vencida)",
+                    variable=var, font=fonts["small"],
+                    text_color=COLORS["muted"], state="disabled"
+                )
             cb.grid(row=i // 3, column=i % 3, sticky="w", padx=(0, 14), pady=3)
             sel[cert["nr_code"]] = var
 
@@ -246,9 +296,20 @@ class BadgeReviewDialog(ctk.CTkToplevel):
             messagebox.showerror("Data inválida", "Data de emissão inválida (use dd/mm/aaaa).", parent=self)
             return
 
+        # v1.15.1: bloqueados ficam de fora da emissao
+        elegiveis = [emp for emp in self.employees if emp.id not in self._blocked]
+        if not elegiveis:
+            messagebox.showerror(
+                "Todos bloqueados",
+                "Nenhum funcionário selecionado pode gerar crachá:\n\n"
+                + "\n".join(self.blocked_msgs),
+                parent=self
+            )
+            return
+
         nrs = {}
         sem_nr = []
-        for emp in self.employees:
+        for emp in elegiveis:
             sel = self._nrs_sel.get(emp.id, {})
             marcadas = [nr for nr, v in sel.items() if v.get()]
             nrs[emp.id] = marcadas
@@ -268,7 +329,7 @@ class BadgeReviewDialog(ctk.CTkToplevel):
         self.selected = {
             "data_emissao": emissao_iso,
             "nrs": nrs,
-            "employees": list(self.employees),
+            "employees": elegiveis,
             "tamanho": "reduzido" if self._tamanho_var.get() == "Reduzido 86x54mm" else "real",
         }
         self.destroy()

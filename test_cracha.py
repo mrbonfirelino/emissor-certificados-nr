@@ -1,9 +1,11 @@
-"""Testes do cracha de identificacao (v1.13.0): repo, dados, PDFs e preview.
+"""Testes do cracha de identificacao (v1.13.0+): repo, dados, PDFs, preview
+e bloqueios de emissao (v1.15.1).
 
 Rodar: python test_cracha.py
 """
 
 import sys
+import io
 import json
 import tempfile
 from datetime import date, timedelta
@@ -36,6 +38,12 @@ TEMPLATE_VERTICAL = {"card_code": "CRACHA-VERTICAL", "template_type": "cracha",
                      "card_width_mm": 78, "card_height_mm": 120, "max_nrs": 8}
 
 
+def _foto_bytes() -> bytes:
+    buf = io.BytesIO()
+    Image.new("RGB", (60, 80), (120, 150, 180)).save(buf, format="PNG")
+    return buf.getvalue()
+
+
 class Ctx:
     """DB temporario + patches de paths por bloco de testes."""
 
@@ -47,8 +55,9 @@ class Ctx:
         self.hist = HistoryRepository(db_path=self.db)
         self.aso = AsoRepository(db_path=self.db)
         self.cracha = CrachaRepository(db_path=self.db)
-        self.emp_repo.create("Joao Pedro", None)
-        self.emp_repo.create("Maria Silva", None)
+        foto = _foto_bytes()
+        self.emp_repo.create("Joao Pedro", None, foto=foto)
+        self.emp_repo.create("Maria Silva", None, foto=foto)
         emps = self.emp_repo.get_all()
         self.e1 = next(e for e in emps if e.nome == "Joao Pedro")
         self.e2 = next(e for e in emps if e.nome == "Maria Silva")
@@ -58,6 +67,8 @@ class Ctx:
         self._add_cert("CERT-000004", self.e2, "NR-35", -5)
         self._add_cert("CERT-000005", self.e2, "NR-11", date(2024, 1, 1))
         self.aso.save("ASO-000001", self.e1.id, "Admissional",
+                      date.today().isoformat(), validade_meses=12)
+        self.aso.save("ASO-000002", self.e2.id, "Periódico",
                       date.today().isoformat(), validade_meses=12)
         # patches
         self._orig = (badge.get_crachas_dir, badge.get_logo_path, er_mod.get_db_path)
@@ -136,7 +147,10 @@ def test_build_badge_data(tmp: Path):
               all({"nr_code", "data_capacitacao", "data_validade"} <= set(r) for r in d1["nrs"]))
         check("ASO do funcionario 1 presente",
               d1["aso_number"] == "ASO-000001" and d1["aso_validade"])
-        check("funcionario 2 sem ASO", d2["aso_number"] is None)
+        check("ASO do funcionario 2 presente",
+              d2["aso_number"] == "ASO-000002" and d2["aso_validade"])
+        check("NR vencida nunca entra (v1.15.1)",
+              [r["nr_code"] for r in d2["nrs"]] == ["NR-35"])
     finally:
         ctx.restore()
 
@@ -156,12 +170,14 @@ def test_single_pdf(tmp: Path):
             "CARTÃO DE IDENTIFICAÇÃO", "JOAO PEDRO", "NR-35",
             "ASS COLABORADOR:", "CRACHA-0000", "PROIBIDO")))
         check("ASO vencimento no cracha 1", "ASO" in t1)
-        check("conteudo cracha 2 na mesma folha (validade vencida presente)",
-              "MARIA SILVA" in t1 and "NR-11" in t1)
+        check("conteudo cracha 2 na mesma folha (vencida EXCLUIDA v1.15.1)",
+              "MARIA SILVA" in t1 and "NR-11" not in t1)
         doc.close()
         check("gravou 2 registros", ctx.cracha.count_all() == 2)
         nrs_db = json.loads(json.dumps(ctx.cracha.get_by_employee(ctx.e1.id)[0]["nrs"]))
         check("nrs gravadas no banco", nrs_db == ["NR-12", "NR-35", "NR-10"])
+        check("nrs do func 2 sem a vencida",
+              ctx.cracha.get_by_employee(ctx.e2.id)[0]["nrs"] == ["NR-35"])
     finally:
         ctx.restore()
 
@@ -223,8 +239,8 @@ def test_vertical(tmp: Path):
             "CARTÃO DE IDENTIFICAÇÃO", "JOAO PEDRO", "NR-35",
             "ASS COLABORADOR:", "CRACHA-0000", "PROIBIDO", "EMISSÃO:")))
         check("vertical: ASO no cracha 1", "ASO" in t1)
-        check("vertical: conteudo cracha 2 na mesma folha (vencida presente)",
-              "MARIA SILVA" in t1 and "NR-11" in t1)
+        check("vertical: conteudo cracha 2 na mesma folha (vencida EXCLUIDA)",
+              "MARIA SILVA" in t1 and "NR-11" not in t1)
         doc.close()
         check("vertical: gravou 2 registros", ctx.cracha.count_all() == 2)
         check("vertical: nrs gravadas",
@@ -311,6 +327,67 @@ def test_tamanho_reduzido(tmp: Path):
         ctx.restore()
 
 
+def test_bloqueios(tmp: Path):
+    """v1.15.1: sem foto / sem NR valida / ASO vencido bloqueiam a emissao."""
+    ctx = Ctx(tmp)
+    try:
+        foto = _foto_bytes()
+        ctx.emp_repo.create("Carlos Souza", None, foto=None)   # sem foto
+        ctx.emp_repo.create("Bia Alves", None, foto=foto)      # so NR vencida
+        ctx.emp_repo.create("Rui Lima", None, foto=foto)       # ASO vencido
+        emps = {e.nome: e for e in ctx.emp_repo.get_all()}
+        carlos, bia, rui = emps["Carlos Souza"], emps["Bia Alves"], emps["Rui Lima"]
+
+        ctx._add_cert("CERT-000010", carlos, "NR-10", -5)
+        ctx.aso.save("ASO-000010", carlos.id, "Admissional",
+                     date.today().isoformat(), validade_meses=12)
+        ctx._add_cert("CERT-000011", bia, "NR-11", date(2024, 1, 1))
+        ctx.aso.save("ASO-000011", bia.id, "Admissional",
+                     date.today().isoformat(), validade_meses=12)
+        ctx._add_cert("CERT-000012", rui, "NR-35", -5)
+        ctx.aso.save("ASO-000012", rui.id, "Admissional",
+                     (date.today() - timedelta(days=400)).isoformat(), validade_meses=12)
+
+        maps = badge._expiration_maps(ctx.hist, ctx.aso)
+        certs_map, asos = maps
+        check("elegivel sem motivos", badge.cracha_block_reasons(
+            ctx.e1, list(certs_map.get(ctx.e1.id, {}).values()), asos.get(ctx.e1.id)) == [])
+        check("bloqueio sem foto", badge.cracha_block_reasons(
+            carlos, list(certs_map.get(carlos.id, {}).values()), asos.get(carlos.id))
+            == ["sem foto"])
+        check("bloqueio sem NR valida", badge.cracha_block_reasons(
+            bia, list(certs_map.get(bia.id, {}).values()), asos.get(bia.id))
+            == ["nenhuma NR dentro da validade"])
+        check("bloqueio ASO vencido", badge.cracha_block_reasons(
+            rui, list(certs_map.get(rui.id, {}).values()), asos.get(rui.id))
+            == ["ASO ausente ou vencido"])
+
+        # gerar com um elegivel + um bloqueado: so o elegivel sai
+        antes = ctx.cracha.count_all()
+        paths, faltantes = badge.generate_badges(
+            [ctx.e1, carlos], TEMPLATE, single_pdf=True,
+            options={"data_emissao": date.today().isoformat(),
+                     "nrs": {ctx.e1.id: ["NR-35"], carlos.id: ["NR-10"]}},
+            history_repo=ctx.hist, aso_repo=ctx.aso, cracha_repo=ctx.cracha)
+        check("lote gerado apenas para o elegivel",
+              len(paths) == 1 and ctx.cracha.count_all() == antes + 1)
+        check("bloqueado vira mensagem de pulado",
+              len(faltantes) == 1 and "Carlos Souza" in faltantes[0]
+              and "sem foto" in faltantes[0])
+        t = fitz.open(paths[0])[0].get_text().upper()
+        check("PDF so com o elegivel", "JOAO PEDRO" in t and "CARLOS" not in t)
+
+        # todos bloqueados: nada gerado
+        paths2, faltantes2 = badge.generate_badges(
+            [carlos], TEMPLATE, single_pdf=True,
+            options={"data_emissao": date.today().isoformat(), "nrs": {carlos.id: ["NR-10"]}},
+            history_repo=ctx.hist, aso_repo=ctx.aso, cracha_repo=ctx.cracha)
+        check("todos bloqueados: nenhum PDF e mensagem",
+              paths2 == [] and len(faltantes2) == 1)
+    finally:
+        ctx.restore()
+
+
 def main():
     with tempfile.TemporaryDirectory(prefix="normatech_cracha_",
                                      ignore_cleanup_errors=True) as td:
@@ -324,6 +401,7 @@ def main():
         test_vertical_individual_preview(tmp / "t7")
         test_paisagem_a4(tmp / "t8")
         test_tamanho_reduzido(tmp / "t9")
+        test_bloqueios(tmp / "t10")
 
     falhas = [n for n, ok in PASSOS if not ok]
     print(f"\n{len(PASSOS) - len(falhas)}/{len(PASSOS)} testes OK")

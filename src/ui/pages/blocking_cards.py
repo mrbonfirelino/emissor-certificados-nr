@@ -485,7 +485,8 @@ class BlockingCardsPage(ctk.CTkFrame):
             self.wait_window(dlg)
             if not dlg.selected:
                 return None
-            return dlg.selected["employees"], template, dlg.selected, False, []
+            # v1.15.1: bloqueados (sem foto/NR valida/ASO) viram 'Pulados'
+            return dlg.selected["employees"], template, dlg.selected, False, dlg.blocked_msgs
 
         # copias transitórias — o banco nao e afetado
         copies = [e.model_copy() for e in selected]

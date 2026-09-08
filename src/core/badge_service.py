@@ -51,20 +51,8 @@ def _sanitize_filename(name: str) -> str:
     return re.sub(r"[\s]+", "_", s)[:50]
 
 
-def build_badge_data(
-    employees: list,
-    options: dict,
-    history_repo=None,
-    aso_repo=None,
-) -> List[dict]:
-    """
-    Monta os dados de cada cracha a partir das opcoes da revisao:
-    options = {"data_emissao": "YYYY-MM-DD", "nrs": {employee_id: [nr_code, ...]}}
-
-    NRs: ultima emissao de cada NR do funcionario (mesma regra dos Vencimentos);
-    data de capacitacao = data do treinamento, validade = data + validade_meses.
-    ASO: vigente (mais recente) — numero + vencimento.
-    """
+def _expiration_maps(history_repo=None, aso_repo=None):
+    """Mapas de certificados/ASOs por funcionario (vigente por NR/ASO)."""
     if history_repo is None:
         from src.core.history_repo import HistoryRepository
         history_repo = HistoryRepository()
@@ -84,6 +72,29 @@ def build_badge_data(
     certs_by_emp = {}
     for c in certs:
         certs_by_emp.setdefault(c["employee_id"], {})[c["nr_code"]] = c
+    return certs_by_emp, asos
+
+
+def build_badge_data(
+    employees: list,
+    options: dict,
+    history_repo=None,
+    aso_repo=None,
+    maps=None,
+) -> List[dict]:
+    """
+    Monta os dados de cada cracha a partir das opcoes da revisao:
+    options = {"data_emissao": "YYYY-MM-DD", "nrs": {employee_id: [nr_code, ...]}}
+
+    NRs: ultima emissao de cada NR do funcionario (mesma regra dos Vencimentos);
+    data de capacitacao = data do treinamento, validade = data + validade_meses.
+    NRs VENCIDAS nunca entram no cracha (v1.15.1).
+    ASO: vigente (mais recente) — numero + vencimento.
+    maps: (certs_by_emp, asos) pre-computados por _expiration_maps().
+    """
+    if maps is None:
+        maps = _expiration_maps(history_repo, aso_repo)
+    certs_by_emp, asos = maps
 
     nrs_opt = options.get("nrs") or {}
     data_emissao = options.get("data_emissao") or date.today().isoformat()
@@ -91,7 +102,10 @@ def build_badge_data(
     dados = []
     for emp in employees:
         disp = certs_by_emp.get(emp.id, {})
-        sel_codes = [nr for nr in nrs_opt.get(emp.id, nrs_opt.get(str(emp.id), [])) if nr in disp]
+        sel_codes = [
+            nr for nr in nrs_opt.get(emp.id, nrs_opt.get(str(emp.id), []))
+            if nr in disp and not _vencido(disp[nr]["data_validade"])
+        ]
         # ordena por data do treinamento (mais recente primeiro), limita MAX_NRS
         sel_codes = sorted(sel_codes, key=lambda nr: disp[nr]["data_fim"], reverse=True)[:MAX_NRS]
         nrs = [
@@ -294,6 +308,29 @@ def _vencido(data_validade_iso) -> bool:
 
 def _aso_vencido(data_validade_iso) -> bool:
     return _vencido(data_validade_iso)
+
+
+def _dias_ok(dias) -> bool:
+    """dias_para_vencer >= 0 (vence HOJE ainda e valido); None/ausente -> invalido."""
+    return dias is not None and dias >= 0
+
+
+def cracha_block_reasons(emp, certs_list, aso_dict) -> List[str]:
+    """
+    Motivos que impedem a emissao do cracha (v1.15.1):
+    sem foto, nenhuma NR dentro da validade, ASO ausente ou vencido.
+
+    certs_list: lista de dicts de get_certificates_with_expiration do funcionario.
+    aso_dict: dict do ASO vigente (ou None).
+    """
+    motivos: List[str] = []
+    if not getattr(emp, "foto", None):
+        motivos.append("sem foto")
+    if not any(_dias_ok(c.get("dias_para_vencer")) for c in (certs_list or [])):
+        motivos.append("nenhuma NR dentro da validade")
+    if not _dias_ok((aso_dict or {}).get("dias_para_vencer")):
+        motivos.append("ASO ausente ou vencido")
+    return motivos
 
 
 # ── Layout RETRATO 7,8x12cm (CRACHA-VERTICAL) ────────────────────────────────
@@ -523,9 +560,25 @@ def generate_badges(
         from src.core.cracha_repo import CrachaRepository
         cracha_repo = CrachaRepository()
 
-    dados = build_badge_data(employees, options, history_repo, aso_repo)
+    # v1.15.1: bloqueia funcionario sem foto, sem NR valida ou com ASO vencido
+    maps = _expiration_maps(history_repo, aso_repo)
+    certs_by_emp, asos = maps
+    liberados: list = []
+    faltantes: List[str] = []
+    for emp in employees:
+        motivos = cracha_block_reasons(
+            emp, list(certs_by_emp.get(emp.id, {}).values()), asos.get(emp.id)
+        )
+        if motivos:
+            faltantes.append(f"{emp.nome}: " + " e ".join(motivos))
+        else:
+            liberados.append(emp)
+    if not liberados:
+        return [], faltantes
+
+    dados = build_badge_data(liberados, options, maps=maps)
     if not dados:
-        return [], []
+        return [], faltantes
 
     w_mm, h_mm, escala, slot_w, slot_h = _badge_metrics(template, options.get("tamanho", "real"))
     draw_fn = draw_badge_vertical if h_mm > w_mm else draw_badge
@@ -604,7 +657,7 @@ def generate_badges(
 
     _disparar_sync(generated, dados, single_pdf)
 
-    return generated, []
+    return generated, faltantes
 
 
 def _disparar_sync(generated: List[Path], dados, single_pdf: bool):

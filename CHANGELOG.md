@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.15.1] - 2026-09-08
+
+### Adicionado
+- **Bloqueio de emissão de crachás**: o crachá (paisagem e vertical) só é
+  gerado para funcionário com foto cadastrada, pelo menos uma NR dentro da
+  validade e ASO dentro da validade; na revisão da emissão o funcionário
+  bloqueado aparece destacado em vermelho com os motivos e é pulado na geração
+  (listado em "Pulados" no resultado)
+
+### Alterado
+- **NRs vencidas nunca entram no crachá**: checkboxes só oferecem treinamentos
+  válidos (vencidas aparecem desabilitadas) e a geração filtra vencidas em
+  qualquer caminho
+
 ## [1.15.0] - 2026-09-08
 
 ### Adicionado

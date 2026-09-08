@@ -1,7 +1,7 @@
 # Roadmap - NormaTech
 
 ## Status do Projeto
- - Versao atual: 1.15.0
+ - Versao atual: 1.15.1
 - NRs disponiveis: 17 (01, 05, 06, 09, 10, 11, 12, 17, 18, 26, 33, 34, 35 + FDS, BRIGADISTA-NR23, PTA, MOTOSERRA, MUNCK, PONTE-ROLANTE, DIR-DEFENSIVA, CIPAA)
 
 ---
@@ -229,6 +229,7 @@ Requisitos: Microsoft PowerPoint instalado na máquina (conversão via COM).
 | Revisão da emissão | Diálogo com data de emissão e checkboxes de NRs por funcionário (pré-marcadas 8 mais recentes), com ASO exibido; emissão individual e em lote | Alta | Concluído (v1.13.0) |
 | Gravação + rede | Emissões gravadas no banco (CRACHA-XXXXXX) em data/crachas/{Func} e LOTES; espelhadas na rede em {Func}/Crachas e Crachas_Gerais | Media | Concluído (v1.13.0) |
 | Folha A4 + opção 86x54mm | Crachás (paisagem e vertical) em folha A4 com guia de corte (vários por folha; individual centrado) e opção de escala reduzida 86x54mm na revisão | Alta | Concluído (v1.15.0) |
+| Bloqueio de emissão | Crachá só é gerado com foto, NR válida e ASO dentro da validade; NRs vencidas nunca entram (exibidas desabilitadas) | Alta | Concluído (v1.15.1) |
 
 ### 2.19 Backup via Tarefa Agendada do Windows (CONCLUÍDA)
 
