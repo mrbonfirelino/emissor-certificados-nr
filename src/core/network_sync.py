@@ -9,6 +9,7 @@ Estrutura no destino (quando ativado em Configuracoes):
         Cartoes/CARTAO_...pdf
         Certificados Assinados/CERT-..._assinado.pdf|jpg|png
         ASOs/ASO-...pdf + ASO-..._ASO.pdf                <- modelo + documento anexado
+        ASOs/Vencidos/ASO-...pdf                         <- ASOs fora da validade (v1.20.0)
         EPIs/Ficha de EPI - ...pdf + digitalizacoes
         Outros/CNH.PNG ...
       Cartoes_Gerais/                                    <- PDFs de lote
@@ -75,6 +76,16 @@ def _cert_vencido(cert) -> bool:
         tmpl = load_nr_template(cert.nr_code)
         validade = tmpl.validade_meses if tmpl else 12
         return date.fromisoformat(cert.data_fim) + relativedelta(months=validade) < date.today()
+    except Exception:
+        return False
+
+
+def _aso_vencido(aso: dict) -> bool:
+    """ASO vencido: data_exame + validade_meses anterior a hoje (v1.20.0)."""
+    try:
+        de = date.fromisoformat(str(aso.get("data_exame") or "")[:10])
+        meses = int(aso.get("validade_meses") or 12)
+        return (de + relativedelta(months=meses)) < date.today()
     except Exception:
         return False
 
@@ -227,7 +238,7 @@ def _copy_bytes(dst: Path, data: bytes) -> None:
 # ── ASOs e EPIs (roadmap 2.16) ────────────────────────────────
 
 def sync_aso(aso: dict, employee=None) -> bool:
-    """Espelha o PDF modelo do ASO em {Func}/ASOs."""
+    """Espelha o PDF modelo do ASO em {Func}/ASOs (vencido -> ASOs/Vencidos)."""
     destino = _destino()
     if not destino:
         return False
@@ -238,7 +249,17 @@ def sync_aso(aso: dict, employee=None) -> bool:
         pasta = (employee_folder_name(employee, _employees_all(repo))
                  if employee else sanitize_folder_name(aso.get("funcionario_nome") or "SEM_NOME"))
         if aso.get("pdf_path") and Path(aso["pdf_path"]).exists():
-            _copy_file(Path(aso["pdf_path"]), destino / pasta / "ASOs" / Path(aso["pdf_path"]).name)
+            src = Path(aso["pdf_path"])
+            base_dir = destino / pasta / "ASOs"
+            if _aso_vencido(aso):
+                vencidos = base_dir / "Vencidos"
+                vencidos.mkdir(parents=True, exist_ok=True)
+                atual = base_dir / src.name
+                if atual.exists():
+                    atual.replace(vencidos / src.name)
+                _copy_file(src, vencidos / src.name)
+            else:
+                _copy_file(src, base_dir / src.name)
         return True
     except Exception as e:
         _notify_fail(f"o ASO {aso.get('aso_number', '')}", e)
@@ -267,7 +288,16 @@ def sync_aso_doc(aso_id: int) -> bool:
             pasta = employee_folder_name(emp, _employees_all(EmployeeRepository()))
         ext = {"pdf": "pdf", "jpg": "jpg", "jpeg": "jpg", "png": "png"}.get(tipo, "pdf")
         fname = f"{aso['aso_number']}_ASO.{ext}"
-        _copy_bytes(destino / pasta / "ASOs" / fname, bytes(data))
+        base_dir = destino / pasta / "ASOs"
+        if _aso_vencido(aso):
+            vencidos = base_dir / "Vencidos"
+            vencidos.mkdir(parents=True, exist_ok=True)
+            atual = base_dir / fname
+            if atual.exists():
+                atual.replace(vencidos / fname)
+            _copy_bytes(vencidos / fname, bytes(data))
+        else:
+            _copy_bytes(base_dir / fname, bytes(data))
         return True
     except Exception as e:
         _notify_fail("o documento do ASO", e)
@@ -420,8 +450,20 @@ def sync_all(notify_success: bool = False) -> dict:
             from src.utils.paths import get_asos_dir, get_epis_dir
             aso_dir = get_asos_dir() / pasta
             if aso_dir.exists():
+                from src.core.aso_repo import AsoRepository
+                try:
+                    venc_nums = {
+                        a["aso_number"]
+                        for a in AsoRepository().get_by_employee(emp.id)
+                        if _aso_vencido(a)
+                    }
+                except Exception:
+                    venc_nums = set()
                 for f in aso_dir.glob("*.pdf"):
-                    _copy_file(f, destino / pasta / "ASOs" / f.name)
+                    if any(f.name.startswith(n) for n in venc_nums):
+                        _copy_file(f, destino / pasta / "ASOs" / "Vencidos" / f.name)
+                    else:
+                        _copy_file(f, destino / pasta / "ASOs" / f.name)
                     stats["copiados"] += 1
         except Exception as e:
             log_error("rede-sync", e)

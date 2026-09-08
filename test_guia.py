@@ -51,18 +51,34 @@ def main():
               and "templates" in str(guia_docx_path()))
         check("GUIA_NORMATECH.docx existe no repo", guia_docx_path().exists())
 
-        import src.utils.paths as paths_mod
+        # v1.20.0: PDF pronto em templates (convertido no build) + fallback ReportLab
         orig_data = gg.get_data_dir
-        orig_docx = gg.guia_docx_path
+        orig_pronto = gg.guia_pdf_template_path
         gg.get_data_dir = lambda: tmp
-        gg.guia_docx_path = lambda: tmp / "sem_guia.docx"
+
+        # sem PDF pronto em templates -> gera o embutido (ReportLab)
+        gg.guia_pdf_template_path = lambda: tmp / "sem_guia" / "GUIA_NORMATECH.pdf"
         try:
             fallback = gg.garantir_guia()
         finally:
-            gg.get_data_dir = orig_data
-            gg.guia_docx_path = orig_docx
-        check("garantir_guia sem DOCX/Word gera PDF (fallback)",
+            gg.guia_pdf_template_path = orig_pronto
+        check("garantir_guia sem PDF pronto gera ReportLab (fallback)",
               fallback.exists() and fallback.parent == tmp)
+
+        # com PDF pronto em templates -> copia para data/
+        (tmp / "GUIA_NORMATECH.pdf").unlink()  # prova que a copia veio do pronto
+        pronto = tmp / "pronto" / "GUIA_NORMATECH.pdf"
+        pronto.parent.mkdir(parents=True, exist_ok=True)
+        generate_guia_pdf(pronto)
+        gg.guia_pdf_template_path = lambda: pronto
+        try:
+            copiado = gg.garantir_guia()
+        finally:
+            gg.guia_pdf_template_path = orig_pronto
+            gg.get_data_dir = orig_data
+        check("garantir_guia copia PDF pronto do templates",
+              copiado.exists() and copiado.parent == tmp
+              and not pronto.samefile(copiado))
 
     falhas = [n for n, ok in PASSOS if not ok]
     print(f"\n{len(PASSOS) - len(falhas)}/{len(PASSOS)} testes OK")

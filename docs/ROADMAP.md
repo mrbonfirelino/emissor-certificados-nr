@@ -1,7 +1,7 @@
 # Roadmap - NormaTech
 
 ## Status do Projeto
- - Versao atual: 1.19.0
+ - Versao atual: 1.20.0
 - NRs disponiveis: 17 (01, 05, 06, 09, 10, 11, 12, 17, 18, 26, 33, 34, 35 + FDS, BRIGADISTA-NR23, PTA, MOTOSERRA, MUNCK, PONTE-ROLANTE, DIR-DEFENSIVA, CIPAA)
 
 ---
@@ -282,6 +282,15 @@ Requisitos: Microsoft PowerPoint instalado na máquina (conversão via COM).
 | Data/Hora Home — layout | Na tela Home, deixar data e hora maiores, ao lado do logotipo/título, separados como duas colunas com uma linha preta fina no meio | Media | Concluído (v1.19.0) |
 | Backup — hora e minuto | Na tela de backup, incluir hora e minuto no texto "Último Backup automático {data}" | Media | Concluído (v1.19.0) |
 | Guia em DOCX | Alterar o guia de introdução para ser um PDF baseado em um arquivo Word (.docx), que poderá ser editado ao longo do tempo | Media | Concluído (v1.19.0) |
+
+### 2.24 Ajustes Finais (v1.20.0) (CONCLUÍDA)
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Conversão DOCX → PDF no build | A conversão do guia .DOCX para PDF deve ocorrer apenas no momento do build, para evitar travamentos ao usuário final | Alta | Concluído (v1.20.0) |
+| ASOs vencidos — pasta específica | ASOs vencidos devem ser movidos para uma pasta específica (ex: {Func}/ASOs/Vencidos) | Alta | Concluído (v1.20.0) |
+| Scrollbar na sidebar | Inserir scrollbar na barra lateral — alguns itens não ficam visíveis se a janela estiver muito pequena | Media | Concluído (v1.20.0) |
+| Linha separadora Home | No menu Home, ajustar a linha preta: ela deve ficar entre o logotipo e a hora + data (não entre hora e data) | Media | Concluído (v1.20.0) |
 
 ---
 

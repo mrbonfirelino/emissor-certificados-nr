@@ -163,12 +163,14 @@ backup diário com o programa fechado. `schtasks /Query /TN NormaTechBackup`
 mostra o estado; remoção pelo próprio app ou `schtasks /Delete /TN
 NormaTechBackup /F`.
 
-**Guia editável do usuário (v1.19.0):** o Guia de Introdução nasce do arquivo
-`templates\GUIA_NORMATECH.docx` (copiado para `dist\templates\`). Para
-personalizar o guia no cliente: edite o `.docx` no Word (ou regenere com
-`python tools/make_guia_docx.py`) e substitua o arquivo em `templates\` —
-no próximo F1/botão o app reconverte o PDF automaticamente via Word (COM).
-Sem Word instalado, o app usa o gerador ReportLab embutido (fallback).
+**Guia editável do usuário (v1.19.0 / v1.20.0):** o Guia de Introdução nasce
+do arquivo `templates\GUIA_NORMATECH.docx`. A conversão para PDF acontece
+**apenas no build**: o `build_exe.py` gera `templates\GUIA_NORMATECH.pdf`
+(via Word COM da máquina de desenvolvimento) e o copia para
+`dist\templates\` — o cliente nunca roda o Word. Para personalizar o guia
+no cliente: edite/regenere o `.docx` (`python tools/make_guia_docx.py`) e
+refaça o build (ou rode a conversão manualmente). Se o PDF pronto não
+existir, o app usa o gerador ReportLab embutido (fallback).
 
 ---
 

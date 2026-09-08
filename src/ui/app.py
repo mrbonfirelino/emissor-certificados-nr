@@ -147,10 +147,20 @@ class NormaTechApp(ctk.CTk):
             ("batch_import", "\U0001F4DD", "Import Lote", self._show_batch_import),
         ]
 
+        # Nav rolavel (2.24): scrollbar fina aparece se a janela for pequena
+        self.nav_scroll = ctk.CTkScrollableFrame(self.sidebar, fg_color="transparent")
+        self.nav_scroll.grid(row=3, column=0, sticky="nsew")
+        self.sidebar.grid_rowconfigure(3, weight=1)
+        self.nav_scroll.grid_columnconfigure(0, weight=1)
+        try:
+            self.nav_scroll._scrollbar.configure(width=6)
+        except Exception:
+            pass
+
         for i, (key, icon, label, cmd) in enumerate(nav_items):
             # Frame clicavel que contem icone + label
-            nav_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent", height=42, cursor="hand2")
-            nav_frame.grid(row=i + 3, column=0, sticky="ew", padx=4, pady=2)
+            nav_frame = ctk.CTkFrame(self.nav_scroll, fg_color="transparent", height=42, cursor="hand2")
+            nav_frame.grid(row=i, column=0, sticky="ew", padx=4, pady=2)
             nav_frame.grid_propagate(False)
             nav_frame.columnconfigure(1, weight=1)
 
@@ -180,8 +190,8 @@ class NormaTechApp(ctk.CTk):
             self.nav_frames[key] = nav_frame
 
         # Separador antes do Backup
-        sep_bottom = ctk.CTkFrame(self.sidebar, height=1, fg_color=COLORS["secondary"])
-        sep_bottom.grid(row=12, column=0, sticky="ew", padx=8, pady=4)
+        sep_bottom = ctk.CTkFrame(self.nav_scroll, height=1, fg_color=COLORS["secondary"])
+        sep_bottom.grid(row=9, column=0, sticky="ew", padx=8, pady=4)
 
         # Backup (positioned below separator, above version)
         backup_key = "backup"
@@ -189,8 +199,8 @@ class NormaTechApp(ctk.CTk):
         backup_label = "Backup"
         backup_cmd = self._show_backup
 
-        nav_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent", height=42, cursor="hand2")
-        nav_frame.grid(row=13, column=0, sticky="ews", padx=4, pady=2)
+        nav_frame = ctk.CTkFrame(self.nav_scroll, fg_color="transparent", height=42, cursor="hand2")
+        nav_frame.grid(row=10, column=0, sticky="ews", padx=4, pady=2)
         nav_frame.grid_propagate(False)
         nav_frame.columnconfigure(1, weight=1)
 
@@ -225,8 +235,8 @@ class NormaTechApp(ctk.CTk):
         ajuda_label = "Ajuda (F1)"
         ajuda_cmd = self._abrir_guia
 
-        nav_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent", height=42, cursor="hand2")
-        nav_frame.grid(row=14, column=0, sticky="ews", padx=4, pady=2)
+        nav_frame = ctk.CTkFrame(self.nav_scroll, fg_color="transparent", height=42, cursor="hand2")
+        nav_frame.grid(row=11, column=0, sticky="ews", padx=4, pady=2)
         nav_frame.grid_propagate(False)
         nav_frame.columnconfigure(1, weight=1)
 
@@ -260,8 +270,8 @@ class NormaTechApp(ctk.CTk):
         tema_icon = self._theme_icon()
         tema_label = "Tema"
 
-        nav_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent", height=42, cursor="hand2")
-        nav_frame.grid(row=15, column=0, sticky="ew", padx=4, pady=2)
+        nav_frame = ctk.CTkFrame(self.nav_scroll, fg_color="transparent", height=42, cursor="hand2")
+        nav_frame.grid(row=12, column=0, sticky="ew", padx=4, pady=2)
         nav_frame.grid_propagate(False)
         nav_frame.columnconfigure(1, weight=1)
 
@@ -291,8 +301,8 @@ class NormaTechApp(ctk.CTk):
         config_label = "Config"
         config_cmd = self._show_config
 
-        nav_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent", height=42, cursor="hand2")
-        nav_frame.grid(row=16, column=0, sticky="ews", padx=4, pady=2)
+        nav_frame = ctk.CTkFrame(self.nav_scroll, fg_color="transparent", height=42, cursor="hand2")
+        nav_frame.grid(row=13, column=0, sticky="ews", padx=4, pady=2)
         nav_frame.grid_propagate(False)
         nav_frame.columnconfigure(1, weight=1)
 
@@ -321,13 +331,13 @@ class NormaTechApp(ctk.CTk):
         self.nav_labels[config_key] = lbl
         self.nav_frames[config_key] = nav_frame
 
-        # Version (no fundo; row 17 e espacador com weight)
-        self.sidebar.grid_rowconfigure(17, weight=1)
+        # Version (fixa fora do scroll; spacer dentro do nav_scroll)
+        self.nav_scroll.grid_rowconfigure(14, weight=1)
         self.lbl_version = ctk.CTkLabel(
             self.sidebar, text=f"v{APP_VERSION}",
             font=fonts["sidebar_version"], text_color=COLORS["muted"]
         )
-        self.lbl_version.grid(row=18, column=0, sticky="s", pady=8)
+        self.lbl_version.grid(row=4, column=0, sticky="s", pady=8)
 
     def _toggle_sidebar(self):
         if self.sidebar_expanded:
@@ -350,7 +360,7 @@ class NormaTechApp(ctk.CTk):
         self.lbl_title.pack(anchor="w")
         for key, lbl in self.nav_labels.items():
             lbl.grid(row=0, column=1, padx=2, pady=3, sticky="w")
-        self.lbl_version.grid(row=18, column=0, sticky="s", pady=8)
+        self.lbl_version.grid(row=4, column=0, sticky="s", pady=8)
 
     # ── Tema claro/escuro ──────────────────────────────────────
 

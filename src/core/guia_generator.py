@@ -9,6 +9,7 @@ data/GUIA_NORMATECH.pdf.
 """
 
 from pathlib import Path
+import shutil
 import sys
 
 from reportlab.lib import colors
@@ -177,11 +178,20 @@ def guia_docx_path() -> Path:
     return get_templates_dir() / "GUIA_NORMATECH.docx"
 
 
+def guia_pdf_template_path() -> Path:
+    """PDF do guia convertido no BUILD (templates/GUIA_NORMATECH.pdf)."""
+    from src.utils.paths import get_templates_dir
+    return get_templates_dir() / "GUIA_NORMATECH.pdf"
+
+
 def _converter_docx_para_pdf(docx_path: Path, pdf_path: Path):
     """Converte o DOCX do guia em PDF usando o Microsoft Word (COM).
 
     Levanta excecao se o Word nao estiver instalado — o chamador faz
     fallback para o PDF interno (ReportLab).
+
+    v1.20.0: usada SOMENTE no build (build_exe.py). O app no cliente nao
+    chama mais o Word — evita travamentos ao usuario final.
     """
     import comtypes.client
 
@@ -200,28 +210,25 @@ def _converter_docx_para_pdf(docx_path: Path, pdf_path: Path):
 def garantir_guia() -> Path:
     """Garante o PDF do guia e retorna o caminho.
 
-    Se existir templates/GUIA_NORMATECH.docx (v1.19.0), converte via Word
-    (regenerando quando o DOCX for mais novo que o PDF). Sem Word, ou sem
-    DOCX, usa o PDF interno (ReportLab) como fallback.
+    v1.20.0 (roadmap 2.24): a conversao DOCX -> PDF acontece APENAS no
+    build. Aqui, se existir templates/GUIA_NORMATECH.pdf (distribuido com
+    o app), ele e copiado para data/ quando ausente ou desatualizado.
+    Sem PDF pronto, gera o guia embutido (ReportLab) — sem Word no
+    cliente.
     """
     path = guia_path()
-    docx = guia_docx_path()
-    if docx.exists():
-        desatualizado = (
+    try:
+        pronto = guia_pdf_template_path()
+        if pronto.exists() and (
             not path.exists()
-            or docx.stat().st_mtime > path.stat().st_mtime
-        )
-        if desatualizado:
-            try:
-                _converter_docx_para_pdf(docx, path)
-                return path
-            except Exception:
-                from src.utils.error_log import log_error
-                log_error("guia-docx-word", sys.exc_info()[1])
-                if path.exists():
-                    return path  # PDF antigo ainda serve
-        else:
+            or pronto.stat().st_mtime > path.stat().st_mtime
+        ):
+            shutil.copyfile(pronto, path)
+        if path.exists():
             return path
+    except Exception:
+        from src.utils.error_log import log_error
+        log_error("guia-copia-templates", sys.exc_info()[1])
     if not path.exists():
         generate_guia_pdf(path)
     return path

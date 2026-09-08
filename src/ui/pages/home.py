@@ -55,22 +55,26 @@ class WelcomePage(ctk.CTkFrame):
                 font=("Segoe UI", 48), text_color=COLORS["primary"]
             ).pack(side="left", padx=(0, 20))
 
-        self.lbl_data = ctk.CTkLabel(
-            topo, text="",
-            font=("Segoe UI", 17, "bold"), text_color=COLORS["text_secondary"]
-        )
-        self.lbl_data.pack(side="left")
-
-        # linha preta fina entre data e hora
-        linha = ctk.CTkFrame(topo, width=2, height=54, fg_color=COLORS["text"], corner_radius=1)
-        linha.pack(side="left", padx=20, fill="y")
+        # linha preta fina entre o logotipo e o bloco data + hora
+        linha = ctk.CTkFrame(topo, width=2, height=64, fg_color=COLORS["text"], corner_radius=1)
+        linha.pack(side="left", padx=(0, 20), fill="y")
         linha.pack_propagate(False)
 
+        # data (em cima) + hora (embaixo) empilhadas
+        frame_dh = ctk.CTkFrame(topo, fg_color="transparent")
+        frame_dh.pack(side="left")
+
+        self.lbl_data = ctk.CTkLabel(
+            frame_dh, text="",
+            font=("Segoe UI", 17, "bold"), text_color=COLORS["text_secondary"]
+        )
+        self.lbl_data.pack(anchor="w", pady=(0, 2))
+
         self.lbl_hora = ctk.CTkLabel(
-            topo, text="",
+            frame_dh, text="",
             font=("Segoe UI", 32, "bold"), text_color=COLORS["primary"]
         )
-        self.lbl_hora.pack(side="left")
+        self.lbl_hora.pack(anchor="w")
         self._tick_clock()
 
         # Titulo + subtitulo

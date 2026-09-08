@@ -19,3 +19,4 @@ data/*.db-wal
 data/*.db-shm
 
 data/*.json
+templates/GUIA_NORMATECH.pdf

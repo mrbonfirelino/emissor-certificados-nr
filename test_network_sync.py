@@ -14,7 +14,9 @@ sys.path.insert(0, str(ROOT))
 import src.core.network_sync as ns
 import src.core.employee_repo as er_mod
 import src.core.history_repo as hr_mod
+import src.core.aso_repo as aso_mod
 import src.utils.paths as paths_mod
+from src.core.aso_repo import AsoRepository
 from src.core.employee_repo import EmployeeRepository
 from src.core.history_repo import HistoryRepository
 from src.core.models import CertificateRecord, Employee
@@ -213,6 +215,7 @@ def test_sync_all(tmp: Path):
     paths_mod.get_crachas_dir = lambda: crachas_local
     er_mod.get_db_path = lambda: db
     hr_mod.get_db_path = lambda: db
+    aso_mod.get_db_path = lambda: db
 
     pdf_ok = tmp / "CERT-000020_J.pdf"
     pdf_ok.write_bytes(b"%PDF-j")
@@ -371,6 +374,46 @@ def test_migracao(tmp: Path):
                                      db_path=db)["certificados"] == 0)
 
 
+# ── 6b. ASOs vencidos -> ASOs/Vencidos na rede (v1.20.0) ─────
+
+def test_aso_vencido_rede(tmp: Path):
+    db = make_db(tmp)
+    emp_repo = EmployeeRepository(db_path=db)
+    aso_repo = AsoRepository(db_path=db)
+    emp_repo.create("Carlos Mendes", None)
+    emp = emp_repo.get_all()[0]
+
+    id_venc = aso_repo.save("ASO-000001", emp.id, "Admissional", "2020-01-10", 12)
+    id_ok = aso_repo.save("ASO-000002", emp.id, "Periódico", date.today().isoformat(), 12)
+    asos_local = tmp / "asos_v"
+    pdf_venc = asos_local / "ASO-000001.pdf"
+    pdf_venc.parent.mkdir(parents=True)
+    pdf_venc.write_bytes(b"%PDF-vencido")
+    aso_repo.update_pdf_path(id_venc, str(pdf_venc))
+    pdf_ok = asos_local / "ASO-000002.pdf"
+    pdf_ok.write_bytes(b"%PDF-vigente")
+    aso_repo.update_pdf_path(id_ok, str(pdf_ok))
+
+    dest = tmp / "rede_v"
+    ns.rede_ativo = lambda: True
+    ns.rede_caminho = lambda: dest
+
+    # vencido -> ASOs/Vencidos (e move copia antiga que estivesse em ASOs/)
+    antigo = dest / "Carlos Mendes" / "ASOs" / "ASO-000001.pdf"
+    antigo.parent.mkdir(parents=True)
+    antigo.write_bytes(b"%PDF-antigo")
+    check("sync_aso vencido -> Vencidos (e move antigo)",
+          ns.sync_aso(aso_repo.get_by_id(id_venc), emp)
+          and (dest / "Carlos Mendes" / "ASOs" / "Vencidos" / "ASO-000001.pdf").exists()
+          and not antigo.exists())
+
+    # vigente -> ASOs/
+    check("sync_aso vigente -> ASOs",
+          ns.sync_aso(aso_repo.get_by_id(id_ok), emp)
+          and (dest / "Carlos Mendes" / "ASOs" / "ASO-000002.pdf").exists()
+          and not (dest / "Carlos Mendes" / "ASOs" / "Vencidos" / "ASO-000002.pdf").exists())
+
+
 def main():
     with tempfile.TemporaryDirectory(prefix="normatech_sync_", ignore_cleanup_errors=True) as td:
         tmp = Path(td)
@@ -382,6 +425,7 @@ def main():
         test_sync_all(tmp / "t6")
         test_employee_docs(tmp / "t7")
         test_migracao(tmp / "t8")
+        test_aso_vencido_rede(tmp / "t9")
 
     falhas = [n for n, ok in PASSOS if not ok]
     print(f"\n{len(PASSOS) - len(falhas)}/{len(PASSOS)} testes OK")

@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.20.0] - 2026-09-08
+
+### Adicionado
+- **Guia convertido só no build (2.24)**: o `build_exe.py` agora converte
+  `templates/GUIA_NORMATECH.docx` → `GUIA_NORMATECH.pdf` durante o build
+  (Word da máquina de desenvolvimento); o cliente só recebe o PDF pronto —
+  sem Word COM no cliente, sem travamentos. Sem PDF pronto, o app usa o
+  gerador ReportLab embutido (fallback silencioso)
+- **ASOs vencidos em pasta própria (2.24)**: na rede, ASO vencido vai para
+  `{Func}/ASOs/Vencidos/` e a cópia antiga em `ASOs/` é movida (mesmo padrão
+  dos certificados `00_Certificados_OLD`); arquivos locais ficam intactos
+
+### Corrigido
+- Linha divisória da tela inicial agora fica **entre o logotipo e o bloco
+  data+hora** (data em cima, hora embaixo) — não mais entre data e hora (2.24)
+
+### Alterado
+- Barra lateral com **scroll** — todos os itens ficam acessíveis mesmo com a
+  janela pequena (versão permanece fixa no rodapé) (2.24)
+
 ## [1.19.0] - 2026-09-08
 
 ### Adicionado
