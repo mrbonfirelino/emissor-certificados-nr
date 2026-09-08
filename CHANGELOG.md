@@ -1,5 +1,35 @@
 # Changelog
 
+## [1.18.0] - 2026-09-08
+
+### Adicionado
+- **Guia de Introdução (2.21)**: novo PDF amigável para o usuário final gerado
+  pelo próprio sistema (`data/GUIA_NORMATECH.pdf`) cobrindo funcionários,
+  certificados, vencimentos, cartões, crachás, ASO, EPI, backups, rede,
+  configurações e atalhos; aberto pelo novo botão "Guia de Introdução" na tela
+  inicial ou pela tecla **F1** em qualquer tela
+- **Espelhamento completo validado (2.20)**: teste de integração garante que o
+  `Sincronizar Agora`/sync de inicialização copia 100% dos tipos de documento
+  para a rede (certificados, assinados, outros, cartões e lotes, ASOs, fichas
+  e termos de EPI, crachás e lotes) na estrutura `{Funcionário}/...`
+
+## [1.17.0] - 2026-09-08
+
+### Corrigido
+- **Ficha de EPI — PDF refeito (2.22)**: títulos das tabelas não sobrepõem mais
+  o cabeçalho; linha de devolução agora tem espaço próprio e fica legível
+  ("Devolvido: 2/5 (Parcial) em dd/mm/aaaa" — verde quando Total, laranja
+  quando Parcial); fichas com muitos itens quebram para uma nova página
+  repetindo o cabeçalho da tabela
+- **Devoluções preservadas ao editar itens**: ao editar a ficha, as devoluções
+  são reagrupadas por conteúdo do item (C.A. + descrição) em vez de posição,
+  evitando que remover/reordenar itens desloque devoluções para o item errado
+  (quantidade reduzida abaixo do devolvido descarta a devolução)
+
+### Alterado
+- Lista de fichas de EPI indica "tudo devolvido"/"devolução parcial"/"sem
+  devolução" e exibe badges "TUDO DEVOLVIDO"/"PARCIAL" por ficha
+
 ## [1.16.0] - 2026-09-08
 
 ### Adicionado

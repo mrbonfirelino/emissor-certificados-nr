@@ -14,6 +14,7 @@ sys.path.insert(0, str(ROOT))
 import src.core.network_sync as ns
 import src.core.employee_repo as er_mod
 import src.core.history_repo as hr_mod
+import src.utils.paths as paths_mod
 from src.core.employee_repo import EmployeeRepository
 from src.core.history_repo import HistoryRepository
 from src.core.models import CertificateRecord, Employee
@@ -201,9 +202,15 @@ def test_sync_all(tmp: Path):
     emp = emp_repo.get_all()[0]
     dest = tmp / "rede3"
     cartoes_local = tmp / "cartoes_local"
+    asos_local = tmp / "asos_local"
+    epis_local = tmp / "epis_local"
+    crachas_local = tmp / "crachas_local"
     ns.rede_ativo = lambda: True
     ns.rede_caminho = lambda: dest
     ns.get_cartoes_dir = lambda: cartoes_local
+    paths_mod.get_asos_dir = lambda: asos_local
+    paths_mod.get_epis_dir = lambda: epis_local
+    paths_mod.get_crachas_dir = lambda: crachas_local
     er_mod.get_db_path = lambda: db
     hr_mod.get_db_path = lambda: db
 
@@ -221,14 +228,35 @@ def test_sync_all(tmp: Path):
     lote.parent.mkdir(parents=True)
     lote.write_bytes(b"%PDF-lote")
 
+    # 2.20: integração 100% dos tipos de documento
+    aso_pdf = asos_local / "Joao Pedro" / "ASO-000001.pdf"
+    aso_pdf.parent.mkdir(parents=True)
+    aso_pdf.write_bytes(b"%PDF-aso")
+    epi_ficha = epis_local / "Joao Pedro" / "Ficha de EPI - 01-09-2026 (EPI-000001).pdf"
+    epi_ficha.parent.mkdir(parents=True)
+    epi_ficha.write_bytes(b"%PDF-epi")
+    epi_termo = epis_local / "Joao Pedro" / "Devolucao - 05-09-2026 (EPI-000001).pdf"
+    epi_termo.write_bytes(b"%PDF-termo")
+    cracha_ind = crachas_local / "Joao Pedro" / "CRACHA_J_CRACHA-000001.pdf"
+    cracha_ind.parent.mkdir(parents=True)
+    cracha_ind.write_bytes(b"%PDF-cracha")
+    cracha_lote = crachas_local / "LOTES" / "CRACHAS_CRACHA-ALTEC_1.pdf"
+    cracha_lote.parent.mkdir(parents=True)
+    cracha_lote.write_bytes(b"%PDF-cracha-lote")
+
     stats = ns.sync_all()
-    check("sync_all copia tudo",
+    check("sync_all copia tudo (100% tipos)",
           (dest / "Joao Pedro" / "Certificados" / "NR-35" / "CERT-000020_J.pdf").exists()
           and (dest / "Joao Pedro" / "Certificados Assinados" / "CERT-000020_assinado.pdf").exists()
           and (dest / "Joao Pedro" / "Outros" / "CNH.PNG").exists()
           and (dest / "Joao Pedro" / "Cartoes" / "CARTAO_J_ALTEC.pdf").exists()
-          and (dest / "Cartoes_Gerais" / "CARTOES_ALTEC_1.pdf").exists())
-    check("sync_all stats sem erros", stats["erros"] == 0 and stats["copiados"] >= 5)
+          and (dest / "Cartoes_Gerais" / "CARTOES_ALTEC_1.pdf").exists()
+          and (dest / "Joao Pedro" / "ASOs" / "ASO-000001.pdf").exists()
+          and (dest / "Joao Pedro" / "EPIs" / epi_ficha.name).exists()
+          and (dest / "Joao Pedro" / "EPIs" / epi_termo.name).exists()
+          and (dest / "Joao Pedro" / "Crachas" / cracha_ind.name).exists()
+          and (dest / "Crachas_Gerais" / cracha_lote.name).exists())
+    check("sync_all stats sem erros", stats["erros"] == 0 and stats["copiados"] >= 10)
 
 
 # ── 7. Documentos do funcionario (BLOB) ──────────────────────

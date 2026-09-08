@@ -117,6 +117,13 @@ class WelcomePage(ctk.CTkFrame):
             state=state, command=lambda: nav("history")
         ).pack(side="left", expand=True, fill="x", padx=6)
 
+        ctk.CTkButton(
+            shortcuts_frame, text="\u2753  Guia de Introdução",
+            font=fonts["body_bold"], height=40,
+            fg_color=COLORS["muted"], hover_color=COLORS["text_secondary"],
+            command=self._abrir_guia
+        ).pack(side="left", expand=True, fill="x", padx=6)
+
         # === ANIVERSARIANTES (hoje + mes) ===
         aniv_frame = ctk.CTkFrame(center, fg_color="transparent")
         aniv_frame.grid(row=2, column=0, sticky="ew", padx=48, pady=(8, 0))
@@ -281,6 +288,17 @@ class WelcomePage(ctk.CTkFrame):
         ).pack(pady=(0, 12))
 
         return lbl_value
+
+    def _abrir_guia(self):
+        """Abre (gerando se preciso) o Guia de Introdução em PDF."""
+        try:
+            import os
+            from src.core.guia_generator import garantir_guia
+            caminho = garantir_guia()
+            os.startfile(str(caminho))
+        except Exception as e:
+            from src.utils.error_log import log_error
+            log_error("abrir-guia", e)
 
     def refresh(self):
         certs = 0

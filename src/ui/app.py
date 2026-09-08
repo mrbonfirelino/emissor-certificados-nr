@@ -352,7 +352,7 @@ class NormaTechApp(ctk.CTk):
     def _install_shortcuts(self):
         cb = self.register(self._on_hotkey)
         specs = [f"<Control-Key-{k}>" for k, _ in self._HOTKEY_PAGES]
-        specs += ["<Control-Key-t>", "<Control-Key-T>", "<F5>"]
+        specs += ["<Control-Key-t>", "<Control-Key-T>", "<F5>", "<F1>"]
         for spec in specs:
             self.tk.call("bind", "all", spec, f"{cb} %K")
 
@@ -366,6 +366,9 @@ class NormaTechApp(ctk.CTk):
                 if page is not None and hasattr(page, "refresh"):
                     page.refresh()
                 return
+            if keysym == "F1":
+                self._abrir_guia()
+                return
             for key, method in self._HOTKEY_PAGES:
                 if keysym == key:
                     getattr(self, method)()
@@ -373,6 +376,17 @@ class NormaTechApp(ctk.CTk):
         except Exception as e:
             from src.utils.error_log import log_error
             log_error("atalho-teclado", e)
+
+    def _abrir_guia(self):
+        """Abre (gerando se preciso) o Guia de Introdução em PDF (F1)."""
+        try:
+            import os
+            from src.core.guia_generator import garantir_guia
+            caminho = garantir_guia()
+            os.startfile(str(caminho))
+        except Exception as e:
+            from src.utils.error_log import log_error
+            log_error("abrir-guia", e)
 
     def _set_active_nav(self, key: str):
         for k, frame in self.nav_frames.items():

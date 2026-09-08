@@ -1,7 +1,7 @@
 # Roadmap - NormaTech
 
 ## Status do Projeto
- - Versao atual: 1.16.0
+ - Versao atual: 1.18.0
 - NRs disponiveis: 17 (01, 05, 06, 09, 10, 11, 12, 17, 18, 26, 33, 34, 35 + FDS, BRIGADISTA-NR23, PTA, MOTOSERRA, MUNCK, PONTE-ROLANTE, DIR-DEFENSIVA, CIPAA)
 
 ---
@@ -242,22 +242,32 @@ Requisitos: Microsoft PowerPoint instalado na máquina (conversão via COM).
 | Registro/Remoção | Registrar e remover a tarefa agendada diretamente pelo programa | Alta | Concluído (v1.15.0) |
 | Verificação de Status | Indicar na UI se a tarefa agendada está ativa ou não | Media | Concluído (v1.15.0) |
 
-### 2.20 Espelhamento de Todos os PDFs na Pasta de Documentos e Rede
+### 2.20 Espelhamento de Todos os PDFs na Pasta de Documentos e Rede (CONCLUÍDA)
 
 | Item | Descricao | Prioridade | Status |
 |------|-----------|------------|--------|
-| PDFs na pasta documentos | Todos os PDFs gerados (fichas de EPI, ASO, cartões de bloqueio, crachás, certificados, etc.) devem ser salvos na pasta de documentos do funcionário | Alta | Pendente |
-| Documentos assinados/digitalizados | Incluir PDFs assinados e digitalizados no espelhamento para a pasta de documentos | Alta | Pendente |
-| Espelhamento em rede | Todos os documentos devem ser copiados para a pasta na rede também (estrutura {Func}/...) | Alta | Pendente |
-| Consolidação de pastas | Unificar lógica de salvamento para que todos os tipos de documento sigam o mesmo padrão de espelhamento | Media | Pendente |
+| PDFs na pasta documentos | Todos os PDFs gerados (fichas de EPI, ASO, cartões de bloqueio, crachás, certificados, etc.) devem ser salvos na pasta de documentos do funcionário | Alta | Concluído (v1.18.0) |
+| Documentos assinados/digitalizados | Incluir PDFs assinados e digitalizados no espelhamento para a pasta de documentos | Alta | Concluído (v1.18.0) |
+| Espelhamento em rede | Todos os documentos devem ser copiados para a pasta na rede também (estrutura {Func}/...) | Alta | Concluído (v1.18.0) |
+| Consolidação de pastas | Unificar lógica de salvamento para que todos os tipos de documento sigam o mesmo padrão de espelhamento | Media | Concluído (v1.18.0) |
 
-### 2.21 Guia de Introdução ao Sistema (PDF)
+### 2.21 Guia de Introdução ao Sistema (PDF) (CONCLUÍDA)
 
 | Item | Descricao | Prioridade | Status |
 |------|-----------|------------|--------|
-| Guia do Usuário | Montar um mini guia em PDF de introdução ao sistema e de como usar, voltado para o usuário final (nada muito técnico) | Media | Pendente |
-| Conteúdo do Guia | Instruções de uso: cadastro de funcionários, emissão de certificados, cartões, ASO, fichas de EPI, importação Excel, backup, etc. | Media | Pendente |
-| Acesso pelo Programa | Botão ou link no programa para abrir o guia (ex: menu Ajuda ou tela inicial) | Baixa | Pendente |
+| Guia do Usuário | Montar um mini guia em PDF de introdução ao sistema e de como usar, voltado para o usuário final (nada muito técnico) | Media | Concluído (v1.18.0) |
+| Conteúdo do Guia | Instruções de uso: cadastro de funcionários, emissão de certificados, cartões, ASO, fichas de EPI, importação Excel, backup, etc. | Media | Concluído (v1.18.0) |
+| Acesso pelo Programa | Botão ou link no programa para abrir o guia (ex: menu Ajuda ou tela inicial) | Baixa | Concluído (v1.18.0) |
+
+### 2.22 Melhorias na Ficha de EPIs (CONCLUÍDA)
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Data padrão no preenchimento | Utilizar a data do dia como default para campos de retirada e devolução de EPIs, agilizando o preenchimento | Alta | Concluído (v1.17.0) |
+| Correção do PDF — sobreposição de títulos | No PDF gerado, os títulos da tabela estão sobrepostos a outro texto/faixa — afastar para correção | Alta | Concluído (v1.17.0) |
+| Itens devolvidos no PDF | Itens devolvidos não estão aparecendo na tabela geral do PDF — corrigir para exibir todos os itens | Alta | Concluído (v1.17.0) |
+| Indicador de devolução | A Ficha de EPIs deve informar claramente se o item foi devolvido ou não (status visível para o usuário) | Alta | Concluído (v1.17.0) |
+| Revisão geral da Ficha de EPIs | Rever o funcionamento atual da ficha de EPIs, que está confuso e pode gerar confusão ao usuário | Alta | Concluído (v1.17.0) |
 
 ---
 
