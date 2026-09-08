@@ -325,6 +325,129 @@ def test_aso_importer(tmp: Path):
           and dest.as_posix() in Path(joao["pdf_path"]).as_posix())
 
 
+# ── 10. ASO embutido no PDF (v1.16.0) ────────────────────────
+
+def test_aso_pdf_embedded(tmp: Path):
+    import fitz
+    from src.core.aso_pdf_generator import (generate_aso_pdf, rebuild_aso_pdf,
+                                            rebuild_aso_pdf_sem_doc)
+    db = make_db(tmp)
+    emp_repo = EmployeeRepository(db_path=db)
+    emp_repo.create("Joao Pedro", "52998224725")
+    emp = emp_repo.get_all()[0]
+
+    capa = tmp / "ASO-000001.pdf"
+    aso = {"aso_number": "ASO-000001", "tipo_aso": "Periódico",
+           "data_exame": date.today().isoformat(), "validade_meses": 12,
+           "pdf_path": str(capa)}
+    generate_aso_pdf(str(capa), "ASO-000001", emp, "Periódico",
+                     date.today().isoformat(), 12)
+    doc = fitz.open(capa)
+    check("capa placeholder: 1 pagina", doc.page_count == 1)
+    check("capa placeholder: quadro reservado", "ASO" in doc[0].get_text())
+    doc.close()
+
+    med = fitz.open()
+    for i in range(2):
+        med.new_page().insert_text((72, 72), f"PARECER MEDICO pagina {i + 1}")
+    medico_pdf = tmp / "medico.pdf"
+    med.save(str(medico_pdf))
+    med.close()
+
+    rebuild_aso_pdf(aso, emp, medico_pdf.read_bytes(), "pdf")
+    doc = fitz.open(capa)
+    check("PDF medico: capa + 2 paginas", doc.page_count == 3)
+    check("PDF medico: texto do medico presente",
+          "PARECER MEDICO" in doc[1].get_text() and "MEDICO" in doc[2].get_text())
+    check("PDF medico: capa marca anexo", "ANEXADO" in doc[0].get_text())
+    doc.close()
+
+    from io import BytesIO
+    from PIL import Image
+    buf = BytesIO()
+    Image.new("RGB", (400, 300), "white").save(buf, "PNG")
+    rebuild_aso_pdf(aso, emp, buf.getvalue(), "png")
+    doc = fitz.open(capa)
+    check("imagem: capa + 1 pagina A4", doc.page_count == 2
+          and abs(doc[1].rect.width - 595.28) < 2)
+    check("imagem: capa marca anexo", "ANEXADO" in doc[0].get_text())
+    doc.close()
+
+    rebuild_aso_pdf_sem_doc(aso, emp)
+    doc = fitz.open(capa)
+    check("remover doc: volta capa placeholder",
+          doc.page_count == 1 and "ANEXADO" not in doc[0].get_text())
+    doc.close()
+
+
+# ── 11. Devolucao de EPI separada (v1.16.0) ──────────────────
+
+def test_devolucao(tmp: Path):
+    tmp.mkdir(parents=True, exist_ok=True)
+    import fitz
+    from src.ui.components.epi_manager_dialog import _iso, _resolver_devolucao
+    from src.core.epi_pdf_generator import generate_devolucao_pdf
+    from src.core.models import Employee as Emp
+
+    # _iso: ano obrigatoriamente 4 digitos
+    check("_iso aceita dd/mm/aaaa", _iso("05/09/2026") == "2026-09-05")
+    try:
+        _iso("05/09/26")
+        check("_iso rejeita ano de 2 digitos", False)
+    except ValueError:
+        check("_iso rejeita ano de 2 digitos", True)
+    try:
+        _iso("31/02/2026")
+        check("_iso rejeita data inexistente", False)
+    except ValueError:
+        check("_iso rejeita data inexistente", True)
+
+    items = [
+        {"ca": "1234", "descricao": "Luva nitrilica", "quantidade": "10",
+         "data_entrega": "2026-09-01", "dev_quantidade": "", "dev_data": ""},
+        {"ca": "5678", "descricao": "Oculos amber", "quantidade": "2",
+         "data_entrega": "2026-09-01", "dev_quantidade": "", "dev_data": ""},
+    ]
+
+    res = _resolver_devolucao(items, {0: ("total", None), 1: ("parcial", "1")},
+                              "2026-09-08")
+    check("resolver: total grava quantidade cheia",
+          res[0]["dev_quantidade"] == "10" and res[0]["dev_data"] == "2026-09-08")
+    check("resolver: parcial grava qtde informada",
+          res[1]["dev_quantidade"] == "1" and res[1]["dev_data"] == "2026-09-08")
+
+    res2 = _resolver_devolucao(items, {0: ("pendente", None), 1: ("pendente", None)},
+                               "2026-09-08")
+    check("resolver: pendente limpa devolucao",
+          res2[0]["dev_quantidade"] == "" and res2[1]["dev_data"] == "")
+
+    for escolha, nome in [({0: ("parcial", "11")}, "maior que entregue"),
+                          ({0: ("parcial", "0")}, "zero"),
+                          ({0: ("parcial", "abc")}, "nao numerica")]:
+        try:
+            _resolver_devolucao(items, escolha, "2026-09-08")
+            check(f"resolver rejeita {nome}", False)
+        except ValueError:
+            check(f"resolver rejeita {nome}", True)
+
+    # termo de devolucao em PDF
+    emp = Emp(id=1, nome="Joao Pedro", cpf="529.982.247-25", funcao="Eletricista")
+    termo = tmp / "Devolucao - 08-09-2026 (EPI-000001).pdf"
+    dev_items = _resolver_devolucao(items, {0: ("total", None), 1: ("parcial", "1")},
+                                    "2026-09-08")
+    generate_devolucao_pdf(str(termo), "EPI-000001", emp, "2026-09-08", dev_items)
+    doc = fitz.open(termo)
+    txt = doc[0].get_text()
+    check("termo devolucao: gerado", termo.exists() and doc.page_count == 1)
+    check("termo devolucao: titulo e numero",
+          "DEVOLUCAO" in txt.upper() and "EPI-000001" in txt)
+    check("termo devolucao: itens e estados",
+          "Luva nitrilica" in txt and "Total" in txt and "Parcial" in txt)
+    check("termo devolucao: assinaturas",
+          "Empregado" in txt and "Responsavel" in txt)
+    doc.close()
+
+
 def main():
     with tempfile.TemporaryDirectory(prefix="normatech_asoepi_",
                                      ignore_cleanup_errors=True) as td:
@@ -338,6 +461,8 @@ def main():
         test_merge_vencimentos(tmp / "t7")
         test_pdfs(tmp / "t8")
         test_aso_importer(tmp / "t9")
+        test_aso_pdf_embedded(tmp / "t10")
+        test_devolucao(tmp / "t11")
 
     falhas = [n for n, ok in PASSOS if not ok]
     print(f"\n{len(PASSOS) - len(falhas)}/{len(PASSOS)} testes OK")

@@ -1,7 +1,7 @@
 # Roadmap - NormaTech
 
 ## Status do Projeto
- - Versao atual: 1.15.1
+ - Versao atual: 1.16.0
 - NRs disponiveis: 17 (01, 05, 06, 09, 10, 11, 12, 17, 18, 26, 33, 34, 35 + FDS, BRIGADISTA-NR23, PTA, MOTOSERRA, MUNCK, PONTE-ROLANTE, DIR-DEFENSIVA, CIPAA)
 
 ---
@@ -211,6 +211,8 @@ Requisitos: Microsoft PowerPoint instalado na máquina (conversão via COM).
 | Ficha de EPI | Botão EPI por funcionário: fichas com código próprio (EPI-XXXXXX), itens de Entrega (CA/Descrição/Qtde/Data/Visto) e Devolução, PDF regenerável, status Em Aberto/Fechado | Alta | Concluído (v1.11.0) |
 | EPI — Digitalizações múltiplas | Anexar fichas digitalizadas em várias versões (devoluções parciais) sem apagar anteriores | Media | Concluído (v1.11.0) |
 | Rede | ASOs e EPIs espelhados na estrutura de rede ({Func}/ASOs e {Func}/EPIs) | Media | Concluído (v1.11.0) |
+| ASO — Documento embutido | Documento do médico anexado/digitalizado entra nas páginas seguintes do próprio PDF do ASO | Alta | Concluído (v1.16.0) |
+| EPI — Devolução separada | Botão Devolução por ficha: itens Pendente/Total/Parcial com data, Termo de Devolução em PDF próprio para assinar e ficha regenerada | Alta | Concluído (v1.16.0) |
 
 ### 2.17 Modelos de Importação e Atualização (CONCLUÍDA)
 
@@ -239,6 +241,23 @@ Requisitos: Microsoft PowerPoint instalado na máquina (conversão via COM).
 | Configuração da Tarefa | Interface para configurar horário/frequência da tarefa agendada (diário, semanal, etc) | Alta | Concluído (v1.15.0) |
 | Registro/Remoção | Registrar e remover a tarefa agendada diretamente pelo programa | Alta | Concluído (v1.15.0) |
 | Verificação de Status | Indicar na UI se a tarefa agendada está ativa ou não | Media | Concluído (v1.15.0) |
+
+### 2.20 Espelhamento de Todos os PDFs na Pasta de Documentos e Rede
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| PDFs na pasta documentos | Todos os PDFs gerados (fichas de EPI, ASO, cartões de bloqueio, crachás, certificados, etc.) devem ser salvos na pasta de documentos do funcionário | Alta | Pendente |
+| Documentos assinados/digitalizados | Incluir PDFs assinados e digitalizados no espelhamento para a pasta de documentos | Alta | Pendente |
+| Espelhamento em rede | Todos os documentos devem ser copiados para a pasta na rede também (estrutura {Func}/...) | Alta | Pendente |
+| Consolidação de pastas | Unificar lógica de salvamento para que todos os tipos de documento sigam o mesmo padrão de espelhamento | Media | Pendente |
+
+### 2.21 Guia de Introdução ao Sistema (PDF)
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Guia do Usuário | Montar um mini guia em PDF de introdução ao sistema e de como usar, voltado para o usuário final (nada muito técnico) | Media | Pendente |
+| Conteúdo do Guia | Instruções de uso: cadastro de funcionários, emissão de certificados, cartões, ASO, fichas de EPI, importação Excel, backup, etc. | Media | Pendente |
+| Acesso pelo Programa | Botão ou link no programa para abrir o guia (ex: menu Ajuda ou tela inicial) | Baixa | Pendente |
 
 ---
 

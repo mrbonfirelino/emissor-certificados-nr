@@ -411,6 +411,39 @@ class AsoPage(ctk.CTkFrame):
         else:
             messagebox.showwarning("Aviso", "Arquivo PDF nao encontrado.", parent=self)
 
+    def _rebuild_pdf(self, aso: dict):
+        """Regenera o PDF do ASO com o documento do medico embutido (v1.16.0).
+
+        Capa (dados) + paginas do documento anexado. Falhas nao abortam o anexo:
+        apenas avisam (PDF aberto em leitor) ou logam.
+        """
+        from src.core.aso_pdf_generator import rebuild_aso_pdf, rebuild_aso_pdf_sem_doc
+        from src.utils.error_log import log_error
+        try:
+            emp = self.employee_repo.get_by_id(aso["employee_id"])
+            if emp is None:
+                return
+            result = self.aso_repo.get_doc(aso["id"])
+            if result:
+                data, tipo = result
+                rebuild_aso_pdf(aso, emp, data, tipo)
+            else:
+                rebuild_aso_pdf_sem_doc(aso, emp)
+            try:
+                from src.core.network_sync import run_async, sync_aso
+                run_async(sync_aso, aso, emp)
+            except Exception:
+                pass
+        except PermissionError:
+            messagebox.showwarning(
+                "PDF em uso",
+                "Nao foi possivel atualizar o PDF do ASO porque ele esta aberto em um leitor.\n"
+                "Feche o PDF e anexe/digitalize novamente para embutir o documento.",
+                parent=self
+            )
+        except Exception as e:
+            log_error("aso-rebuild-pdf", e)
+
     def _attach(self, aso: dict):
         if aso.get("has_doc"):
             resp = messagebox.askyesnocancel(
@@ -425,6 +458,7 @@ class AsoPage(ctk.CTkFrame):
                 return
             if resp is False:
                 if self.aso_repo.remove_doc(aso["id"]):
+                    self._rebuild_pdf(aso)
                     messagebox.showinfo("Sucesso", "Documento removido.", parent=self)
                     self._refresh_list()
                 return
@@ -441,8 +475,9 @@ class AsoPage(ctk.CTkFrame):
             with open(path, "rb") as f:
                 data = f.read()
             self.aso_repo.attach_doc(aso["id"], data, ext)
+            self._rebuild_pdf(aso)
             self._espelhar_rede(aso)
-            messagebox.showinfo("Sucesso", "Documento anexado ao ASO.", parent=self)
+            messagebox.showinfo("Sucesso", "Documento anexado ao ASO (embutido no PDF).", parent=self)
             self._refresh_list()
         except ValueError as e:
             messagebox.showerror("Erro", str(e), parent=self)
@@ -462,8 +497,9 @@ class AsoPage(ctk.CTkFrame):
         data, tipo = dlg.resultado
         try:
             self.aso_repo.attach_doc(aso["id"], data, tipo)
+            self._rebuild_pdf(aso)
             self._espelhar_rede(aso)
-            messagebox.showinfo("Sucesso", "Digitalizacao anexada ao ASO.", parent=self)
+            messagebox.showinfo("Sucesso", "Digitalizacao anexada ao ASO (embutida no PDF).", parent=self)
             self._refresh_list()
         except ValueError as e:
             messagebox.showerror("Erro", str(e), parent=self)

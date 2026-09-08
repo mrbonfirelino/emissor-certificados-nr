@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.16.0] - 2026-09-08
+
+### Adicionado
+- **Documento do ASO embutido no PDF**: ao anexar ou digitalizar o ASO, o
+  documento do médico passa a ser incluído nas páginas seguintes do próprio PDF
+  do ASO (capa do sistema + documento); ao remover o documento, o PDF volta à
+  capa com espaço reservado
+- **Configurações organizadas em seções recolhíveis**: 6 seções (Dados da
+  Empresa, Segurança, Aparência e Notificações, Backups, Documentos em Rede,
+  Diagnóstico) com esconder/mostrar — apenas a primeira abre por padrão
+- **Devolução de EPI separada** (refinamento 2.16): novo botão "Devolução" por
+  ficha registra itens como Pendente/Total/Parcial com data própria; gera
+  **Termo de Devolução em PDF** para o funcionário assinar
+  (`Devolucao - dd-mm-aaaa (EPI-XXXXXX).pdf`) e regenera a ficha com as
+  devoluções registradas; se todos os itens forem devolvidos por completo,
+  oferece fechar a ficha
+
+### Corrigido
+- **Salvar ficha de EPI**: diálogo de itens agora expande a rolagem
+  corretamente; datas com ano de 2 dígitos são rejeitadas (antes viravam ano
+  26); salvar com o PDF aberto em um leitor mostra mensagem amigável pedindo
+  para fechar o arquivo; remover todos os itens pede confirmação
+- **Formulário de itens da ficha**: colunas de devolução saíram do formulário
+  de retirada (devolução é registrada depois, pelo botão próprio)
+
 ## [1.15.1] - 2026-09-08
 
 ### Adicionado

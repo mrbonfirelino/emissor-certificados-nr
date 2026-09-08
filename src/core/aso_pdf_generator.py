@@ -3,6 +3,7 @@
 O documento tem um quadro reservado para colar/anexar o ASO real (digitalizado).
 """
 from datetime import date
+from pathlib import Path
 from dateutil.relativedelta import relativedelta
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
@@ -21,8 +22,13 @@ def _br(iso: str) -> str:
 
 
 def generate_aso_pdf(output_path: str, aso_number: str, employee, tipo_aso: str,
-                     data_exame: str, validade_meses: int = 12) -> str:
-    """Gera o PDF do ASO. employee = Employee (modelo). Retorna o caminho."""
+                     data_exame: str, validade_meses: int = 12,
+                     has_doc: bool = False) -> str:
+    """Gera o PDF do ASO. employee = Employee (modelo). Retorna o caminho.
+
+    has_doc=True indica que o documento do medico esta anexado nas paginas
+    seguintes (v1.16.0) e o quadro reservado muda de texto.
+    """
     from src.utils.paths import get_logo_path
 
     try:
@@ -133,10 +139,15 @@ def generate_aso_pdf(output_path: str, aso_number: str, employee, tipo_aso: str,
     c.setDash()
     c.setFillColor(MUTED)
     c.setFont("Helvetica-Bold", 13)
-    c.drawCentredString(W / 2, box_top - box_h / 2 + 8 * mm, "ESPACO RESERVADO PARA O ASO")
-    c.setFont("Helvetica", 9)
-    c.drawCentredString(W / 2, box_top - box_h / 2 - 1 * mm, "Cole aqui o documento original ou anexe o ASO digitalizado")
-    c.drawCentredString(W / 2, box_top - box_h / 2 - 6 * mm, "(botao 'Anexar' ou 'Digitalizar' na tela de ASOs)")
+    if has_doc:
+        c.drawCentredString(W / 2, box_top - box_h / 2 + 8 * mm, "DOCUMENTO DO ASO ANEXADO")
+        c.setFont("Helvetica", 9)
+        c.drawCentredString(W / 2, box_top - box_h / 2 - 1 * mm, "Veja o documento do medico nas paginas seguintes deste PDF")
+    else:
+        c.drawCentredString(W / 2, box_top - box_h / 2 + 8 * mm, "ESPACO RESERVADO PARA O ASO")
+        c.setFont("Helvetica", 9)
+        c.drawCentredString(W / 2, box_top - box_h / 2 - 1 * mm, "Cole aqui o documento original ou anexe o ASO digitalizado")
+        c.drawCentredString(W / 2, box_top - box_h / 2 - 6 * mm, "(botao 'Anexar' ou 'Digitalizar' na tela de ASOs)")
 
     # ── Assinaturas ──
     y = box_top - box_h - 22 * mm
@@ -159,3 +170,48 @@ def generate_aso_pdf(output_path: str, aso_number: str, employee, tipo_aso: str,
     c.showPage()
     c.save()
     return output_path
+
+
+def rebuild_aso_pdf(aso: dict, employee, doc_bytes: bytes, doc_tipo: str) -> str:
+    """Regenera o PDF do ASO com o documento do medico embutido (v1.16.0).
+
+    Pagina 1 = capa (dados) gerada com has_doc=True; paginas seguintes =
+    documento anexado (PDF integral ou imagem em pagina A4 com margens).
+    Grava no proprio aso['pdf_path'] e retorna o caminho.
+    """
+    import tempfile
+    import fitz
+
+    pdf_path = aso["pdf_path"]
+    with tempfile.TemporaryDirectory(prefix="normatech_aso_") as td:
+        capa = str(Path(td) / "capa.pdf")
+        generate_aso_pdf(
+            capa, aso["aso_number"], employee, aso["tipo_aso"],
+            aso["data_exame"], aso.get("validade_meses", 12), has_doc=True,
+        )
+        out = fitz.open(capa)
+        try:
+            if (doc_tipo or "pdf").lower() == "pdf":
+                src = fitz.open(stream=doc_bytes, filetype="pdf")
+                out.insert_pdf(src)
+                src.close()
+            else:
+                page = out.new_page(width=fitz.paper_size("a4")[0],
+                                    height=fitz.paper_size("a4")[1])
+                margem = 15
+                rect = fitz.Rect(margem, margem,
+                                 page.rect.width - margem, page.rect.height - margem)
+                page.insert_image(rect, stream=doc_bytes)
+            out.save(pdf_path, deflate=True)
+        finally:
+            out.close()
+    return pdf_path
+
+
+def rebuild_aso_pdf_sem_doc(aso: dict, employee) -> str:
+    """Regenera apenas a capa (documento removido) e grava no pdf_path."""
+    generate_aso_pdf(
+        aso["pdf_path"], aso["aso_number"], employee, aso["tipo_aso"],
+        aso["data_exame"], aso.get("validade_meses", 12), has_doc=False,
+    )
+    return aso["pdf_path"]

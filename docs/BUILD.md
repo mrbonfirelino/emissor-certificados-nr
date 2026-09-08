@@ -150,7 +150,7 @@ O app procura dados **ao lado do exe** (`src/utils/paths.py`):
 | `data\cartoes\` | cartões `{Funcionario}\` + `LOTES\` | saída do app (v1.8.0) |
 | `data\assinados\` | assinados exportados `{Funcionario}\` | saída do app (v1.8.0) |
 | `data\asos\` | ASOs `{Funcionario}\ASO-XXXXXX.pdf` | saída do app (v1.11.0) |
-| `data\epis\` | fichas de EPI `{Funcionario}\Ficha de EPI - dd-mm-aaaa (EPI-XXXXXX).pdf` | saída do app (v1.11.0) |
+| `data\epis\` | fichas de EPI `{Funcionario}\Ficha de EPI - dd-mm-aaaa (EPI-XXXXXX).pdf` + termos `Devolucao - dd-mm-aaaa (EPI-XXXXXX).pdf` (v1.16.0) | saída do app (v1.11.0) |
 | `data\crachas\` | crachás `{Funcionario}\CRACHA_*.pdf` + `LOTES\` (folha A4 com guia de corte, v1.15.0) | saída do app (v1.13.0) |
 | `templates\` | JSONs de NR + `_layout.json` + `cards\*.card.json` + `cards\pptx\` (PPTX) | **SIM** — editar e reiniciar o app |
 | `assets\` | embutidos no exe (via `_MEIPASS`) | não |

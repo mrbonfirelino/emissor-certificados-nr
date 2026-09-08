@@ -195,3 +195,142 @@ def generate_epi_pdf(output_path: str, epi_number: str, employee, data_emissao: 
     c.showPage()
     c.save()
     return output_path
+
+
+def generate_devolucao_pdf(output_path: str, epi_number: str, employee,
+                           data_devolucao: str, items: list) -> str:
+    """Gera o Termo de Devolucao de EPI para assinatura (v1.16.0).
+
+    items: mesma lista da ficha; usa dev_quantidade/dev_data de cada item.
+    Retorna o caminho.
+    """
+    from src.utils.paths import get_logo_path
+
+    try:
+        from src.core.config import load_company_config
+        cfg = load_company_config()
+        empresa = cfg.empresa_nome if cfg else "Configurar empresa em Configuracoes"
+    except Exception:
+        empresa = "Configurar empresa em Configuracoes"
+
+    c = pdfcanvas.Canvas(output_path, pagesize=A4)
+    W, H = A4
+    margem = 15 * mm
+
+    # ── Cabecalho ──
+    logo = get_logo_path()
+    if logo and logo.exists():
+        try:
+            from reportlab.lib.utils import ImageReader
+            c.drawImage(ImageReader(str(logo)), margem, H - margem - 16 * mm,
+                        width=26 * mm, height=16 * mm, mask='auto', preserveAspectRatio=True)
+        except Exception:
+            pass
+    c.setFillColor(PRIMARY)
+    c.setFont("Helvetica-Bold", 13)
+    c.drawRightString(W - margem, H - margem - 12 * mm, empresa)
+    c.setFont("Helvetica", 8)
+    c.setFillColor(MUTED)
+    c.drawRightString(W - margem, H - margem - 17 * mm, "Ficha de EPI — NR-6")
+
+    # ── Titulo ──
+    y = H - margem - 30 * mm
+    c.setFillColor(PRIMARY)
+    c.setFont("Helvetica-Bold", 15)
+    c.drawCentredString(W / 2, y, "TERMO DE DEVOLUCAO DE EPI")
+    c.setFont("Helvetica", 9)
+    c.setFillColor(TEXT)
+    c.drawCentredString(W / 2, y - 6 * mm,
+                        f"Ficha: {epi_number}   |   Data da devolucao: {_br(data_devolucao)}")
+
+    # ── Dados do funcionario ──
+    y -= 16 * mm
+    c.setFont("Helvetica", 9)
+    cpf = employee.cpf or "-"
+    linha1 = f"Nome: {employee.nome}          CPF: {cpf}"
+    linha2 = f"Funcao: {employee.funcao or '-'}"
+    c.setFillColor(TEXT)
+    c.drawString(margem, y, linha1)
+    c.drawString(margem, y - 5 * mm, linha2)
+
+    # ── Tabela de itens ──
+    y -= 14 * mm
+    d_ca = 24 * mm
+    d_desc = 74 * mm
+    d_qe = 20 * mm
+    d_qd = 24 * mm
+    d_est = 38 * mm
+    total_w = d_ca + d_desc + d_qe + d_qd + d_est
+
+    def _estado(item) -> str:
+        qtd = str(item.get("quantidade", "")).strip()
+        dev = str(item.get("dev_quantidade", "")).strip()
+        if not dev:
+            return "Pendente"
+        if qtd and dev == qtd:
+            return "Total"
+        return "Parcial"
+
+    c.setFillColor(PRIMARY)
+    c.rect(margem, y - 7 * mm, total_w, 7 * mm, fill=1, stroke=0)
+    c.setFillColor("#FFFFFF")
+    c.setFont("Helvetica-Bold", 9)
+    c.drawString(margem + 2 * mm, y - 5 * mm, "ITENS DEVOLVIDOS")
+
+    y -= 7 * mm
+    cols = [("C.A.", d_ca), ("Descricao do Material", d_desc),
+            ("Qtde Entregue", d_qe), ("Qtde Devolvida", d_qd), ("Estado", d_est)]
+    x = margem
+    c.setStrokeColor(BORDER)
+    c.setLineWidth(0.5)
+    c.line(margem, y - 4 * mm, margem + total_w, y - 4 * mm)
+    c.setFont("Helvetica-Bold", 8)
+    c.setFillColor(TEXT)
+    for nome, w in cols:
+        c.drawCentredString(x + w / 2, y, nome)
+        x += w
+    y -= 4 * mm
+
+    itens = list(items or [])
+    for idx, item in enumerate(itens):
+        y -= 7 * mm
+        if idx % 2 == 1:
+            c.setFillColor(ZEBRA)
+            c.rect(margem, y - 4 * mm, total_w, 7 * mm, fill=1, stroke=0)
+        c.setFont("Helvetica", 8)
+        c.setFillColor(TEXT)
+        x = margem
+        vals = [item.get("ca", ""), str(item.get("descricao", ""))[:48],
+                item.get("quantidade", ""), item.get("dev_quantidade", "") or "-",
+                _estado(item)]
+        widths = [d_ca, d_desc, d_qe, d_qd, d_est]
+        for val, w in zip(vals, widths):
+            if w == d_desc:
+                c.drawString(x + 2 * mm, y, str(val))
+            else:
+                c.drawCentredString(x + w / 2, y, str(val))
+            x += w
+        c.setStrokeColor(BORDER)
+        c.line(margem, y - 4 * mm, margem + total_w, y - 4 * mm)
+
+    # ── Assinaturas ──
+    y -= 26 * mm
+    c.setStrokeColor(TEXT)
+    c.setLineWidth(0.6)
+    ass_w = 70 * mm
+    c.line(margem, y, margem + ass_w, y)
+    c.line(W - margem - ass_w, y, W - margem, y)
+    c.setFont("Helvetica", 9)
+    c.setFillColor(TEXT)
+    c.drawCentredString(margem + ass_w / 2, y - 5 * mm, "Assinatura do Empregado")
+    c.drawCentredString(W - margem - ass_w / 2, y - 5 * mm, "Responsavel pelo Recebimento")
+
+    # ── Rodape ──
+    c.setFont("Helvetica", 7)
+    c.setFillColor("#CCCCCC")
+    c.drawRightString(W - margem, margem / 2, epi_number)
+    c.drawString(margem, margem / 2, date.today().strftime("Emitido em %d/%m/%Y"))
+
+    c.showPage()
+    c.save()
+    return output_path
