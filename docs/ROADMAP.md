@@ -1,7 +1,7 @@
 # Roadmap - NormaTech
 
 ## Status do Projeto
- - Versao atual: 1.20.1
+ - Versao atual: 1.22.0
 - NRs disponiveis: 17 (01, 05, 06, 09, 10, 11, 12, 17, 18, 26, 33, 34, 35 + FDS, BRIGADISTA-NR23, PTA, MOTOSERRA, MUNCK, PONTE-ROLANTE, DIR-DEFENSIVA, CIPAA)
 
 ---
@@ -292,17 +292,17 @@ Requisitos: Microsoft PowerPoint instalado na máquina (conversão via COM).
 | Scrollbar na sidebar | Inserir scrollbar na barra lateral — alguns itens não ficam visíveis se a janela estiver muito pequena | Media | Concluído (v1.20.0) |
 | Linha separadora Home | No menu Home, ajustar a linha preta: ela deve ficar entre o logotipo e a hora + data (não entre hora e data) | Media | Concluído (v1.20.0) |
 
-### 2.25 Menu de Integrações (Fábricas de Clientes)
+### 2.25 Menu de Integrações (Fábricas de Clientes) (CONCLUÍDA)
 
 | Item | Descricao | Prioridade | Status |
 |------|-----------|------------|--------|
-| Menu de Integrações | Criar menu dedicado para gerenciar integrações com fábricas de clientes (marcador de validade, sem geração de certificado) | Alta | Pendente |
-| Controle de validade | Cada integração possui data de validade — verificar se está ativa/válida no menu "Vencimentos" | Alta | Pendente |
-| Integração por empresa | Suportar múltiplas empresas clientes com integrações diferentes por funcionário | Alta | Pendente |
-| Cadastro de empresas | Menu para criar/gerenciar empresas em que é possível fazer integração (nome, CNPJ, etc.) | Alta | Pendente |
-| Vinculação ao funcionário | Vincular integrações ao cadastro do funcionário (empresa, tipo, data início, data validade) | Alta | Pendente |
-| Indicador de status | Exibir na interface se a integração está "Em dia" ou "Vencida" (similar ao fluxo de NRs/ASOs) | Media | Pendente |
-| Notificação de vencimento | Toast e painel de vencimentos para integrações próximas do vencimento | Media | Pendente |
+| Menu de Integrações | Criar menu dedicado para gerenciar integrações com fábricas de clientes (marcador de validade, sem geração de certificado) | Alta | Concluído (v1.22.0) |
+| Controle de validade | Cada integração possui data de validade — verificar se está ativa/válida no menu "Vencimentos" | Alta | Concluído (v1.22.0) |
+| Integração por empresa | Suportar múltiplas empresas clientes com integrações diferentes por funcionário | Alta | Concluído (v1.22.0) |
+| Cadastro de empresas | Menu para criar/gerenciar empresas em que é possível fazer integração (nome, CNPJ, etc.) | Alta | Concluído (v1.22.0) |
+| Vinculação ao funcionário | Vincular integrações ao cadastro do funcionário (empresa, tipo, data início, data validade) | Alta | Concluído (v1.22.0) |
+| Indicador de status | Exibir na interface se a integração está "Em dia" ou "Vencida" (similar ao fluxo de NRs/ASOs) | Media | Concluído (v1.22.0) |
+| Notificação de vencimento | Toast e painel de vencimentos para integrações próximas do vencimento | Media | Concluído (v1.22.0) |
 
 ---
 

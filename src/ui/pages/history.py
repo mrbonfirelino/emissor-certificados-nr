@@ -79,6 +79,17 @@ class HistoryPage(ctk.CTkFrame):
             command=self._exportar
         ).grid(row=0, column=3, sticky="e", padx=(8, 0))
 
+        ctk.CTkLabel(filter_frame, text="Por página:", font=fonts["small"],
+                     text_color=COLORS["text_secondary"]).grid(row=0, column=4, sticky="e", padx=(12, 4))
+        self._per_page_var = ctk.StringVar(value="10")
+        ctk.CTkOptionMenu(
+            filter_frame, values=["10", "20", "50", "100"], variable=self._per_page_var,
+            width=74, height=36, font=fonts["small"],
+            fg_color=COLORS["surface"], button_color=COLORS["secondary"],
+            button_hover_color=COLORS["primary"], text_color=COLORS["text"],
+            command=lambda _v: self._change_per_page()
+        ).grid(row=0, column=5, sticky="e")
+
         # Filtros: NR + periodo (data do treinamento)
         filters_row = ctk.CTkFrame(filter_frame, fg_color="transparent")
         filters_row.grid(row=1, column=0, columnspan=4, sticky="w", pady=(10, 0))
@@ -139,6 +150,14 @@ class HistoryPage(ctk.CTkFrame):
     def _on_search(self):
         self.pagination.reset()
         self._refresh_list()
+
+    def _change_per_page(self):
+        try:
+            n = int(self._per_page_var.get())
+        except (TypeError, ValueError):
+            n = 10
+        self.pagination.items_per_page = n
+        self._on_search()
 
     def _limpar(self):
         self.search_var.set("")
@@ -215,7 +234,7 @@ class HistoryPage(ctk.CTkFrame):
         certs = self.history_repo.query(
             query=query, nr_code=nr_code, data_de=data_de, data_ate=data_ate,
             assinado=assinado,
-            limit=PaginationBar.ITEMS_PER_PAGE, offset=self.pagination.offset)
+            limit=self.pagination.items_per_page, offset=self.pagination.offset)
 
         self.pagination.set_total(total)
         self.lbl_count.configure(text=f"Total: {total}")

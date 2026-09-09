@@ -235,6 +235,20 @@ class HistoryRepository:
         except Exception:
             pass
 
+        # Integrações entram nos mesmos contadores de vencimento
+        try:
+            from src.core.integracao_repo import IntegracaoRepository
+            for i in IntegracaoRepository().get_integracoes_with_expiration():
+                d = i["dias_para_vencer"]
+                if d < 0:
+                    vencidos += 1
+                elif d <= 7:
+                    vencer_7 += 1
+                elif d <= 30:
+                    vencer_30 += 1
+        except Exception:
+            pass
+
         return {
             "total": total,
             "assinados": assinados,

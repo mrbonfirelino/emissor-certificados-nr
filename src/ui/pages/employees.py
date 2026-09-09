@@ -106,6 +106,17 @@ class EmployeesPage(ctk.CTkFrame):
             command=self._clear_search
         ).grid(row=0, column=3)
 
+        ctk.CTkLabel(search_frame, text="Por página:", font=fonts["small"],
+                     text_color=COLORS["text_secondary"]).grid(row=0, column=4, padx=(12, 4))
+        self._per_page_var = ctk.StringVar(value="10")
+        ctk.CTkOptionMenu(
+            search_frame, values=["10", "20", "50", "100"], variable=self._per_page_var,
+            width=74, height=36, font=fonts["small"],
+            fg_color=COLORS["surface"], button_color=COLORS["secondary"],
+            button_hover_color=COLORS["primary"], text_color=COLORS["text"],
+            command=lambda _v: self._change_per_page()
+        ).grid(row=0, column=5)
+
         # Row 1 — Lista (weight=1 preenche resto)
         self.list_frame = ScrollListFrame(self, fg_color=COLORS["surface"], corner_radius=12, height=200)
         self.list_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 5))
@@ -135,6 +146,14 @@ class EmployeesPage(ctk.CTkFrame):
         self.pagination.reset()
         self._refresh_list()
 
+    def _change_per_page(self):
+        try:
+            n = int(self._per_page_var.get())
+        except (TypeError, ValueError):
+            n = 10
+        self.pagination.items_per_page = n
+        self._on_search()
+
     def _refresh_list(self):
         fonts = get_fonts()
         query = self.search_var.get().strip()
@@ -151,9 +170,9 @@ class EmployeesPage(ctk.CTkFrame):
         self.pagination.set_total(total)
 
         if query:
-            employees = self.employee_repo.search(query, limit=PaginationBar.ITEMS_PER_PAGE * 10)
+            employees = self.employee_repo.search(query, limit=self.pagination.items_per_page * 10)
         else:
-            employees = self.employee_repo.get_all(limit=PaginationBar.ITEMS_PER_PAGE, offset=self.pagination.offset)
+            employees = self.employee_repo.get_all(limit=self.pagination.items_per_page, offset=self.pagination.offset)
 
         # Filtro de funcao (client-side)
         if funcao_filter and funcao_filter != "Todas":

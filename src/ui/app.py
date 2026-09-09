@@ -143,6 +143,7 @@ class NormaTechApp(ctk.CTk):
             ("funcoes", "\U0001F4DD", "Funcoes", self._show_funcoes),
             ("vencimentos", "\U0001F4C5", "Vencimentos", self._show_vencimentos),
             ("aso", "\U0001F3E5", "ASO", self._show_aso),
+            ("integracoes", "\U0001F3ED", "Integrações", self._show_integracoes),
             ("blocking_cards", "\U0001F4C3", "Cartoes", self._show_blocking_cards),
             ("batch_import", "\U0001F4DD", "Import Lote", self._show_batch_import),
         ]
@@ -200,7 +201,7 @@ class NormaTechApp(ctk.CTk):
 
         # Separador antes do Backup
         sep_bottom = ctk.CTkFrame(self.nav_scroll, height=1, fg_color=COLORS["secondary"])
-        sep_bottom.grid(row=9, column=0, sticky="ew", padx=8, pady=4)
+        sep_bottom.grid(row=10, column=0, sticky="ew", padx=8, pady=4)
 
         # Backup (positioned below separator, above version)
         backup_key = "backup"
@@ -209,7 +210,7 @@ class NormaTechApp(ctk.CTk):
         backup_cmd = self._show_backup
 
         nav_frame = ctk.CTkFrame(self.nav_scroll, fg_color="transparent", height=42, cursor="hand2")
-        nav_frame.grid(row=10, column=0, sticky="ews", padx=4, pady=2)
+        nav_frame.grid(row=11, column=0, sticky="ews", padx=4, pady=2)
         nav_frame.grid_propagate(False)
         nav_frame.columnconfigure(1, weight=1)
 
@@ -245,7 +246,7 @@ class NormaTechApp(ctk.CTk):
         ajuda_cmd = self._abrir_guia
 
         nav_frame = ctk.CTkFrame(self.nav_scroll, fg_color="transparent", height=42, cursor="hand2")
-        nav_frame.grid(row=11, column=0, sticky="ews", padx=4, pady=2)
+        nav_frame.grid(row=12, column=0, sticky="ews", padx=4, pady=2)
         nav_frame.grid_propagate(False)
         nav_frame.columnconfigure(1, weight=1)
 
@@ -280,7 +281,7 @@ class NormaTechApp(ctk.CTk):
         tema_label = "Tema"
 
         nav_frame = ctk.CTkFrame(self.nav_scroll, fg_color="transparent", height=42, cursor="hand2")
-        nav_frame.grid(row=12, column=0, sticky="ew", padx=4, pady=2)
+        nav_frame.grid(row=13, column=0, sticky="ew", padx=4, pady=2)
         nav_frame.grid_propagate(False)
         nav_frame.columnconfigure(1, weight=1)
 
@@ -311,7 +312,7 @@ class NormaTechApp(ctk.CTk):
         config_cmd = self._show_config
 
         nav_frame = ctk.CTkFrame(self.nav_scroll, fg_color="transparent", height=42, cursor="hand2")
-        nav_frame.grid(row=13, column=0, sticky="ews", padx=4, pady=2)
+        nav_frame.grid(row=14, column=0, sticky="ews", padx=4, pady=2)
         nav_frame.grid_propagate(False)
         nav_frame.columnconfigure(1, weight=1)
 
@@ -341,7 +342,7 @@ class NormaTechApp(ctk.CTk):
         self.nav_frames[config_key] = nav_frame
 
         # Version (fixa fora do scroll; spacer dentro do nav_scroll)
-        self.nav_scroll.grid_rowconfigure(14, weight=1)
+        self.nav_scroll.grid_rowconfigure(15, weight=1)
         self.lbl_version = ctk.CTkLabel(
             self.sidebar, text=f"v{APP_VERSION}",
             font=fonts["sidebar_version"], text_color=COLORS["muted"]
@@ -542,9 +543,15 @@ class NormaTechApp(ctk.CTk):
                 n += sum(1 for a in asos if 0 <= a["dias_para_vencer"] <= 7)
             except Exception:
                 pass
+            try:
+                from src.core.integracao_repo import IntegracaoRepository
+                ints = IntegracaoRepository().get_integracoes_with_expiration()
+                n += sum(1 for i in ints if 0 <= i["dias_para_vencer"] <= 7)
+            except Exception:
+                pass
             if n > 0:
-                notify("Vencimentos (certificados e ASOs)",
-                       f"{n} certificado(s)/ASO(s) vencem nos proximos 7 dias. Veja a aba Vencimentos.")
+                notify("Vencimentos (certificados, ASOs e integrações)",
+                       f"{n} item(ns) vencem nos proximos 7 dias. Veja a aba Vencimentos.")
         except Exception as e:
             from src.utils.error_log import log_error
             log_error("toast-vencimentos", e)
@@ -590,6 +597,12 @@ class NormaTechApp(ctk.CTk):
         self._show_page("aso", AsoPage, self.aso_repo, self.employee_repo)
         if "aso" in self.pages:
             self.pages["aso"].refresh()
+
+    def _show_integracoes(self):
+        from src.ui.pages.integracoes import IntegracoesPage
+        self._show_page("integracoes", IntegracoesPage, self.employee_repo)
+        if "integracoes" in self.pages:
+            self.pages["integracoes"].refresh()
 
     def _show_blocking_cards(self):
         from src.ui.pages.blocking_cards import BlockingCardsPage

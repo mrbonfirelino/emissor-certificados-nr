@@ -15,7 +15,7 @@ cartões PPTX) e preserva os dados do usuário na desinstalação.
 ## Pré-requisitos
 
 - [Inno Setup 6](https://jrsoftware.org/isinfo.php) (compilar: `ISCC.exe`)
-- Build `onedir` atual em `dist\CertificadosNR\` (ver `docs/BUILD.md`)
+- Build `onedir` atual em `dist\NormaTech\` (ver `docs/BUILD.md`)
 - `assets\logo.ico` (já existe)
 
 ## Script completo (`installer/NormaTech.iss`)
@@ -24,7 +24,7 @@ cartões PPTX) e preserva os dados do usuário na desinstalação.
 ; NormaTech — Instalador (Inno Setup 6)
 #define MyAppName "NormaTech"
 #define MyAppVersion "1.4.0"
-#define MyAppExeName "CertificadosNR.exe"
+#define MyAppExeName "NormaTech.exe"
 #define MyAppIcon "..\assets\logo.ico"
 
 [Setup]
@@ -48,7 +48,7 @@ Name: "runafter"; Description: "Executar o NormaTech ao concluir"; Flags: unchec
 
 [Files]
 ; pasta inteira do build onedir (exe + _internal + templates + data iniciais)
-Source: "..\dist\CertificadosNR\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\dist\NormaTech\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"

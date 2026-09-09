@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.22.0] - 2026-09-09
+
+### Adicionado
+- Menu **Integra??es (F?bricas de Clientes)** (roadmap 2.25): cadastro de integra??es por empresa vinculadas ao funcion?rio (empresa, tipo, data de in?cio e data de validade), com cadastro/gest?o de empresas (nome, CNPJ) e status "Em dia"/"Vencida" na lista.
+- Integra??es vencendo aparecem no menu **Vencimentos** (filtro INTEGRA??O, contagem nos cards, sem bot?es Emitir/ASO), no painel de indicadores e no toast de inicializa??o.
+- Seletor **"Por p?gina"** (10/20/50/100) nas listas de Hist?rico, Funcion?rios, Fun??es e Vencimentos (j? existia em Cart?es).
+
+### Alterado
+- Execut?vel renomeado para **NormaTech.exe** (pasta dist\NormaTech); ATUALIZAR.bat atualizado e aceita instala??es antigas em CertificadosNR.
+- Placeholders intuitivos nas barras de busca (mantidos e adicionados nos novos di?logos).
+
 ## [1.21.1] - 2026-09-09
 
 ### Corrigido

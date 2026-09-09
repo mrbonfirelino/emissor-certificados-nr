@@ -111,6 +111,17 @@ class FuncoesPage(ctk.CTkFrame):
             hover_color=COLORS["text_secondary"], command=self._clear_filter
         ).grid(row=0, column=2)
 
+        ctk.CTkLabel(search_frame, text="Por página:", font=fonts["small"],
+                     text_color=COLORS["text_secondary"]).grid(row=0, column=3, padx=(12, 4))
+        self._per_page_var = ctk.StringVar(value=str(self.ITEMS_PER_PAGE))
+        ctk.CTkOptionMenu(
+            search_frame, values=["10", "20", "50", "100"], variable=self._per_page_var,
+            width=74, height=34, font=fonts["small"],
+            fg_color=COLORS["surface"], button_color=COLORS["secondary"],
+            button_hover_color=COLORS["primary"], text_color=COLORS["text"],
+            command=lambda _v: self._change_per_page()
+        ).grid(row=0, column=4)
+
         # Row 2 — Lista (weight=1 preenche resto)
         self.list_frame = ScrollListFrame(self, fg_color=COLORS["surface"], corner_radius=12, height=200)
         self.list_frame.grid(row=2, column=0, sticky="nsew", padx=20, pady=(0, 5))
@@ -148,13 +159,21 @@ class FuncoesPage(ctk.CTkFrame):
     # ── Filtro de busca (client-side) ─────────────────────────
 
     def _apply_filter(self):
-        self._filter = self._search_var.get().strip().lower()
         self.current_page = 1
         self._refresh_list()
 
     def _clear_filter(self):
         self._search_var.set("")
         self._apply_filter()
+
+    def _change_per_page(self):
+        try:
+            n = int(self._per_page_var.get())
+        except (TypeError, ValueError):
+            n = 20
+        self.ITEMS_PER_PAGE = n
+        self.current_page = 1
+        self._refresh_list()
 
     def _visible_items(self) -> list:
         """[(indice_original, nome)] das funcoes que passam no filtro."""

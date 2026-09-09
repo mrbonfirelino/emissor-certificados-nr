@@ -2,24 +2,32 @@
 rem ============================================================
 rem  NormaTech - ATUALIZAR.bat
 rem  Como usar:
-rem    1. Este arquivo deve ficar AO LADO da pasta CertificadosNR
+rem    1. Este arquivo deve ficar AO LADO da pasta NormaTech
 rem    2. Crie uma pasta chamada "Atualizacao" (ao lado tambem)
 rem    3. Copie para dentro dela o conteudo da nova versao
-rem       (os arquivos da pasta CertificadosNR, ou a propria pasta)
+rem       (os arquivos da pasta NormaTech, ou a propria pasta)
 rem    4. De dois cliques neste arquivo
 rem  O programa e atualizado e a pasta Atualizacao e esvaziada.
 rem  Seus dados (pasta data) NUNCA sao tocados e recebem backup.
+rem  NOTA: aceita tambem a pasta antiga "CertificadosNR" (v1.21
+rem  ou anterior) para atualizar instalacoes antigas.
 rem ============================================================
 setlocal
 title NormaTech - Atualizador
 cd /d "%~dp0"
 
-set "APP=CertificadosNR"
-if not exist "%APP%\CertificadosNR.exe" (
-    echo [ERRO] Nao encontrei %APP%\CertificadosNR.exe
-    echo Este arquivo deve ficar AO LADO da pasta CertificadosNR.
-    pause
-    exit /b 1
+set "APP=NormaTech"
+set "EXE=NormaTech.exe"
+if not exist "%APP%\%EXE%" (
+    if exist "CertificadosNR\CertificadosNR.exe" (
+        set "APP=CertificadosNR"
+        set "EXE=CertificadosNR.exe"
+    ) else (
+        echo [ERRO] Nao encontrei %APP%\%EXE%
+        echo Este arquivo deve ficar AO LADO da pasta NormaTech.
+        pause
+        exit /b 1
+    )
 )
 
 set "UPD="
@@ -31,16 +39,20 @@ if "%UPD%"=="" (
 )
 
 set "SRC=%UPD%"
-if exist "%UPD%\CertificadosNR\CertificadosNR.exe" set "SRC=%UPD%\CertificadosNR"
-if not exist "%SRC%\CertificadosNR.exe" (
-    echo [ERRO] A pasta "%UPD%" nao parece conter a nova versao.
-    echo Coloque nela o CONTEUDO da pasta CertificadosNR da nova versao
-    echo ou a propria pasta CertificadosNR.
-    pause
-    exit /b 1
+if exist "%UPD%\NormaTech\%EXE%" set "SRC=%UPD%\NormaTech"
+if exist "%UPD%\CertificadosNR\NormaTech.exe" set "SRC=%UPD%\CertificadosNR"
+if not exist "%SRC%\%EXE%" (
+    if not exist "%SRC%\CertificadosNR.exe" (
+        echo [ERRO] A pasta "%UPD%" nao parece conter a nova versao.
+        echo Coloque nela o CONTEUDO da pasta NormaTech da nova versao
+        echo ou a propria pasta NormaTech.
+        pause
+        exit /b 1
+    )
 )
 
 echo (1/5) Fechando o programa se estiver aberto...
+taskkill /F /IM NormaTech.exe >nul 2>&1
 taskkill /F /IM CertificadosNR.exe >nul 2>&1
 timeout /t 2 /nobreak >nul
 
@@ -66,7 +78,7 @@ echo (5/5) Atualizacao concluida com sucesso!
 echo.
 choice /c SN /m "Abrir o programa agora (S/N)"
 if errorlevel 2 goto fim
-start "" "%APP%\CertificadosNR.exe"
+start "" "%APP%\%EXE%"
 :fim
 echo.
 echo Dica: guarde a pasta backup_pre_atualizacao_%TS% por alguns dias.

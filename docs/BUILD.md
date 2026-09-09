@@ -113,7 +113,7 @@ EMISSOR DE CERTIFICADOS NR\
 ├── build\
 │   ├── build_exe.py          # script de build (edita aqui p/ onefile/onedir)
 │   ├── rthook_jaraco.py      # runtime hook do PyInstaller
-│   └── CertificadosNR.spec   # gerado automaticamente
+│   └── NormaTech.spec   # gerado automaticamente
 ├── src\
 │   ├── main.py               # entrypoint
 │   ├── core\                 # regras de negócio (repos, services, PDF, cartões)
@@ -158,7 +158,7 @@ O app procura dados **ao lado do exe** (`src/utils/paths.py`):
 
 **Tarefa agendada do Windows (v1.15.0):** o app pode registrar a tarefa
 `NormaTechBackup` no Task Scheduler (switch na aba Configurações → Backups).
-A tarefa executa `CertificadosNR.exe --backup` (modo headless, sem janela) —
+A tarefa executa `NormaTech.exe --backup` (modo headless, sem janela) —
 backup diário com o programa fechado. `schtasks /Query /TN NormaTechBackup`
 mostra o estado; remoção pelo próprio app ou `schtasks /Delete /TN
 NormaTechBackup /F`.
@@ -232,10 +232,10 @@ Para entregar a um usuário final (modo onedir):
 
 1. Buildar (`python build/build_exe.py`)
 2. Compactar/enviar a pasta `dist\` **inteira** — ela já contém:
-   - `CertificadosNR\` (o programa, com `data\` e `templates\`)
+   - `NormaTech\` (o programa, com `data\` e `templates\`)
    - `ATUALIZAR.bat` (copiado de `deploy\` automaticamente)
 3. Instruções ao usuário: extrair em pasta local (ex: `C:\NormaTech`) e executar
-   `CertificadosNR\CertificadosNR.exe`
+   `NormaTech\NormaTech.exe`
 4. Requisitos na máquina: PowerPoint (cartões PPTX→PDF) e scanner com driver
    WIA (opcional — digitalização tem fallback "Escolher arquivo")
 5. Modelos de importação para o usuário preencher: pasta do projeto
@@ -243,8 +243,8 @@ Para entregar a um usuário final (modo onedir):
 
 ### Atualizar a máquina do cliente (sem perder dados)
 
-1. Copie a nova pasta `CertificadosNR` para dentro da pasta `Atualizacao`
-   (crie-a ao lado de `CertificadosNR` e do `ATUALIZAR.bat`)
+1. Copie a nova pasta `NormaTech` para dentro da pasta `Atualizacao`
+   (crie-a ao lado de `NormaTech` e do `ATUALIZAR.bat`)
 2. Execute `ATUALIZAR.bat`: ele fecha o app, faz backup automático de `data\`,
    atualiza os arquivos com `robocopy /MIR /XD data` (dados intocados) e
    esvazia a pasta `Atualizacao` ao terminar

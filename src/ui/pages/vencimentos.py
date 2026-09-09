@@ -144,7 +144,7 @@ class VencimentosPage(ctk.CTkFrame):
                      text_color=COLORS["text"]).grid(row=0, column=2, padx=(0, 3))
         self._nr_var = ctk.StringVar(value="TODAS")
         ctk.CTkOptionMenu(self._filters, variable=self._nr_var,
-                          values=["TODAS", "ASO", "NR-01", "NR-06", "NR-10", "NR-12", "NR-18",
+                          values=["TODAS", "ASO", "INTEGRAÇÃO", "NR-01", "NR-06", "NR-10", "NR-12", "NR-18",
                                    "NR-26", "NR-33", "NR-34", "NR-35", "FDS", "PTA",
                                    "MOTOSERRA", "MUNCK", "PONTE-ROLANTE", "DIR-DEFENSIVA",
                                    "CIPAA", "BRIGADISTA-NR23"],
@@ -166,6 +166,16 @@ class VencimentosPage(ctk.CTkFrame):
                               command=lambda k=key: self._set_period(k))
             b.pack(side="left", padx=2)
             self._period_btns[key] = b
+
+        ctk.CTkLabel(self._filters, text="Por página:", font=fonts["small_bold"],
+                     text_color=COLORS["text"]).grid(row=0, column=5, padx=(15, 4))
+        self._per_page_var = ctk.StringVar(value="10")
+        ctk.CTkOptionMenu(self._filters, variable=self._per_page_var,
+                          values=["10", "20", "50", "100"],
+                          command=lambda *_: self._change_per_page(),
+                          font=fonts["small"], width=70, height=32, corner_radius=6,
+                          fg_color=COLORS["primary"], button_color=COLORS["secondary"]
+                          ).grid(row=0, column=6)
 
         # Row 3 — Lista (wrapper branco, weight1) — paginacao fora para nao sobrepor tabela
         self._list = ctk.CTkScrollableFrame(self, fg_color=COLORS["surface"],
@@ -227,6 +237,12 @@ class VencimentosPage(ctk.CTkFrame):
         except Exception as e:
             from src.utils.error_log import log_error
             log_error("vencimentos-aso", e)
+        try:
+            from src.core.integracao_repo import IntegracaoRepository
+            self.all_certs += IntegracaoRepository().get_integracoes_with_expiration()
+        except Exception as e:
+            from src.utils.error_log import log_error
+            log_error("vencimentos-integracao", e)
         self._apply_filters()
 
     def _apply_filters(self):
@@ -281,6 +297,15 @@ class VencimentosPage(ctk.CTkFrame):
         self._pagination.reset()
         self._apply_filters()
 
+    def _change_per_page(self):
+        try:
+            n = int(self._per_page_var.get())
+        except (TypeError, ValueError):
+            n = 10
+        self._pagination.items_per_page = n
+        self._pagination.reset()
+        self._apply_filters()
+
     # ── Renderizacao da lista ─────────────────────────────────
 
     def _render_list(self):
@@ -289,7 +314,7 @@ class VencimentosPage(ctk.CTkFrame):
 
         fonts = get_fonts()
         start = self._pagination.offset
-        page = self._employees_list[start:start + PaginationBar.ITEMS_PER_PAGE]
+        page = self._employees_list[start:start + self._pagination.items_per_page]
 
         if not page:
             ctk.CTkLabel(self._list, text="Nenhum certificado encontrado",
@@ -343,25 +368,35 @@ class VencimentosPage(ctk.CTkFrame):
 
         # Contagem
         n_asos = sum(1 for c in certs if c.get("nr_code") == "ASO")
-        n_certs = len(certs) - n_asos
-        ctk.CTkLabel(card, text=f"{n_certs} cert. | {n_asos} ASO(s)",
+        n_ints = sum(1 for c in certs if c.get("nr_code") == "INTEGRAÇÃO")
+        n_certs = len(certs) - n_asos - n_ints
+        partes = []
+        if n_certs:
+            partes.append(f"{n_certs} cert.")
+        if n_asos:
+            partes.append(f"{n_asos} ASO(s)")
+        if n_ints:
+            partes.append(f"{n_ints} int.")
+        ctk.CTkLabel(card, text=" | ".join(partes) or "—",
                      font=fonts["small"], text_color=COLORS["secondary"]
                      ).grid(row=0, column=2, rowspan=2, padx=(10, 4), pady=8, sticky="e")
 
         # Acoes rapidas: emitir novamente / ver historico
+        so_integracao = bool(certs) and all(c.get("nr_code") == "INTEGRAÇÃO" for c in certs)
         if self._on_navigate:
             btns = ctk.CTkFrame(card, fg_color="transparent")
             btns.grid(row=0, column=3, rowspan=2, padx=(4, 8), pady=6, sticky="e")
-            ctk.CTkButton(
-                btns, text="Emitir", width=58, height=26, corner_radius=4,
-                font=fonts["small"], fg_color=COLORS["success"], hover_color="#256B28",
-                command=lambda eid=emp_id: self._action_emit(eid)
-            ).pack(side="left", padx=2)
-            ctk.CTkButton(
-                btns, text="ASO", width=48, height=26, corner_radius=4,
-                font=fonts["small"], fg_color=COLORS["accent"], hover_color=COLORS["secondary"],
-                command=lambda eid=emp_id: self._action_aso(eid)
-            ).pack(side="left", padx=2)
+            if not so_integracao:
+                ctk.CTkButton(
+                    btns, text="Emitir", width=58, height=26, corner_radius=4,
+                    font=fonts["small"], fg_color=COLORS["success"], hover_color="#256B28",
+                    command=lambda eid=emp_id: self._action_emit(eid)
+                ).pack(side="left", padx=2)
+                ctk.CTkButton(
+                    btns, text="ASO", width=48, height=26, corner_radius=4,
+                    font=fonts["small"], fg_color=COLORS["accent"], hover_color=COLORS["secondary"],
+                    command=lambda eid=emp_id: self._action_aso(eid)
+                ).pack(side="left", padx=2)
             ctk.CTkButton(
                 btns, text="Historico", width=72, height=26, corner_radius=4,
                 font=fonts["small"], fg_color=COLORS["secondary"], hover_color=COLORS["primary"],
