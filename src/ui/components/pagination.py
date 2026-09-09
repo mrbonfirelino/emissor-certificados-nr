@@ -40,7 +40,9 @@ class PaginationBar(ctk.CTkFrame):
         self.btn_prev.pack(side="left", padx=1)
 
         # Container fixo para botões de página (sempre 5 slots)
-        self.pages_frame = ctk.CTkFrame(self, fg_color="transparent", width=200)
+        # height explicito: com pack_propagate(False), sem height o frame
+        # trava na altura default do CTkFrame (200) e infla a barra (gap!)
+        self.pages_frame = ctk.CTkFrame(self, fg_color="transparent", width=200, height=34)
         self.pages_frame.pack(side="left", padx=4)
         self.pages_frame.pack_propagate(False)
         self._page_buttons = []

@@ -115,32 +115,6 @@ class EmployeesPage(ctk.CTkFrame):
         self.pagination = PaginationBar(self, on_page_change=self._refresh_list)
         self.pagination.grid(row=2, column=0, sticky="w", padx=20, pady=(0, 5))
 
-        self.after(200, lambda: self._fit_scroll_height(0))
-        self.after(600, lambda: self._fit_scroll_height(0))
-
-    def _fit_scroll_height(self, _retry=0):
-        self.update_idletasks()
-        h = self.winfo_height()
-        if h < 200:
-            try:
-                ph = self.master.winfo_height()
-                if ph >= 200:
-                    h = ph
-            except Exception:
-                pass
-        if h < 200:
-            if _retry < 5:
-                self.after(300, lambda r=_retry + 1: self._fit_scroll_height(r))
-            return
-        header_h = self._header.winfo_reqheight()
-        pag_h = self.pagination.winfo_reqheight()
-        if min(header_h, pag_h) < 5 and _retry < 5:
-            self.after(300, lambda r=_retry + 1: self._fit_scroll_height(r))
-            return
-        margins = 30
-        available = h - header_h - pag_h - margins
-        self.list_frame.configure(height=max(available, 150))
-
     def _refresh_funcao_filter(self):
         """Repopula o dropdown de filtro de funcao com dados atuais do banco (pos-import/cadastro)."""
         if not hasattr(self, "_funcao_filter_menu"):

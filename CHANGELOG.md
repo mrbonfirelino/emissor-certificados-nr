@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.21.1] - 2026-09-09
+
+### Corrigido
+- **Gap entre a lista e a paginação (todas as abas)**: o frame de botões de
+  página do `PaginationBar` era criado sem altura definida e, com
+  `pack_propagate(False)`, travava nos 200px default do CTkFrame — com o
+  scaling da tela, a barra ficava ~400px de altura e empurrava a paginação
+  para longe da lista. Agora a barra nasce com a altura correta (34px) e a
+  lista preenche todo o espaço até ela
+- Removidos também os cálculos-manuais de altura das listas
+  (`_fit_scroll_height`) das páginas — o layout por grid passa a mandar
+
 ## [1.21.0] - 2026-09-08
 
 ### Adicionado

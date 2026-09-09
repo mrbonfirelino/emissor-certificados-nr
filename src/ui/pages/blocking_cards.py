@@ -254,7 +254,6 @@ class BlockingCardsPage(ctk.CTkFrame):
         )
         self.btn_generate.pack(side="right")
 
-        self.after(200, lambda: self._fit_scroll_height(0))
         self._update_grid_info()
 
     def _update_grid_info(self):
@@ -292,32 +291,6 @@ class BlockingCardsPage(ctk.CTkFrame):
         for emp in self._page_employees:
             if self._missing_fields(emp):
                 self._selected.discard(emp.id)
-
-    def _fit_scroll_height(self, _retry=0):
-        self.update_idletasks()
-        h = self.winfo_height()
-        if h < 200:
-            try:
-                ph = self.master.winfo_height()
-                if ph >= 200:
-                    h = ph
-            except Exception:
-                pass
-        if h < 200:
-            if _retry < 5:
-                self.after(300, lambda r=_retry + 1: self._fit_scroll_height(r))
-            return
-        header_h = self._header.winfo_reqheight()
-        pag_h = self.pagination.winfo_reqheight()
-        a1_h = self._actions1.winfo_reqheight() if hasattr(self, "_actions1") else 40
-        a2_h = self._actions2.winfo_reqheight() if hasattr(self, "_actions2") else 44
-        if min(header_h, pag_h) < 5 and _retry < 5:
-            self.after(300, lambda r=_retry + 1: self._fit_scroll_height(r))
-            return
-        # margens: lista pady(8+2)=10 + paginacao(2+2)=4 + acoes1(2+4)=6 + acoes2(0+8)=8
-        margins = 10 + 4 + 6 + 8
-        available = h - header_h - pag_h - a1_h - a2_h - margins
-        self.list_frame.configure(height=max(available, 150))
 
     # ── Paginacao ────────────────────────────────────────────
 
