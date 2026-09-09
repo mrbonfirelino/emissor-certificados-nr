@@ -1,3 +1,3 @@
 """Versao do aplicativo — fonte unica (sidebar, docs e releases)."""
 
-APP_VERSION = "1.20.1"
+APP_VERSION = "1.21.0"

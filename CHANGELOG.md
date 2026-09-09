@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.21.0] - 2026-09-08
+
+### Adicionado
+- **ASO com moldura Altec no PDF**: o documento do médico (PDF ou imagem)
+  agora entra em páginas A4 com cabeçalho/rodapé Altec — logo, empresa,
+  "ASO nº — Tipo — Documento do médico" e "Página X de Y" — com o conteúdo
+  encaixado na área central (antes ia solto, sem identidade)
+- **Lista de backups mais limpa**: mostra apenas os **últimos 30** backups
+  (com aviso quando existem mais) e nova coluna **Data e Hora** legível
+  (dd/mm/aaaa HH:MM:SS) para cada backup
+- **Seta de rolagem na sidebar**: "▼ role" discreto no rodapé indica quando
+  há mais itens abaixo e some ao chegar no fim
+
+### Corrigido
+- **Lista flutuante do autocomplete resolvida**: a lista de nomes agora
+  esconde quando o foco sai dela (Alt-Tab, clique fora), quando a página é
+  trocada (inclusive via atalhos Ctrl+N) e quando o campo é limpo — não
+  fica mais órfã sobre a tela
+
 ## [1.20.1] - 2026-09-08
 
 ### Corrigido

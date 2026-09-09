@@ -1,4 +1,5 @@
 import customtkinter as ctk
+import weakref
 from typing import Callable, Optional, List
 from src.core.models import Employee
 from src.core.employee_repo import EmployeeRepository
@@ -7,7 +8,24 @@ from src.ui.styles import COLORS, FONTS
 
 class EmployeeAutocomplete(ctk.CTkFrame):
     """Componente de autocomplete para busca de funcionários."""
-    
+
+    # instâncias vivas (weakref): permite fechar todas as listas abertas
+    # de uma vez (ex.: ao trocar de página) — nenhuma lista fica órfã
+    _ativos: list = []
+
+    @classmethod
+    def dismiss_all(cls):
+        """Fecha qualquer lista flutuante aberta (chamado na troca de página)."""
+        for ref in list(cls._ativos):
+            comp = ref()
+            if comp is None:
+                cls._ativos.remove(ref)
+            else:
+                try:
+                    comp._hide_dropdown()
+                except Exception:
+                    pass
+
     def __init__(
         self,
         master,
@@ -45,13 +63,16 @@ class EmployeeAutocomplete(ctk.CTkFrame):
         self.entry.bind("<Return>", self._on_return)
         self.entry.bind("<Escape>", lambda e: self._hide_dropdown())
         self.entry.bind("<Button-1>", self._on_click)
+        self.entry.bind("<FocusOut>", self._on_entry_focusout)
         
         # Dropdown listbox (usando CTkScrollableFrame)
         self.dropdown_frame = None
         self.dropdown_buttons: List[ctk.CTkButton] = []
         self._selected_index = -1
+        EmployeeAutocomplete._ativos.append(weakref.ref(self))
         self._employees_cache: List[Employee] = []
         self._auto_close_id = None
+        self._focuscheck_id = None
 
         # dropdown nunca fica orfao: fecha ao minimizar, acompanha a janela ao mover
         # e e DESTRUIDO junto com a janela pai (ex.: Novo ASO em dialogo).
@@ -198,6 +219,12 @@ class EmployeeAutocomplete(ctk.CTkFrame):
             except Exception:
                 pass
             self._auto_close_id = None
+        if self._focuscheck_id:
+            try:
+                self.after_cancel(self._focuscheck_id)
+            except Exception:
+                pass
+            self._focuscheck_id = None
         if self.dropdown_frame:
             try:
                 self.dropdown_frame.destroy()
@@ -268,8 +295,43 @@ class EmployeeAutocomplete(ctk.CTkFrame):
                 pass
         self._auto_close_id = self.after(60000, self._hide_dropdown)
 
+    def _on_entry_focusout(self, _event=None):
+        """Entry perdeu o foco (clique fora, Alt-Tab, troca de página):
+        esconde a lista — a menos que o ponteiro esteja sobre ela
+        (usuário interagindo com a lista; aí mantém e o clique funciona)."""
+        if not self.dropdown_frame:
+            return
+        if self._focuscheck_id:
+            try:
+                self.after_cancel(self._focuscheck_id)
+            except Exception:
+                pass
+        self._focuscheck_id = self.after(250, self._check_keep_open)
+
+    def _check_keep_open(self):
+        self._focuscheck_id = None
+        if not self.dropdown_frame:
+            return
+        try:
+            px, py = self.winfo_pointerxy()
+            dx = self.dropdown_frame.winfo_rootx()
+            dy = self.dropdown_frame.winfo_rooty()
+            if (dx <= px <= dx + self.dropdown_frame.winfo_width()
+                    and dy <= py <= dy + self.dropdown_frame.winfo_height()):
+                return  # mouse sobre a lista: usuário vai clicar
+        except Exception:
+            pass
+        try:
+            w = self.focus_get()
+            if w is not None and str(w).startswith(str(self.dropdown_frame)):
+                return  # foco dentro da lista (navegação por teclado)
+        except Exception:
+            pass
+        self._hide_dropdown()
+
     def clear(self):
         """Limpa seleção e permite nova busca."""
+        self._hide_dropdown()
         self.selected_employee = None
         self.entry_var.set("")
         self.entry.configure(state="normal")

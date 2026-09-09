@@ -371,6 +371,11 @@ def test_aso_pdf_embedded(tmp: Path):
     check("PDF medico: texto do medico presente",
           "PARECER MEDICO" in doc[1].get_text() and "MEDICO" in doc[2].get_text())
     check("PDF medico: capa marca anexo", "ANEXADO" in doc[0].get_text())
+    t1, t2 = doc[1].get_text(), doc[2].get_text()
+    check("PDF medico: moldura altec nas paginas do doc",
+          "Documento do medico" in t1 and "Documento do medico" in t2
+          and "ASO-000001" in t1 and "ASO-000001" in t2
+          and "Pagina 1 de 2" in t1 and "Pagina 2 de 2" in t2)
     doc.close()
 
     from io import BytesIO
@@ -382,6 +387,9 @@ def test_aso_pdf_embedded(tmp: Path):
     check("imagem: capa + 1 pagina A4", doc.page_count == 2
           and abs(doc[1].rect.width - 595.28) < 2)
     check("imagem: capa marca anexo", "ANEXADO" in doc[0].get_text())
+    t1 = doc[1].get_text()
+    check("imagem: moldura altec na pagina do doc",
+          "ASO-000001" in t1 and "Pagina 1 de 1" in t1)
     doc.close()
 
     rebuild_aso_pdf_sem_doc(aso, emp)

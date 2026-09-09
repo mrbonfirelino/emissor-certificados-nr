@@ -142,7 +142,7 @@ def generate_aso_pdf(output_path: str, aso_number: str, employee, tipo_aso: str,
     if has_doc:
         c.drawCentredString(W / 2, box_top - box_h / 2 + 8 * mm, "DOCUMENTO DO ASO ANEXADO")
         c.setFont("Helvetica", 9)
-        c.drawCentredString(W / 2, box_top - box_h / 2 - 1 * mm, "Veja o documento do medico nas paginas seguintes deste PDF")
+        c.drawCentredString(W / 2, box_top - box_h / 2 - 1 * mm, "Documento do medico anexado ao template nas paginas seguintes")
     else:
         c.drawCentredString(W / 2, box_top - box_h / 2 + 8 * mm, "ESPACO RESERVADO PARA O ASO")
         c.setFont("Helvetica", 9)
@@ -172,17 +172,78 @@ def generate_aso_pdf(output_path: str, aso_number: str, employee, tipo_aso: str,
     return output_path
 
 
-def rebuild_aso_pdf(aso: dict, employee, doc_bytes: bytes, doc_tipo: str) -> str:
-    """Regenera o PDF do ASO com o documento do medico embutido (v1.16.0).
+def _moldura_aso(page, aso_number: str, tipo_aso: str, empresa: str,
+                 logo_path, idx: int, total: int, W: float, H: float):
+    """Desenha a moldura Altec (cabecalho + rodape) numa pagina do doc (v1.21.0)."""
+    import fitz
 
-    Pagina 1 = capa (dados) gerada com has_doc=True; paginas seguintes =
-    documento anexado (PDF integral ou imagem em pagina A4 com margens).
-    Grava no proprio aso['pdf_path'] e retorna o caminho.
+    margem = 15.0
+    primary = (0.106, 0.227, 0.361)  # #1B3A5C
+    muted = (0.55, 0.58, 0.62)
+
+    if logo_path:
+        try:
+            page.insert_image(
+                fitz.Rect(margem, 12, margem + 74, 12 + 46),
+                filename=logo_path, keep_proportion=True,
+            )
+        except Exception:
+            pass
+
+    sub = f"ASO {aso_number} - {tipo_aso} - Documento do medico"
+    w_sub = fitz.get_text_length(sub, fontname="helv", fontsize=8)
+    page.insert_text(fitz.Point(W - margem - w_sub, 24), sub,
+                     fontname="helv", fontsize=8, color=muted)
+
+    if empresa:
+        w_emp = fitz.get_text_length(empresa, fontname="hebo", fontsize=11)
+        page.insert_text(fitz.Point(W - margem - w_emp, 42), empresa,
+                         fontname="hebo", fontsize=11, color=primary)
+
+    page.draw_line(fitz.Point(margem, 70), fitz.Point(W - margem, 70),
+                   color=primary, width=0.8)
+    page.draw_line(fitz.Point(margem, H - 48), fitz.Point(W - margem, H - 48),
+                   color=primary, width=0.6)
+
+    rodape = f"Pagina {idx} de {total}"
+    page.insert_text(fitz.Point(margem, H - 36), rodape,
+                     fontname="helv", fontsize=7.5, color=muted)
+    w_num = fitz.get_text_length(aso_number, fontname="helv", fontsize=7.5)
+    page.insert_text(fitz.Point(W - margem - w_num, H - 36), aso_number,
+                     fontname="helv", fontsize=7.5, color=muted)
+
+
+def rebuild_aso_pdf(aso: dict, employee, doc_bytes: bytes, doc_tipo: str) -> str:
+    """Regenera o PDF do ASO com o documento em moldura Altec (v1.21.0).
+
+    Pagina 1 = capa (dados, has_doc=True); cada pagina do documento do
+    medico (PDF ou imagem) vira uma pagina A4 com cabecalho/rodape Altec
+    (logo + empresa + numero do ASO) e o conteudo encaixado na area
+    central. Grava no proprio aso['pdf_path'] e retorna o caminho.
     """
     import tempfile
     import fitz
 
     pdf_path = aso["pdf_path"]
+
+    try:
+        from src.core.config import load_company_config
+        empresa = (load_company_config().empresa or "").upper()
+    except Exception:
+        empresa = ""
+    logo_path = None
+    try:
+        from src.utils.paths import get_logo_path
+        p = get_logo_path()
+        if p and Path(p).exists():
+            logo_path = str(p)
+    except Exception:
+        logo_path = None
+
+    W, H = fitz.paper_size("a4")
+    margem = 15.0
+    rect = fitz.Rect(margem, 88, W - margem, H - 58)
+
     with tempfile.TemporaryDirectory(prefix="normatech_aso_") as td:
         capa = str(Path(td) / "capa.pdf")
         generate_aso_pdf(
@@ -193,15 +254,19 @@ def rebuild_aso_pdf(aso: dict, employee, doc_bytes: bytes, doc_tipo: str) -> str
         try:
             if (doc_tipo or "pdf").lower() == "pdf":
                 src = fitz.open(stream=doc_bytes, filetype="pdf")
-                out.insert_pdf(src)
+                total = src.page_count
+                for i in range(total):
+                    page = out.new_page(width=W, height=H)
+                    _moldura_aso(page, aso["aso_number"], aso["tipo_aso"],
+                                 empresa, logo_path, i + 1, total, W, H)
+                    page.show_pdf_page(rect, src, i)
                 src.close()
             else:
-                page = out.new_page(width=fitz.paper_size("a4")[0],
-                                    height=fitz.paper_size("a4")[1])
-                margem = 15
-                rect = fitz.Rect(margem, margem,
-                                 page.rect.width - margem, page.rect.height - margem)
-                page.insert_image(rect, stream=doc_bytes)
+                total = 1
+                page = out.new_page(width=W, height=H)
+                _moldura_aso(page, aso["aso_number"], aso["tipo_aso"],
+                             empresa, logo_path, 1, total, W, H)
+                page.insert_image(rect, stream=doc_bytes, keep_proportion=True)
             out.save(pdf_path, deflate=True)
         finally:
             out.close()

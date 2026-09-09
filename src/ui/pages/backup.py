@@ -92,7 +92,9 @@ class BackupPage(ctk.CTkFrame):
         self.list_frame.clear()
         
         backups = self.backup_manager.list_backups()
-        
+        total_backups = len(backups)
+        backups = backups[:30]  # últimos 30 (v1.21.0)
+
         if not backups:
             ctk.CTkLabel(
                 self.list_frame.body,
@@ -105,15 +107,24 @@ class BackupPage(ctk.CTkFrame):
         # Header
         header = ctk.CTkFrame(self.list_frame.body, fg_color=COLORS["primary"], corner_radius=6)
         header.pack(fill="x", padx=8, pady=(8, 4))
-        header.grid_columnconfigure((0,1,2), weight=1)
-        
+        header.grid_columnconfigure((0, 1, 2, 3), weight=1)
+
         ctk.CTkLabel(header, text="Arquivo", font=FONTS["small_bold"], text_color=COLORS["surface"]).grid(row=0, column=0, sticky="w", padx=12, pady=8)
-        ctk.CTkLabel(header, text="Tipo", font=FONTS["small_bold"], text_color=COLORS["surface"]).grid(row=0, column=1, sticky="w", padx=12, pady=8)
-        ctk.CTkLabel(header, text="Ações", font=FONTS["small_bold"], text_color=COLORS["surface"]).grid(row=0, column=2, sticky="e", padx=12, pady=8)
+        ctk.CTkLabel(header, text="Data e Hora", font=FONTS["small_bold"], text_color=COLORS["surface"]).grid(row=0, column=1, sticky="w", padx=12, pady=8)
+        ctk.CTkLabel(header, text="Tipo", font=FONTS["small_bold"], text_color=COLORS["surface"]).grid(row=0, column=2, sticky="w", padx=12, pady=8)
+        ctk.CTkLabel(header, text="Ações", font=FONTS["small_bold"], text_color=COLORS["surface"]).grid(row=0, column=3, sticky="e", padx=12, pady=8)
         
         for backup in backups:
             self._create_backup_row(backup)
-        
+
+        if total_backups > 30:
+            ctk.CTkLabel(
+                self.list_frame.body,
+                text=f"Mostrando os 30 backups mais recentes de {total_backups}.",
+                font=FONTS["small"],
+                text_color=COLORS["muted"]
+            ).pack(pady=(6, 12))
+
         # Atualiza status automático
         from src.core.history_repo import HistoryRepository
         history = HistoryRepository()
@@ -136,14 +147,34 @@ class BackupPage(ctk.CTkFrame):
 
     def _create_backup_row(self, backup_path):
         import os
+        import re
         from datetime import datetime
-        
+
         row = ctk.CTkFrame(self.list_frame.body, fg_color="transparent")
         row.pack(fill="x", pady=2, padx=8)
-        row.grid_columnconfigure((0,1,2), weight=1)
-        
+        row.grid_columnconfigure((0, 1, 2, 3), weight=1)
+
         # Nome
         name = backup_path.name
+
+        # Data e hora do nome do arquivo (…_YYYYMMDD_HHMMSS.zip), fallback mtime
+        data_hora = "-"
+        m = re.search(r"_(\d{8})_(\d{6})", name)
+        if m:
+            try:
+                data_hora = datetime.strptime(
+                    m.group(1) + m.group(2), "%Y%m%d%H%M%S"
+                ).strftime("%d/%m/%Y %H:%M:%S")
+            except ValueError:
+                pass
+        if data_hora == "-":
+            try:
+                data_hora = datetime.fromtimestamp(
+                    backup_path.stat().st_mtime
+                ).strftime("%d/%m/%Y %H:%M:%S")
+            except OSError:
+                pass
+
         if name.startswith("certificados_periodic_"):
             type_label = "Periódico"
             type_color = COLORS["accent"]
@@ -163,14 +194,21 @@ class BackupPage(ctk.CTkFrame):
         
         ctk.CTkLabel(
             row,
+            text=data_hora,
+            font=FONTS["small"],
+            text_color=COLORS["text_secondary"] if "text_secondary" in COLORS else COLORS["text"]
+        ).grid(row=0, column=1, sticky="w", padx=12, pady=8)
+
+        ctk.CTkLabel(
+            row,
             text=type_label,
             font=FONTS["small_bold"],
             text_color=type_color
-        ).grid(row=0, column=1, sticky="w", padx=12, pady=8)
+        ).grid(row=0, column=2, sticky="w", padx=12, pady=8)
         
         # Botões
         btn_frame = ctk.CTkFrame(row, fg_color="transparent")
-        btn_frame.grid(row=0, column=2, sticky="e", padx=12, pady=4)
+        btn_frame.grid(row=0, column=3, sticky="e", padx=12, pady=4)
         
         ctk.CTkButton(
             btn_frame,

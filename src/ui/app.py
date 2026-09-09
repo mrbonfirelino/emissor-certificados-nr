@@ -157,6 +157,15 @@ class NormaTechApp(ctk.CTk):
         except Exception:
             pass
 
+        # Seta dinamica (v1.21.0): indica que a sidebar rola — some ao chegar no fim
+        self.lbl_scroll_hint = ctk.CTkLabel(
+            self.sidebar, text="\u25BC  role",
+            font=fonts["small"], text_color=COLORS["on_primary"]
+        )
+        self.lbl_scroll_hint.grid(row=4, column=0, sticky="s", pady=(0, 2))
+        self.lbl_scroll_hint.grid_remove()
+        self.nav_scroll._parent_canvas.configure(yscrollcommand=self._nav_yscroll)
+
         for i, (key, icon, label, cmd) in enumerate(nav_items):
             # Frame clicavel que contem icone + label
             nav_frame = ctk.CTkFrame(self.nav_scroll, fg_color="transparent", height=42, cursor="hand2")
@@ -337,7 +346,7 @@ class NormaTechApp(ctk.CTk):
             self.sidebar, text=f"v{APP_VERSION}",
             font=fonts["sidebar_version"], text_color=COLORS["muted"]
         )
-        self.lbl_version.grid(row=4, column=0, sticky="s", pady=8)
+        self.lbl_version.grid(row=5, column=0, sticky="s", pady=8)
 
     def _toggle_sidebar(self):
         if self.sidebar_expanded:
@@ -351,6 +360,7 @@ class NormaTechApp(ctk.CTk):
         for lbl in self.nav_labels.values():
             lbl.grid_remove()
         self.logo_frame.grid_remove()
+        self.lbl_scroll_hint.grid_remove()
         self.lbl_version.grid_remove()
 
     def _expand_sidebar(self):
@@ -360,7 +370,25 @@ class NormaTechApp(ctk.CTk):
         self.lbl_title.pack(anchor="w")
         for key, lbl in self.nav_labels.items():
             lbl.grid(row=0, column=1, padx=2, pady=3, sticky="w")
-        self.lbl_version.grid(row=4, column=0, sticky="s", pady=8)
+        self.lbl_version.grid(row=5, column=0, sticky="s", pady=8)
+        self.after(300, self._reavaliar_hint)
+
+    def _nav_yscroll(self, first, last):
+        """Mostra a seta só quando há overflow e some ao chegar no fim."""
+        try:
+            if last < 0.999:
+                self.lbl_scroll_hint.grid()
+            else:
+                self.lbl_scroll_hint.grid_remove()
+        except Exception:
+            pass
+
+    def _reavaliar_hint(self):
+        try:
+            first, last = self.nav_scroll._parent_canvas.yview()
+            self._nav_yscroll(first, last)
+        except Exception:
+            pass
 
     # ── Tema claro/escuro ──────────────────────────────────────
 
@@ -442,6 +470,12 @@ class NormaTechApp(ctk.CTk):
                 frame.configure(fg_color="transparent")
 
     def _show_page(self, page_key: str, page_class, *args, **kwargs):
+        # fecha listas flutuantes de autocomplete ao trocar de pagina (v1.21.0)
+        try:
+            from src.ui.components.employee_autocomplete import EmployeeAutocomplete
+            EmployeeAutocomplete.dismiss_all()
+        except Exception:
+            pass
         # evita duplo clique (command + bind) — se ja esta ativa, so atualiza destaque
         if page_key in self.pages and self.pages[page_key] is self.current_page:
             self._set_active_nav(page_key)
