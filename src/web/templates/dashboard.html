@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block titulo %}Dashboard — NormaTech{% endblock %}
+{% block conteudo %}
+<div class="chips">
+  <div class="chip"><div class="rotulo">Certificados emitidos</div><div class="valor">{{ stats.total }}</div></div>
+  <div class="chip ok"><div class="rotulo">Assinados</div><div class="valor">{{ stats.assinados }}</div></div>
+  <div class="chip vencido"><div class="rotulo">Vencidos</div><div class="valor">{{ stats.vencidos }}</div></div>
+  <div class="chip alerta"><div class="rotulo">Vencem em 7 dias</div><div class="valor">{{ stats.vencer_7 }}</div></div>
+  <div class="chip alerta"><div class="rotulo">Vencem em 30 dias</div><div class="valor">{{ stats.vencer_30 }}</div></div>
+</div>
+
+<div class="card">
+  <h2>Emissões por NR (top 5)</h2>
+  {% if stats.por_nr %}
+  <table>
+    <tr><th>NR</th><th class="num">Emissões</th></tr>
+    {% for nr, n in stats.por_nr %}
+    <tr><td>{{ nr }}</td><td class="num">{{ n }}</td></tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="muted">Sem emissões ainda.</p>{% endif %}
+</div>
+
+<div class="card">
+  <h2>Emissões por mês (últimos 6)</h2>
+  {% if stats.por_mes %}
+  <table>
+    <tr><th>Mês</th><th class="num">Emissões</th></tr>
+    {% for mes, n in stats.por_mes %}
+    <tr><td>{{ mes }}</td><td class="num">{{ n }}</td></tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="muted">Sem emissões ainda.</p>{% endif %}
+</div>
+{% endblock %}

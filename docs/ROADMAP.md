@@ -1,7 +1,7 @@
 # Roadmap - NormaTech
 
 ## Status do Projeto
- - Versao atual: 1.23.0
+ - Versao atual: 1.24.0
 - NRs disponiveis: 17 (01, 05, 06, 09, 10, 11, 12, 17, 18, 26, 33, 34, 35 + FDS, BRIGADISTA-NR23, PTA, MOTOSERRA, MUNCK, PONTE-ROLANTE, DIR-DEFENSIVA, CIPAA)
 
 ---
@@ -316,6 +316,16 @@ Requisitos: Microsoft PowerPoint instalado na máquina (conversão via COM).
 | Preview antes de emitir | Visualizar os certificados que serão gerados antes de confirmar a emissão | Media | Concluído (v1.23.0) |
 | Geração e salvar na pasta | Gerar PDFs e salvar automaticamente na pasta de documentos do funcionário (com espelhamento em rede) | Alta | Concluído (v1.23.0) |
 | Ajustar dimensões das telas/diálogos | Ajustar dimensões das telas e diálogos para ficar menor — algumas estão ficando maiores que a tela do aplicativo | Alta | Concluído (v1.23.0) |
+
+### 2.27 Portal Web (docs/PORTAL)
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Fase 1 — Esqueleto + login + papeis + dashboard + usuarios/auditoria | FastAPI + waitress + NSSM; acesso em 2 maquinas com login | Alta | Concluído (v1.24.0) |
+| Fase 2 — Funcionarios, Certificados e Historico no portal | CRUD/consulta pelo navegador com a matriz de permissoes | Alta | Pendente |
+| Fase 3 — ASO, EPI, Crachas, Cartoes, Vencimentos, Importacoes | Demais modulos de leitura/operacao | Media | Pendente |
+| Fase 4 — Admin completo (backup, auditoria avancada) | Painel administrativo final | Media | Pendente |
+
 
 ---
 

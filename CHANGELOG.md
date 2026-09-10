@@ -1,3 +1,14 @@
+## [1.24.0] - 2026-09-10
+
+### Adicionado
+- **Portal Web — Fase 1**: login com 3 papeis (Admin/Emissor/Consulta), dashboard de indicadores, gestao de usuarios e auditoria — acesso pelo navegador ao MESMO banco do desktop.
+- Usuario `admin` criado no 1o boot com senha provisoria (console + `data/web_admin_provisorio.txt`); troca de senha obrigatoria no 1o acesso.
+- Rate-limit de login (5 tentativas / 5 min) e auditoria de acoes (tabela `audit_log`).
+- `run_web.py` (FastAPI + waitress; `--host 0.0.0.0` para o servidor, `--reset-admin`, `--sem-backup`).
+- `requirements-web.txt` (dependencias do portal, separadas do desktop).
+- Scripts de servidor em `deploy/web/`: INSTALAR_PORTAL, ATUALIZAR_PORTAL, ZERAR_DADOS e REMOVER_PORTAL.
+- `python run_web.py` nao afeta o app desktop; backup automatico compartilhado quando ativo.
+
 ## [1.23.0] - 2026-09-10
 
 ### Adicionado

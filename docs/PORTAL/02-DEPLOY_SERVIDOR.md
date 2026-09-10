@@ -141,3 +141,23 @@ Downtime esperado: ~1 minuto.
 - [ ] Senha do admin trocada no primeiro login
 - [ ] Usuários criados com papéis (Emissor/Consulta) e senhas entregues
 - [ ] Backup manual executado e conferido
+
+## 10. Desenvolvimento local do portal (Fase 1)
+
+Para testar o portal na maquina local antes do servidor:
+
+```
+pip install -r requirements-web.txt
+python run_web.py
+```
+
+- Abre em `http://127.0.0.1:8000` usando o MESMO `data\` do desktop (mesmo banco).
+- No 1o boot o usuario `admin` e criado com senha provisoria exibida no console
+  (e gravada em `data\web_admin_provisorio.txt` — apague o arquivo depois de anotar).
+- A troca de senha no 1o acesso e obrigatoria.
+- Resetar a senha do admin: `python run_web.py --reset-admin`
+- Modo servidor: `python run_web.py --host 0.0.0.0 --port 8000`
+- Testes do portal: `python test_web_auth.py` (29 verificacoes, banco temporario).
+- Scripts de servidor em `deploy/web/`: INSTALAR_PORTAL.bat, ATUALIZAR_PORTAL.bat,
+  ZERAR_DADOS.bat, REMOVER_PORTAL.bat (copie-os para a raiz do portal no servidor).
+- O portal NAO entra no exe do desktop; sao sistemas separados no mesmo banco.

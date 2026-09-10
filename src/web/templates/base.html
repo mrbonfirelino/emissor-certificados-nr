@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block titulo %}NormaTech{% endblock %}</title>
+<style>
+  :root { --azul:#1B3A5C; --azul2:#2E6DA4; --fundo:#F2F5F9; --texto:#22303F;
+          --borda:#D6DEE8; --verde:#256B28; --vermelho:#C0392B; --amarelo:#FDF3E3; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:"Segoe UI",Arial,sans-serif; background:var(--fundo); color:var(--texto); }
+  header { background:var(--azul); color:#fff; padding:10px 22px; display:flex; align-items:center; gap:16px; }
+  header .marca { font-size:19px; font-weight:700; }
+  header .quem { margin-left:auto; font-size:13px; opacity:.92; }
+  header a.sair { color:#fff; background:rgba(255,255,255,.14); padding:5px 12px; border-radius:6px;
+                  text-decoration:none; font-size:13px; }
+  nav { background:var(--azul2); padding:0 16px; display:flex; flex-wrap:wrap; }
+  nav a { color:#fff; text-decoration:none; padding:9px 14px; font-size:14px; }
+  nav a:hover, nav a.ativo { background:rgba(0,0,0,.18); }
+  main { max-width:1080px; margin:22px auto; padding:0 16px; }
+  .card { background:#fff; border:1px solid var(--borda); border-radius:10px; padding:18px 20px; margin-bottom:16px; }
+  h1 { font-size:21px; margin:0 0 4px; color:var(--azul); }
+  h2 { font-size:16px; margin:14px 0 8px; color:var(--azul); }
+  .sub { color:#67737F; font-size:13px; margin:0 0 12px; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th { text-align:left; background:var(--azul); color:#fff; padding:8px 10px; }
+  td { padding:8px 10px; border-bottom:1px solid var(--borda); }
+  tr:nth-child(even) td { background:#F7FAFD; }
+  .num { text-align:right; }
+  .chips { display:flex; gap:14px; flex-wrap:wrap; }
+  .chip { flex:1; min-width:170px; background:#fff; border:1px solid var(--borda);
+          border-radius:10px; padding:14px 16px; }
+  .chip .rotulo { font-size:12px; color:#67737F; text-transform:uppercase; letter-spacing:.4px; }
+  .chip .valor { font-size:26px; font-weight:700; color:var(--azul); }
+  .chip.vencido .valor { color:var(--vermelho); }
+  .chip.alerta .valor { color:#B26A00; }
+  .chip.ok .valor { color:var(--verde); }
+  form .campo { margin-bottom:12px; }
+  label { display:block; font-size:13px; font-weight:600; margin-bottom:4px; }
+  input, select { width:100%; max-width:340px; padding:8px 10px; font-size:14px;
+                  border:1px solid var(--borda); border-radius:6px; }
+  button, .btn { background:var(--azul2); border:0; color:#fff; padding:9px 18px; font-size:14px;
+                 border-radius:6px; cursor:pointer; text-decoration:none; display:inline-block; }
+  button.verde, .btn.verde { background:var(--verde); }
+  button.cinza, .btn.cinza { background:#8A97A5; }
+  button.vermelho, .btn.vermelho { background:var(--vermelho); }
+  .msg { background:#E7F2E7; border:1px solid #BFDDBF; color:#1E5620; padding:9px 14px;
+         border-radius:8px; margin-bottom:14px; font-size:14px; }
+  .erro { background:#FBEAE8; border:1px solid #EFB9B2; color:#8E2320; padding:9px 14px;
+          border-radius:8px; margin-bottom:14px; font-size:14px; }
+  .badge { display:inline-block; padding:2px 9px; border-radius:10px; font-size:12px; }
+  .b-verde { background:#E7F2E7; color:#1E5620; }
+  .b-cinza { background:#E9EDF2; color:#55606B; }
+  .b-amarelo { background:var(--amarelo); color:#8A5A00; }
+  .acoes form { display:inline; }
+  .login-box { max-width:360px; margin:70px auto; }
+  .linha-botoes { display:flex; gap:10px; margin-top:16px; }
+  .muted { color:#67737F; font-size:13px; }
+</style>
+</head>
+<body>
+<header>
+  <span class="marca">NormaTech — Portal</span>
+  {% if user %}
+    <span class="quem">{{ user.nome or user.username }} · {{ papel_label }} </span>
+    <a class="sair" href="/logout">Sair</a>
+  {% endif %}
+</header>
+{% if user and nav %}
+<nav>
+  {% for item in nav %}<a href="{{ item.url }}" class="{{ 'ativo' if item.ativo else '' }}">{{ item.label }}</a>{% endfor %}
+</nav>
+{% endif %}
+<main>
+  {% if msg %}<div class="msg">{{ msg }}</div>{% endif %}
+  {% if erro %}<div class="erro">{{ erro }}</div>{% endif %}
+  {% block conteudo %}{% endblock %}
+</main>
+</body>
+</html>
