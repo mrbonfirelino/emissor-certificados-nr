@@ -17,6 +17,7 @@ import customtkinter as ctk
 from tkinter import filedialog, messagebox
 from typing import Optional
 
+from src.utils.ctk_patches import open_modal
 from src.ui.styles import COLORS, get_fonts
 
 LIDER = "LIDER"
@@ -51,11 +52,11 @@ class EmissionReviewDialog(ctk.CTkToplevel):
                                  and template.get("matricula_obrigatoria", True))
 
         self.title("Revisao da Emissao")
-        w, h = 940, 680
+        w, h = 470, 340
         self.geometry(f"{w}x{h}")
         self.minsize(820, 500)
         self.transient(master)
-        self.grab_set()
+        open_modal(self)
         self.resizable(True, True)
 
         self.update_idletasks()

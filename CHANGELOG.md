@@ -1,3 +1,10 @@
+## [1.22.7] - 2026-09-10
+
+### Corrigido
+- Digitacao de datas (nascimento, admissao), CPF e telefone nao embaralha mais: a formatacao agora acontece ao sair do campo (ou Enter), nao a cada tecla.
+- Menu Configuracoes abre imediatamente (verificacao da tarefa agendada passou para segundo plano).
+- Dialogos de cartoes de bloqueio/crachas (revisao da emissao, preview e resultado) nao travam mais o programa - mesmo ajuste da v1.22.6 aplicado a todos os dialogos, com reexibicao forcada caso a janela nasca oculta.
+
 ## [1.22.6] - 2026-09-10
 
 ### Corrigido

@@ -110,7 +110,9 @@ class ConfigPage(ctk.CTkFrame):
         self.registro_var = ctk.StringVar()
         self.registro_entry = ctk.CTkEntry(emp, textvariable=self.registro_var, font=fonts["body"], height=36, corner_radius=6, placeholder_text="44633/RJ")
         self.registro_entry.grid(row=9, column=0, sticky="ew", pady=(0, 4))
-        self.registro_var.trace_add("write", self._format_registro)
+        # Mascara so ao sair do campo: formatar a cada tecla embaralhava a digitacao.
+        self.registro_entry.bind("<FocusOut>", self._format_registro)
+        self.registro_entry.bind("<Return>", self._format_registro)
 
         # ── Secao 2: Seguranca (senha de restauracao) ──
         sec_seguranca = CollapsibleSection(form, "Segurança")
@@ -423,16 +425,41 @@ class ConfigPage(ctk.CTkFrame):
         self._refresh_task_status()
 
     def _refresh_task_status(self):
-        """Indica na UI se a tarefa agendada do Windows esta ativa."""
+        """Indica na UI se a tarefa agendada do Windows esta ativa.
+
+        A consulta (schtasks) pode levar varios segundos; roda em segundo
+        plano para nao travar a abertura da tela de Configuracoes.
+        """
         try:
-            from src.core.scheduled_task import is_active
-            ativa = is_active()
+            self._task_status_lbl.configure(text="Verificando tarefa agendada...", text_color=COLORS["muted"])
         except Exception:
-            ativa = False
-        self._task_status_lbl.configure(
-            text="Tarefa ativa — backup diário" if ativa else "Tarefa inativa",
-            text_color=COLORS["success"] if ativa else COLORS["muted"],
-        )
+            return
+
+        def _consulta():
+            try:
+                from src.core.scheduled_task import is_active
+                ativa = is_active()
+            except Exception:
+                ativa = False
+
+            def _aplicar():
+                try:
+                    if not self.winfo_exists():
+                        return
+                except Exception:
+                    return
+                self._task_status_lbl.configure(
+                    text="Tarefa ativa — backup diário" if ativa else "Tarefa inativa",
+                    text_color=COLORS["success"] if ativa else COLORS["muted"],
+                )
+
+            try:
+                self.after(0, _aplicar)
+            except Exception:
+                pass
+
+        import threading
+        threading.Thread(target=_consulta, daemon=True).start()
 
     def _save_config(self):
         empresa = self.empresa_var.get().strip()

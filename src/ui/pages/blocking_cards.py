@@ -16,7 +16,7 @@ from src.core.blocking_card_service import (
 from src.ui.components.pagination import PaginationBar
 from src.ui.components.scroll_frame import ScrollListFrame
 from src.ui.components.generation_options_dialog import EmissionReviewDialog
-from src.utils.ctk_patches import enable_placeholder, search_query, fit_dialog
+from src.utils.ctk_patches import enable_placeholder, search_query, fit_dialog, open_modal
 
 PER_PAGE_OPTIONS = [10, 25, 40]
 
@@ -119,7 +119,7 @@ class BlockingCardsPage(ctk.CTkFrame):
         self._header.grid_columnconfigure(1, weight=1)
 
         ctk.CTkLabel(
-            self._header, text="Emissor de CartÃµes de Bloqueio",
+            self._header, text="Emissor de Cartões de Bloqueio",
             font=fonts["title"], text_color=COLORS["primary"]
         ).grid(row=0, column=0, sticky="w")
 
@@ -552,7 +552,7 @@ class BlockingCardsPage(ctk.CTkFrame):
         dlg.title("Cartoes Gerados")
         fit_dialog(dlg, 480, 220)
         dlg.transient(self)
-        dlg.grab_set()
+        open_modal(dlg)
         dlg.update_idletasks()
         x = self.winfo_rootx() + (self.winfo_width() // 2) - 240
         y = self.winfo_rooty() + (self.winfo_height() // 2) - 110
@@ -647,7 +647,7 @@ class BlockingCardsPage(ctk.CTkFrame):
         dlg.title(f"Preview â€” {template.get('card_code', '')}")
         fit_dialog(dlg, 900, 780)
         dlg.transient(self)
-        dlg.grab_set()
+        open_modal(dlg)
         x = self.winfo_rootx() + (self.winfo_width() // 2) - 450
         y = self.winfo_rooty() + (self.winfo_height() // 2) - 390
         dlg.geometry(f"+{max(x, 0)}+{max(y, 0)}")

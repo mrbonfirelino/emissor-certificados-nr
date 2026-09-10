@@ -8,7 +8,7 @@ from src.ui.components.employee_autocomplete import EmployeeAutocomplete
 from src.ui.components.dynamic_form import DynamicForm
 from src.ui.components.pdf_preview import PDFPreview
 from src.ui.styles import COLORS, get_fonts
-from src.utils.ctk_patches import fit_dialog
+from src.utils.ctk_patches import fit_dialog, open_modal
 from src.core.models import Employee
 from src.core.template_loader import load_nr_template, get_template_description
 from src.core.certificate_service import CertificateService
@@ -384,7 +384,7 @@ class CertificatesPage(ctk.CTkFrame):
         dialog.title("Confirmar")
         fit_dialog(dialog, 420, 200)
         dialog.transient(self)
-        dialog.grab_set()
+        open_modal(dialog)
 
         dialog.update_idletasks()
         x = self.winfo_rootx() + (self.winfo_width() // 2) - 210
@@ -487,7 +487,7 @@ class CertificatesPage(ctk.CTkFrame):
             dialog.title("Salvar Certificado")
             fit_dialog(dialog, 420, 200)
             dialog.transient(self)
-            dialog.grab_set()
+            open_modal(dialog)
 
             dialog.update_idletasks()
             x = self.winfo_rootx() + (self.winfo_width() // 2) - 210
@@ -579,7 +579,7 @@ class CertificatesPage(ctk.CTkFrame):
         dialog.title("Sucesso")
         fit_dialog(dialog, 400, 180)
         dialog.transient(self)
-        dialog.grab_set()
+        open_modal(dialog)
         ctk.CTkLabel(dialog, text="Certificado Gerado!", font=fonts["heading"], text_color=COLORS["success"]).pack(pady=16)
         ctk.CTkLabel(dialog, text=f"Salvo em:\n{pdf_path.name}", font=fonts["body"], wraplength=350).pack(pady=8)
         ctk.CTkButton(dialog, text="OK", command=dialog.destroy, fg_color=COLORS["primary"]).pack(pady=16)
@@ -590,7 +590,7 @@ class CertificatesPage(ctk.CTkFrame):
         dialog.title("Erro")
         fit_dialog(dialog, 400, 160)
         dialog.transient(self)
-        dialog.grab_set()
+        open_modal(dialog)
         ctk.CTkLabel(dialog, text="Erro", font=fonts["heading"], text_color=COLORS["error"]).pack(pady=16)
         ctk.CTkLabel(dialog, text=message, font=fonts["body"], wraplength=350, justify="center").pack(pady=8)
         ctk.CTkButton(dialog, text="OK", command=dialog.destroy, fg_color=COLORS["error"]).pack(pady=16)

@@ -4,7 +4,7 @@ from tkinter import filedialog, messagebox
 from src.ui.styles import COLORS, get_fonts
 from src.core.employee_repo import EmployeeRepository
 from src.core.certificate_service import CertificateService
-from src.utils.ctk_patches import fit_dialog
+from src.utils.ctk_patches import fit_dialog, open_modal
 
 
 class BatchImportPage(ctk.CTkFrame):
@@ -207,7 +207,7 @@ class BatchImportPage(ctk.CTkFrame):
         dialog.title("Funcionarios nao cadastrados")
         fit_dialog(dialog, 500, 450)
         dialog.transient(self.winfo_toplevel())
-        dialog.grab_set()
+        open_modal(dialog)
         dialog.configure(fg_color=COLORS["background"])
 
         fonts = get_fonts()
@@ -353,7 +353,7 @@ class BatchImportPage(ctk.CTkFrame):
         dialog.title("Relatorio da Importacao")
         fit_dialog(dialog, 450, 400)
         dialog.transient(self.winfo_toplevel())
-        dialog.grab_set()
+        open_modal(dialog)
         dialog.configure(fg_color=COLORS["background"])
 
         fonts = get_fonts()

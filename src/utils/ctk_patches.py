@@ -112,6 +112,12 @@ def open_modal(dlg, delay_ms: int = 250) -> None:
         if not dlg.winfo_exists():
             return
         try:
+            # A danca do CTk pode gravar o estado ANTES da janela ser mapeada
+            # (state_before='withdrawn') e o "revert" re-aplica oculto para
+            # sempre: dialogo invisivel segurando o grab. Reexibir aqui.
+            estado = dlg.state()
+            if estado in ("withdrawn", "iconic"):
+                dlg.deiconify()
             dlg.lift()
             dlg.focus_force()
             dlg.grab_set()

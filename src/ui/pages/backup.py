@@ -4,11 +4,11 @@ from src.ui.styles import COLORS, FONTS
 from src.core.backup_manager import BackupManager
 from src.core.config import verify_restore_password, has_restore_password
 from src.ui.components.scroll_frame import ScrollListFrame
-from src.utils.ctk_patches import fit_dialog
+from src.utils.ctk_patches import fit_dialog, open_modal
 
 
 class BackupPage(ctk.CTkFrame):
-    """PÃ¡gina de gerenciamento de backups."""
+    """Página de gerenciamento de backups."""
     
     def __init__(self, master, backup_manager: BackupManager, **kwargs):
         super().__init__(master, fg_color=COLORS["background"], **kwargs)
@@ -26,7 +26,7 @@ class BackupPage(ctk.CTkFrame):
         self._refresh_list()
 
     def _tick_auto_refresh(self):
-        """Auto-refresh a cada 30s enquanto a pagina estiver visivel â€”
+        """Auto-refresh a cada 30s enquanto a pagina estiver visivel ”
         backups periodicos/automaticos aparecem sem reiniciar o app."""
         try:
             if self.winfo_ismapped():
@@ -46,27 +46,27 @@ class BackupPage(ctk.CTkFrame):
         
         ctk.CTkLabel(
             header,
-            text="ðŸ’¾ Backup e RestauraÃ§Ã£o",
+            text="Backup e Restauração",
             font=FONTS["title"],
             text_color=COLORS["primary"]
         ).grid(row=0, column=0, sticky="w")
         
-        # Status backup automÃ¡tico
+        # Status backup automático
         self.lbl_auto_status = ctk.CTkLabel(
             header,
-            text="Backup automÃ¡tico: Verificando...",
+            text="Backup automático: Verificando...",
             font=FONTS["small"],
             text_color=COLORS["muted"]
         )
         self.lbl_auto_status.grid(row=0, column=1, sticky="e")
         
-        # BotÃµes aÃ§Ã£o
+        # Botões ação
         btn_frame = ctk.CTkFrame(header, fg_color="transparent")
         btn_frame.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(12, 0))
         
         ctk.CTkButton(
             btn_frame,
-            text="ðŸ“¥ Backup Manual Agora",
+            text="Fazer Backup Manual Agora",
             font=FONTS["body_bold"],
             height=36,
             fg_color=COLORS["success"],
@@ -76,7 +76,7 @@ class BackupPage(ctk.CTkFrame):
         
         ctk.CTkButton(
             btn_frame,
-            text="ðŸ”„ Restaurar Backup",
+            text="Restaurar Backup",
             font=FONTS["body_bold"],
             height=36,
             fg_color=COLORS["warning"],
@@ -94,12 +94,12 @@ class BackupPage(ctk.CTkFrame):
         
         backups = self.backup_manager.list_backups()
         total_backups = len(backups)
-        backups = backups[:30]  # Ãºltimos 30 (v1.21.0)
+        backups = backups[:30]  # Últimos 30 (v1.21.0)
 
         if not backups:
             ctk.CTkLabel(
                 self.list_frame.body,
-                text="Nenhum backup encontrado",
+                text="Nenhum backup encontrado.",
                 font=FONTS["body"],
                 text_color=COLORS["muted"]
             ).pack(pady=40)
@@ -113,7 +113,7 @@ class BackupPage(ctk.CTkFrame):
         ctk.CTkLabel(header, text="Arquivo", font=FONTS["small_bold"], text_color=COLORS["surface"]).grid(row=0, column=0, sticky="w", padx=12, pady=8)
         ctk.CTkLabel(header, text="Data e Hora", font=FONTS["small_bold"], text_color=COLORS["surface"]).grid(row=0, column=1, sticky="w", padx=12, pady=8)
         ctk.CTkLabel(header, text="Tipo", font=FONTS["small_bold"], text_color=COLORS["surface"]).grid(row=0, column=2, sticky="w", padx=12, pady=8)
-        ctk.CTkLabel(header, text="AÃ§Ãµes", font=FONTS["small_bold"], text_color=COLORS["surface"]).grid(row=0, column=3, sticky="e", padx=12, pady=8)
+        ctk.CTkLabel(header, text="Ações", font=FONTS["small_bold"], text_color=COLORS["surface"]).grid(row=0, column=3, sticky="e", padx=12, pady=8)
         
         for backup in backups:
             self._create_backup_row(backup)
@@ -126,7 +126,7 @@ class BackupPage(ctk.CTkFrame):
                 text_color=COLORS["muted"]
             ).pack(pady=(6, 12))
 
-        # Atualiza status automÃ¡tico
+        # Atualiza status automático
         from src.core.history_repo import HistoryRepository
         history = HistoryRepository()
         last = history.get_backup_meta('last_auto_backup')
@@ -137,12 +137,12 @@ class BackupPage(ctk.CTkFrame):
             except ValueError:
                 last_br = str(last)
             self.lbl_auto_status.configure(
-                text=f"Ãšltimo backup automÃ¡tico: {last_br}",
+                text=f"Último backup automático: {last_br}",
                 text_color=COLORS["success"]
             )
         else:
             self.lbl_auto_status.configure(
-                text="Backup automÃ¡tico: Nunca executado",
+                text="Backup automático: Nunca executado",
                 text_color=COLORS["warning"]
             )
 
@@ -177,10 +177,10 @@ class BackupPage(ctk.CTkFrame):
                 pass
 
         if name.startswith("certificados_periodic_"):
-            type_label = "PeriÃ³dico"
+            type_label = "Periódico"
             type_color = COLORS["accent"]
         elif name.startswith("certificados_auto_"):
-            type_label = "AutomÃ¡tico"
+            type_label = "Automático"
             type_color = COLORS["accent"]
         else:
             type_label = "Manual"
@@ -213,7 +213,7 @@ class BackupPage(ctk.CTkFrame):
         
         ctk.CTkButton(
             btn_frame,
-            text="ðŸ“",
+            text="Abrir Pasta",
             width=32,
             height=32,
             font=FONTS["small"],
@@ -224,7 +224,7 @@ class BackupPage(ctk.CTkFrame):
         
         ctk.CTkButton(
             btn_frame,
-            text="â¬‡ï¸",
+            text="Baixar",
             width=32,
             height=32,
             font=FONTS["small"],
@@ -235,13 +235,13 @@ class BackupPage(ctk.CTkFrame):
 
     def _manual_backup(self):
         """Cria backup manual."""
-        self.btn_manual = None  # ReferÃªncia para desabilitar
-        # Desabilita botÃ£o temporariamente
+        self.btn_manual = None  # Referência para desabilitar
+        # Desabilita botão temporariamente
         for widget in self.winfo_children():
             if isinstance(widget, ctk.CTkFrame):
                 for child in widget.winfo_children():
                     if isinstance(child, ctk.CTkButton) and "Backup Manual" in child.cget("text"):
-                        child.configure(state="disabled", text="â³ Fazendo backup...")
+                        child.configure(state="disabled", text="Fazendo backup...")
                         self.btn_manual = child
                         break
         
@@ -250,7 +250,7 @@ class BackupPage(ctk.CTkFrame):
         backup_path = self.backup_manager.create_backup(auto=False)
         
         if self.btn_manual:
-            self.btn_manual.configure(state="normal", text="ðŸ“¥ Backup Manual Agora")
+            self.btn_manual.configure(state="normal", text="Fazer Backup Manual Agora")
         
         if backup_path:
             messagebox.showinfo("Sucesso", f"Backup criado:\n{backup_path.name}", parent=self)
@@ -262,19 +262,19 @@ class BackupPage(ctk.CTkFrame):
         """Dialog para restaurar backup com senha."""
         backups = self.backup_manager.list_backups()
         if not backups:
-            messagebox.showinfo("Aviso", "Nenhum backup disponÃ­vel para restaurar", parent=self)
+            messagebox.showinfo("Aviso", "Nenhum backup disponível para restaurar", parent=self)
             return
         
         dialog = ctk.CTkToplevel(self)
         dialog.title("Restaurar Backup")
         fit_dialog(dialog, 500, 400)
         dialog.transient(self)
-        dialog.grab_set()
+        open_modal(dialog)
         
-        ctk.CTkLabel(dialog, text="âš ï¸ Restaurar Backup", font=FONTS["heading"], text_color=COLORS["warning"]).pack(pady=20)
-        ctk.CTkLabel(dialog, text="Isso SUBSTITUIRÃ todos os dados atuais.\nOperaÃ§Ã£o irreversÃ­vel!", font=FONTS["body"], text_color=COLORS["error"], justify="center").pack(pady=(0, 20))
+        ctk.CTkLabel(dialog, text="Restaurar Backup", font=FONTS["heading"], text_color=COLORS["warning"]).pack(pady=20)
+        ctk.CTkLabel(dialog, text="Isso SUBSTITUIRÁ todos os dados atuais.\nOperação irreversí­vel!", font=FONTS["body"], text_color=COLORS["error"], justify="center").pack(pady=(0, 20))
         
-        # SeleÃ§Ã£o de backup
+        # Seleção de backup
         ctk.CTkLabel(dialog, text="Selecione o backup:", font=FONTS["body_bold"]).pack(anchor="w", padx=30)
         
         backup_var = ctk.StringVar(value=backups[0].name)
@@ -289,7 +289,7 @@ class BackupPage(ctk.CTkFrame):
         backup_combo.pack(pady=(4, 16), padx=30)
         
         # Senha
-        ctk.CTkLabel(dialog, text="Senha de restauraÃ§Ã£o:", font=FONTS["body_bold"]).pack(anchor="w", padx=30)
+        ctk.CTkLabel(dialog, text="Senha de restauração:", font=FONTS["body_bold"]).pack(anchor="w", padx=30)
         pass_var = ctk.StringVar()
         pass_entry = ctk.CTkEntry(dialog, textvariable=pass_var, font=FONTS["body"], height=36, width=400, show="â€¢", placeholder_text="Digite a senha")
         pass_entry.pack(pady=(4, 20), padx=30)
@@ -297,14 +297,14 @@ class BackupPage(ctk.CTkFrame):
         def do_restore():
             password = pass_var.get()
             if not password:
-                messagebox.showerror("Erro", "Senha Ã© obrigatÃ³ria", parent=dialog)
+                messagebox.showerror("Erro", "Senha É obrigatória", parent=dialog)
                 return
             
             selected_name = backup_var.get()
             selected_path = next((b for b in backups if b.name == selected_name), None)
             
             if not selected_path:
-                messagebox.showerror("Erro", "Backup nÃ£o encontrado", parent=dialog)
+                messagebox.showerror("Erro", "Backup não encontrado", parent=dialog)
                 return
             
             if not verify_restore_password(password):
@@ -313,11 +313,11 @@ class BackupPage(ctk.CTkFrame):
             
             # ConfirmaÃ§Ã£o final
             if not messagebox.askyesno(
-                "CONFIRMAÃ‡ÃƒO FINAL",
+                "CONFIRMAÇÃO FINAL",
                 f"TEM CERTEZA?\n\n"
                 f"Backup: {selected_name}\n"
-                f"Isso APAGARÃ todos os certificados e funcionÃ¡rios atuais.\n"
-                f"NÃ£o Ã© possÃ­vel desfazer!",
+                f"Isso APAGARÁ todos os certificados e funcionários atuais.\n"
+                f"NÃO É POSSÍVEL DESFAZER!",
                 parent=dialog
             ):
                 return

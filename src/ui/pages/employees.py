@@ -7,7 +7,7 @@ from src.core.employee_repo import EmployeeRepository
 from src.utils.validators import validar_cpf, formatar_cpf
 from src.ui.components.pagination import PaginationBar
 from src.ui.components.scroll_frame import ScrollListFrame
-from src.utils.ctk_patches import enable_placeholder, search_query, fit_dialog
+from src.utils.ctk_patches import enable_placeholder, search_query, fit_dialog, open_modal
 
 
 class EmployeesPage(ctk.CTkFrame):
@@ -306,7 +306,7 @@ class EmployeesPage(ctk.CTkFrame):
         dialog.title("Editar Funcionario" if is_edit else "Novo Funcionario")
         fit_dialog(dialog, 460, 600)
         dialog.transient(self)
-        dialog.grab_set()
+        open_modal(dialog)
 
         dialog.update_idletasks()
         x = self.winfo_rootx() + (self.winfo_width() // 2) - (520 // 2)
@@ -407,13 +407,18 @@ class EmployeesPage(ctk.CTkFrame):
 
         ctk.CTkLabel(form, text="CPF", font=fonts["body_bold"], text_color=COLORS["text"]).grid(row=5, column=0, sticky="w", pady=(0, 4))
         cpf_var = ctk.StringVar(value=employee.cpf if is_edit else "")
-        ctk.CTkEntry(form, textvariable=cpf_var, font=fonts["body"], height=36, corner_radius=6, placeholder_text="000.000.000-00 (opcional)").grid(row=6, column=0, sticky="ew", pady=(0, 10))
+        cpf_entry = ctk.CTkEntry(form, textvariable=cpf_var, font=fonts["body"], height=36, corner_radius=6, placeholder_text="000.000.000-00 (opcional)")
+        cpf_entry.grid(row=6, column=0, sticky="ew", pady=(0, 10))
 
-        def format_cpf_entry(*args):
-            val = cpf_var.get()
-            if len(val) > 14:
-                cpf_var.set(val[:14])
-        cpf_var.trace_add("write", format_cpf_entry)
+        # Mascara aplicada SOMENTE ao sair do campo: formatar a cada tecla
+        # embaralhava a digitacao (cursor pulava para o fim).
+        def format_cpf_entry(*_a):
+            import re as _re
+            dig = _re.sub(r"\D", "", cpf_var.get())[:11]
+            if len(dig) == 11:
+                cpf_var.set(f"{dig[:3]}.{dig[3:6]}.{dig[6:9]}-{dig[9:]}")
+        cpf_entry.bind("<FocusOut>", format_cpf_entry)
+        cpf_entry.bind("<Return>", format_cpf_entry)
 
         ctk.CTkLabel(form, text="Telefone (celular)", font=fonts["body_bold"], text_color=COLORS["text"]).grid(row=7, column=0, sticky="w", pady=(0, 4))
         tel_display = ""
@@ -421,18 +426,16 @@ class EmployeesPage(ctk.CTkFrame):
             from src.utils.validators import formatar_telefone
             tel_display = formatar_telefone(employee.telefone)
         tel_var = ctk.StringVar(value=tel_display)
-        ctk.CTkEntry(form, textvariable=tel_var, font=fonts["body"], height=36, corner_radius=6, placeholder_text="(21) 98420-9236 (opcional)").grid(row=8, column=0, sticky="ew", pady=(0, 10))
+        tel_entry = ctk.CTkEntry(form, textvariable=tel_var, font=fonts["body"], height=36, corner_radius=6, placeholder_text="(21) 98420-9236 (opcional)")
+        tel_entry.grid(row=8, column=0, sticky="ew", pady=(0, 10))
 
-        def format_tel_entry(*args):
-            # so formata quando os 11 digitos estao completos â€” evita cursor pulando durante digitacao
+        def format_tel_entry(*_a):
             import re as _re
-            val = tel_var.get()
-            dig = _re.sub(r'\D', '', val)
-            if len(dig) < 11:
-                return
-            dig = dig[:11]
-            tel_var.set(f"({dig[:2]}) {dig[2:7]}-{dig[7:]}")
-        tel_var.trace_add("write", format_tel_entry)
+            dig = _re.sub(r"\D", "", tel_var.get())
+            if len(dig) in (10, 11):
+                tel_var.set(f"({dig[:2]}) {dig[2:7]}-{dig[7:]}")
+        tel_entry.bind("<FocusOut>", format_tel_entry)
+        tel_entry.bind("<Return>", format_tel_entry)
 
         ctk.CTkLabel(form, text="Data de Nascimento (dd/mm/aaaa)", font=fonts["body_bold"], text_color=COLORS["text"]).grid(row=9, column=0, sticky="w", pady=(0, 4))
         nasc_display = ""
@@ -440,40 +443,34 @@ class EmployeesPage(ctk.CTkFrame):
             iso = employee.data_nascimento
             nasc_display = f"{iso[8:10]}/{iso[5:7]}/{iso[0:4]}"
         nasc_var = ctk.StringVar(value=nasc_display)
-        ctk.CTkEntry(form, textvariable=nasc_var, font=fonts["body"], height=36, corner_radius=6, placeholder_text="01/01/1990 (opcional)").grid(row=10, column=0, sticky="ew", pady=(0, 10))
+        nasc_entry = ctk.CTkEntry(form, textvariable=nasc_var, font=fonts["body"], height=36, corner_radius=6, placeholder_text="01/01/1990 (opcional)")
+        nasc_entry.grid(row=10, column=0, sticky="ew", pady=(0, 10))
 
-        def format_nasc_entry(*args):
-            import re as _re2
-            val = _re2.sub(r'\D', '', nasc_var.get())
-            if len(val) > 8:
-                val = val[:8]
-            if len(val) > 4:
-                val = f"{val[:2]}/{val[2:4]}/{val[4:]}"
-            elif len(val) > 2:
-                val = f"{val[:2]}/{val[2:]}"
-            if val != nasc_var.get():
-                nasc_var.set(val)
-        nasc_var.trace_add("write", format_nasc_entry)
+        def _mascara_data(var):
+            import re as _re
+            val = _re.sub(r"\D", "", var.get())[:8]
+            if len(val) == 8:
+                var.set(f"{val[:2]}/{val[2:4]}/{val[4:]}")
+            elif len(val) > 8:
+                var.set(val[:8])
+
+        def format_nasc_entry(*_a):
+            _mascara_data(nasc_var)
+        nasc_entry.bind("<FocusOut>", format_nasc_entry)
+        nasc_entry.bind("<Return>", format_nasc_entry)
 
         def iso_to_br(iso: str) -> str:
             return f"{iso[8:10]}/{iso[5:7]}/{iso[0:4]}" if iso else ""
 
         ctk.CTkLabel(form, text="Data de Admissao (dd/mm/aaaa)", font=fonts["body_bold"], text_color=COLORS["text"]).grid(row=11, column=0, sticky="w", pady=(0, 4))
         adm_var = ctk.StringVar(value=iso_to_br(employee.data_admissao) if (is_edit and employee.data_admissao) else "")
-        ctk.CTkEntry(form, textvariable=adm_var, font=fonts["body"], height=36, corner_radius=6, placeholder_text="01/03/2020 (opcional)").grid(row=12, column=0, sticky="ew", pady=(0, 10))
+        adm_entry = ctk.CTkEntry(form, textvariable=adm_var, font=fonts["body"], height=36, corner_radius=6, placeholder_text="01/03/2020 (opcional)")
+        adm_entry.grid(row=12, column=0, sticky="ew", pady=(0, 10))
 
-        def format_adm_entry(*args):
-            import re as _re3
-            val = _re3.sub(r'\D', '', adm_var.get())
-            if len(val) > 8:
-                val = val[:8]
-            if len(val) > 4:
-                val = f"{val[:2]}/{val[2:4]}/{val[4:]}"
-            elif len(val) > 2:
-                val = f"{val[:2]}/{val[2:]}"
-            if val != adm_var.get():
-                adm_var.set(val)
-        adm_var.trace_add("write", format_adm_entry)
+        def format_adm_entry(*_a):
+            _mascara_data(adm_var)
+        adm_entry.bind("<FocusOut>", format_adm_entry)
+        adm_entry.bind("<Return>", format_adm_entry)
 
         ctk.CTkLabel(form, text="Tipo Sanguineo", font=fonts["body_bold"], text_color=COLORS["text"]).grid(row=13, column=0, sticky="w", pady=(0, 4))
         ts_opcoes = ["Nao informado", "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
@@ -677,7 +674,7 @@ class EmployeesPage(ctk.CTkFrame):
         dialog.title("Importar Funcionarios de Excel")
         fit_dialog(dialog, 550, 480)
         dialog.transient(self)
-        dialog.grab_set()
+        open_modal(dialog)
 
         dialog.update_idletasks()
         x = self.winfo_rootx() + (self.winfo_width() // 2) - (550 // 2)

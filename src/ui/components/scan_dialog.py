@@ -14,6 +14,7 @@ from tkinter import messagebox, filedialog
 
 import customtkinter as ctk
 
+from src.utils.ctk_patches import open_modal
 from src.ui.styles import COLORS, get_fonts
 
 
@@ -39,7 +40,7 @@ class ScanDialog(ctk.CTkToplevel):
         self.geometry(f"{w}x{h}")
         self.minsize(780, 560)
         self.transient(master)
-        self.grab_set()
+        open_modal(self)
         self.resizable(True, True)
         self.update_idletasks()
         x = master.winfo_rootx() + (master.winfo_width() // 2) - (w // 2)

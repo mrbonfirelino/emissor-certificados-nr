@@ -14,7 +14,7 @@ import customtkinter as ctk
 
 from src.ui.styles import COLORS, get_fonts
 from src.ui.components.scroll_frame import ScrollListFrame
-from src.utils.ctk_patches import fit_dialog
+from src.utils.ctk_patches import fit_dialog, open_modal
 
 
 def _br(iso: str) -> str:
@@ -119,9 +119,9 @@ class EpiManagerDialog(ctk.CTkToplevel):
         super().__init__(master)
         self.employee = employee
         self.title(f"Fichas de EPI — {employee.nome}")
-        fit_dialog(self, 780, 560)
+        fit_dialog(self, 390, 280)
         self.transient(master)
-        self.grab_set()
+        open_modal(self)
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
 
@@ -297,7 +297,7 @@ class EpiItemsDialog(ctk.CTkToplevel):
         self.title("Editar Itens da Ficha" if ficha else "Nova Ficha de EPI")
         fit_dialog(self, 760, 560)
         self.transient(master)
-        self.grab_set()
+        open_modal(self)
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(2, weight=1)
 
@@ -488,7 +488,7 @@ class DevolucaoDialog(ctk.CTkToplevel):
         self.title(f"Devolução — {ficha['epi_number']}")
         fit_dialog(self, 720, 540)
         self.transient(master)
-        self.grab_set()
+        open_modal(self)
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(2, weight=1)
 
@@ -686,7 +686,7 @@ class _EpiDocsDialog(ctk.CTkToplevel):
         self.title(f"Anexos — {ficha['epi_number']}")
         fit_dialog(self, 620, 420)
         self.transient(master)
-        self.grab_set()
+        open_modal(self)
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
 

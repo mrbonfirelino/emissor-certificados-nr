@@ -4,7 +4,7 @@ from tkinter import messagebox, filedialog
 from src.ui.styles import COLORS, get_fonts
 from src.utils.paths import get_data_dir
 from src.ui.components.scroll_frame import ScrollListFrame
-from src.utils.ctk_patches import enable_placeholder, search_query, fit_dialog
+from src.utils.ctk_patches import enable_placeholder, search_query, fit_dialog, open_modal
 
 FUNCOES_FILE = get_data_dir() / "funcoes.json"
 
@@ -270,9 +270,9 @@ class FuncoesPage(ctk.CTkFrame):
 
         dialog = ctk.CTkToplevel(self)
         dialog.title("Editar Funcao" if is_edit else "Nova Funcao")
-        fit_dialog(dialog, 400, 200)
+        fit_dialog(dialog, 250, 150)
         dialog.transient(self)
-        dialog.grab_set()
+        open_modal(dialog)
 
         dialog.update_idletasks()
         x = self.winfo_rootx() + (self.winfo_width() // 2) - 200

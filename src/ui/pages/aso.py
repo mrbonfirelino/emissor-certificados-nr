@@ -10,7 +10,7 @@ from src.ui.styles import COLORS, get_fonts
 from src.core.aso_repo import AsoRepository, ASO_TIPOS
 from src.ui.components.pagination import PaginationBar
 from src.ui.components.scroll_frame import ScrollListFrame
-from src.utils.ctk_patches import enable_placeholder, search_query, fit_dialog
+from src.utils.ctk_patches import enable_placeholder, search_query, fit_dialog, open_modal
 
 
 class AsoPage(ctk.CTkFrame):
@@ -254,9 +254,9 @@ class AsoPage(ctk.CTkFrame):
         fonts = get_fonts()
         dialog = ctk.CTkToplevel(self)
         dialog.title("Novo ASO")
-        fit_dialog(dialog, 520, 430)
+        fit_dialog(dialog, 260, 215)
         dialog.transient(self)
-        dialog.grab_set()
+        open_modal(dialog)
         dialog.grid_columnconfigure(0, weight=1)
 
         ctk.CTkLabel(dialog, text="Registrar Novo ASO", font=fonts["heading"],

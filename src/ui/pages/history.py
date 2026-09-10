@@ -10,7 +10,7 @@ from src.core.history_repo import HistoryRepository
 from src.core.models import CertificateRecord
 from src.ui.components.pagination import PaginationBar
 from src.ui.components.scroll_frame import ScrollListFrame
-from src.utils.ctk_patches import enable_placeholder, search_query, fit_dialog
+from src.utils.ctk_patches import enable_placeholder, search_query, fit_dialog, open_modal
 
 
 class HistoryPage(ctk.CTkFrame):
@@ -545,6 +545,6 @@ class HistoryPage(ctk.CTkFrame):
         dialog.title("Erro")
         fit_dialog(dialog, 400, 150)
         dialog.transient(self)
-        dialog.grab_set()
+        open_modal(dialog)
         ctk.CTkLabel(dialog, text=message, font=fonts["body"], wraplength=350).pack(pady=20)
         ctk.CTkButton(dialog, text="OK", command=dialog.destroy, fg_color=COLORS["error"]).pack()
