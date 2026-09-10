@@ -9,6 +9,14 @@
 
 # Changelog
 
+## [1.22.4] - 2026-09-10
+
+### Corrigido
+- **"Empresa nao encontrada" ao salvar integracao**: o dialogo procurava a empresa pelo nome numa funcao que so aceita id ? nenhuma integracao chegava a ser salva. Agora a busca por nome (tolerante a maiusculas/acentos) encontra a empresa correta.
+
+### Alterado
+- Dialogos de Nova Integracao e Empresas abrem com tamanho menor (continuam redimensionaveis e com conteudo rolavel).
+
 ## [1.22.3] - 2026-09-10
 
 ### Corrigido

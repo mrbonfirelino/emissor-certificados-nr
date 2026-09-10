@@ -270,7 +270,7 @@ class IntegracoesPage(ctk.CTkFrame):
 
         dlg = ctk.CTkToplevel(self)
         dlg.title("Integração")
-        fit_dialog(dlg, 540, 640)
+        fit_dialog(dlg, 440, 500)
         dlg.grab_set()
         dlg.transient(self)
         dlg.resizable(True, True)
@@ -368,7 +368,7 @@ class IntegracoesPage(ctk.CTkFrame):
                 if not nome_empresa:
                     messagebox.showwarning("Empresa", "Cadastre uma empresa antes (botão 'Empresas').", parent=dlg)
                     return
-                emp = self.integ_repo.get_empresa(nome_empresa)
+                emp = self.integ_repo.get_empresa_por_nome(nome_empresa)
                 if not emp:
                     messagebox.showerror("Empresa", "Empresa não encontrada.", parent=dlg)
                     return
@@ -412,7 +412,7 @@ class IntegracoesPage(ctk.CTkFrame):
 
         dlg = ctk.CTkToplevel(self)
         dlg.title("Empresas — Fábricas de Clientes")
-        fit_dialog(dlg, 560, 480)
+        fit_dialog(dlg, 470, 390)
         dlg.grab_set()
         dlg.transient(self)
         fonts = self.fonts

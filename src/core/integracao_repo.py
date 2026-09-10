@@ -118,6 +118,22 @@ class IntegracaoRepository:
             ).fetchone()
             return dict(row) if row else None
 
+    def get_empresa_por_nome(self, nome: str) -> Optional[Dict[str, Any]]:
+        nome = (nome or "").strip()
+        if not nome:
+            return None
+        with self._get_conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM empresas_clientes WHERE nome = ? COLLATE NOCASE", (nome,)
+            ).fetchone()
+            if row:
+                return dict(row)
+            norm = normalize_text(nome)
+            for emp in self.list_empresas():
+                if normalize_text(emp["nome"]) == norm:
+                    return emp
+            return None
+
     # --- Integracoes ---
 
     @staticmethod

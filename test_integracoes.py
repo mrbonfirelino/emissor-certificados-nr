@@ -148,6 +148,22 @@ def main():
         finally:
             ir_mod.get_db_path = orig_get_db
 
+        # ── 6. get_empresa_por_nome (fluxo do dialog) ────────
+        por_nome = repo.get_empresa_por_nome("Fábrica Alpha")
+        check("get_empresa_por_nome exato", por_nome is not None and por_nome["id"] == fab1)
+        por_nome2 = repo.get_empresa_por_nome("FABRICA ALPHA")
+        check("get_empresa_por_nome case/acentos", por_nome2 is not None and por_nome2["id"] == fab1)
+        check("get_empresa_por_nome inexistente", repo.get_empresa_por_nome("Nao Existe Xyz") is None)
+        check("get_empresa_por_nome vazio", repo.get_empresa_por_nome("") is None)
+        # fluxo do dialog: nome -> id -> add_integracao salva de verdade
+        emp_res = repo.get_empresa_por_nome("fábrica alpha")
+        iid = repo.add_integracao(employee_id=e1_id, empresa_id=emp_res["id"], tipo="",
+                                  data_inicio=hoje.isoformat(),
+                                  data_validade=(hoje + timedelta(days=90)).isoformat())
+        check("fluxo dialog: salva por nome", repo.get_by_id(iid) is not None
+              and repo.get_by_id(iid)["empresa_id"] == fab1)
+        repo.delete_integracao(iid)
+
     falhas = [n for n, ok in PASSOS if not ok]
     print(f"\n{len(PASSOS) - len(falhas)}/{len(PASSOS)} testes OK")
     if falhas:
