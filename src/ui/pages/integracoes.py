@@ -15,7 +15,7 @@ from src.ui.components.pagination import PaginationBar
 from src.core.integracao_repo import IntegracaoRepository
 from src.core.employee_repo import EmployeeRepository
 from src.utils.error_log import log_error
-from src.utils.ctk_patches import enable_placeholder, search_query, fit_dialog
+from src.utils.ctk_patches import enable_placeholder, search_query, fit_dialog, open_modal, release_modal
 
 
 def _br(iso: str) -> str:
@@ -271,10 +271,9 @@ class IntegracoesPage(ctk.CTkFrame):
 
         dlg = ctk.CTkToplevel(self)
         dlg.title("Integração")
-        fit_dialog(dlg, 440, 300)
-        dlg.grab_set()
         dlg.transient(self)
-        dlg.resizable(True, True)
+        fit_dialog(dlg, 440, 300)
+        open_modal(dlg)
 
         fonts = self.fonts
         selecionado = {"emp": None}
@@ -399,13 +398,14 @@ class IntegracoesPage(ctk.CTkFrame):
                 log_error("integracoes-salvar", e)
                 messagebox.showerror("Erro", "Não foi possível salvar a integração.", parent=dlg)
                 return
+            release_modal(dlg)
             dlg.destroy()
             self._refresh_list()
 
         ctk.CTkButton(rodape, text="Cancelar", width=90, fg_color="transparent",
                       border_width=1, border_color=COLORS["border"],
                       text_color=COLORS["text"], hover_color=COLORS["surface"],
-                      command=dlg.destroy).pack(side="right", padx=4)
+                      command=lambda: (release_modal(dlg), dlg.destroy())).pack(side="right", padx=4)
         ctk.CTkButton(rodape, text="Salvar", width=110, fg_color=COLORS["success"],
                       hover_color="#256B28", command=_salvar).pack(side="right", padx=4)
 
@@ -416,9 +416,9 @@ class IntegracoesPage(ctk.CTkFrame):
 
         dlg = ctk.CTkToplevel(self)
         dlg.title("Empresas — Fábricas de Clientes")
-        fit_dialog(dlg, 370, 240)
-        dlg.grab_set()
         dlg.transient(self)
+        fit_dialog(dlg, 370, 240)
+        open_modal(dlg)
         fonts = self.fonts
 
         ctk.CTkLabel(dlg, text="Empresas (fábricas de clientes)", font=fonts["title"],

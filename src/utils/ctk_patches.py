@@ -91,3 +91,39 @@ def fit_dialog(dlg, w: int, h: int) -> None:
         dlg.resizable(True, True)
     except Exception:
         pass
+
+
+def open_modal(dlg, delay_ms: int = 250) -> None:
+    """Torna o dialogo modal de forma segura no CustomTkinter 5.2.2.
+
+    O CTkToplevel (Windows) esconde e reexibe a propria janela nos
+    primeiros milissegundos de vida (_windows_set_titlebar_color, agendado
+    pelo __init__ e pelo resizable). Um grab_set imediato nesse intervalo
+    deixa o grab preso em uma janela invisivel e o app inteiro para de
+    receber cliques. Aqui o grab so e aplicado depois que a janela esta
+    estavel, ja com lift/focus para nao ficar atras da janela principal.
+    """
+    try:
+        dlg.protocol("WM_DELETE_WINDOW", dlg.destroy)
+    except Exception:
+        pass
+
+    def _ativar():
+        if not dlg.winfo_exists():
+            return
+        try:
+            dlg.lift()
+            dlg.focus_force()
+            dlg.grab_set()
+        except Exception:
+            pass
+
+    dlg.after(delay_ms, _ativar)
+
+
+def release_modal(dlg) -> None:
+    """Solta o grab com seguranca (chamar antes de destroy do dialogo)."""
+    try:
+        dlg.grab_release()
+    except Exception:
+        pass

@@ -1,3 +1,9 @@
+## [1.22.6] - 2026-09-10
+
+### Corrigido
+- Janela de Nova Integração/Empresas abria e sumia e o programa parava de receber cliques: o grab modal agora só é aplicado depois que a janela está estável (dança interna de título do CustomTkinter), com lift/focus e liberação segura ao fechar.
+- Erro "unknown option 0.0" ao rolar o preview de cartões em PDF.
+
 ## [1.22.5] - 2026-09-10
 
 ### Corrigido

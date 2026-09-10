@@ -91,9 +91,10 @@ class PDFPreview(ctk.CTkFrame):
         self._current_mode = "text"
         self._pdf_photo_images = []
 
-    def _on_scroll_v(self, *args):
-        self.scrollbar_v.set(*args)
-        self.pdf_canvas.yview(*args)
+    def _on_scroll_v(self, first, last):
+        # yscrollcommand recebe frações (first, last): apenas atualiza o scrollbar.
+        # Chamar canvas.yview aqui causa TclError "unknown option 0.0".
+        self.scrollbar_v.set(first, last)
 
     def _on_canvas_configure(self, event):
         self.pdf_canvas.configure(scrollregion=self.pdf_canvas.bbox("all"))
