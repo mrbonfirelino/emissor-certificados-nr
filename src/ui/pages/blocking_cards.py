@@ -1,4 +1,4 @@
-import os
+﻿import os
 import sys
 import subprocess
 from typing import Optional
@@ -71,7 +71,7 @@ class BlockingCardsPage(ctk.CTkFrame):
         self._build_ui()
         self._refresh_list()
 
-    # ── Template corrente ────────────────────────────────────
+    # â”€â”€ Template corrente â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def _current_template(self) -> Optional[dict]:
         return self._templates.get(self._template_var.get())
@@ -104,7 +104,7 @@ class BlockingCardsPage(ctk.CTkFrame):
             faltas.append("foto 3x4")
         return faltas
 
-    # ── Layout ───────────────────────────────────────────────
+    # â”€â”€ Layout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def _build_ui(self):
         fonts = get_fonts()
@@ -113,13 +113,13 @@ class BlockingCardsPage(ctk.CTkFrame):
         self.grid_rowconfigure(2, weight=1)
         self.grid_propagate(False)
 
-        # Row 0 — Header
+        # Row 0 â€” Header
         self._header = ctk.CTkFrame(self, fg_color="transparent")
         self._header.grid(row=0, column=0, sticky="ew", padx=20, pady=20)
         self._header.grid_columnconfigure(1, weight=1)
 
         ctk.CTkLabel(
-            self._header, text="Emissor de Cartões de Bloqueio",
+            self._header, text="Emissor de CartÃµes de Bloqueio",
             font=fonts["title"], text_color=COLORS["primary"]
         ).grid(row=0, column=0, sticky="w")
 
@@ -129,7 +129,7 @@ class BlockingCardsPage(ctk.CTkFrame):
         )
         self.lbl_count.grid(row=0, column=1, sticky="e")
 
-        # Row 1 — Config (template + busca ampliada + por pagina)
+        # Row 1 â€” Config (template + busca ampliada + por pagina)
         cfg = ctk.CTkFrame(self._header, fg_color="transparent")
         cfg.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(12, 0))
         cfg.grid_columnconfigure(3, weight=1)
@@ -153,7 +153,7 @@ class BlockingCardsPage(ctk.CTkFrame):
         self._grid_info = ctk.CTkLabel(cfg, text="", font=fonts["small"], text_color=COLORS["muted"])
         self._grid_info.grid(row=0, column=2, padx=(0, 12), sticky="w")
 
-        # busca (ampliada, expande) — pesquisa no Enter ou botao Buscar
+        # busca (ampliada, expande) â€” pesquisa no Enter ou botao Buscar
         self._search_var = ctk.StringVar()
         self._search_entry = ctk.CTkEntry(
             cfg, textvariable=self._search_var, font=fonts["body"],
@@ -185,16 +185,16 @@ class BlockingCardsPage(ctk.CTkFrame):
         )
         self._per_page_menu.grid(row=0, column=6, sticky="e")
 
-        # Row 2 — Lista de funcionarios com checkboxes
+        # Row 2 â€” Lista de funcionarios com checkboxes
         self.list_frame = ScrollListFrame(self, fg_color=COLORS["surface"], corner_radius=12, height=200)
         self.list_frame.grid(row=2, column=0, sticky="nsew", padx=20, pady=(8, 2))
         self.list_frame.grid_columnconfigure(0, weight=1)
 
-        # Row 3 — Paginacao (colada na lista)
+        # Row 3 â€” Paginacao (colada na lista)
         self.pagination = PaginationBar(self, on_page_change=self._refresh_list)
         self.pagination.grid(row=3, column=0, sticky="w", padx=20, pady=(2, 2))
 
-        # Row 4 — Acoes linha 1: selecao/importacao
+        # Row 4 â€” Acoes linha 1: selecao/importacao
         actions1 = ctk.CTkFrame(self, fg_color="transparent")
         actions1.grid(row=4, column=0, sticky="ew", padx=20, pady=(2, 4))
         self._actions1 = actions1
@@ -217,7 +217,7 @@ class BlockingCardsPage(ctk.CTkFrame):
             command=self._clear_selection
         ).pack(side="left")
 
-        # Row 5 — Acoes linha 2: opcoes + preview/gerar
+        # Row 5 â€” Acoes linha 2: opcoes + preview/gerar
         actions2 = ctk.CTkFrame(self, fg_color="transparent")
         actions2.grid(row=5, column=0, sticky="ew", padx=20, pady=(0, 8))
         self._actions2 = actions2
@@ -266,21 +266,21 @@ class BlockingCardsPage(ctk.CTkFrame):
             k = int(tpl.get("cards_per_slide", 1))
             s = int(tpl.get("_slides", 1))
             extra = f" x {s} folhas" if s > 1 else ""
-            self._grid_info.configure(text=f"PPTX — {k} cartao(oes)/folha{extra}")
+            self._grid_info.configure(text=f"PPTX â€” {k} cartao(oes)/folha{extra}")
             self._one_page_cb.configure(state="normal")
         elif tpl.get("template_type") == "cracha":
             from src.core.badge_service import _a4_grid, _badge_metrics
             w, h, _esc, sw, sh = _badge_metrics(tpl, "real")
             cols, rows = _a4_grid(sw, sh)
             self._grid_info.configure(
-                text=f"Crachá — folha A4 — {cols*rows}/folha ({w:g}x{h:g}mm ou reduzido 86x54mm) — até {tpl.get('max_nrs', 8)} NRs"
+                text=f"CrachÃ¡ â€” folha A4 â€” {cols*rows}/folha ({w:g}x{h:g}mm ou reduzido 86x54mm) â€” atÃ© {tpl.get('max_nrs', 8)} NRs"
             )
             self._one_page_var.set(False)
             self._one_page_cb.configure(state="disabled")
         else:
             cols, rows = compute_grid(tpl)
             self._grid_info.configure(
-                text=f"{tpl.get('card_width_mm', 85.6)}x{tpl.get('card_height_mm', 54)}mm — {cols*rows}/folha"
+                text=f"{tpl.get('card_width_mm', 85.6)}x{tpl.get('card_height_mm', 54)}mm â€” {cols*rows}/folha"
             )
             self._one_page_var.set(False)
             self._one_page_cb.configure(state="disabled")
@@ -294,7 +294,7 @@ class BlockingCardsPage(ctk.CTkFrame):
             if self._missing_fields(emp):
                 self._selected.discard(emp.id)
 
-    # ── Paginacao ────────────────────────────────────────────
+    # â”€â”€ Paginacao â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @property
     def _offset(self) -> int:
@@ -313,7 +313,7 @@ class BlockingCardsPage(ctk.CTkFrame):
         self.pagination.reset()
         self._refresh_list()
 
-    # ── Lista ────────────────────────────────────────────────
+    # â”€â”€ Lista â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def _refresh_list(self):
         fonts = get_fonts()
@@ -426,12 +426,12 @@ class BlockingCardsPage(ctk.CTkFrame):
             txt += f" ({total_sel - len(ready_ids)} em outras paginas)"
         self.lbl_count.configure(text=txt)
 
-    # ── Geracao ──────────────────────────────────────────────
+    # â”€â”€ Geracao â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def _collect(self, action_label: str = "emitir"):
         """
         Abre a Revisao da Emissao (sempre) sobre COPIAS transitorias dos
-        funcionarios — edicoes (nome/funcao/telefone/foto + setor/papel/
+        funcionarios â€” edicoes (nome/funcao/telefone/foto + setor/papel/
         matricula) valem somente para esta emissao, nada e gravado no banco.
         Retorna (valid, template, options, is_pptx, missing) ou None se abortado.
         """
@@ -462,7 +462,7 @@ class BlockingCardsPage(ctk.CTkFrame):
             # v1.15.1: bloqueados (sem foto/NR valida/ASO) viram 'Pulados'
             return dlg.selected["employees"], template, dlg.selected, False, dlg.blocked_msgs
 
-        # copias transitórias — o banco nao e afetado
+        # copias transitÃ³rias â€” o banco nao e afetado
         copies = [e.model_copy() for e in selected]
         dlg = EmissionReviewDialog(self, copies, template, initial_setor=self._last_setor)
         self.wait_window(dlg)
@@ -553,7 +553,6 @@ class BlockingCardsPage(ctk.CTkFrame):
         fit_dialog(dlg, 480, 220)
         dlg.transient(self)
         dlg.grab_set()
-        dlg.resizable(False, False)
         dlg.update_idletasks()
         x = self.winfo_rootx() + (self.winfo_width() // 2) - 240
         y = self.winfo_rooty() + (self.winfo_height() // 2) - 110
@@ -577,7 +576,7 @@ class BlockingCardsPage(ctk.CTkFrame):
                       fg_color=COLORS["muted"], hover_color=COLORS["text_secondary"],
                       command=dlg.destroy).pack(side="left", padx=4)
 
-    # ── Preview ──────────────────────────────────────────────
+    # â”€â”€ Preview â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def _preview(self):
         ctx = self._collect("prever")
@@ -612,7 +611,7 @@ class BlockingCardsPage(ctk.CTkFrame):
                                            initial_setor=options.get("setor", ""))
                 self.wait_window(dlg)
                 if not dlg.selected:
-                    continue  # cancelou a edicao — mostra o preview atual de novo
+                    continue  # cancelou a edicao â€” mostra o preview atual de novo
                 options = dlg.selected
                 self._last_setor = options.get("setor", "")
                 valid, missing = [], []
@@ -645,7 +644,7 @@ class BlockingCardsPage(ctk.CTkFrame):
         result = {"action": "close"}
 
         dlg = ctk.CTkToplevel(self)
-        dlg.title(f"Preview — {template.get('card_code', '')}")
+        dlg.title(f"Preview â€” {template.get('card_code', '')}")
         fit_dialog(dlg, 900, 780)
         dlg.transient(self)
         dlg.grab_set()
@@ -663,7 +662,7 @@ class BlockingCardsPage(ctk.CTkFrame):
 
         btns = ctk.CTkFrame(dlg, fg_color="transparent")
         btns.pack(side="bottom", fill="x", padx=12, pady=(0, 12))
-        ctk.CTkLabel(btns, text=f"{n_cards} cartao(oes) — preview temporario; edicoes nao afetam o cadastro",
+        ctk.CTkLabel(btns, text=f"{n_cards} cartao(oes) â€” preview temporario; edicoes nao afetam o cadastro",
                      font=fonts["small"], text_color=COLORS["muted"]).pack(side="left")
 
         ctk.CTkButton(btns, text="Fechar", width=80, height=32, font=fonts["body_bold"],
@@ -684,16 +683,16 @@ class BlockingCardsPage(ctk.CTkFrame):
         self.wait_window(dlg)
         return result["action"]
 
-    # ── Impressao / importacao ───────────────────────────────
+    # â”€â”€ Impressao / importacao â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @staticmethod
     def _print_pdf(path):
         """
         Envia o PDF para a impressora em cascata:
         1. verbo "print" do Windows (exige app associado)
-        2. leitor padrão de PDF com flag de impressão (abre na tela de imprimir):
-           Acrobat /p /h · Foxit /p · SumatraPDF -print-dialog
-        3. último recurso: abre o PDF no visualizador padrão
+        2. leitor padrÃ£o de PDF com flag de impressÃ£o (abre na tela de imprimir):
+           Acrobat /p /h Â· Foxit /p Â· SumatraPDF -print-dialog
+        3. Ãºltimo recurso: abre o PDF no visualizador padrÃ£o
         """
         path = str(path)
         try:
@@ -751,7 +750,7 @@ class BlockingCardsPage(ctk.CTkFrame):
         self._refresh_list()
 
         msg = (f"Planilha processada.\n\n"
-               f"{len(encontrados)} funcionario(s) encontrado(s) no cadastro — "
+               f"{len(encontrados)} funcionario(s) encontrado(s) no cadastro â€” "
                f"{adicionados} novo(s) na selecao.")
         if nao_encontrados:
             msg += ("\n\nNAO encontrados no cadastro:\n" + "\n".join(nao_encontrados[:15]) +

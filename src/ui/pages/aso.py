@@ -1,4 +1,4 @@
-import os
+﻿import os
 import sqlite3
 from datetime import date
 from types import SimpleNamespace
@@ -14,7 +14,7 @@ from src.utils.ctk_patches import enable_placeholder, search_query, fit_dialog
 
 
 class AsoPage(ctk.CTkFrame):
-    """Gestao de ASOs (Atestado de Saude Ocupacional) — roadmap 2.16."""
+    """Gestao de ASOs (Atestado de Saude Ocupacional) â€” roadmap 2.16."""
 
     def __init__(self, master, aso_repo: AsoRepository, employee_repo, **kwargs):
         super().__init__(master, fg_color=COLORS["background"], **kwargs)
@@ -24,7 +24,7 @@ class AsoPage(ctk.CTkFrame):
         self._build_ui()
         self._refresh_list()
 
-    # ── UI ─────────────────────────────────────────────────────
+    # â”€â”€ UI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def _build_ui(self):
         fonts = get_fonts()
@@ -37,7 +37,7 @@ class AsoPage(ctk.CTkFrame):
         self._header.grid_columnconfigure(1, weight=1)
 
         ctk.CTkLabel(
-            self._header, text="ASOs — Atestado de Saude Ocupacional",
+            self._header, text="ASOs â€” Atestado de Saude Ocupacional",
             font=fonts["title"], text_color=COLORS["primary"]
         ).grid(row=0, column=0, sticky="w")
 
@@ -93,7 +93,7 @@ class AsoPage(ctk.CTkFrame):
         self.pagination = PaginationBar(self, on_page_change=self._refresh_list)
         self.pagination.grid(row=2, column=0, sticky="w", padx=20, pady=(0, 5))
 
-    # ── Listagem ───────────────────────────────────────────────
+    # â”€â”€ Listagem â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def _on_search(self):
         self.pagination.reset()
@@ -208,7 +208,7 @@ class AsoPage(ctk.CTkFrame):
                                  text_color=COLORS["success"], fg_color="#E6F2E6", corner_radius=4)
             badge.grid(row=0, column=6, padx=8, pady=4)
         else:
-            ctk.CTkLabel(row, text="—", font=fonts["small"],
+            ctk.CTkLabel(row, text="â€”", font=fonts["small"],
                          text_color=COLORS["muted"], anchor="center"
                          ).grid(row=0, column=6, sticky="ew", padx=12, pady=6)
 
@@ -248,7 +248,7 @@ class AsoPage(ctk.CTkFrame):
         except Exception:
             return None
 
-    # ── Novo ASO ───────────────────────────────────────────────
+    # â”€â”€ Novo ASO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def _novo_aso(self):
         fonts = get_fonts()
@@ -257,7 +257,6 @@ class AsoPage(ctk.CTkFrame):
         fit_dialog(dialog, 520, 430)
         dialog.transient(self)
         dialog.grab_set()
-        dialog.resizable(False, False)
         dialog.grid_columnconfigure(0, weight=1)
 
         ctk.CTkLabel(dialog, text="Registrar Novo ASO", font=fonts["heading"],
@@ -356,7 +355,7 @@ class AsoPage(ctk.CTkFrame):
                       fg_color=COLORS["success"], hover_color="#256B28",
                       command=gerar).grid(row=0, column=1, sticky="e")
 
-    # ── Importar em lote ───────────────────────────────────────
+    # â”€â”€ Importar em lote â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def _importar_excel(self):
         """Importa ASOs em lote (MODELO ASO.xlsx) e gera os PDFs."""
@@ -401,7 +400,7 @@ class AsoPage(ctk.CTkFrame):
             messagebox.showwarning("Importacao", f"Nenhum ASO criado.\n\n{msg}", parent=self)
         self._refresh_list()
 
-    # ── Acoes por linha ────────────────────────────────────────
+    # â”€â”€ Acoes por linha â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def _open_pdf(self, aso: dict):
         if aso.get("pdf_path") and os.path.exists(aso["pdf_path"]):
@@ -540,7 +539,7 @@ class AsoPage(ctk.CTkFrame):
         except Exception:
             pass
 
-    # ── API publica ────────────────────────────────────────────
+    # â”€â”€ API publica â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def refresh(self):
         self.pagination.reset()

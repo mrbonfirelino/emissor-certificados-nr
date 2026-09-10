@@ -1,3 +1,13 @@
+## [1.22.5] - 2026-09-10
+
+### Corrigido
+- Erro ao salvar NOVA integracao: o autocomplete passava um objeto e o dialogo esperava dicionario (TypeError silencioso)
+
+### Alterado
+- Dialogo Nova Integracao menor (440x300) e Cadastro de Empresas menor (370x240)
+- Tela de funcionario menor (460x600) e TODAS as janelas do sistema agora podem ser redimensionadas
+- Data de validade da integracao vem preenchida com 1 ano a partir de hoje (editavel)
+
 ## [1.22.2] - 2026-09-10
 
 ### Corrigido

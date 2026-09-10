@@ -1,4 +1,4 @@
-import customtkinter as ctk
+﻿import customtkinter as ctk
 import os
 import subprocess
 import sys
@@ -247,7 +247,7 @@ class CertificatesPage(ctk.CTkFrame):
             fg_color=COLORS["success"] if has_cpf else COLORS["muted"]
         )
         if not has_cpf:
-            self.btn_generate.configure(text="CPF obrigatório")
+            self.btn_generate.configure(text="CPF obrigatÃ³rio")
         else:
             self.btn_generate.configure(text="Gerar Certificado")
         self._update_preview()
@@ -385,7 +385,6 @@ class CertificatesPage(ctk.CTkFrame):
         fit_dialog(dialog, 420, 200)
         dialog.transient(self)
         dialog.grab_set()
-        dialog.resizable(False, False)
 
         dialog.update_idletasks()
         x = self.winfo_rootx() + (self.winfo_width() // 2) - 210
@@ -489,7 +488,6 @@ class CertificatesPage(ctk.CTkFrame):
             fit_dialog(dialog, 420, 200)
             dialog.transient(self)
             dialog.grab_set()
-            dialog.resizable(False, False)
 
             dialog.update_idletasks()
             x = self.winfo_rootx() + (self.winfo_width() // 2) - 210
@@ -582,7 +580,6 @@ class CertificatesPage(ctk.CTkFrame):
         fit_dialog(dialog, 400, 180)
         dialog.transient(self)
         dialog.grab_set()
-        dialog.resizable(False, False)
         ctk.CTkLabel(dialog, text="Certificado Gerado!", font=fonts["heading"], text_color=COLORS["success"]).pack(pady=16)
         ctk.CTkLabel(dialog, text=f"Salvo em:\n{pdf_path.name}", font=fonts["body"], wraplength=350).pack(pady=8)
         ctk.CTkButton(dialog, text="OK", command=dialog.destroy, fg_color=COLORS["primary"]).pack(pady=16)
@@ -594,7 +591,6 @@ class CertificatesPage(ctk.CTkFrame):
         fit_dialog(dialog, 400, 160)
         dialog.transient(self)
         dialog.grab_set()
-        dialog.resizable(False, False)
         ctk.CTkLabel(dialog, text="Erro", font=fonts["heading"], text_color=COLORS["error"]).pack(pady=16)
         ctk.CTkLabel(dialog, text=message, font=fonts["body"], wraplength=350, justify="center").pack(pady=8)
         ctk.CTkButton(dialog, text="OK", command=dialog.destroy, fg_color=COLORS["error"]).pack(pady=16)

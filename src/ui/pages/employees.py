@@ -1,4 +1,4 @@
-import customtkinter as ctk
+﻿import customtkinter as ctk
 from tkinter import messagebox, filedialog
 from typing import Optional
 from src.ui.styles import COLORS, get_fonts
@@ -26,7 +26,7 @@ class EmployeesPage(ctk.CTkFrame):
         self.grid_rowconfigure(1, weight=1)
         self.grid_propagate(False)
 
-        # Row 0 — Header
+        # Row 0 â€” Header
         self._header = ctk.CTkFrame(self, fg_color="transparent")
         self._header.grid(row=0, column=0, sticky="ew", padx=20, pady=20)
         self._header.grid_columnconfigure(1, weight=1)
@@ -108,7 +108,7 @@ class EmployeesPage(ctk.CTkFrame):
             command=self._clear_search
         ).grid(row=0, column=3)
 
-        ctk.CTkLabel(search_frame, text="Por página:", font=fonts["small"],
+        ctk.CTkLabel(search_frame, text="Por pÃ¡gina:", font=fonts["small"],
                      text_color=COLORS["text_secondary"]).grid(row=0, column=4, padx=(12, 4))
         self._per_page_var = ctk.StringVar(value="10")
         ctk.CTkOptionMenu(
@@ -119,12 +119,12 @@ class EmployeesPage(ctk.CTkFrame):
             command=lambda _v: self._change_per_page()
         ).grid(row=0, column=5)
 
-        # Row 1 — Lista (weight=1 preenche resto)
+        # Row 1 â€” Lista (weight=1 preenche resto)
         self.list_frame = ScrollListFrame(self, fg_color=COLORS["surface"], corner_radius=12, height=200)
         self.list_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 5))
         self.list_frame.grid_columnconfigure(0, weight=1)
 
-        # Row 2 — Paginacao
+        # Row 2 â€” Paginacao
         self.pagination = PaginationBar(self, on_page_change=self._refresh_list)
         self.pagination.grid(row=2, column=0, sticky="w", padx=20, pady=(0, 5))
 
@@ -304,10 +304,9 @@ class EmployeesPage(ctk.CTkFrame):
 
         dialog = ctk.CTkToplevel(self)
         dialog.title("Editar Funcionario" if is_edit else "Novo Funcionario")
-        fit_dialog(dialog, 520, 680)
+        fit_dialog(dialog, 460, 600)
         dialog.transient(self)
         dialog.grab_set()
-        dialog.resizable(False, False)
 
         dialog.update_idletasks()
         x = self.winfo_rootx() + (self.winfo_width() // 2) - (520 // 2)
@@ -425,7 +424,7 @@ class EmployeesPage(ctk.CTkFrame):
         ctk.CTkEntry(form, textvariable=tel_var, font=fonts["body"], height=36, corner_radius=6, placeholder_text="(21) 98420-9236 (opcional)").grid(row=8, column=0, sticky="ew", pady=(0, 10))
 
         def format_tel_entry(*args):
-            # so formata quando os 11 digitos estao completos — evita cursor pulando durante digitacao
+            # so formata quando os 11 digitos estao completos â€” evita cursor pulando durante digitacao
             import re as _re
             val = tel_var.get()
             dig = _re.sub(r'\D', '', val)
@@ -679,7 +678,6 @@ class EmployeesPage(ctk.CTkFrame):
         fit_dialog(dialog, 550, 480)
         dialog.transient(self)
         dialog.grab_set()
-        dialog.resizable(False, False)
 
         dialog.update_idletasks()
         x = self.winfo_rootx() + (self.winfo_width() // 2) - (550 // 2)

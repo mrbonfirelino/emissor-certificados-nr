@@ -5,6 +5,7 @@ controle de validade (marcador de validade, sem geração de certificado).
 Os vencimentos aparecem na aba Vencimentos (nr_code 'INTEGRAÇÃO').
 """
 from datetime import datetime, date
+from dateutil.relativedelta import relativedelta
 
 import customtkinter as ctk
 
@@ -270,7 +271,7 @@ class IntegracoesPage(ctk.CTkFrame):
 
         dlg = ctk.CTkToplevel(self)
         dlg.title("Integração")
-        fit_dialog(dlg, 440, 500)
+        fit_dialog(dlg, 440, 300)
         dlg.grab_set()
         dlg.transient(self)
         dlg.resizable(True, True)
@@ -309,7 +310,8 @@ class IntegracoesPage(ctk.CTkFrame):
             emp_frame.grid(row=1, column=0, columnspan=2, sticky="ew")
 
             def on_select(emp):
-                selecionado["emp"] = emp
+                # EmployeeAutocomplete passa o objeto Employee — normaliza para dict
+                selecionado["emp"] = {"id": emp.id, "nome": emp.nome, "cpf": emp.cpf}
 
             EmployeeAutocomplete(emp_frame, self.employee_repo, on_select=on_select,
                                  placeholder="Digite o nome do funcionário...").pack(fill="x")
@@ -345,7 +347,9 @@ class IntegracoesPage(ctk.CTkFrame):
                      text_color=COLORS["muted"]).grid(row=6, column=1, sticky="w", pady=(10, 2), padx=(12, 0))
         ini_var = ctk.StringVar(value=_br(integ.get("data_inicio")) if integ and integ.get("data_inicio")
                                else date.today().strftime("%d/%m/%Y"))
-        val_var = ctk.StringVar(value=_br(integ.get("data_validade")) if integ else "")
+        # Validade padrão: 1 ano a partir de hoje (editável)
+        validade_padrao = (date.today() + relativedelta(years=1)).strftime("%d/%m/%Y")
+        val_var = ctk.StringVar(value=_br(integ.get("data_validade")) if integ else validade_padrao)
         ctk.CTkEntry(form, textvariable=ini_var, font=fonts["body"], height=34, corner_radius=6
                      ).grid(row=7, column=0, sticky="ew")
         ctk.CTkEntry(form, textvariable=val_var, font=fonts["body"], height=34, corner_radius=6
@@ -412,7 +416,7 @@ class IntegracoesPage(ctk.CTkFrame):
 
         dlg = ctk.CTkToplevel(self)
         dlg.title("Empresas — Fábricas de Clientes")
-        fit_dialog(dlg, 470, 390)
+        fit_dialog(dlg, 370, 240)
         dlg.grab_set()
         dlg.transient(self)
         fonts = self.fonts

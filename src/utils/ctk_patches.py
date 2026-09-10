@@ -87,3 +87,7 @@ def fit_dialog(dlg, w: int, h: int) -> None:
     except Exception:
         pass
     dlg.geometry(f"{largura}x{altura}")
+    try:
+        dlg.resizable(True, True)
+    except Exception:
+        pass

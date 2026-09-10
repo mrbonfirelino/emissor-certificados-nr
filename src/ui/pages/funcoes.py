@@ -1,4 +1,4 @@
-import json
+﻿import json
 import customtkinter as ctk
 from tkinter import messagebox, filedialog
 from src.ui.styles import COLORS, get_fonts
@@ -46,7 +46,7 @@ class FuncoesPage(ctk.CTkFrame):
         self.grid_rowconfigure(2, weight=1)
         self.grid_propagate(False)
 
-        # Row 0 — Header
+        # Row 0 â€” Header
         self._header = ctk.CTkFrame(self, fg_color="transparent")
         self._header.grid(row=0, column=0, sticky="ew", padx=20, pady=20)
         self._header.grid_columnconfigure(1, weight=1)
@@ -86,7 +86,7 @@ class FuncoesPage(ctk.CTkFrame):
             command=self._add_funcao
         ).pack(side="left")
 
-        # Row 1 — Busca (Enter ou botao; filtro client-side)
+        # Row 1 â€” Busca (Enter ou botao; filtro client-side)
         search_frame = ctk.CTkFrame(self, fg_color="transparent")
         search_frame.grid(row=1, column=0, sticky="ew", padx=20, pady=(0, 8))
         search_frame.grid_columnconfigure(0, weight=1)
@@ -113,7 +113,7 @@ class FuncoesPage(ctk.CTkFrame):
             hover_color=COLORS["text_secondary"], command=self._clear_filter
         ).grid(row=0, column=2)
 
-        ctk.CTkLabel(search_frame, text="Por página:", font=fonts["small"],
+        ctk.CTkLabel(search_frame, text="Por pÃ¡gina:", font=fonts["small"],
                      text_color=COLORS["text_secondary"]).grid(row=0, column=3, padx=(12, 4))
         self._per_page_var = ctk.StringVar(value=str(self.ITEMS_PER_PAGE))
         ctk.CTkOptionMenu(
@@ -124,12 +124,12 @@ class FuncoesPage(ctk.CTkFrame):
             command=lambda _v: self._change_per_page()
         ).grid(row=0, column=4)
 
-        # Row 2 — Lista (weight=1 preenche resto)
+        # Row 2 â€” Lista (weight=1 preenche resto)
         self.list_frame = ScrollListFrame(self, fg_color=COLORS["surface"], corner_radius=12, height=200)
         self.list_frame.grid(row=2, column=0, sticky="nsew", padx=20, pady=(0, 5))
         self.list_frame.grid_columnconfigure(0, weight=1)
 
-        # Row 3 — Paginacao custom
+        # Row 3 â€” Paginacao custom
         self.pagination_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.pagination_frame.grid(row=3, column=0, sticky="ew", padx=20, pady=(0, 5))
         self.pagination_frame.grid_columnconfigure(0, weight=1)
@@ -158,7 +158,7 @@ class FuncoesPage(ctk.CTkFrame):
 
         self._refresh_list()
 
-    # ── Filtro de busca (client-side) ─────────────────────────
+    # â”€â”€ Filtro de busca (client-side) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def _apply_filter(self):
         self._filter = search_query(self._search_entry, self._search_var).strip().lower()
@@ -273,7 +273,6 @@ class FuncoesPage(ctk.CTkFrame):
         fit_dialog(dialog, 400, 200)
         dialog.transient(self)
         dialog.grab_set()
-        dialog.resizable(False, False)
 
         dialog.update_idletasks()
         x = self.winfo_rootx() + (self.winfo_width() // 2) - 200
