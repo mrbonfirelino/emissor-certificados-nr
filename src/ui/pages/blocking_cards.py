@@ -655,7 +655,6 @@ class BlockingCardsPage(ctk.CTkFrame):
 
         from src.ui.components.pdf_preview import PDFPreview
         preview = PDFPreview(dlg)
-        preview.pack(fill="both", expand=True, padx=12, pady=(12, 8))
         preview.show_pdf_image(str(pdf_path))
 
         def set_action(a):
@@ -663,7 +662,7 @@ class BlockingCardsPage(ctk.CTkFrame):
             dlg.destroy()
 
         btns = ctk.CTkFrame(dlg, fg_color="transparent")
-        btns.pack(fill="x", padx=12, pady=(0, 12))
+        btns.pack(side="bottom", fill="x", padx=12, pady=(0, 12))
         ctk.CTkLabel(btns, text=f"{n_cards} cartao(oes) — preview temporario; edicoes nao afetam o cadastro",
                      font=fonts["small"], text_color=COLORS["muted"]).pack(side="left")
 
@@ -679,6 +678,8 @@ class BlockingCardsPage(ctk.CTkFrame):
         ctk.CTkButton(btns, text="Voltar e Editar", width=120, height=32, font=fonts["body_bold"],
                       fg_color=COLORS["warning"], hover_color="#BF5300",
                       command=lambda: set_action("edit")).pack(side="right", padx=4)
+
+        preview.pack(fill="both", expand=True, padx=12, pady=(12, 8))
 
         self.wait_window(dlg)
         return result["action"]

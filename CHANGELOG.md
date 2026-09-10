@@ -9,6 +9,13 @@
 
 # Changelog
 
+## [1.22.3] - 2026-09-10
+
+### Corrigido
+- **Pesquisa com placeholder**: ao digitar no campo de busca, o texto da dica era gravado junto (bug do patch de placeholder do CustomTkinter com `textvariable`), fazendo a busca nao filtrar / nao encontrar nada. Agora a dica nunca interfere enquanto o campo esta com foco.
+- **Nova Integracao abria vazia**: o dialogo de nova integracao travava ao criar (variaveis de Tipo/Observacoes lidas de registro inexistente), deixando a janela sem campos e sem botoes.
+- **Botoes Salvar/Cancelar/Fechar fora de vista**: dialogos com conteudo expansivel empurravam o rodape para fora da janela (Nova Integracao, Empresas, Imprimir/Preview de cartoes). Rodapes agora ficam sempre visiveis.
+
 ## [1.22.1] - 2026-09-10
 
 ### Corrigido

@@ -31,6 +31,11 @@ def install() -> None:
     def _activate_placeholder(self):
         if not getattr(self, "_norma_placeholder", False):
             return _ORIG_ACTIVATE(self)
+        try:
+            if str(self.focus_get()) == str(self._entry):
+                return  # campo com foco: usuário digitando — nao poluir a variavel
+        except Exception:
+            pass
         if (
             self._entry.get() == ""
             and self._placeholder_text is not None

@@ -285,6 +285,10 @@ class IntegracoesPage(ctk.CTkFrame):
         ctk.CTkLabel(dlg, text="Editar integração" if integ else "Nova integração",
                      font=fonts["title"], text_color=COLORS["text"]).pack(anchor="w", padx=24, pady=(20, 4))
 
+        # Rodapé ANTES do scroll (pack side=bottom): garante Salvar/Cancelar sempre visíveis
+        rodape = ctk.CTkFrame(dlg, fg_color="transparent")
+        rodape.pack(side="bottom", fill="x", padx=24, pady=(6, 20))
+
         # Formulário em frame rolável: nunca corta em telas com scaling alto
         scroll = ctk.CTkScrollableFrame(dlg, fg_color="transparent")
         scroll.pack(fill="both", expand=True, padx=16, pady=(0, 4))
@@ -329,7 +333,7 @@ class IntegracoesPage(ctk.CTkFrame):
         # Tipo
         ctk.CTkLabel(form, text="Tipo de integração", font=fonts["small_bold"],
                      text_color=COLORS["muted"]).grid(row=4, column=0, columnspan=2, sticky="w", pady=(10, 2))
-        tipo_var = ctk.StringVar(value=integ.get("tipo") or "")
+        tipo_var = ctk.StringVar(value=(integ.get("tipo") or "") if integ else "")
         ctk.CTkEntry(form, textvariable=tipo_var, placeholder_text="Ex.: Integração de máquinas, Assistência técnica...",
                      font=fonts["body"], height=34, corner_radius=6
                      ).grid(row=5, column=0, columnspan=2, sticky="ew")
@@ -350,13 +354,10 @@ class IntegracoesPage(ctk.CTkFrame):
         # Obs
         ctk.CTkLabel(form, text="Observações", font=fonts["small_bold"],
                      text_color=COLORS["muted"]).grid(row=8, column=0, columnspan=2, sticky="w", pady=(10, 2))
-        obs_var = ctk.StringVar(value=integ.get("obs") or "")
+        obs_var = ctk.StringVar(value=(integ.get("obs") or "") if integ else "")
         ctk.CTkEntry(form, textvariable=obs_var, placeholder_text="Opcional",
                      font=fonts["body"], height=34, corner_radius=6
                      ).grid(row=9, column=0, columnspan=2, sticky="ew")
-
-        rodape = ctk.CTkFrame(dlg, fg_color="transparent")
-        rodape.pack(fill="x", padx=24, pady=(6, 20))
 
         def _salvar():
             try:
@@ -421,8 +422,12 @@ class IntegracoesPage(ctk.CTkFrame):
         ctk.CTkLabel(dlg, text="Empresas em que é possível fazer integração.",
                      font=fonts["small"], text_color=COLORS["muted"]).pack(anchor="w", padx=24)
 
+        ctk.CTkButton(dlg, text="Fechar", width=90, fg_color="transparent",
+                      border_width=1, border_color=COLORS["border"],
+                      text_color=COLORS["text"], hover_color=COLORS["surface"],
+                      command=dlg.destroy).pack(side="bottom", anchor="e", padx=24, pady=(0, 16))
+
         lista = ctk.CTkScrollableFrame(dlg, fg_color=COLORS["surface"], corner_radius=10)
-        lista.pack(fill="both", expand=True, padx=24, pady=10)
 
         def _render_empresas():
             for w in lista.winfo_children():
@@ -471,7 +476,8 @@ class IntegracoesPage(ctk.CTkFrame):
         _render_empresas()
 
         nova = ctk.CTkFrame(dlg, fg_color="transparent")
-        nova.pack(fill="x", padx=24, pady=(0, 4))
+        nova.pack(side="bottom", fill="x", padx=24, pady=(0, 4))
+        lista.pack(fill="both", expand=True, padx=24, pady=10)
         nova.grid_columnconfigure(0, weight=2)
         nova.grid_columnconfigure(1, weight=1)
         ctk.CTkLabel(nova, text="Nome da empresa", font=fonts["small_bold"],
@@ -500,8 +506,3 @@ class IntegracoesPage(ctk.CTkFrame):
         ctk.CTkButton(nova, text="+ Adicionar", width=100, height=34, corner_radius=6,
                       font=fonts["body_bold"], fg_color=COLORS["success"], hover_color="#256B28",
                       command=_adicionar).grid(row=1, column=2, sticky="e")
-
-        ctk.CTkButton(dlg, text="Fechar", width=90, fg_color="transparent",
-                      border_width=1, border_color=COLORS["border"],
-                      text_color=COLORS["text"], hover_color=COLORS["surface"],
-                      command=dlg.destroy).pack(anchor="e", padx=24, pady=(0, 16))
