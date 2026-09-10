@@ -141,6 +141,7 @@ class NormaTechApp(ctk.CTk):
         nav_items = [
             ("home", "\U0001F3E0", "Inicio", self._show_home),
             ("certificates", "\U0001F393", "Certificados", self._show_certificates),
+    ("emissao_lote", "\U0001F9FE", "Emissão em Lote", self._show_emissao_lote),
             ("employees", "\U0001F465", "Funcionarios", self._show_employees),
             ("history", "\U0001F4CB", "Historico", self._show_history),
             ("funcoes", "\U0001F4DD", "Funcoes", self._show_funcoes),
@@ -572,6 +573,12 @@ class NormaTechApp(ctk.CTk):
 
     def _show_certificates(self):
         self._show_page("certificates", CertificatesPage, self.certificate_service, self.employee_repo)
+
+    def _show_emissao_lote(self):
+        from src.ui.pages.emissao_lote import EmissaoLotePage
+        page = self._show_page("emissao_lote", EmissaoLotePage, self.employee_repo, self.certificate_service)
+        if hasattr(page, "refresh"):
+            page.refresh()
 
     def _show_employees(self):
         self._show_page("employees", EmployeesPage, self.employee_repo)

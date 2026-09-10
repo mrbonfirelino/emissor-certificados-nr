@@ -62,12 +62,17 @@ class HistoryRepository:
             except sqlite3.OperationalError:
                 conn.execute("ALTER TABLE certificates ADD COLUMN signed_doc BLOB")
                 conn.execute("ALTER TABLE certificates ADD COLUMN signed_doc_tipo TEXT")
+            # validade em meses por certificado (NULL = usa a do template)
+            try:
+                conn.execute("SELECT validade_meses FROM certificates LIMIT 1")
+            except sqlite3.OperationalError:
+                conn.execute("ALTER TABLE certificates ADD COLUMN validade_meses INTEGER")
 
     # colunas de listagem (BLOB signed_doc fica de fora: carga pesada)
     _LIST_COLS = """
         id, cert_number, nr_code, employee_id, funcionario_nome, funcionario_cpf,
         data_inicio, data_fim, carga_horaria, descricao_treinamento, campos_extra,
-        pdf_path, created_at, (signed_doc IS NOT NULL) AS has_signed_doc
+        pdf_path, validade_meses, created_at, (signed_doc IS NOT NULL) AS has_signed_doc
     """
 
     def next_certificate_number(self) -> str:
@@ -84,13 +89,14 @@ class HistoryRepository:
                 INSERT INTO certificates (
                     cert_number, nr_code, employee_id, funcionario_nome, funcionario_cpf,
                     data_inicio, data_fim, carga_horaria, descricao_treinamento,
-                    campos_extra, pdf_path
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    campos_extra, pdf_path, validade_meses
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 record.cert_number, record.nr_code, record.employee_id,
                 record.funcionario_nome, record.funcionario_cpf,
                 record.data_inicio, record.data_fim, record.carga_horaria,
-                record.descricao_treinamento, record.campos_extra, record.pdf_path
+                record.descricao_treinamento, record.campos_extra, record.pdf_path,
+                record.validade_meses
             ))
             return cursor.lastrowid
 
@@ -268,6 +274,10 @@ class HistoryRepository:
             has_signed = bool(row["has_signed_doc"])
         except (IndexError, KeyError):
             has_signed = False
+        try:
+            validade_meses = row["validade_meses"]
+        except (IndexError, KeyError):
+            validade_meses = None
         return CertificateRecord(
             id=row["id"],
             cert_number=row["cert_number"],
@@ -281,6 +291,7 @@ class HistoryRepository:
             descricao_treinamento=row["descricao_treinamento"],
             campos_extra=row["campos_extra"] or "{}",
             pdf_path=row["pdf_path"],
+            validade_meses=validade_meses,
             created_at=row["created_at"],
             has_signed_doc=has_signed
         )
@@ -341,7 +352,8 @@ class HistoryRepository:
         for row in rows:
             nr_code = row["nr_code"]
             tmpl = templates.get(nr_code)
-            validade_meses = tmpl.validade_meses if tmpl else 12
+            # validade gravada no certificado (lote) tem prioridade; NULL = template
+            validade_meses = row["validade_meses"] or (tmpl.validade_meses if tmpl else 12)
             data_fim = date.fromisoformat(row["data_fim"])
             data_validade = data_fim + relativedelta(months=validade_meses)
             dias_para_vencer = (data_validade - today).days

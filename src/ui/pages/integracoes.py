@@ -272,7 +272,7 @@ class IntegracoesPage(ctk.CTkFrame):
         dlg = ctk.CTkToplevel(self)
         dlg.title("Integração")
         dlg.transient(self)
-        fit_dialog(dlg, 440, 300)
+        fit_dialog(dlg, 440, 185)
         open_modal(dlg)
 
         fonts = self.fonts
@@ -417,7 +417,7 @@ class IntegracoesPage(ctk.CTkFrame):
         dlg = ctk.CTkToplevel(self)
         dlg.title("Empresas — Fábricas de Clientes")
         dlg.transient(self)
-        fit_dialog(dlg, 370, 240)
+        fit_dialog(dlg, 330, 230)
         open_modal(dlg)
         fonts = self.fonts
 

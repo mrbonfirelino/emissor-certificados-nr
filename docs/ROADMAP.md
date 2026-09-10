@@ -1,7 +1,7 @@
 # Roadmap - NormaTech
 
 ## Status do Projeto
- - Versao atual: 1.22.0
+ - Versao atual: 1.23.0
 - NRs disponiveis: 17 (01, 05, 06, 09, 10, 11, 12, 17, 18, 26, 33, 34, 35 + FDS, BRIGADISTA-NR23, PTA, MOTOSERRA, MUNCK, PONTE-ROLANTE, DIR-DEFENSIVA, CIPAA)
 
 ---
@@ -303,6 +303,19 @@ Requisitos: Microsoft PowerPoint instalado na máquina (conversão via COM).
 | Vinculação ao funcionário | Vincular integrações ao cadastro do funcionário (empresa, tipo, data início, data validade) | Alta | Concluído (v1.22.0) |
 | Indicador de status | Exibir na interface se a integração está "Em dia" ou "Vencida" (similar ao fluxo de NRs/ASOs) | Media | Concluído (v1.22.0) |
 | Notificação de vencimento | Toast e painel de vencimentos para integrações próximas do vencimento | Media | Concluído (v1.22.0) |
+
+### 2.26 Emissão em Massa de Certificados NR (CONCLUÍDA)
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Seleção de NR | Interface para o usuário escolher qual NR deseja emitir em lote | Alta | Concluído (v1.23.0) |
+| Seleção de funcionários | Selecionar funcionários do banco de dados para emissão (mesmos requisitos: nome completo, CPF, etc.) | Alta | Concluído (v1.23.0) |
+| Validação de requisitos | Verificar automaticamente se cada funcionário selecionado atende aos requisitos de emissão antes de prosseguir | Alta | Concluído (v1.23.0) |
+| Edição em lote | Editar dados do certificado de forma geral para todos os selecionados (Duração em Horas, Período de Validade, Data) | Alta | Concluído (v1.23.0) |
+| Edição individual | Possibilidade de editar manualmente os dados do certificado de funcionários específicos dentro do lote | Alta | Concluído (v1.23.0) |
+| Preview antes de emitir | Visualizar os certificados que serão gerados antes de confirmar a emissão | Media | Concluído (v1.23.0) |
+| Geração e salvar na pasta | Gerar PDFs e salvar automaticamente na pasta de documentos do funcionário (com espelhamento em rede) | Alta | Concluído (v1.23.0) |
+| Ajustar dimensões das telas/diálogos | Ajustar dimensões das telas e diálogos para ficar menor — algumas estão ficando maiores que a tela do aplicativo | Alta | Concluído (v1.23.0) |
 
 ---
 

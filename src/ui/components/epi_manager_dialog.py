@@ -295,7 +295,7 @@ class EpiItemsDialog(ctk.CTkToplevel):
         self.ficha = ficha
         self.on_save = on_save
         self.title("Editar Itens da Ficha" if ficha else "Nova Ficha de EPI")
-        fit_dialog(self, 760, 560)
+        fit_dialog(self, 640, 520)
         self.transient(master)
         open_modal(self)
         self.grid_columnconfigure(0, weight=1)
@@ -486,7 +486,7 @@ class DevolucaoDialog(ctk.CTkToplevel):
         self.ficha = ficha
         self.on_save = on_save
         self.title(f"Devolução — {ficha['epi_number']}")
-        fit_dialog(self, 720, 540)
+        fit_dialog(self, 620, 500)
         self.transient(master)
         open_modal(self)
         self.grid_columnconfigure(0, weight=1)
@@ -684,7 +684,7 @@ class _EpiDocsDialog(ctk.CTkToplevel):
         self.repo = repo
         self.on_change = on_change
         self.title(f"Anexos — {ficha['epi_number']}")
-        fit_dialog(self, 620, 420)
+        fit_dialog(self, 540, 380)
         self.transient(master)
         open_modal(self)
         self.grid_columnconfigure(0, weight=1)

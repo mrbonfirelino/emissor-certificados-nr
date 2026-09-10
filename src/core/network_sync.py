@@ -74,7 +74,8 @@ def _cert_vencido(cert) -> bool:
     from src.core.template_loader import load_nr_template
     try:
         tmpl = load_nr_template(cert.nr_code)
-        validade = tmpl.validade_meses if tmpl else 12
+        # validade gravada no certificado (lote) tem prioridade; NULL = template
+        validade = getattr(cert, "validade_meses", None) or (tmpl.validade_meses if tmpl else 12)
         return date.fromisoformat(cert.data_fim) + relativedelta(months=validade) < date.today()
     except Exception:
         return False

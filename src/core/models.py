@@ -234,5 +234,6 @@ class CertificateRecord(BaseModel):
     descricao_treinamento: str
     campos_extra: str
     pdf_path: Optional[str] = None
+    validade_meses: Optional[int] = None
     created_at: Optional[str] = None
     has_signed_doc: bool = False

@@ -38,7 +38,8 @@ class CertificateService:
         carga_horaria: int,
         descricao_treinamento: str,
         campos_extra: Dict[str, str],
-        output_dir: Optional[Path] = None
+        output_dir: Optional[Path] = None,
+        validade_meses: Optional[int] = None
     ) -> Optional[Path]:
         if not self.company_config:
             raise ValueError("Empresa nao configurada.")
@@ -89,7 +90,8 @@ class CertificateService:
             carga_horaria=carga_horaria,
             descricao_treinamento=descricao_treinamento,
             campos_extra=json.dumps(campos_extra, ensure_ascii=False),
-            pdf_path=str(pdf_path)
+            pdf_path=str(pdf_path),
+            validade_meses=validade_meses
         )
         self.history.save(record)
 

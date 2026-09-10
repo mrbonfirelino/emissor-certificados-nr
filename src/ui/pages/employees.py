@@ -1,4 +1,4 @@
-﻿import customtkinter as ctk
+import customtkinter as ctk
 from tkinter import messagebox, filedialog
 from typing import Optional
 from src.ui.styles import COLORS, get_fonts
@@ -304,7 +304,7 @@ class EmployeesPage(ctk.CTkFrame):
 
         dialog = ctk.CTkToplevel(self)
         dialog.title("Editar Funcionario" if is_edit else "Novo Funcionario")
-        fit_dialog(dialog, 460, 600)
+        fit_dialog(dialog, 430, 520)
         dialog.transient(self)
         open_modal(dialog)
 

@@ -68,10 +68,12 @@ def search_query(entry, var) -> str:
 def fit_dialog(dlg, w: int, h: int) -> None:
     """Aplica a geometria de um dialogo corrigida pelo widget scaling.
 
-    Limita ao tamanho da tela para nao estourar em monitores pequenos.
+    Limita ao tamanho da tela e a 720px de altura (regra do projeto:
+    nenhuma janela mais alta que isso, mesmo em telas com scaling alto).
     CTkToplevel nao expoe _get_widget_scaling de forma confiavel; usa o
     ScalingTracker como fallback.
     """
+    _MAX_ALTURA = 720
     s = 1.0
     try:
         s = dlg._get_widget_scaling()
@@ -83,9 +85,9 @@ def fit_dialog(dlg, w: int, h: int) -> None:
     largura, altura = int(w * s), int(h * s)
     try:
         largura = min(largura, dlg.winfo_screenwidth() - 40)
-        altura = min(altura, dlg.winfo_screenheight() - 80)
+        altura = min(altura, dlg.winfo_screenheight() - 80, _MAX_ALTURA)
     except Exception:
-        pass
+        altura = min(altura, _MAX_ALTURA)
     dlg.geometry(f"{largura}x{altura}")
     try:
         dlg.resizable(True, True)

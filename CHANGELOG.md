@@ -1,3 +1,14 @@
+## [1.23.0] - 2026-09-10
+
+### Adicionado
+- Emissão em Lote de Certificados NR (item 2.26): nova página "Emissão em Lote" com seleção de NR, seleção de funcionários com busca/paginação, validação automática (sem CPF = bloqueado), edição em lote (data, carga horária, validade, descrição e campos extras do template), edição individual por funcionário, preview antes de emitir e geração com salvamento na pasta do funcionário + espelhamento em rede.
+
+### Adicionado (validade)
+- Validade por certificado: o lote (ou a edição individual) pode definir uma validade em meses própria, respeitada em Vencimentos, painel de indicadores, toast, crachás e na pasta 00_Certificados_OLD da rede (vazio = usa a validade do template).
+
+### Alterado
+- Nenhuma janela do sistema pode ter mais de 720px de altura (limite global); janelas menores: Novo/Editar Funcionário, Ficha de EPI (itens/gerenciar/devolução/anexos), Adicionar Função, Empresas e Nova Integração.
+
 ## [1.22.7] - 2026-09-10
 
 ### Corrigido

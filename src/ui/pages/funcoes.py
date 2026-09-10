@@ -1,4 +1,4 @@
-﻿import json
+import json
 import customtkinter as ctk
 from tkinter import messagebox, filedialog
 from src.ui.styles import COLORS, get_fonts
@@ -270,7 +270,7 @@ class FuncoesPage(ctk.CTkFrame):
 
         dialog = ctk.CTkToplevel(self)
         dialog.title("Editar Funcao" if is_edit else "Nova Funcao")
-        fit_dialog(dialog, 250, 150)
+        fit_dialog(dialog, 250, 130)
         dialog.transient(self)
         open_modal(dialog)
 
