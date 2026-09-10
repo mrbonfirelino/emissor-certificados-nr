@@ -16,6 +16,7 @@ from src.core.blocking_card_service import (
 from src.ui.components.pagination import PaginationBar
 from src.ui.components.scroll_frame import ScrollListFrame
 from src.ui.components.generation_options_dialog import EmissionReviewDialog
+from src.utils.ctk_patches import enable_placeholder, search_query, fit_dialog
 
 PER_PAGE_OPTIONS = [10, 25, 40]
 
@@ -160,6 +161,7 @@ class BlockingCardsPage(ctk.CTkFrame):
             placeholder_text="Buscar funcionario, CPF ou telefone..."
         )
         self._search_entry.grid(row=0, column=3, sticky="ew", padx=(0, 8))
+        enable_placeholder(self._search_entry)
         self._search_entry.bind("<Return>", lambda *_: self._on_search())
 
         ctk.CTkButton(
@@ -317,7 +319,7 @@ class BlockingCardsPage(ctk.CTkFrame):
         fonts = get_fonts()
         self.list_frame.clear()
 
-        query = self._search_var.get().strip()
+        query = search_query(self._search_entry, self._search_var).strip()
         if query:
             self._total = self.employee_repo.count_search(query)
         else:
@@ -548,7 +550,7 @@ class BlockingCardsPage(ctk.CTkFrame):
 
         dlg = ctk.CTkToplevel(self)
         dlg.title("Cartoes Gerados")
-        dlg.geometry("480x220")
+        fit_dialog(dlg, 480, 220)
         dlg.transient(self)
         dlg.grab_set()
         dlg.resizable(False, False)
@@ -644,7 +646,7 @@ class BlockingCardsPage(ctk.CTkFrame):
 
         dlg = ctk.CTkToplevel(self)
         dlg.title(f"Preview — {template.get('card_code', '')}")
-        dlg.geometry("900x780")
+        fit_dialog(dlg, 900, 780)
         dlg.transient(self)
         dlg.grab_set()
         x = self.winfo_rootx() + (self.winfo_width() // 2) - 450

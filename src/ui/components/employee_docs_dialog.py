@@ -10,6 +10,7 @@ import customtkinter as ctk
 from tkinter import filedialog, messagebox
 
 from src.ui.styles import COLORS, get_fonts
+from src.utils.ctk_patches import fit_dialog
 
 
 def _fmt_tamanho(bytes_: int) -> str:
@@ -26,7 +27,7 @@ class EmployeeDocsDialog(ctk.CTkToplevel):
         self.employee_repo = employee_repo
         self.employee = employee
         self.title(f"Documentos — {employee.nome}")
-        self.geometry("640x460")
+        fit_dialog(self, 640, 460)
         self.transient(master)
         self.grab_set()
         self.configure(fg_color=COLORS["background"])

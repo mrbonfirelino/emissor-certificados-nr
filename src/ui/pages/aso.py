@@ -10,6 +10,7 @@ from src.ui.styles import COLORS, get_fonts
 from src.core.aso_repo import AsoRepository, ASO_TIPOS
 from src.ui.components.pagination import PaginationBar
 from src.ui.components.scroll_frame import ScrollListFrame
+from src.utils.ctk_patches import enable_placeholder, search_query, fit_dialog
 
 
 class AsoPage(ctk.CTkFrame):
@@ -69,6 +70,7 @@ class AsoPage(ctk.CTkFrame):
             placeholder_text="Buscar por funcionario, CPF, numero ou tipo..."
         )
         self.search_entry.grid(row=0, column=0, sticky="ew", padx=(0, 8))
+        enable_placeholder(self.search_entry)
         self.search_entry.bind("<Return>", lambda *args: self._on_search())
 
         ctk.CTkButton(
@@ -81,7 +83,7 @@ class AsoPage(ctk.CTkFrame):
             filter_frame, text="Limpar", width=80, height=36,
             font=fonts["body"], fg_color=COLORS["muted"],
             hover_color=COLORS["text_secondary"],
-            command=lambda: (self.search_var.set(""), self._on_search())
+            command=lambda: (self.search_var.set(""), self.search_entry._activate_placeholder(), self._on_search())
         ).grid(row=0, column=2, sticky="e")
 
         self.list_frame = ScrollListFrame(self, fg_color=COLORS["surface"], corner_radius=12, height=200)
@@ -101,7 +103,7 @@ class AsoPage(ctk.CTkFrame):
         fonts = get_fonts()
         self.list_frame.clear()
 
-        query = self.search_var.get().strip()
+        query = search_query(self.search_entry, self.search_var).strip()
         if query:
             total = self.aso_repo.count_search(query)
             asos = self.aso_repo.search(query, limit=PaginationBar.ITEMS_PER_PAGE, offset=self.pagination.offset)
@@ -252,7 +254,7 @@ class AsoPage(ctk.CTkFrame):
         fonts = get_fonts()
         dialog = ctk.CTkToplevel(self)
         dialog.title("Novo ASO")
-        dialog.geometry("520x430")
+        fit_dialog(dialog, 520, 430)
         dialog.transient(self)
         dialog.grab_set()
         dialog.resizable(False, False)
@@ -549,11 +551,13 @@ class AsoPage(ctk.CTkFrame):
         emp = self.employee_repo.get_by_id(employee_id)
         if not emp:
             return
+        self.search_entry._deactivate_placeholder()
         self.search_var.set(emp.nome)
         self.pagination.reset()
         self._refresh_list()
 
     def search_for(self, term: str):
+        self.search_entry._deactivate_placeholder()
         self.search_var.set(term)
         self.pagination.reset()
         self._refresh_list()

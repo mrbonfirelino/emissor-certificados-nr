@@ -5,6 +5,7 @@ from src.ui.styles import COLORS, get_fonts
 from src.core.history_repo import HistoryRepository
 from src.core.employee_repo import EmployeeRepository
 from src.ui.components.pagination import PaginationBar
+from src.utils.ctk_patches import enable_placeholder, search_query
 
 STATUS_COLORS = {
     "vencido": COLORS["error"],
@@ -133,6 +134,7 @@ class VencimentosPage(ctk.CTkFrame):
                      font=fonts["body"], height=36, corner_radius=8,
                      border_color=COLORS["border"])
         self._search_entry.grid(row=0, column=0, sticky="ew", padx=(0, 8))
+        enable_placeholder(self._search_entry)
         self._search_entry.bind("<Return>", lambda *_: self._on_search())
 
         ctk.CTkButton(self._filters, text="Buscar", width=80, height=36,
@@ -246,7 +248,7 @@ class VencimentosPage(ctk.CTkFrame):
         self._apply_filters()
 
     def _apply_filters(self):
-        search = self._search_var.get().strip().lower()
+        search = search_query(self._search_entry, self._search_var).strip().lower()
         nr = self._nr_var.get()
         period = self._active_period
 

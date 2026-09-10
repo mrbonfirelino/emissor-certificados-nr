@@ -7,6 +7,7 @@ from src.core.employee_repo import EmployeeRepository
 from src.utils.validators import validar_cpf, formatar_cpf
 from src.ui.components.pagination import PaginationBar
 from src.ui.components.scroll_frame import ScrollListFrame
+from src.utils.ctk_patches import enable_placeholder, search_query, fit_dialog
 
 
 class EmployeesPage(ctk.CTkFrame):
@@ -78,6 +79,7 @@ class EmployeesPage(ctk.CTkFrame):
             placeholder_text="Buscar por nome ou CPF..."
         )
         self.search_entry.grid(row=0, column=0, sticky="ew", padx=(0, 8))
+        enable_placeholder(self.search_entry)
         self.search_entry.bind("<Return>", lambda *args: self._on_search())
 
         ctk.CTkButton(
@@ -138,6 +140,7 @@ class EmployeesPage(ctk.CTkFrame):
 
     def _clear_search(self):
         self.search_var.set("")
+        self.search_entry._activate_placeholder()
         self._funcao_filter_var.set("Todas")
         self.pagination.reset()
         self._refresh_list()
@@ -156,7 +159,7 @@ class EmployeesPage(ctk.CTkFrame):
 
     def _refresh_list(self):
         fonts = get_fonts()
-        query = self.search_var.get().strip()
+        query = search_query(self.search_entry, self.search_var).strip()
         funcao_filter = self._funcao_filter_var.get()
 
         self.list_frame.clear()
@@ -301,7 +304,7 @@ class EmployeesPage(ctk.CTkFrame):
 
         dialog = ctk.CTkToplevel(self)
         dialog.title("Editar Funcionario" if is_edit else "Novo Funcionario")
-        dialog.geometry("520x680")
+        fit_dialog(dialog, 520, 680)
         dialog.transient(self)
         dialog.grab_set()
         dialog.resizable(False, False)
@@ -673,7 +676,7 @@ class EmployeesPage(ctk.CTkFrame):
 
         dialog = ctk.CTkToplevel(self)
         dialog.title("Importar Funcionarios de Excel")
-        dialog.geometry("550x480")
+        fit_dialog(dialog, 550, 480)
         dialog.transient(self)
         dialog.grab_set()
         dialog.resizable(False, False)

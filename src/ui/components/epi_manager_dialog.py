@@ -14,6 +14,7 @@ import customtkinter as ctk
 
 from src.ui.styles import COLORS, get_fonts
 from src.ui.components.scroll_frame import ScrollListFrame
+from src.utils.ctk_patches import fit_dialog
 
 
 def _br(iso: str) -> str:
@@ -118,7 +119,7 @@ class EpiManagerDialog(ctk.CTkToplevel):
         super().__init__(master)
         self.employee = employee
         self.title(f"Fichas de EPI — {employee.nome}")
-        self.geometry("780x560")
+        fit_dialog(self, 780, 560)
         self.transient(master)
         self.grab_set()
         self.grid_columnconfigure(0, weight=1)
@@ -294,7 +295,7 @@ class EpiItemsDialog(ctk.CTkToplevel):
         self.ficha = ficha
         self.on_save = on_save
         self.title("Editar Itens da Ficha" if ficha else "Nova Ficha de EPI")
-        self.geometry("760x560")
+        fit_dialog(self, 760, 560)
         self.transient(master)
         self.grab_set()
         self.grid_columnconfigure(0, weight=1)
@@ -485,7 +486,7 @@ class DevolucaoDialog(ctk.CTkToplevel):
         self.ficha = ficha
         self.on_save = on_save
         self.title(f"Devolução — {ficha['epi_number']}")
-        self.geometry("720x540")
+        fit_dialog(self, 720, 540)
         self.transient(master)
         self.grab_set()
         self.grid_columnconfigure(0, weight=1)
@@ -683,7 +684,7 @@ class _EpiDocsDialog(ctk.CTkToplevel):
         self.repo = repo
         self.on_change = on_change
         self.title(f"Anexos — {ficha['epi_number']}")
-        self.geometry("620x420")
+        fit_dialog(self, 620, 420)
         self.transient(master)
         self.grab_set()
         self.grid_columnconfigure(0, weight=1)

@@ -1,3 +1,12 @@
+## [1.22.2] - 2026-09-10
+
+### Corrigido
+- Placeholders das barras de busca agora aparecem de verdade (bug do CustomTkinter: placeholder nunca era ativado em campos com variavel de texto). Ativo nas buscas de Historico, Funcionarios, Funcoes, Vencimentos, ASO, Cartoes, Integracoes e no autocomplete ? a dica some ao digitar e volta quando o campo esvazia; o texto de dica nunca e pesquisado nem salvo.
+- Dialogo de Nova/Editar Integracao ficava com o conteudo cortado (Tipo, Datas e botao Salvar fora da janela) em telas com scaling alto ? formulario agora rolavel com rodape fixo e a busca nunca perde o botao Salvar.
+
+### Alterado
+- Todos os dialogos do sistema agora ajustam o tamanho pelo scaling da tela (23 dialogos), limitado ao tamanho do monitor.
+
 # Changelog
 
 ## [1.22.1] - 2026-09-10

@@ -4,6 +4,7 @@ from src.ui.styles import COLORS, FONTS
 from src.core.backup_manager import BackupManager
 from src.core.config import verify_restore_password, has_restore_password
 from src.ui.components.scroll_frame import ScrollListFrame
+from src.utils.ctk_patches import fit_dialog
 
 
 class BackupPage(ctk.CTkFrame):
@@ -266,7 +267,7 @@ class BackupPage(ctk.CTkFrame):
         
         dialog = ctk.CTkToplevel(self)
         dialog.title("Restaurar Backup")
-        dialog.geometry("500x400")
+        fit_dialog(dialog, 500, 400)
         dialog.transient(self)
         dialog.grab_set()
         dialog.resizable(False, False)

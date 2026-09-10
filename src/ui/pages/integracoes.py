@@ -14,6 +14,7 @@ from src.ui.components.pagination import PaginationBar
 from src.core.integracao_repo import IntegracaoRepository
 from src.core.employee_repo import EmployeeRepository
 from src.utils.error_log import log_error
+from src.utils.ctk_patches import enable_placeholder, search_query, fit_dialog
 
 
 def _br(iso: str) -> str:
@@ -81,6 +82,7 @@ class IntegracoesPage(ctk.CTkFrame):
                                           font=fonts["body"], height=36, corner_radius=8,
                                           border_color=COLORS["border"])
         self._search_entry.grid(row=0, column=0, sticky="ew", padx=(0, 8))
+        enable_placeholder(self._search_entry)
         self._search_entry.bind("<Return>", lambda *_: self._on_search())
         ctk.CTkButton(filtros, text="Buscar", width=80, height=36,
                       font=fonts["body_bold"], fg_color=COLORS["secondary"],
@@ -144,6 +146,7 @@ class IntegracoesPage(ctk.CTkFrame):
 
     def _limpar(self):
         self._search_var.set("")
+        self._search_entry._activate_placeholder()
         self.pagination.reset()
         self._refresh_list()
 
@@ -157,7 +160,7 @@ class IntegracoesPage(ctk.CTkFrame):
         for w in self.list_frame.body.winfo_children():
             w.destroy()
         self._create_table_header()
-        query = self._search_var.get().strip()
+        query = search_query(self._search_entry, self._search_var).strip()
         try:
             total = (self.integ_repo.count_search(query) if query
                      else self.integ_repo.count_all())
@@ -267,9 +270,10 @@ class IntegracoesPage(ctk.CTkFrame):
 
         dlg = ctk.CTkToplevel(self)
         dlg.title("Integração")
-        dlg.geometry("540x480")
+        fit_dialog(dlg, 540, 640)
         dlg.grab_set()
         dlg.transient(self)
+        dlg.resizable(True, True)
 
         fonts = self.fonts
         selecionado = {"emp": None}
@@ -281,8 +285,11 @@ class IntegracoesPage(ctk.CTkFrame):
         ctk.CTkLabel(dlg, text="Editar integração" if integ else "Nova integração",
                      font=fonts["title"], text_color=COLORS["text"]).pack(anchor="w", padx=24, pady=(20, 4))
 
-        form = ctk.CTkFrame(dlg, fg_color="transparent")
-        form.pack(fill="both", expand=True, padx=24, pady=8)
+        # Formulário em frame rolável: nunca corta em telas com scaling alto
+        scroll = ctk.CTkScrollableFrame(dlg, fg_color="transparent")
+        scroll.pack(fill="both", expand=True, padx=16, pady=(0, 4))
+        form = ctk.CTkFrame(scroll, fg_color="transparent")
+        form.pack(fill="both", expand=True)
         for i in range(2):
             form.grid_columnconfigure(i, weight=1)
 
@@ -404,7 +411,7 @@ class IntegracoesPage(ctk.CTkFrame):
 
         dlg = ctk.CTkToplevel(self)
         dlg.title("Empresas — Fábricas de Clientes")
-        dlg.geometry("560x480")
+        fit_dialog(dlg, 560, 480)
         dlg.grab_set()
         dlg.transient(self)
         fonts = self.fonts

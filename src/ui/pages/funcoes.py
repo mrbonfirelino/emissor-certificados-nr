@@ -4,6 +4,7 @@ from tkinter import messagebox, filedialog
 from src.ui.styles import COLORS, get_fonts
 from src.utils.paths import get_data_dir
 from src.ui.components.scroll_frame import ScrollListFrame
+from src.utils.ctk_patches import enable_placeholder, search_query, fit_dialog
 
 FUNCOES_FILE = get_data_dir() / "funcoes.json"
 
@@ -97,6 +98,7 @@ class FuncoesPage(ctk.CTkFrame):
             placeholder_text="Buscar funcao..."
         )
         self._search_entry.grid(row=0, column=0, sticky="ew")
+        enable_placeholder(self._search_entry)
         self._search_entry.bind("<Return>", lambda *_: self._apply_filter())
 
         ctk.CTkButton(
@@ -159,11 +161,13 @@ class FuncoesPage(ctk.CTkFrame):
     # ── Filtro de busca (client-side) ─────────────────────────
 
     def _apply_filter(self):
+        self._filter = search_query(self._search_entry, self._search_var).strip().lower()
         self.current_page = 1
         self._refresh_list()
 
     def _clear_filter(self):
         self._search_var.set("")
+        self._search_entry._activate_placeholder()
         self._apply_filter()
 
     def _change_per_page(self):
@@ -266,7 +270,7 @@ class FuncoesPage(ctk.CTkFrame):
 
         dialog = ctk.CTkToplevel(self)
         dialog.title("Editar Funcao" if is_edit else "Nova Funcao")
-        dialog.geometry("400x200")
+        fit_dialog(dialog, 400, 200)
         dialog.transient(self)
         dialog.grab_set()
         dialog.resizable(False, False)

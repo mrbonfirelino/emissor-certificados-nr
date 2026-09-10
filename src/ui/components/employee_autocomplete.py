@@ -4,6 +4,7 @@ from typing import Callable, Optional, List
 from src.core.models import Employee
 from src.core.employee_repo import EmployeeRepository
 from src.ui.styles import COLORS, FONTS
+from src.utils.ctk_patches import enable_placeholder, search_query
 
 
 class EmployeeAutocomplete(ctk.CTkFrame):
@@ -54,6 +55,7 @@ class EmployeeAutocomplete(ctk.CTkFrame):
             corner_radius=6
         )
         self.entry.pack(fill="x")
+        enable_placeholder(self.entry)
         
         # Bind events
         self.entry.bind("<KeyRelease>", self._on_keyrelease)
@@ -97,14 +99,14 @@ class EmployeeAutocomplete(ctk.CTkFrame):
     def _on_keyrelease(self, event):
         if event.keysym in ("Up", "Down", "Return", "Escape", "Tab", "Shift_L", "Shift_R", "Control_L", "Control_R", "Alt_L", "Alt_R"):
             return
-        query = self.entry_var.get().strip()
+        query = search_query(self.entry, self.entry_var).strip()
         if len(query) >= 2:
             self._show_dropdown(query)
         else:
             self._hide_dropdown()
 
     def _on_focus_in(self, event):
-        query = self.entry_var.get().strip()
+        query = search_query(self.entry, self.entry_var).strip()
         if len(query) >= 2:
             self._show_dropdown(query)
 
@@ -206,6 +208,7 @@ class EmployeeAutocomplete(ctk.CTkFrame):
         if 0 <= index < len(self._employees_cache):
             emp = self._employees_cache[index]
             self.selected_employee = emp
+            self.entry._deactivate_placeholder()
             self.entry_var.set(f"{emp.nome} ({emp.cpf})" if emp.cpf else emp.nome)
             self.entry.configure(state="readonly")
             self._hide_dropdown()
@@ -335,6 +338,7 @@ class EmployeeAutocomplete(ctk.CTkFrame):
         self.selected_employee = None
         self.entry_var.set("")
         self.entry.configure(state="normal")
+        self.entry._activate_placeholder()
         self.entry.focus()
 
     def get_selected(self) -> Optional[Employee]:
@@ -343,5 +347,6 @@ class EmployeeAutocomplete(ctk.CTkFrame):
     def set_employee(self, employee: Employee):
         """Define funcionário programaticamente."""
         self.selected_employee = employee
+        self.entry._deactivate_placeholder()
         self.entry_var.set(f"{employee.nome} ({employee.cpf})")
         self.entry.configure(state="readonly")

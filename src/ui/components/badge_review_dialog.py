@@ -18,6 +18,7 @@ import customtkinter as ctk
 from tkinter import messagebox
 
 from src.ui.styles import COLORS, get_fonts
+from src.utils.ctk_patches import fit_dialog
 
 
 class BadgeReviewDialog(ctk.CTkToplevel):
@@ -25,7 +26,7 @@ class BadgeReviewDialog(ctk.CTkToplevel):
     def __init__(self, master, employees: list, template: dict):
         super().__init__(master)
         self.title("Revisão — Emissão de Crachás")
-        self.geometry("920x660")
+        fit_dialog(self, 920, 660)
         self.transient(master)
         self.grab_set()
         self.resizable(True, True)

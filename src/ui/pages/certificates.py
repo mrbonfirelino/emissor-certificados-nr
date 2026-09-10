@@ -8,6 +8,7 @@ from src.ui.components.employee_autocomplete import EmployeeAutocomplete
 from src.ui.components.dynamic_form import DynamicForm
 from src.ui.components.pdf_preview import PDFPreview
 from src.ui.styles import COLORS, get_fonts
+from src.utils.ctk_patches import fit_dialog
 from src.core.models import Employee
 from src.core.template_loader import load_nr_template, get_template_description
 from src.core.certificate_service import CertificateService
@@ -381,7 +382,7 @@ class CertificatesPage(ctk.CTkFrame):
         fonts = get_fonts()
         dialog = ctk.CTkToplevel(self)
         dialog.title("Confirmar")
-        dialog.geometry("420x200")
+        fit_dialog(dialog, 420, 200)
         dialog.transient(self)
         dialog.grab_set()
         dialog.resizable(False, False)
@@ -485,7 +486,7 @@ class CertificatesPage(ctk.CTkFrame):
             fonts = get_fonts()
             dialog = ctk.CTkToplevel(self)
             dialog.title("Salvar Certificado")
-            dialog.geometry("420x200")
+            fit_dialog(dialog, 420, 200)
             dialog.transient(self)
             dialog.grab_set()
             dialog.resizable(False, False)
@@ -578,7 +579,7 @@ class CertificatesPage(ctk.CTkFrame):
         fonts = get_fonts()
         dialog = ctk.CTkToplevel(self)
         dialog.title("Sucesso")
-        dialog.geometry("400x180")
+        fit_dialog(dialog, 400, 180)
         dialog.transient(self)
         dialog.grab_set()
         dialog.resizable(False, False)
@@ -590,7 +591,7 @@ class CertificatesPage(ctk.CTkFrame):
         fonts = get_fonts()
         dialog = ctk.CTkToplevel(self)
         dialog.title("Erro")
-        dialog.geometry("400x160")
+        fit_dialog(dialog, 400, 160)
         dialog.transient(self)
         dialog.grab_set()
         dialog.resizable(False, False)

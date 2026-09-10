@@ -26,6 +26,9 @@ class NormaTechApp(ctk.CTk):
         load_font_scale()
         setup_theme()
 
+        from src.utils.ctk_patches import install as install_ctk_patches
+        install_ctk_patches()
+
         self.title("NormaTech")
         self.geometry("1280x720")
         self.minsize(1024, 600)

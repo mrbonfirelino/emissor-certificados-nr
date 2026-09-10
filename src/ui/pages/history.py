@@ -10,6 +10,7 @@ from src.core.history_repo import HistoryRepository
 from src.core.models import CertificateRecord
 from src.ui.components.pagination import PaginationBar
 from src.ui.components.scroll_frame import ScrollListFrame
+from src.utils.ctk_patches import enable_placeholder, search_query, fit_dialog
 
 
 class HistoryPage(ctk.CTkFrame):
@@ -56,6 +57,7 @@ class HistoryPage(ctk.CTkFrame):
             placeholder_text="Buscar por nome, CPF, numero ou NR..."
         )
         self.search_entry.grid(row=0, column=0, sticky="ew", padx=(0, 8))
+        enable_placeholder(self.search_entry)
         self.search_entry.bind("<Return>", lambda *args: self._on_search())
 
         ctk.CTkButton(
@@ -161,6 +163,7 @@ class HistoryPage(ctk.CTkFrame):
 
     def _limpar(self):
         self.search_var.set("")
+        self.search_entry._activate_placeholder()
         self.nr_var.set("Todas")
         self.data_de_var.set("")
         self.data_ate_var.set("")
@@ -199,7 +202,7 @@ class HistoryPage(ctk.CTkFrame):
         nr = self.nr_var.get()
         assinado = self.assinado_var.get()
         return (
-            self.search_var.get().strip(),
+            search_query(self.search_entry, self.search_var).strip(),
             None if nr == "Todas" else nr,
             de_iso,
             ate_iso,
@@ -531,6 +534,7 @@ class HistoryPage(ctk.CTkFrame):
 
     def search_for(self, term: str):
         """Preenche a busca e executa (acao 'Historico' dos cards de Vencimentos)."""
+        self.search_entry._deactivate_placeholder()
         self.search_var.set(term)
         self.pagination.reset()
         self._refresh_list()
@@ -539,7 +543,7 @@ class HistoryPage(ctk.CTkFrame):
         fonts = get_fonts()
         dialog = ctk.CTkToplevel(self)
         dialog.title("Erro")
-        dialog.geometry("400x150")
+        fit_dialog(dialog, 400, 150)
         dialog.transient(self)
         dialog.grab_set()
         ctk.CTkLabel(dialog, text=message, font=fonts["body"], wraplength=350).pack(pady=20)
