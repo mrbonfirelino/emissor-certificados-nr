@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.22.1] - 2026-09-10
+
+### Corrigido
+- Placeholders dos campos agora ficam visíveis: a cor padrão do CustomTkinter (cinza claro) tinha contraste baixo demais e sumia sobre o fundo dos campos — cor sobrescrita globalmente para um tom mais escuro/legível (acompanha o tema claro/escuro).
+
+### Alterado
+- Diálogo "Empresas" (Integrações): rótulos "Nome da empresa" e "CNPJ (opcional)" acima dos campos de cadastro rápido.
+
+
 ## [1.22.0] - 2026-09-09
 
 ### Adicionado

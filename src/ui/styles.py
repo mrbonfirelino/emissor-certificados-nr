@@ -132,6 +132,8 @@ def _apply_theme_to_ctk():
     ctk.ThemeManager.theme["CTkEntry"]["fg_color"] = COLORS["surface"]
     ctk.ThemeManager.theme["CTkEntry"]["border_color"] = COLORS["border"]
     ctk.ThemeManager.theme["CTkEntry"]["text_color"] = COLORS["text"]
+    # Placeholder padrao do CTk (gray52/gray62) tem contraste baixo demais — sobrescreve
+    ctk.ThemeManager.theme["CTkEntry"]["placeholder_text_color"] = COLORS["text_secondary"]
     ctk.ThemeManager.theme["CTkLabel"]["text_color"] = COLORS["text"]
     ctk.ThemeManager.theme["CTkComboBox"]["fg_color"] = COLORS["surface"]
     ctk.ThemeManager.theme["CTkComboBox"]["border_color"] = COLORS["border"]

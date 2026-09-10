@@ -467,14 +467,18 @@ class IntegracoesPage(ctk.CTkFrame):
         nova.pack(fill="x", padx=24, pady=(0, 4))
         nova.grid_columnconfigure(0, weight=2)
         nova.grid_columnconfigure(1, weight=1)
+        ctk.CTkLabel(nova, text="Nome da empresa", font=fonts["small_bold"],
+                     text_color=COLORS["text"]).grid(row=0, column=0, sticky="w", pady=(4, 2))
+        ctk.CTkLabel(nova, text="CNPJ (opcional)", font=fonts["small_bold"],
+                     text_color=COLORS["text"]).grid(row=0, column=1, sticky="w", padx=(6, 0), pady=(4, 2))
         nome_var = ctk.StringVar()
         cnpj_var = ctk.StringVar()
         ctk.CTkEntry(nova, textvariable=nome_var, placeholder_text="Nome da empresa",
                      font=fonts["body"], height=34, corner_radius=6
-                     ).grid(row=0, column=0, sticky="ew", padx=(0, 6))
+                     ).grid(row=1, column=0, sticky="ew", padx=(0, 6))
         ctk.CTkEntry(nova, textvariable=cnpj_var, placeholder_text="CNPJ (opcional)",
                      font=fonts["body"], height=34, corner_radius=6
-                     ).grid(row=0, column=1, sticky="ew", padx=(0, 6))
+                     ).grid(row=1, column=1, sticky="ew", padx=(0, 6))
 
         def _adicionar():
             try:
@@ -488,7 +492,7 @@ class IntegracoesPage(ctk.CTkFrame):
 
         ctk.CTkButton(nova, text="+ Adicionar", width=100, height=34, corner_radius=6,
                       font=fonts["body_bold"], fg_color=COLORS["success"], hover_color="#256B28",
-                      command=_adicionar).grid(row=0, column=2, sticky="e")
+                      command=_adicionar).grid(row=1, column=2, sticky="e")
 
         ctk.CTkButton(dlg, text="Fechar", width=90, fg_color="transparent",
                       border_width=1, border_color=COLORS["border"],
