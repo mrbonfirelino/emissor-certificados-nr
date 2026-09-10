@@ -148,6 +148,19 @@ Na primeira execução, a tela de **Configuração** será exibida. Preencha:
 
 > **Importante**: A senha de restauração é definida na Configuração da Empresa. O hash Argon2 é salvo em `data/restore.key`.
 
+## 🌐 Portal Web (planejamento)
+
+Evolução do NormaTech para um portal web na rede da empresa (login/senha,
+permissões por módulo, acesso via `http://normatech:8000`). Toda a
+documentação do projeto do portal está centralizada em:
+
+👉 **[docs/PORTAL/00-INDICE.md](docs/PORTAL/00-INDICE.md)**
+
+- Visão geral e decisões arquiteturais: `docs/PORTAL/01-VISAO_GERAL.md`
+- Deploy no servidor: `docs/PORTAL/02-DEPLOY_SERVIDOR.md`
+- Manual para funcionários: `docs/PORTAL/03-MANUAL_USO.md`
+- Estratégia de digitalização: `docs/PORTAL/04-SCANNER.md`
+
 ## 📋 Roadmap e Documentação
 
 Para informações detalhadas sobre o roadmap, novas funcionalidades e NRs a serem adicionadas, consulte:
