@@ -5,6 +5,8 @@
   <h1>Funcionários</h1>
   <p class="sub">{{ total }} funcionário(s) no banco de dados.</p>
 
+  {% if pode_escrever %}<p><a class="btn verde" href="/funcionarios/novo">+ Novo funcionário</a></p>{% endif %}
+
   <form method="get" action="/funcionarios" class="filtros" style="margin-bottom:12px;">
     <div class="campo">
       <label for="busca">Buscar</label>

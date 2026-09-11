@@ -144,3 +144,57 @@ def register(app, deps: dict):
             return Response(status_code=404)
         return FileResponse(record.pdf_path, media_type="application/pdf",
                             filename=Path(record.pdf_path).name)
+
+    @app.get("/certificados/{numero}/ver")
+    def ver(numero: str, user: dict = auth.require_permission("certificados")):
+        """Abre o PDF inline no navegador (sem download)."""
+        record = HistoryRepository().get_by_number(numero)
+        if record is None or not record.pdf_path or not Path(record.pdf_path).exists():
+            return Response(status_code=404)
+        return FileResponse(record.pdf_path, media_type="application/pdf")
+
+    # ---------------- prévia antes de emitir ----------------
+    @app.post("/certificados/preview")
+    async def preview(request: Request,
+                      user: dict = auth.require_permission("certificados")):
+        """Gera o PDF de prévia (número PREVIEW-, não grava registro) e abre inline."""
+        form = await request.form()
+        er = EmployeeRepository()
+        emp = er.get_by_id(int(form.get("funcionario_id") or 0))
+        if emp is None:
+            return Response("Selecione o funcionário para visualizar a prévia.",
+                            status_code=400)
+        templates_nr = _templates_ordenados()
+        nr = form.get("nr") or ""
+        tmpl = templates_nr.get(nr)
+        if tmpl is None:
+            return Response("Selecione uma NR válida.", status_code=400)
+        data_treino = validar_data((form.get("data") or "").strip()) \
+            or date.today()
+        try:
+            carga = int(form.get("carga") or 0) or tmpl.carga_horaria_minima
+        except ValueError:
+            carga = tmpl.carga_horaria_minima
+        descricao = (form.get("descricao") or "").strip() or tmpl.descricao_padrao
+        campos = {}
+        for extra in tmpl.campos_extra:
+            valor = (form.get(f"campo_{extra.id}") or "").strip()
+            if valor:
+                campos[extra.id] = valor
+
+        from src.core.certificate_service import CertificateService
+        try:
+            from src.utils.paths import get_data_dir
+            prev_dir = get_data_dir() / "_previews"
+            prev_dir.mkdir(exist_ok=True)
+            alvo = prev_dir / f"web_preview_{emp.id}_{nr}.pdf"
+            service = CertificateService()
+            service.generate_preview_pdf(
+                nr_code=nr, employee=emp, data_treinamento=data_treino,
+                carga_horaria=carga, descricao_treinamento=descricao,
+                campos_extra=campos, output_path=alvo)
+        except Exception:
+            return Response("Não foi possível gerar a prévia.", status_code=500)
+        if not alvo.exists():
+            return Response("Não foi possível gerar a prévia.", status_code=500)
+        return FileResponse(alvo, media_type="application/pdf")

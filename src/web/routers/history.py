@@ -130,3 +130,11 @@ def register(app, deps: dict):
         HistoryRepository().remove_signed_doc(record.id)
         flash(request, msg=f"Documento assinado removido do certificado {numero}.")
         return RedirectResponse("/historico", status_code=303)
+
+    @app.get("/historico/{numero}/ver")
+    def ver(numero: str, user: dict = auth.require_permission("historico")):
+        """Abre o PDF inline no navegador (sem download)."""
+        record = _record(numero)
+        if record is None or not record.pdf_path or not Path(record.pdf_path).exists():
+            return Response(status_code=404)
+        return FileResponse(record.pdf_path, media_type="application/pdf")

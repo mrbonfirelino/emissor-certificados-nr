@@ -12,7 +12,10 @@
     <tr><td class="muted">Assinado</td><td>{% if cert.has_signed_doc %}<span class="badge b-verde">Documento anexado</span>{% else %}<span class="badge b-cinza">Sem documento assinado</span>{% endif %}</td></tr>
   </table>
   <div class="linha-botoes">
-    {% if tem_pdf %}<a class="btn verde" href="/certificados/{{ cert.cert_number }}/pdf">Baixar PDF</a>{% else %}<span class="muted">PDF não encontrado no servidor.</span>{% endif %}
+    {% if tem_pdf %}
+    <a class="btn" href="/certificados/{{ cert.cert_number }}/ver" target="_blank">Ver no navegador</a>
+    <a class="btn verde" href="/certificados/{{ cert.cert_number }}/pdf">Baixar PDF</a>
+    {% else %}<span class="muted">PDF não encontrado no servidor.</span>{% endif %}
     <a class="btn cinza" href="/historico">Histórico</a>
   </div>
 </div>

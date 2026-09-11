@@ -1,3 +1,13 @@
+## [1.26.0] - 2026-09-11
+
+### Adicionado
+- Portal: botão "+ Novo funcionário" na lista (admin/emissor).
+- Portal: PDF visível no navegador — "Ver no navegador" no detalhe do certificado e "Ver" no Histórico (abre inline, sem baixar).
+- Portal: "Visualizar prévia" no formulário de emissão — abre o PDF de prévia em nova aba sem gravar registro nem consumir numeração.
+
+### Alterado
+- Nenhuma mudança no app desktop nesta versão.
+
 ## [1.25.0] - 2026-09-11
 
 ### Adicionado (Portal Web — Fase 2)

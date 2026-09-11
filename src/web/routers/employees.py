@@ -127,7 +127,8 @@ def register(app, deps: dict):
         return templates.TemplateResponse(
             request=request, name="funcionarios.html",
             context=ctx(request, lista=fatia, total=total, page=page,
-                        paginas=paginas, busca=busca))
+                        paginas=paginas, busca=busca,
+                        pode_escrever=pode_escrever(user["papel"], "funcionarios")))
 
     # ---------------- ficha ----------------
     @app.get("/funcionarios/{emp_id}")

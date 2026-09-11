@@ -49,6 +49,7 @@
         <td>{{ cert.carga_horaria }}h</td>
         <td>{% if cert.has_signed_doc %}<span class="badge b-verde">Sim</span>{% else %}<span class="badge b-cinza">—</span>{% endif %}</td>
         <td class="acoes">
+          <a class="btn" href="/historico/{{ cert.cert_number }}/ver" target="_blank">Ver</a>
           <a class="btn" href="/historico/{{ cert.cert_number }}/pdf">PDF</a>
           {% if cert.has_signed_doc %}
           <a class="btn" href="/historico/{{ cert.cert_number }}/assinado">Assinado</a>

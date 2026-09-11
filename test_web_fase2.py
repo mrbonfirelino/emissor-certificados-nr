@@ -150,6 +150,9 @@ def main():
     _trocar_senha(client, prov_e)
     check("14. emissor ve formulario de emissao",
           client.get("/certificados").status_code == 200)
+    r = client.get("/funcionarios")
+    check("14b. botao novo funcionario visivel", r.status_code == 200
+          and "/funcionarios/novo" in r.text)
 
     # emitir certificado pelo navegador -------------------------------------
     tmpl = load_all_templates()["NR-35"]
@@ -171,6 +174,10 @@ def main():
     r = client.get(f"/certificados/{numero}/pdf")
     check("19. download pdf", r.status_code == 200
           and r.content[:5] == b"%PDF-")
+    r = client.get(f"/certificados/{numero}/ver")
+    check("19b. pdf inline (ver no navegador)", r.status_code == 200
+          and r.content[:5] == b"%PDF-"
+          and "attachment" not in (r.headers.get("content-disposition") or ""))
 
     # carga abaixo da minima rejeitada
     r = client.post("/certificados/emitir", data={
@@ -179,9 +186,20 @@ def main():
     check("20. carga abaixo da minima rejeitada",
           r.status_code == 303 and hr.count_all() == 1)
 
+    # previa antes de emitir (nao grava registro)
+    r = client.post("/certificados/preview", data={
+        "funcionario_id": emp_id, "nr": "NR-35", "data": "11/09/2026",
+        "carga": str(tmpl.carga_horaria_minima), "validade": "12",
+        "descricao": tmpl.descricao_padrao})
+    check("20b. previa inline e NAO grava registro", r.status_code == 200
+          and r.content[:5] == b"%PDF-" and hr.count_all() == 1)
+
     # historico com filtros ---------------------------------------------------
     r = client.get("/historico")
     check("21. historico lista", r.status_code == 200 and numero in r.text)
+    r = client.get(f"/historico/{numero}/ver")
+    check("21b. historico ver inline", r.status_code == 200
+          and r.content[:5] == b"%PDF-")
     r = client.get("/historico", params={"nr": "NR-35"})
     check("22. filtro NR", r.status_code == 200 and numero in r.text)
     r = client.get("/historico", params={"nr": "NR-10"})
