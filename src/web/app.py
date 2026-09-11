@@ -16,7 +16,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from src.utils.paths import get_data_dir
 from src.web import auth
-from src.web.permissions import ROLE_LABELS, pode
+from src.web.permissions import ROLE_LABELS, pode, pode_escrever
 from src.web.users_repo import ROLES, UsersRepository
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
@@ -71,6 +71,7 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
     _MODULOS_NAV = [
         ("Dashboard", "/", "dashboard"),
         ("Certificados", "/certificados", "certificados"),
+        ("Emissão em Lote", "/emissao-lote", "certificados"),
         ("Funcionários", "/funcionarios", "funcionarios"),
         ("Histórico", "/historico", "historico"),
     ]
@@ -80,6 +81,8 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
         for label, url, modulo in _MODULOS_NAV:
             if not pode(user["papel"], modulo):
                 continue
+            if url == "/emissao-lote" and not pode_escrever(user["papel"], "certificados"):
+                continue  # lote é operação: só admin/emissor veem no menu
             ativo = (caminho == url) if url == "/" else caminho.startswith(url)
             itens.append({"label": label, "url": url, "ativo": ativo})
         if pode(user["papel"], "usuarios"):
@@ -255,8 +258,10 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
     from src.web.routers import employees as rotas_funcionarios
     from src.web.routers import certificates as rotas_certificados
     from src.web.routers import history as rotas_historico
+    from src.web.routers import lote as rotas_lote
     rotas_funcionarios.register(app, deps)
     rotas_certificados.register(app, deps)
     rotas_historico.register(app, deps)
+    rotas_lote.register(app, deps)
 
     return app

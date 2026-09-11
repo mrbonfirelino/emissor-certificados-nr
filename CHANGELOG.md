@@ -1,3 +1,9 @@
+## [1.27.0] - 2026-09-11
+
+### Adicionado
+- Portal: Emissão em Lote — escolha a NR, marque vários funcionários (sem CPF fica bloqueado), defina data/carga/validade/descrição do lote com ajuste individual por funcionário, e emita tudo de uma vez com página de resultado (números gerados + Ver/PDF + erros).
+- Menu "Emissão em Lote" visível apenas para Admin/Emissor; Consulta continua somente leitura.
+
 ## [1.26.0] - 2026-09-11
 
 ### Adicionado

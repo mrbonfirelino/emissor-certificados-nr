@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block titulo %}Resultado da emissão em lote — NormaTech{% endblock %}
+{% block conteudo %}
+<div class="card">
+  <h1>Resultado da emissão em lote</h1>
+  <p class="sub">Treinamento: {{ nr }} · {{ gerados|length }} gerado(s) · {{ erros|length }} com problema</p>
+
+  <p class="muted">Não atualize esta página — reemitiria o lote. Consulte o Histórico para conferir.</p>
+
+  {% if gerados %}
+  <h2 style="font-size:16px; margin:14px 0 6px;">Gerados</h2>
+  <table style="max-width:720px;">
+    <thead><tr><th>Funcionário</th><th>Certificado</th><th>Ações</th></tr></thead>
+    <tbody>
+    {% for g in gerados %}
+      <tr>
+        <td>{{ g.nome }}</td>
+        <td>{% if g.numero %}<b class="numero">{{ g.numero }}</b>{% else %}<span class="muted">—</span>{% endif %}</td>
+        <td class="acoes">
+          {% if g.numero %}
+          <a class="btn" href="/certificados/{{ g.numero }}/ver" target="_blank">Ver</a>
+          <a class="btn" href="/certificados/{{ g.numero }}/pdf">PDF</a>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {% if erros %}
+  <h2 style="font-size:16px; margin:14px 0 6px;">Não emitidos</h2>
+  <table style="max-width:720px;">
+    <tbody>
+    {% for e in erros %}<tr><td class="erro">{{ e }}</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <div class="linha-botoes" style="margin-top:14px;">
+    <a class="btn verde" href="/emissao-lote">Novo lote</a>
+    <a class="btn cinza" href="/historico">Ir ao Histórico</a>
+  </div>
+</div>
+{% endblock %}

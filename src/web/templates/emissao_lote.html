@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block titulo %}Emissão em Lote — NormaTech{% endblock %}
+{% block conteudo %}
+<div class="card">
+  <h1>Emissão em Lote</h1>
+  <p class="sub">Emita o mesmo treinamento para vários funcionários de uma vez, com ajuste individual opcional.</p>
+
+  <form method="get" action="/emissao-lote" class="filtros" style="margin-bottom:12px;">
+    <div class="campo">
+      <label for="nr">Treinamento (NR)</label>
+      <select id="nr" name="nr" onchange="this.form.submit()">
+        {% for codigo, t in templates_nr.items() %}
+        <option value="{{ codigo }}" {{ 'selected' if codigo == nr_sel else '' }}>{{ codigo }} — {{ t.nr_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="campo">
+      <label for="busca">Buscar</label>
+      <input type="text" id="busca" name="busca" value="{{ busca }}" placeholder="Nome ou CPF...">
+    </div>
+    <button type="submit">Filtrar</button>
+    {% if busca %}<a class="btn cinza" href="/emissao-lote?nr={{ nr_sel }}">Limpar</a>{% endif %}
+  </form>
+
+  {% if tmpl %}
+  <p class="muted" style="margin-bottom:8px;">
+    Carga mínima: <b>{{ tmpl.carga_horaria_minima }}h</b> · Validade padrão: <b>{{ tmpl.validade_meses }} meses</b>
+  </p>
+
+  <form method="post" action="/emissao-lote/emitir">
+    <input type="hidden" name="nr" value="{{ nr_sel }}">
+
+    <h2 style="font-size:16px; margin:12px 0 6px;">Dados do lote (aplicados a todos)</h2>
+    <div class="form-grid">
+      <div class="campo">
+        <label for="data">Data do treinamento *</label>
+        <input type="text" id="data" name="data" value="{{ hoje_br }}" required>
+      </div>
+      <div class="campo">
+        <label for="carga">Carga horária (h) *</label>
+        <input type="text" id="carga" name="carga" value="{{ tmpl.carga_horaria_minima }}" required>
+      </div>
+      <div class="campo">
+        <label for="validade">Validade (meses)</label>
+        <input type="text" id="validade" name="validade" value="{{ tmpl.validade_meses }}">
+      </div>
+      <div class="campo" style="grid-column: span 2;">
+        <label for="descricao">Descrição do treinamento *</label>
+        <input type="text" id="descricao" name="descricao" value="{{ tmpl.descricao_padrao }}" required>
+      </div>
+      {% for extra in tmpl.campos_extra %}
+      <div class="campo">
+        <label for="campo_{{ extra.id }}">{{ extra.label }}{% if extra.obrigatorio %} *{% endif %}</label>
+        {% if extra.tipo == 'select' %}
+        <select id="campo_{{ extra.id }}" name="campo_{{ extra.id }}">
+          <option value=""></option>
+          {% for op in extra.opcoes %}<option value="{{ op }}">{{ op }}</option>{% endfor %}
+        </select>
+        {% else %}
+        <input type="{% if extra.tipo == 'number' %}number{% else %}text{% endif %}"
+               id="campo_{{ extra.id }}" name="campo_{{ extra.id }}"
+               placeholder="{{ extra.placeholder }}">
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+
+    <h2 style="font-size:16px; margin:16px 0 6px;">Funcionários</h2>
+    <p class="muted" style="margin-bottom:8px;">Marque quem receberá o treinamento. Ajuste data/carga/validade individuais se precisar (vazio = usa o do lote).</p>
+
+    <table>
+      <thead><tr><th></th><th>Nome</th><th>CPF</th><th>Função</th><th>Data individual</th><th>Carga</th><th>Validade</th></tr></thead>
+      <tbody>
+      {% for emp in funcionarios %}
+      <tr>
+        <td>
+          {% if emp.cpf %}
+          <input type="checkbox" name="sel_{{ emp.id }}" value="1">
+          {% else %}
+          <input type="checkbox" disabled title="Sem CPF cadastrado">
+          {% endif %}
+        </td>
+        <td>
+          {% if emp.cpf %}<b>{{ emp.nome }}</b>{% else %}<span class="muted">{{ emp.nome }}</span> <span class="badge b-vermelho">sem CPF</span>{% endif %}
+        </td>
+        <td>{{ emp.cpf or '—' }}</td>
+        <td>{{ emp.funcao or '—' }}</td>
+        <td><input type="text" name="data_{{ emp.id }}" placeholder="dd/mm/aaaa" style="width:100px; font-size:12px; padding:3px;"></td>
+        <td><input type="text" name="carga_{{ emp.id }}" placeholder="h" style="width:50px; font-size:12px; padding:3px;"></td>
+        <td><input type="text" name="validade_{{ emp.id }}" placeholder="meses" style="width:60px; font-size:12px; padding:3px;"></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="muted">Nenhum funcionário encontrado.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% if cortados %}<p class="muted">Lista limitada a {{ funcionarios|length }} de {{ total }} — refine a busca para ver os demais.</p>{% endif %}
+
+    <div class="linha-botoes" style="margin-top:14px;">
+      <button type="submit" class="verde">Emitir em lote</button>
+      <a class="btn cinza" href="/emissao-lote">Limpar seleção</a>
+    </div>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}
