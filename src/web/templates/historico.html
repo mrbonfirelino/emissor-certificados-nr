@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block titulo %}Histórico — NormaTech{% endblock %}
+{% block conteudo %}
+<div class="card">
+  <h1>Histórico de certificados</h1>
+  <p class="sub">{{ total }} certificado(s) encontrados.</p>
+
+  <form method="get" action="/historico" class="filtros" style="margin-bottom:12px;">
+    <div class="campo">
+      <label for="busca">Buscar</label>
+      <input type="text" id="busca" name="busca" value="{{ busca }}" placeholder="Nome, CPF, número...">
+    </div>
+    <div class="campo">
+      <label for="nr">NR</label>
+      <select id="nr" name="nr">
+        <option value="">Todas</option>
+        {% for n in nrs %}<option value="{{ n }}" {{ 'selected' if n == nr else '' }}>{{ n }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="campo">
+      <label for="de">De (dd/mm/aaaa)</label>
+      <input type="text" id="de" name="de" value="{{ de }}">
+    </div>
+    <div class="campo">
+      <label for="ate">Até (dd/mm/aaaa)</label>
+      <input type="text" id="ate" name="ate" value="{{ ate }}">
+    </div>
+    <div class="campo">
+      <label for="assinado">Assinado</label>
+      <select id="assinado" name="assinado">
+        <option value="">Todos</option>
+        <option value="sim" {{ 'selected' if assinado == 'sim' else '' }}>Sim</option>
+        <option value="nao" {{ 'selected' if assinado == 'nao' else '' }}>Não</option>
+      </select>
+    </div>
+    <button type="submit">Filtrar</button>
+    {% if busca or nr or de or ate or assinado %}<a class="btn cinza" href="/historico">Limpar</a>{% endif %}
+  </form>
+
+  <table>
+    <thead><tr><th>Número</th><th>NR</th><th>Funcionário</th><th>Data</th><th>Carga</th><th>Assinado</th><th>Ações</th></tr></thead>
+    <tbody>
+    {% for cert in itens %}
+      <tr>
+        <td><b class="numero">{{ cert.cert_number }}</b></td>
+        <td>{{ cert.nr_code }}</td>
+        <td>{{ cert.funcionario_nome }}</td>
+        <td>{{ cert.data_fim }}</td>
+        <td>{{ cert.carga_horaria }}h</td>
+        <td>{% if cert.has_signed_doc %}<span class="badge b-verde">Sim</span>{% else %}<span class="badge b-cinza">—</span>{% endif %}</td>
+        <td class="acoes">
+          <a class="btn" href="/historico/{{ cert.cert_number }}/pdf">PDF</a>
+          {% if cert.has_signed_doc %}
+          <a class="btn" href="/historico/{{ cert.cert_number }}/assinado">Assinado</a>
+          {% endif %}
+          {% if pode_escrever %}
+          <form method="post" action="/historico/{{ cert.cert_number }}/assinado" enctype="multipart/form-data" style="display:inline;">
+            <input type="file" name="arquivo" accept=".pdf,.jpg,.jpeg,.png" required style="width:auto; max-width:200px; font-size:12px; padding:3px;">
+            <button type="submit" class="cinza">Anexar assinado</button>
+          </form>
+          {% if cert.has_signed_doc %}
+          <form method="post" action="/historico/{{ cert.cert_number }}/assinado/remover" style="display:inline;"
+                onsubmit="return confirm('Remover o documento assinado deste certificado?');">
+            <button type="submit" class="vermelho">Remover</button>
+          </form>
+          {% endif %}
+          {% endif %}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="7" class="muted">Nenhum certificado encontrado com esses filtros.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  {% if paginas > 1 %}
+  <div class="paginacao">
+    {% if page > 1 %}<a href="?{{ qs }}{{ '&' if qs else '' }}page={{ page - 1 }}">&laquo; Anterior</a>{% endif %}
+    <span class="atual">Página {{ page }} de {{ paginas }}</span>
+    {% if page < paginas %}<a href="?{{ qs }}{{ '&' if qs else '' }}page={{ page + 1 }}">Próxima &raquo;</a>{% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

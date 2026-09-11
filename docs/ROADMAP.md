@@ -322,7 +322,7 @@ Requisitos: Microsoft PowerPoint instalado na máquina (conversão via COM).
 | Item | Descricao | Prioridade | Status |
 |------|-----------|------------|--------|
 | Fase 1 — Esqueleto + login + papeis + dashboard + usuarios/auditoria | FastAPI + waitress + NSSM; acesso em 2 maquinas com login | Alta | Concluído (v1.24.0) |
-| Fase 2 — Funcionarios, Certificados e Historico no portal | CRUD/consulta pelo navegador com a matriz de permissoes | Alta | Pendente |
+| Fase 2 — Funcionarios, Certificados e Historico no portal | CRUD/consulta pelo navegador com a matriz de permissoes | Alta | Concluído (v1.25.0) |
 | Fase 3 — ASO, EPI, Crachas, Cartoes, Vencimentos, Importacoes | Demais modulos de leitura/operacao | Media | Pendente |
 | Fase 4 — Admin completo (backup, auditoria avancada) | Painel administrativo final | Media | Pendente |
 

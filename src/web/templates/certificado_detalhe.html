@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block titulo %}{{ cert.cert_number }} — NormaTech{% endblock %}
+{% block conteudo %}
+<div class="card">
+  <h1>Certificado <span class="numero">{{ cert.cert_number }}</span></h1>
+  <p class="sub">{{ cert.nr_code }} — {{ cert.funcionario_nome }}</p>
+  <table style="max-width:640px;">
+    <tr><td class="muted">Funcionário</td><td>{{ cert.funcionario_nome }}{% if cert.funcionario_cpf %} ({{ cert.funcionario_cpf }}){% endif %}</td></tr>
+    <tr><td class="muted">Treinamento</td><td>{{ cert.nr_code }} — {{ cert.descricao_treinamento }}</td></tr>
+    <tr><td class="muted">Data</td><td>{{ cert.data_fim }}</td></tr>
+    <tr><td class="muted">Carga horária</td><td>{{ cert.carga_horaria }}h</td></tr>
+    <tr><td class="muted">Assinado</td><td>{% if cert.has_signed_doc %}<span class="badge b-verde">Documento anexado</span>{% else %}<span class="badge b-cinza">Sem documento assinado</span>{% endif %}</td></tr>
+  </table>
+  <div class="linha-botoes">
+    {% if tem_pdf %}<a class="btn verde" href="/certificados/{{ cert.cert_number }}/pdf">Baixar PDF</a>{% else %}<span class="muted">PDF não encontrado no servidor.</span>{% endif %}
+    <a class="btn cinza" href="/historico">Histórico</a>
+  </div>
+</div>
+{% endblock %}

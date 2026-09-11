@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block titulo %}Emitir certificado — NormaTech{% endblock %}
+{% block conteudo %}
+<div class="card">
+  <h1>Emitir certificado</h1>
+  <p class="sub">O PDF é gerado no servidor, salvo na pasta do funcionário e registrado no histórico automaticamente.</p>
+
+  {% if not funcionarios %}<p class="erro">Cadastre funcionários antes de emitir.</p>{% endif %}
+  {% if not templates_nr %}<p class="erro">Nenhum modelo de NR encontrado no servidor.</p>{% endif %}
+
+  {% if pode_escrever and funcionarios and templates_nr %}
+  <form method="post" action="/certificados/emitir">
+    <div class="form-grid">
+      <div class="campo largo">
+        <label for="funcionario_id">Funcionário *</label>
+        <select id="funcionario_id" name="funcionario_id" required>
+          {% for emp in funcionarios %}
+          <option value="{{ emp.id }}">{{ emp.nome }}{% if emp.cpf %} — {{ emp.cpf }}{% else %} (sem CPF){% endif %}</option>
+          {% endfor %}
+        </select>
+        <span class="muted">Funcionários sem CPF não podem receber certificado.</span>
+      </div>
+      <div class="campo">
+        <label for="nr">Treinamento (NR) *</label>
+        <select id="nr" name="nr" onchange="aplicarDefaults()">
+          {% for codigo, t in templates_nr.items() %}
+          <option value="{{ codigo }}" data-carga="{{ t.carga_horaria_minima }}" data-validade="{{ t.validade_meses }}" data-desc="{{ t.descricao_padrao }}" {{ 'selected' if codigo == nr_sel else '' }}>{{ codigo }}</option>
+          {% endfor %}
+        </select>
+        {% if tmpl %}<span class="muted">Carga mínima: {{ tmpl.carga_horaria_minima }}h · Validade padrão: {{ tmpl.validade_meses }} meses</span>{% endif %}
+      </div>
+      <div class="campo">
+        <label for="data">Data do treinamento *</label>
+        <input type="text" id="data" name="data" placeholder="dd/mm/aaaa" value="{{ hoje_br }}">
+      </div>
+      <div class="campo">
+        <label for="carga">Carga horária (h) *</label>
+        <input type="number" id="carga" name="carga" min="1" value="{{ tmpl.carga_horaria_minima if tmpl else 8 }}">
+      </div>
+      <div class="campo">
+        <label for="validade">Validade (meses) — vazio usa a padrão</label>
+        <input type="number" id="validade" name="validade" min="1" max="120" value="{{ tmpl.validade_meses if tmpl else '' }}">
+      </div>
+      <div class="campo largo">
+        <label for="descricao">Descrição do treinamento *</label>
+        <input type="text" id="descricao" name="descricao" value="{{ tmpl.descricao_padrao if tmpl else '' }}">
+      </div>
+      {% if tmpl %}
+      {% for extra in tmpl.campos_extra %}
+      <div class="campo">
+        <label for="campo_{{ extra.id }}">{{ extra.label }}{{ ' *' if extra.obrigatorio else '' }}</label>
+        {% if extra.tipo == 'select' %}
+        <select id="campo_{{ extra.id }}" name="campo_{{ extra.id }}">
+          <option value="">—</option>
+          {% for opcao in extra.opcoes %}<option value="{{ opcao }}">{{ opcao }}</option>{% endfor %}
+        </select>
+        {% else %}
+        <input type="{{ 'number' if extra.tipo == 'number' else 'text' }}" id="campo_{{ extra.id }}" name="campo_{{ extra.id }}" placeholder="{{ extra.placeholder }}">
+        {% endif %}
+      </div>
+      {% endfor %}
+      {% endif %}
+    </div>
+    <div class="linha-botoes">
+      <button type="submit" class="verde">Emitir certificado</button>
+    </div>
+  </form>
+  {% elif not pode_escrever %}
+  <p class="erro">Seu papel é somente leitura neste módulo — consulte o Histórico para baixar certificados.</p>
+  <a class="btn cinza" href="/historico">Ir ao Histórico</a>
+  {% endif %}
+</div>
+
+<script>
+function aplicarDefaults() {
+  var sel = document.getElementById('nr');
+  var op = sel.options[sel.selectedIndex];
+  document.getElementById('carga').value = op.dataset.carga || 8;
+  document.getElementById('validade').value = op.dataset.validade || '';
+  document.getElementById('descricao').value = op.dataset.desc || '';
+}
+</script>
+{% endblock %}

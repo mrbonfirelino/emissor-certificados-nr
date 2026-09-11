@@ -32,6 +32,25 @@ def pode(role: str, modulo: str) -> bool:
     return role in PERMISSIONS.get(modulo, set())
 
 
+# Modulos onde consulta ve apenas ("só ver" na matriz) — escrita exige
+# admin/emissor. Admin-only (config/backup/usuarios/auditoria) nunca entra aqui.
+SO_LEITURA = {"funcionarios", "certificados", "historico", "vencimentos",
+              "aso", "epi", "crachas"}
+
+
+def pode_escrever(role: str, modulo: str) -> bool:
+    """True se o papel pode executar acoes (POST) no modulo.
+
+    Matriz docs/PORTAL/01 §6: modulos 'só ver' (consulta) exigem admin/emissor
+    para operar; modulos admin-only ja sao bloqueados por pode().
+    """
+    if not pode(role, modulo):
+        return False
+    if modulo in SO_LEITURA:
+        return role in ("admin", "emissor")
+    return True
+
+
 def modulos_do(role: str) -> list:
     """Modulos visiveis no menu para o papel, em ordem de exibicao."""
     ordem = ["dashboard", "certificados", "funcionarios", "historico", "vencimentos",

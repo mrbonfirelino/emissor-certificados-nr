@@ -66,16 +66,32 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
     if senha_bootstrap:
         _anunciar_senha_provisoria(senha_bootstrap)
 
-    def _nav(user: dict) -> list:
-        itens = [{"label": "Dashboard", "url": "/", "ativo": False}]
+    # Módulos implementados no portal (Fase 1+2); a matriz de permissões
+    # (permissions.pode) filtra o que cada papel vê.
+    _MODULOS_NAV = [
+        ("Dashboard", "/", "dashboard"),
+        ("Certificados", "/certificados", "certificados"),
+        ("Funcionários", "/funcionarios", "funcionarios"),
+        ("Histórico", "/historico", "historico"),
+    ]
+
+    def _nav(user: dict, caminho: str = "") -> list:
+        itens = []
+        for label, url, modulo in _MODULOS_NAV:
+            if not pode(user["papel"], modulo):
+                continue
+            ativo = (caminho == url) if url == "/" else caminho.startswith(url)
+            itens.append({"label": label, "url": url, "ativo": ativo})
         if pode(user["papel"], "usuarios"):
-            itens.append({"label": "Usuários", "url": "/usuarios", "ativo": False})
+            itens.append({"label": "Usuários", "url": "/usuarios",
+                          "ativo": caminho.startswith("/usuarios")})
         return itens
 
     def _ctx(request: Request, **extra) -> dict:
         user = auth.current_user(request)
         sessao = request.session.pop("flash", None) or {}
-        ctx = {"request": request, "user": user, "nav": _nav(user) if user else [],
+        ctx = {"request": request, "user": user,
+               "nav": _nav(user, request.url.path) if user else [],
                "papel_label": ROLE_LABELS.get(user["papel"], user["papel"]) if user else "",
                "msg": sessao.get("msg") or extra.pop("msg", None),
                "erro": sessao.get("erro") or extra.pop("erro", None)}
@@ -233,5 +249,14 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
                                 f" '{alvo['username'] if alvo else '?'}': {provisoria}"
                                 f" (exibida uma única vez).")
         return RedirectResponse("/usuarios", status_code=303)
+
+    # ---------------- routers da Fase 2 ----------------
+    deps = {"users": users, "templates": templates, "ctx": _ctx, "flash": _flash}
+    from src.web.routers import employees as rotas_funcionarios
+    from src.web.routers import certificates as rotas_certificados
+    from src.web.routers import history as rotas_historico
+    rotas_funcionarios.register(app, deps)
+    rotas_certificados.register(app, deps)
+    rotas_historico.register(app, deps)
 
     return app

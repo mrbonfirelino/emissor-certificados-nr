@@ -1,3 +1,11 @@
+## [1.25.0] - 2026-09-11
+
+### Adicionado (Portal Web — Fase 2)
+- **Funcionários no portal**: lista com busca e paginação, ficha completa (dados SESMT), novo/editar com validação, upload de foto 3x4 e documentos (qualquer formato até 50MB, baixar/excluir).
+- **Certificados no portal**: emissão pelo navegador (funcionário, NR com carga/validade/descrição e campos extras do modelo), página de detalhe e download do PDF. PDF salvo na pasta do funcionário com espelhamento em rede.
+- **Histórico no portal**: filtros (busca, NR, período, assinado) e paginação; anexar documento assinado (PDF/JPG/PNG), baixar e remover.
+- **Permissões**: papéis Consulta navegam em modo somente leitura (Admin/Emissor operam).
+
 ## [1.24.1] - 2026-09-11
 
 ### Corrigido
