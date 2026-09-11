@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block titulo %}Ficha de EPI {{ ficha.epi_number }}{% endblock %}
+
+{% block conteudo %}
+<div class="card">
+  <h1>Ficha de EPI {{ ficha.epi_number }}</h1>
+  <p class="sub">{{ ficha.funcionario_nome }}{% if ficha.funcionario_cpf %} — {{ ficha.funcionario_cpf }}{% endif %}
+     · Emissão: {{ ficha.data_emissao }}
+     · {% if ficha.status == 'fechado' %}<span class="badge b-cinza">Fechada</span>{% else %}<span class="badge b-verde">Aberta</span>{% endif %}</p>
+
+  <p>
+    {% if tem_pdf %}
+      <a class="btn" href="/epi/{{ ficha.id }}/pdf" target="_blank">Ver PDF no navegador</a>
+      <a class="btn cinza" href="/epi/{{ ficha.id }}/pdf/download">Baixar PDF</a>
+    {% else %}
+      <span class="muted">PDF não disponível.</span>
+    {% endif %}
+  </p>
+
+  <h2>Itens</h2>
+  {% if itens %}
+  <table>
+    <tr><th>C.A.</th><th>Descrição</th><th>Qtde</th><th>Entrega</th><th>Situação</th></tr>
+    {% for it in itens %}
+    <tr>
+      <td>{{ it.ca or '—' }}</td>
+      <td>{{ it.descricao }}</td>
+      <td>{{ it.quantidade }}</td>
+      <td>{{ it.data }}</td>
+      <td>
+        {% if it.estado %}<span class="badge {{ it.classe }}">{{ it.estado }}</span>{% if it.dev_txt %} <span class="muted">{{ it.dev_txt }}</span>{% endif %}
+        {% else %}<span class="badge b-cinza">Pendente</span>{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="muted">Ficha sem itens.</p>
+  {% endif %}
+
+  {% if pode_escrever %}
+  <h2>Devolução</h2>
+  {% if aberto %}
+  <form method="post" action="/epi/{{ ficha.id }}/devolucao">
+    {% if itens %}
+    <table>
+      <tr><th>Item</th><th>Situação</th><th>Qtde devolvida (só parcial)</th></tr>
+      {% for it in itens %}
+      <tr>
+        <td>{{ it.descricao }} ({{ it.quantidade }})</td>
+        <td>
+          <select name="dev_modo_{{ loop.index0 }}">
+            <option value="pendente" {% if not it.estado %}selected{% endif %}>Pendente</option>
+            <option value="total" {% if it.estado == 'Total' %}selected{% endif %}>Total</option>
+            <option value="parcial" {% if it.estado == 'Parcial' %}selected{% endif %}>Parcial</option>
+          </select>
+        </td>
+        <td><input type="text" name="dev_qtd_{{ loop.index0 }}" placeholder="Ex.: 2" style="width:70px"></td>
+      </tr>
+      {% endfor %}
+    </table>
+    <div class="form-grid">
+      <div class="campo"><label>Data da devolução</label>
+        <input type="text" name="data_devolucao" value="{{ hoje_br }}"></div>
+    </div>
+    <button class="btn verde" type="submit">Salvar devolução</button>
+    {% else %}
+    <p class="muted">Sem itens para devolver.</p>
+    {% endif %}
+  </form>
+
+  <form method="post" action="/epi/{{ ficha.id }}/status" style="margin-top:12px">
+    <button class="btn {{ 'cinza' if aberto else 'verde' }}" type="submit">
+      {{ 'Fechar ficha' if aberto else 'Reabrir ficha' }}</button>
+  </form>
+  {% endif %}
+  {% else %}
+  <p class="muted">Somente administrador ou emissor podem registrar devoluções.</p>
+  {% endif %}
+
+  <h2>Documentos anexados</h2>
+  {% if anexos %}
+  <table>
+    <tr><th>Arquivo</th><th>Tipo</th><th>Tamanho</th><th>Ações</th></tr>
+    {% for d in anexos %}
+    <tr>
+      <td>{{ d.filename }}</td>
+      <td>{{ d.tipo }}</td>
+      <td>{{ d.tamanho }}</td>
+      <td>
+        <a class="btn cinza" href="/epi/{{ ficha.id }}/doc/{{ d.id }}">Baixar</a>
+        {% if pode_escrever %}
+        <form method="post" action="/epi/{{ ficha.id }}/doc/{{ d.id }}/excluir" style="display:inline"
+              onsubmit="return confirm('Excluir este anexo?')">
+          <button class="btn vermelho" type="submit">Excluir</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="muted">Nenhum documento anexado (fichas assinadas, termos etc.).</p>
+  {% endif %}
+
+  {% if pode_escrever %}
+  <form method="post" action="/epi/{{ ficha.id }}/doc" enctype="multipart/form-data" style="margin-top:8px">
+    <input type="file" name="arquivo" required>
+    <button class="btn verde" type="submit">Anexar documento</button>
+  </form>
+  {% endif %}
+
+  <p style="margin-top:16px"><a class="btn cinza" href="/epi">Voltar às fichas</a></p>
+</div>
+{% endblock %}

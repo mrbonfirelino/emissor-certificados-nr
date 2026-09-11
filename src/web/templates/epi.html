@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block titulo %}EPI — NormaTech{% endblock %}
+{% block conteudo %}
+<div class="card">
+  <h1>Fichas de EPI</h1>
+  <p class="sub">{{ total }} ficha(s) cadastradas.</p>
+
+  {% if pode_escrever %}<p><a class="btn verde" href="/epi/nova">+ Nova ficha</a></p>{% endif %}
+
+  <form method="get" action="/epi" class="filtros" style="margin-bottom:12px;">
+    <div class="campo">
+      <label for="busca">Buscar</label>
+      <input type="text" id="busca" name="busca" value="{{ busca }}" placeholder="Funcionário ou número...">
+    </div>
+    <button type="submit">Buscar</button>
+    {% if busca %}<a class="btn cinza" href="/epi">Limpar</a>{% endif %}
+  </form>
+
+  <table>
+    <thead><tr><th>Número</th><th>Funcionário</th><th>Data</th><th>Itens</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for f in linhas %}
+      <tr>
+        <td><a class="numero" href="/epi/{{ f.id }}">{{ f.numero }}</a></td>
+        <td>{{ f.funcionario }}</td>
+        <td>{{ f.data }}</td>
+        <td>{{ f.itens }} item(ns)</td>
+        <td>{% if f.status == 'fechado' %}<span class="badge b-cinza">Fechada</span>{% else %}<span class="badge b-verde">Aberta</span>{% endif %}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5" class="muted">Nenhuma ficha encontrada.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  {% if total_paginas > 1 %}
+  <div class="paginacao">
+    {% if page > 1 %}<a href="?busca={{ busca }}&page={{ page - 1 }}">&laquo; Anterior</a>{% endif %}
+    <span class="atual">Página {{ page }} de {{ total_paginas }}</span>
+    {% if page < total_paginas %}<a href="?busca={{ busca }}&page={{ page + 1 }}">Próxima &raquo;</a>{% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

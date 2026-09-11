@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block titulo %}Crachás emitidos{% endblock %}
+
+{% block conteudo %}
+<div class="card">
+  <h1>Crachás emitidos</h1>
+  <p class="sub">{{ total }} crachá(s) gerado(s) neste lote.</p>
+
+  {% if gerados %}
+  <table>
+    <tr><th>Arquivo</th><th>Ações</th></tr>
+    {% for g in gerados %}
+    <tr>
+      <td>{{ g.nome }}</td>
+      <td>
+        <a class="btn" href="/crachas/ver/{{ g.idx }}" target="_blank">Ver</a>
+        <a class="btn cinza" href="/crachas/baixar/{{ g.idx }}">Baixar</a>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  <p class="muted">Os links acima funcionam somente nesta página (sessão atual).</p>
+  {% endif %}
+
+  {% if faltantes %}
+  <h2>Não emitidos</h2>
+  <ul>
+    {% for f in faltantes %}
+    <li class="b-vermelho" style="list-style:none">{{ f }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  <p>
+    <a class="btn verde" href="/crachas/novo">Novo lote</a>
+    <a class="btn cinza" href="/crachas">Ir aos crachás</a>
+  </p>
+</div>
+{% endblock %}

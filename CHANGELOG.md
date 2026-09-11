@@ -1,3 +1,17 @@
+## [1.29.0] - 2026-09-11
+
+### Adicionado
+- **Portal Web — Fase 3 parte 2 (EPI e Crachás no navegador)**:
+  - Aba **EPI**: lista de fichas, nova ficha com itens (C.A./descrição/qtde/data),
+    ficha com situação por item (Total/Parcial/Pendente), **devolução pelo
+    navegador** (regenera a ficha e emite o Termo de Devolução), ver/baixar PDF,
+    anexos múltiplos (upload/baixar/excluir) e fechar/reabrir ficha.
+  - Aba **Crachás**: emissão em lote pelo navegador com os mesmos bloqueios do
+    desktop (foto, NR válida e ASO dentro da validade; bloqueados aparecem com
+    o motivo), templates Altec paisagem/vertical, tamanho real ou reduzido,
+    PDF A4 com guia de corte, ver/baixar inline e por crachá gravado.
+- Menu do portal com Vencimentos, ASO, EPI e Crachás (consulta só leitura).
+
 ## [1.28.0] - 2026-09-11
 
 ### Adicionado

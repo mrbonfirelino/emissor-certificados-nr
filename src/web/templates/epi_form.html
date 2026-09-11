@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block titulo %}Nova ficha de EPI — NormaTech{% endblock %}
+{% block conteudo %}
+<div class="card">
+  <h1>Nova ficha de EPI</h1>
+  <p class="sub">Informe os itens entregues. Devolução é registrada depois na ficha.</p>
+
+  <form method="post" action="/epi/nova">
+    <div class="form-grid">
+      <div class="campo">
+        <label for="funcionario_id">Funcionário *</label>
+        <select id="funcionario_id" name="funcionario_id" required>
+          {% for f in funcionarios %}
+          <option value="{{ f.id }}">{{ f.nome }}{% if f.cpf %} — {{ f.cpf }}{% endif %}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="campo">
+        <label for="data_emissao">Data da entrega *</label>
+        <input type="text" id="data_emissao" name="data_emissao" value="{{ hoje }}" required>
+      </div>
+    </div>
+
+    <h2 style="margin-top:16px;">Itens entregues</h2>
+    <table>
+      <thead><tr><th style="width:110px;">C.A.</th><th>Descrição</th><th style="width:70px;">Qtde</th><th style="width:120px;">Data</th></tr></thead>
+      <tbody id="linhas">
+        {% for i in range(4) %}
+        <tr>
+          <td><input type="text" name="item_ca_{{ i }}" placeholder="00000"></td>
+          <td><input type="text" name="item_desc_{{ i }}" placeholder="Ex.: Luva nitrílica"></td>
+          <td><input type="text" name="item_qtd_{{ i }}" placeholder="1"></td>
+          <td><input type="text" name="item_data_{{ i }}" value="{{ hoje }}"></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p><button type="button" class="btn cinza" onclick="addLinha()">+ Mais uma linha</button></p>
+
+    <p>
+      <button type="submit" class="btn verde">Abrir ficha</button>
+      <a class="btn cinza" href="/epi">Cancelar</a>
+    </p>
+  </form>
+</div>
+
+<script>
+var LINHA = 4;
+function addLinha() {
+  var tbody = document.getElementById('linhas');
+  var tr = document.createElement('tr');
+  tr.innerHTML = '<td><input type="text" name="item_ca_' + LINHA + '"></td>' +
+    '<td><input type="text" name="item_desc_' + LINHA + '"></td>' +
+    '<td><input type="text" name="item_qtd_' + LINHA + '"></td>' +
+    '<td><input type="text" name="item_data_' + LINHA + '" value="{{ hoje }}"></td>';
+  tbody.appendChild(tr);
+  LINHA += 1;
+}
+</script>
+{% endblock %}

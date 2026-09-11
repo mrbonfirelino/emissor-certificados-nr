@@ -130,6 +130,21 @@ class EpiRepository:
             """, (employee_id,)).fetchall()
             return [self._row_to_dict(r) for r in rows]
 
+    def get_all(self, limit: int = 20, offset: int = 0) -> List[Dict[str, Any]]:
+        """Todas as fichas (portal), mais recentes primeiro."""
+        with self._get_conn() as conn:
+            rows = conn.execute(f"""
+                SELECT {self._LIST_COLS}, e.nome AS funcionario_nome, e.cpf AS funcionario_cpf
+                FROM epis LEFT JOIN employees e ON epis.employee_id = e.id
+                ORDER BY epis.created_at DESC, epis.id DESC
+                LIMIT ? OFFSET ?
+            """, (limit, offset)).fetchall()
+            return [self._row_to_dict(r) for r in rows]
+
+    def count_all(self) -> int:
+        with self._get_conn() as conn:
+            return conn.execute("SELECT COUNT(*) FROM epis").fetchone()[0]
+
     def count_docs(self, epi_id: int) -> int:
         with self._get_conn() as conn:
             return conn.execute(

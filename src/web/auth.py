@@ -5,7 +5,7 @@ from typing import Optional
 
 from fastapi import Depends, HTTPException, Request
 
-from src.web.permissions import pode
+from src.web.permissions import pode, pode_escrever  # noqa: F401 (pode_escrever re-export p/ routers)
 
 # rate-limit simples em memoria: ip -> lista de tentativas com falha
 _falhas: dict = {}

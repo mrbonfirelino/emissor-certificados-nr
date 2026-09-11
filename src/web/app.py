@@ -76,6 +76,8 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
         ("Histórico", "/historico", "historico"),
         ("Vencimentos", "/vencimentos", "vencimentos"),
         ("ASO", "/aso", "aso"),
+        ("EPI", "/epi", "epi"),
+        ("Crachás", "/crachas", "crachas"),
     ]
 
     def _nav(user: dict, caminho: str = "") -> list:
@@ -263,11 +265,15 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
     from src.web.routers import lote as rotas_lote
     from src.web.routers import vencimentos as rotas_vencimentos
     from src.web.routers import aso as rotas_aso
+    from src.web.routers import epi as rotas_epi
+    from src.web.routers import crachas as rotas_crachas
     rotas_funcionarios.register(app, deps)
     rotas_certificados.register(app, deps)
     rotas_historico.register(app, deps)
     rotas_lote.register(app, deps)
     rotas_vencimentos.register(app, deps)
     rotas_aso.register(app, deps)
+    rotas_epi.register(app, deps)
+    rotas_crachas.register(app, deps)
 
     return app

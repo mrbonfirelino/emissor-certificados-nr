@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block titulo %}Crachás{% endblock %}
+
+{% block conteudo %}
+<div class="card">
+  <h1>Crachás de Identificação</h1>
+  <p class="sub">{{ total }} crachá(s) emitido(s).</p>
+
+  {% if pode_escrever %}
+  <p><a class="btn verde" href="/crachas/novo">Emitir crachás</a></p>
+  {% endif %}
+
+  {% if linhas %}
+  <table>
+    <tr><th>Número</th><th>Funcionário</th><th>Data</th><th>NRs</th><th>PDF</th></tr>
+    {% for l in linhas %}
+    <tr>
+      <td><span class="numero">{{ l.numero }}</span></td>
+      <td>{{ l.funcionario }}</td>
+      <td>{{ l.data }}</td>
+      <td>{{ l.nrs }} NR(s)</td>
+      <td>
+        {% if l.tem_pdf %}
+          <a class="btn" href="/crachas/{{ l.numero }}/pdf" target="_blank">Ver</a>
+          <a class="btn cinza" href="/crachas/{{ l.numero }}/pdf/download">PDF</a>
+        {% else %}
+          <span class="muted">—</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="muted">Nenhum crachá emitido ainda.</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block titulo %}Emitir crachás{% endblock %}
+
+{% block conteudo %}
+<div class="card">
+  <h1>Emitir crachás</h1>
+
+  {% if erro %}
+  <p class="erro">{{ erro }}</p>
+  <p><a class="btn cinza" href="/crachas">Voltar</a></p>
+  {% else %}
+
+  <form method="post" action="/crachas/emitir">
+    <div class="form-grid">
+      <div class="campo">
+        <label>Modelo</label>
+        <select name="template_code">
+          {% for t in tpls %}
+          <option value="{{ t.code }}">{{ t.nome }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="campo">
+        <label>Tamanho</label>
+        <select name="tamanho">
+          <option value="real">Tamanho real</option>
+          <option value="reduzido">Reduzido 86x54mm</option>
+        </select>
+      </div>
+      <div class="campo">
+        <label>Data de emissão</label>
+        <input type="text" name="data_emissao" value="{{ hoje }}">
+      </div>
+    </div>
+
+    <h2>Funcionários</h2>
+    {% if elegiveis or bloqueados %}
+    <table>
+      <tr><th>Emitir</th><th>Funcionário</th><th>CPF</th><th>NRs válidas (mais recentes)</th></tr>
+      {% for e in elegiveis %}
+      <tr>
+        <td><input type="checkbox" name="sel_{{ e.id }}" checked></td>
+        <td>{{ e.nome }}</td>
+        <td>{{ e.cpf }}</td>
+        <td class="muted">{{ e.nrs | join(', ') if e.nrs else 'nenhuma NR válida' }}</td>
+      </tr>
+      {% endfor %}
+      {% for b in bloqueados %}
+      <tr>
+        <td><input type="checkbox" disabled></td>
+        <td>{{ b.nome }} <span class="badge b-vermelho">BLOQUEADO — {{ b.motivos }}</span></td>
+        <td>{{ b.cpf }}</td>
+        <td class="muted">{{ b.nrs | join(', ') if b.nrs else '—' }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}
+    <p class="muted">Nenhum funcionário cadastrado.</p>
+    {% endif %}
+
+    <p class="muted">Regras: crachá só é gerado com foto, NR dentro da validade e ASO
+       válido (bloqueados aparecem acima). Até 8 NRs mais recentes por funcionário.
+       PDF em folha A4 com guia de corte.</p>
+
+    <button class="btn verde" type="submit">Emitir crachás</button>
+    <a class="btn cinza" href="/crachas">Cancelar</a>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}
