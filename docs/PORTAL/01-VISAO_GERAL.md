@@ -201,7 +201,7 @@ Detalhes completos em [04-SCANNER.md](04-SCANNER.md). Resumo:
 | **0** | Documentação (esta pasta) | ✅ Feita |
 | **1** | Esqueleto web: app.py, login, users/roles, dashboard read-only, run_web.py + NSSM | Portal abre em 2 máquinas com login funcionando |
 | **2** ✅ Feita (v1.25.0)  Núcleo de valor: Funcionários (CRUD + foto), Certificados (emissão + PDF + download), Histórico com filtros | Técnica emite um certificado pelo navegador |
-| **3** | ASO, EPI, Crachás, Cartões, Vencimentos, Importações Excel/CSV | Desktop não é mais necessário no dia a dia |
+| **3** (em andamento — Vencimentos e ASO no v1.28.0) | ASO, EPI, Crachás, Cartões, Vencimentos, Importações Excel/CSV | Desktop não é mais necessário no dia a dia |
 | **4** | Admin: Configurações, Backup na tela, Gestão de usuários, audit_log, NormaAgent | Fechamento do ciclo + auditoria ativa |
 
 ## 9. Riscos e mitigações

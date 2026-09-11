@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block titulo %}ASO — NormaTech{% endblock %}
+{% block conteudo %}
+<div class="card">
+  <h1>ASO</h1>
+  <p class="sub">{{ total }} ASO(s) cadastrados.</p>
+
+  {% if pode_escrever %}<p><a class="btn verde" href="/aso/novo">+ Novo ASO</a></p>{% endif %}
+
+  <form method="get" action="/aso" class="filtros" style="margin-bottom:12px;">
+    <div class="campo">
+      <label for="busca">Buscar</label>
+      <input type="text" id="busca" name="busca" value="{{ busca }}" placeholder="Funcionário, CPF, número ou tipo...">
+    </div>
+    <button type="submit">Buscar</button>
+    {% if busca %}<a class="btn cinza" href="/aso">Limpar</a>{% endif %}
+  </form>
+
+  <table>
+    <thead><tr><th>Número</th><th>Funcionário</th><th>Tipo</th><th>Exame</th><th>Válido até</th><th>Status</th><th>Doc.</th></tr></thead>
+    <tbody>
+    {% for a in linhas %}
+      <tr>
+        <td><a class="numero" href="/aso/{{ a.id }}">{{ a.numero }}</a></td>
+        <td>{{ a.funcionario }}</td>
+        <td>{{ a.tipo }}</td>
+        <td>{{ a.exame }}</td>
+        <td>{{ a.valido }}</td>
+        <td><span class="badge {{ a.classe }}">{{ a.status }}</span></td>
+        <td>{% if a.anexado %}<span class="badge b-verde">Anexado</span>{% else %}<span class="badge b-cinza">—</span>{% endif %}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="7" class="muted">Nenhum ASO encontrado.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  {% if total_paginas > 1 %}
+  <div class="paginacao">
+    {% if page > 1 %}<a href="?busca={{ busca }}&page={{ page - 1 }}">&laquo; Anterior</a>{% endif %}
+    <span class="atual">Página {{ page }} de {{ total_paginas }}</span>
+    {% if page < total_paginas %}<a href="?busca={{ busca }}&page={{ page + 1 }}">Próxima &raquo;</a>{% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

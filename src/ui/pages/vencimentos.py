@@ -18,35 +18,11 @@ STATUS_COLORS = {
 
 # limites dos filtros por periodo (dias para vencer); vencidos (d < 0) so
 # aparecem nos filtros "Todos" e "Vencidos"
-PERIOD_RANGES = {
-    "dias_7": (0, 7),
-    "dias_15": (0, 15),
-    "mes_1": (0, 30),
-    "meses_3": (0, 90),
-}
+from src.core.filtros_vencimentos import PERIOD_RANGES  # noqa: F401
 
-
-def filter_certs(certs: list, nr: str, search: str, period: str) -> list:
-    """Filtra certificados por NR, busca textual e periodo de vencimento."""
-    out = []
-    for c in certs:
-        if nr != "TODAS" and c["nr_code"] != nr:
-            continue
-        if search:
-            if (search not in c["funcionario_nome"].lower()
-                    and search not in c["funcionario_cpf"]
-                    and search not in c["nr_code"].lower()):
-                continue
-        d = c["dias_para_vencer"]
-        if period == "vencidos":
-            if d >= 0:
-                continue
-        elif period in PERIOD_RANGES:
-            lo, hi = PERIOD_RANGES[period]
-            if not (lo <= d <= hi):
-                continue
-        out.append(c)
-    return out
+# logica extraida p/ src/core/filtros_vencimentos.py (reuso no portal, v1.28.0);
+# reexportado aqui para compatibilidade com testes e chamadas existentes
+from src.core.filtros_vencimentos import filter_certs  # noqa: F401,E501
 
 
 class VencimentosPage(ctk.CTkFrame):

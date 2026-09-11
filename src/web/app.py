@@ -74,6 +74,8 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
         ("Emissão em Lote", "/emissao-lote", "certificados"),
         ("Funcionários", "/funcionarios", "funcionarios"),
         ("Histórico", "/historico", "historico"),
+        ("Vencimentos", "/vencimentos", "vencimentos"),
+        ("ASO", "/aso", "aso"),
     ]
 
     def _nav(user: dict, caminho: str = "") -> list:
@@ -253,15 +255,19 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
                                 f" (exibida uma única vez).")
         return RedirectResponse("/usuarios", status_code=303)
 
-    # ---------------- routers da Fase 2 ----------------
+    # ---------------- routers da Fase 2+3 ----------------
     deps = {"users": users, "templates": templates, "ctx": _ctx, "flash": _flash}
     from src.web.routers import employees as rotas_funcionarios
     from src.web.routers import certificates as rotas_certificados
     from src.web.routers import history as rotas_historico
     from src.web.routers import lote as rotas_lote
+    from src.web.routers import vencimentos as rotas_vencimentos
+    from src.web.routers import aso as rotas_aso
     rotas_funcionarios.register(app, deps)
     rotas_certificados.register(app, deps)
     rotas_historico.register(app, deps)
     rotas_lote.register(app, deps)
+    rotas_vencimentos.register(app, deps)
+    rotas_aso.register(app, deps)
 
     return app

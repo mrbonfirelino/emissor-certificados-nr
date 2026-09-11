@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block titulo %}{{ aso.aso_number }} — NormaTech{% endblock %}
+{% block conteudo %}
+<div class="card">
+  <h1>{{ aso.aso_number }}</h1>
+  <p class="sub">{{ funcionario }}{% if cpf %} — {{ cpf }}{% endif %}</p>
+
+  <table style="max-width:640px;">
+    <tbody>
+      <tr><th style="text-align:left;">Tipo</th><td>{{ aso.tipo_aso }}</td></tr>
+      <tr><th style="text-align:left;">Data do exame</th><td>{{ exame_br }}</td></tr>
+      <tr><th style="text-align:left;">Validade</th><td>{{ meses }} meses (até {{ valido_br }})</td></tr>
+      <tr><th style="text-align:left;">Status</th><td><span class="badge {{ classe }}">{{ status }}</span></td></tr>
+      <tr><th style="text-align:left;">Documento do médico</th><td>{% if anexado %}<span class="badge b-verde">Anexado</span>{% else %}<span class="badge b-cinza">Não anexado</span>{% endif %}</td></tr>
+    </tbody>
+  </table>
+
+  <p style="margin-top:12px;">
+    {% if tem_pdf %}<a class="btn" href="/aso/{{ aso.id }}/pdf" target="_blank">Ver PDF no navegador</a>
+    <a class="btn cinza" href="/aso/{{ aso.id }}/pdf/download">Baixar PDF</a>
+    {% else %}<span class="muted">PDF não encontrado.</span>{% endif %}
+  </p>
+
+  {% if pode_escrever %}
+  <h2 style="font-size:16px; margin-top:18px;">Documento do médico (ASO assinado)</h2>
+  {% if anexado %}
+  <p><a class="btn cinza" href="/aso/{{ aso.id }}/doc">Baixar documento</a></p>
+  {% endif %}
+  <form method="post" action="/aso/{{ aso.id }}/doc" enctype="multipart/form-data" class="filtros">
+    <div class="campo">
+      <label for="arquivo">Anexar / substituir (PDF, JPG ou PNG — até 50 MB)</label>
+      <input type="file" id="arquivo" name="arquivo" accept=".pdf,.jpg,.jpeg,.png" required>
+    </div>
+    <button type="submit">Anexar</button>
+  </form>
+  {% if anexado %}
+  <form method="post" action="/aso/{{ aso.id }}/doc/remover" style="margin-top:8px;"
+        onsubmit="return confirm('Remover o documento anexado? O PDF volta ao estado de placeholder.');">
+    <button type="submit" class="vermelho">Remover documento</button>
+  </form>
+  {% endif %}
+  <p class="muted" style="margin-top:8px;">Ao anexar, o documento do médico é embutido no PDF do ASO (capa + páginas com moldura).</p>
+  {% endif %}
+
+  <p style="margin-top:16px;"><a class="btn cinza" href="/aso">&laquo; Voltar à lista de ASOs</a></p>
+</div>
+{% endblock %}

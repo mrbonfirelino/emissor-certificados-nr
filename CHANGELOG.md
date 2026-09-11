@@ -1,3 +1,12 @@
+## [1.28.0] - 2026-09-11
+
+### Adicionado
+- Portal Web (Fase 3, parte 1): aba **Vencimentos** no navegador — todos os certificados, ASOs e integrações com vencimento, cards de totais (vencidos / próximos 7 / próximos 30 dias) e filtros por NR, período e busca.
+- Portal Web: aba **ASO** — lista com busca e status, cadastro de novo ASO (gera PDF numerado com moldura), documento do médico anexado (embutido no PDF em capa + moldura), ver/baixar PDF e do documento, remover documento (volta ao placeholder).
+
+### Alterado
+- Menu do portal reorganizado: Dashboard, Certificados, Emissão em Lote, Funcionários, Histórico, Vencimentos, ASO e Usuários (cada papel vê apenas o que pode).
+
 ## [1.27.0] - 2026-09-11
 
 ### Adicionado

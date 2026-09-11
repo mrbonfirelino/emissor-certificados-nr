@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block titulo %}Novo ASO — NormaTech{% endblock %}
+{% block conteudo %}
+<div class="card">
+  <h1>Novo ASO</h1>
+
+  {% if erro %}
+  <p class="msg erro">{{ erro }}</p>
+  {% else %}
+  <form method="post" action="/aso/novo" class="form-grid" style="max-width:560px;">
+    <div class="campo">
+      <label for="funcionario_id">Funcionário *</label>
+      <select id="funcionario_id" name="funcionario_id" required>
+        {% for f in funcionarios %}
+        <option value="{{ f.id }}">{{ f.nome }}{% if f.cpf %} — {{ f.cpf }}{% endif %}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="campo">
+      <label for="tipo_aso">Tipo de ASO *</label>
+      <select id="tipo_aso" name="tipo_aso" required>
+        {% for t in tipos %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="campo">
+      <label for="data_exame">Data do exame *</label>
+      <input type="text" id="data_exame" name="data_exame" value="{{ hoje }}" placeholder="dd/mm/aaaa" required>
+    </div>
+    <div class="campo">
+      <label for="validade_meses">Validade (meses)</label>
+      <input type="number" id="validade_meses" name="validade_meses" value="12" min="1" max="120">
+    </div>
+    <div style="grid-column:1/-1; margin-top:8px;">
+      <button type="submit" class="verde">Cadastrar ASO</button>
+      <a class="btn cinza" href="/aso">Cancelar</a>
+    </div>
+  </form>
+  <p class="muted" style="margin-top:10px;">O PDF do ASO é gerado na hora; o documento do médico pode ser anexado na ficha depois.</p>
+  {% endif %}
+</div>
+{% endblock %}
