@@ -1,3 +1,9 @@
+## [1.24.1] - 2026-09-11
+
+### Corrigido
+- Portal não abre mais com "Internal Server Error": o servidor passou a ser o uvicorn (ASGI, padrão do FastAPI). O waitress é WSGI e era incompatível com o FastAPI.
+- Validado com servidor HTTP real (uvicorn + httpx): login, troca de senha obrigatória, dashboard e logout funcionando ponta a ponta.
+
 ## [1.24.0] - 2026-09-10
 
 ### Adicionado

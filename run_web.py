@@ -50,9 +50,9 @@ def main() -> int:
         except Exception as e:
             print(f"Aviso: backup automatico nao iniciado ({e})")
 
-    from waitress import serve
+    import uvicorn
     print(f"Portal NormaTech em http://{args.host}:{args.port}")
-    serve(app, host=args.host, port=args.port, threads=8)
+    uvicorn.run(app, host=args.host, port=args.port, log_level="info")
     return 0
 
 
