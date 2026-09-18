@@ -20,3 +20,10 @@ data/*.db-shm
 
 data/*.json
 templates/GUIA_NORMATECH.pdf
+
+# Agente local e artefatos locais
+.opencode/
+backups/
+NormaTech-Portal-SERVIDOR-*.zip
+PACOTE SERVIDOR*/
+ATUALIZACAO*/

@@ -12,7 +12,7 @@
 | Item | Requisito |
 |------|-----------|
 | Máquina | PC/servidor **sempre ligado** no horário de expediente, Windows 10/11 Pro ou Windows Server |
-| Rede | IP fixo no servidor, **ou** reserva de IP no DHCP do roteador (recomendado) |
+| Rede | Acesso pelo **nome do servidor** (§3) dispensa IP fixo; se preferir hosts/DNS, aí sim fixe o IP ou reserve no DHCP |
 | Nome da máquina | `NORMATECH` (renomear — ver §3) |
 | Disco | Projeto em pasta **local** (ex: `C:\NormaTech`) — **NUNCA** em pasta sincronizada (OneDrive, Google Drive, Dropbox) |
 | Python | 3.10+ instalado no servidor |
@@ -30,71 +30,114 @@
 #    Dados atuais: copie também a pasta data\ do PC de origem (banco + certificados emitidos)
 
 # 2. Ambiente virtual + dependências
+#    (requirements-web.txt é AUTO-SUFICIENTE — não precisa do requirements.txt,
+#     que é do app desktop e tem pins que podem não existir para Pythons novos)
 cd C:\NormaTech
 python -m venv .venv
 .venv\Scripts\python -m pip install --upgrade pip
-.venv\Scripts\pip install -r requirements.txt
-.venv\Scripts\pip install -r requirements-web.txt   # fastapi, waitress, jinja2, python-multipart, itsdangerous
+.venv\Scripts\pip install -r requirements-web.txt   # fastapi, uvicorn, jinja2, python-multipart, itsdangerous, openpyxl, argon2, reportlab, pillow, pymupdf, python-pptx, apscheduler...
 
 # 3. Primeiro teste manual (antes do serviço)
-.venv\Scripts\python run_web.py
+#    Dica: use --port 80 se quiser acessar por http://normatech (sem :8000).
+.venv\Scripts\python run_web.py --host 0.0.0.0 --port 8000
 # Deve subir em http://localhost:8000 — teste no próprio servidor.
 # 1º acesso: usuário admin com senha provisória → troque imediatamente.
 ```
 
-## 3. Nome da máquina (para acesso por `normatech:8000`)
+## 3. Nome na rede e porta
+
+**Boa notícia: não precisa de IP fixo.** O Windows anuncia o **nome do PC** na
+rede local (LLMNR/mDNS) — mesmo que o IP mude (DHCP), o nome continua
+resolvendo de qualquer máquina da rede. Basta que a rede do servidor esteja
+como perfil **Privado** (Configurações → Rede → propriedades da conexão).
+
+Na prática, se o servidor se chama `ALTEC-ENG`, o portal abre em
+`http://altecec-eng:8000` (ou `http://altecec-eng` com porta 80):
 
 ```powershell
-# Executar como administrador e reiniciar
+# Ver o nome atual do servidor
+hostname
+# Testar de OUTRA máquina da rede
+ping altec-eng
+```
+
+**Porta:** o jeito mais simples de acessar sem `:porta` na URL é o portal
+escutando na **porta 80** — configure `set PORT=80` no `INSTALAR_PORTAL.bat`
+(ou rode `INICIAR-PORTAL.bat 80` para teste manual). Se a porta 80 já estiver
+ocupada no servidor (IIS, HTTP.sys, Skype), mantenha 8000 e acesse por
+`http://nome-do-servidor:8000`.
+
+**Quer um endereço mais bonito?** Renomear o servidor resolve
+(opcional, uma vez só):
+
+```powershell
+# Executar como administrador no servidor e reiniciar
 Rename-Computer -NewName NORMATECH -Restart
 ```
 
-Depois de reiniciar, de outra máquina da rede teste:
+**Atalho "NormaTech"**: em cada máquina cliente, crie um atalho na Área de
+Trabalho apontando para `http://altecec-eng:8000` (botão direito → Novo →
+Atalho) — use o nome real do servidor e a porta escolhida.
 
-```powershell
-ping normatech
-```
+**Celulares/tabletes**: costumam resolver por mDNS — tente
+`http://altecec-eng.local:8000`.
 
-**Se o ping funcionar**, o portal já abre em `http://normatech:8000`.
-
-**Se não funcionar** (algumas redes não resolvem nomes por broadcast), escolha
-uma das alternativas, na ordem de preferência:
+**Se o nome não resolver** (redes corporativas bloqueiam anúncio de nomes),
+escolha uma das alternativas, na ordem de preferência:
 
 1. **Registro DNS no roteador** (se ele permitir): apontar o nome
-   `normatech` → IP fixo do servidor.
-2. **Arquivo hosts em cada máquina** (fallback simples, sem depender de
-   ninguém): abrir o Bloco de Notas **como administrador** e editar
+   → IP do servidor; e **fixar o IP** no servidor (reserva de DHCP).
+2. **Arquivo hosts em cada máquina** (exige IP fixo — senão quebra quando o
+   IP mudar): abrir o Bloco de Notas **como administrador** e editar
    `C:\Windows\System32\drivers\etc\hosts`, adicionando a linha:
 
    ```
-   192.168.0.50   normatech    # ← substitua pelo IP fixo do servidor
+   192.168.0.50   normatech    # ← substitua pelo IP do servidor
    ```
 
-> Com IP fixo/reservado no servidor, essa configuração é feita **uma vez por
-> máquina** e não precisa mais ser mexida.
+## 4. Início automático com o Windows
 
-## 4. Serviço do Windows (NSSM) — auto-start e auto-restart
+### Opção A — atalho na Inicializar (simples, recomendada)
+
+Rode **uma vez** na raiz do projeto:
+
+```
+INICIAR-COM-WINDOWS.bat
+```
+
+Ele cria o atalho "NormaTech Portal" na pasta *Inicializar* do Windows
+(`shell:startup`) apontando para o `INICIAR-PORTAL.bat` (janela minimizada)
+e libera a porta no firewall se executado como Administrador. O portal sobe
+sozinho quando o servidor ligar. **Desfazer:** apague o atalho em
+`shell:startup` (Windows+R → `shell:startup`).
+
+### Opção B — serviço do Windows (NSSM, avançada)
+
+Reinicia sozinho se o processo cair e roda sem nenhum usuário logado.
+Requer o NSSM (nssm.cc) em `tools\`:
 
 1. Baixe o NSSM (nssm.cc), copie `nssm.exe` para `C:\NormaTech\tools\`
 
 ```powershell
 # Executar PowerShell como administrador
-C:\NormaTech\tools\nssm.exe install NormaTechWeb "C:\NormaTech\.venv\Scripts\python.exe" "C:\NormaTech\run_web.py"
-C:\NormaTech\tools\nssm.exe set NormaTechWeb AppDirectory C:\NormaTech
-C:\NormaTech\tools\nssm.exe set NormaTechWeb AppStdout C:\NormaTech\logs\service-out.log
-C:\NormaTech\tools\nssm.exe set NormaTechWeb AppStderr C:\NormaTech\logs\service-err.log
-C:\NormaTech\tools\nssm.exe set NormaTechWeb AppRotateFiles 1
-C:\NormaTech\tools\nssm.exe start NormaTechWeb
+C:\NormaTech\tools\nssm.exe install NormaTechPortal "C:\NormaTech\.venv\Scripts\python.exe" "C:\NormaTech\run_web.py" --host 0.0.0.0 --port 80
+C:\NormaTech\tools\nssm.exe set NormaTechPortal AppDirectory C:\NormaTech
+C:\NormaTech\tools\nssm.exe set NormaTechPortal AppStdout C:\NormaTech\logs\service-out.log
+C:\NormaTech\tools\nssm.exe set NormaTechPortal AppStderr C:\NormaTech\logs\service-err.log
+C:\NormaTech\tools\nssm.exe set NormaTechPortal AppRotateFiles 1
+C:\NormaTech\tools\nssm.exe start NormaTechPortal
 ```
 
+(O script `deploy\web\INSTALAR_PORTAL.bat` faz tudo isso sozinho — inclusive
+venv, dependências e firewall — usando a porta da variável `PORT` no topo.)
 Comportamento obtido: inicia sozinho ao ligar o servidor e reinicia sozinho se
 o processo cair. Logs ficam em `C:\NormaTech\logs\`.
 
 ## 5. Firewall (permitir o acesso das outras máquinas)
 
 ```powershell
-# Executar como administrador no SERVIDOR
-netsh advfirewall firewall add rule name="NormaTech Web" dir=in action=allow protocol=TCP localport=8000
+# Executar como administrador no SERVIDOR (porta 80 ou a que você escolheu)
+netsh advfirewall firewall add rule name="NormaTech Web" dir=in action=allow protocol=TCP localport=80
 ```
 
 ## 6. Migração dos dados atuais
@@ -110,10 +153,10 @@ netsh advfirewall firewall add rule name="NormaTech Web" dir=in action=allow pro
 ## 7. Rotina de atualização do portal
 
 ```powershell
-C:\NormaTech\tools\nssm.exe stop NormaTechWeb
-# copiar/substituir os arquivos atualizados (src\, templates\, run_web.py, requirements*.txt)
-.venv\Scripts\pip install -r requirements.txt -r requirements-web.txt   # se mudou
-C:\NormaTech\tools\nssm.exe start NormaTechWeb
+C:\NormaTech\tools\nssm.exe stop NormaTechPortal
+# copiar/substituir os arquivos atualizados (src\, templates\, run_web.py, requirements-web.txt)
+.venv\Scripts\pip install -r requirements-web.txt   # se mudou
+C:\NormaTech\tools\nssm.exe start NormaTechPortal
 ```
 
 Downtime esperado: ~1 minuto.
@@ -122,9 +165,10 @@ Downtime esperado: ~1 minuto.
 
 | Sintoma | Causa provável / solução |
 |---------|--------------------------|
-| `http://normatech:8000` não abre de outra máquina | 1) `ping normatech` falhou? → ver §3 (DNS/hosts). 2) Regra de firewall aplicada no servidor? → ver §5. 3) Serviço está rodando? → `nssm status NormaTechWeb` |
+| `http://normatech` não abre de outra máquina | 1) `ping normatech` falhou? → ver §3 (DNS/hosts). 2) Regra de firewall aplicada no servidor? → ver §5. 3) Serviço está rodando? → `nssm status NormaTechPortal` |
+| Porta 80 ocupada no servidor | IIS/HTTP.sys/Skype usando a porta → desative ou volte para 8000 (`http://normatech:8000`); teste com `netstat -ano \| findstr :80` |
 | Página carrega mas dá erro 500 | Ver `logs\service-err.log`; `data\error.log` também registra erros da aplicação |
-| Porta 8000 ocupada no servidor | Outro app usa a porta → mudar `PORT` no `run_web.py` (ex: 8080) e atualizar a regra de firewall |
+| Porta 8000 ocupada no servidor | Outro app usa a porta → mudar `PORT` no `INSTALAR_PORTAL.bat` (ou o `--port` do comando) e atualizar a regra de firewall |
 | Serviço não inicia | Conferir caminhos no NSSM; rodar `run_web.py` manualmente para ver o erro real |
 | `database is locked` recorrente | Verificar se não há outro processo fora do servidor acessando o `.db` (ex: desktop em pasta compartilhada); no servidor isso não deve ocorrer |
 | Esqueceu a senha do admin | Recriar usuário via linha de comando utilitária (a definir na Fase 1: `run_web.py --reset-admin`) |
@@ -135,9 +179,9 @@ Downtime esperado: ~1 minuto.
 - [ ] Servidor renomeado para `NORMATECH` com IP fixo/reservado
 - [ ] Projeto em `C:\NormaTech`, fora de pasta sincronizada
 - [ ] `data\` migrado e conferido (funcionários + histórico + backups)
-- [ ] Serviço `NormaTechWeb` instalado e rodando (NSSM)
-- [ ] Firewall liberado na porta 8000
-- [ ] Acesso testado de **outra máquina** via `http://normatech:8000`
+- [ ] Serviço `NormaTechPortal` instalado e rodando (NSSM, porta escolhida em `PORT`) **ou** atalho na Inicializar (`INICIAR-COM-WINDOWS.bat`)
+- [ ] Firewall liberado na porta escolhida (80 para `http://normatech` sem `:porta`)
+- [ ] Acesso testado de **outra máquina** via `http://normatech` (ou `http://normatech:8000`)
 - [ ] Senha do admin trocada no primeiro login
 - [ ] Usuários criados com papéis (Emissor/Consulta) e senhas entregues
 - [ ] Backup manual executado e conferido
@@ -151,6 +195,8 @@ pip install -r requirements-web.txt
 python run_web.py
 ```
 
+- Atalho: `INICIAR-PORTAL.bat` na raiz (cria o .venv se faltar e sobe em
+  `0.0.0.0`; opcionalmente passe a porta: `INICIAR-PORTAL.bat 80`).
 - Abre em `http://127.0.0.1:8000` usando o MESMO `data\` do desktop (mesmo banco).
 - No 1o boot o usuario `admin` e criado com senha provisoria exibida no console
   (e gravada em `data\web_admin_provisorio.txt` — apague o arquivo depois de anotar).

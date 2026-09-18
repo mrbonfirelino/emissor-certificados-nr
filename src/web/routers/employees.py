@@ -11,11 +11,13 @@ from fastapi.responses import RedirectResponse, Response
 
 from src.core.employee_repo import EmployeeRepository
 from src.core.history_repo import HistoryRepository
+from src.utils.paths import get_data_dir
 from src.utils.validators import validar_cpf, validar_data, validar_telefone
 from src.web import auth
 from src.web.permissions import pode_escrever
 
 PER_PAGE = 20
+PER_OPCOES = (10, 20, 25, 50)
 MAX_FOTO = 50 * 1024 * 1024
 MAX_DOC = 50 * 1024 * 1024
 
@@ -111,49 +113,193 @@ def register(app, deps: dict):
         flash(request, erro="Seu papel é somente leitura neste módulo.")
         return RedirectResponse(url, status_code=303)
 
+    # ---------------- importação de fotos em massa (2.32.1) ----------------
+    _FOTO_EXTS = (".jpg", ".jpeg", ".png", ".bmp", ".webp")
+
+    def _dir_previews_fotos():
+        d = Path(get_data_dir()) / "tmp_importacoes"
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+
+    @app.get("/funcionarios/importar-fotos")
+    def importar_fotos_form(request: Request,
+                            user: dict = auth.require_permission("funcionarios")):
+        red = _bloqueio(request, user, "/funcionarios")
+        if red:
+            return red
+        return templates.TemplateResponse(
+            request=request, name="funcionarios_fotos.html",
+            context=ctx(request))
+
+    @app.post("/funcionarios/importar-fotos/confirmar")
+    async def importar_fotos_confirmar(request: Request,
+                                       user: dict = auth.require_permission("funcionarios")):
+        import json as _json
+        import shutil
+
+        from src.utils.photo_utils import process_photo_3x4
+
+        red = _bloqueio(request, user, "/funcionarios")
+        if red:
+            return red
+        form = await request.form()
+        token = (form.get("token") or "").strip()
+        if not token or "/" in token or "\\" in token:
+            flash(request, erro="Sessão de importação inválida — envie as fotos novamente.")
+            return RedirectResponse("/funcionarios/importar-fotos", status_code=303)
+        meta_path = _dir_previews_fotos() / f"{token}.json"
+        if not meta_path.exists():
+            flash(request, erro="Importação expirada — envie as fotos novamente.")
+            return RedirectResponse("/funcionarios/importar-fotos", status_code=303)
+        try:
+            meta = _json.loads(meta_path.read_text(encoding="utf-8"))
+        except Exception:
+            flash(request, erro="Importação inválida — envie as fotos novamente.")
+            return RedirectResponse("/funcionarios/importar-fotos", status_code=303)
+        er = EmployeeRepository()
+        aplicados, falhas = 0, []
+        for item in meta.get("casados", []):
+            if form.get(f"aplicar_{item['idx']}") != "on":
+                continue
+            caminho = Path(meta["pasta"]) / item["arquivo"]
+            try:
+                dados = process_photo_3x4(str(caminho))
+                er.update_foto(int(item["emp_id"]), bytes(dados))
+                aplicados += 1
+            except Exception:
+                falhas.append(item.get("nome") or item["arquivo"])
+        try:
+            shutil.rmtree(meta.get("pasta"), ignore_errors=True)
+        except Exception:
+            pass
+        meta_path.unlink(missing_ok=True)
+        if aplicados:
+            users.audit("importar-fotos", user["username"], "",
+                        f"fotos={aplicados}")
+        msg = f"{aplicados} foto(s) importada(s)."
+        if falhas:
+            msg += f" Falhas: {', '.join(falhas[:10])}."
+        flash(request, msg=msg)
+        return RedirectResponse("/funcionarios", status_code=303)
+
+    @app.post("/funcionarios/importar-fotos")
+    async def importar_fotos(request: Request,
+                             fotos: list[UploadFile] = File(None),
+                             user: dict = auth.require_permission("funcionarios")):
+        import json as _json
+        import secrets as _secrets
+        import shutil as _shutil
+        import tempfile as _tempfile
+
+        from src.utils.photo_importer import match_photos
+
+        red = _bloqueio(request, user, "/funcionarios")
+        if red:
+            return red
+        uploads = [f for f in (fotos or []) if f and f.filename]
+        if not uploads:
+            flash(request, erro="Selecione ao menos uma foto.")
+            return RedirectResponse("/funcionarios/importar-fotos", status_code=303)
+        pasta = Path(_tempfile.mkdtemp(prefix="fotos_"))
+        salvos = 0
+        for f in uploads:
+            ext = Path(f.filename).suffix.lower()
+            if ext not in _FOTO_EXTS:
+                continue
+            dados = await f.read()
+            if not dados or len(dados) > MAX_FOTO:
+                continue
+            destino = pasta / Path(f.filename).name
+            try:
+                destino.write_bytes(dados)
+                salvos += 1
+            except OSError:
+                continue
+        if not salvos:
+            _shutil.rmtree(pasta, ignore_errors=True)
+            flash(request, erro="Nenhuma foto válida (JPG/PNG/BMP/WEBP até 50MB).")
+            return RedirectResponse("/funcionarios/importar-fotos", status_code=303)
+        er = EmployeeRepository()
+        employees = er.get_all(limit=1_000_000)
+        casados, nao_casados = match_photos(employees, pasta)
+        if not casados:
+            _shutil.rmtree(pasta, ignore_errors=True)
+            msg = "Nenhuma foto casou com o cadastro."
+            if nao_casados:
+                nomes = ", ".join(p["path"].name for p in nao_casados[:10])
+                msg += f" Arquivos: {nomes}."
+            flash(request, erro=msg)
+            return RedirectResponse("/funcionarios/importar-fotos", status_code=303)
+        token = _secrets.token_urlsafe(16)
+        meta = {
+            "pasta": str(pasta),
+            "casados": [{"idx": i, "emp_id": c["employee"].id,
+                         "nome": c["employee"].nome,
+                         "arquivo": c["path"].name}
+                        for i, c in enumerate(casados)],
+            "nao": [{"arquivo": n["path"].name, "motivo": n["motivo"]}
+                    for n in nao_casados],
+        }
+        (_dir_previews_fotos() / f"{token}.json").write_text(
+            _json.dumps(meta, ensure_ascii=False), encoding="utf-8")
+        return templates.TemplateResponse(
+            request=request, name="funcionarios_fotos_confirma.html",
+            context=ctx(request, token=token, casados=casados,
+                        nao=nao_casados))
+
+    @app.get("/funcionarios/importar-fotos/preview/{token}/{idx}")
+    def importar_fotos_preview(token: str, idx: int):
+        import json as _json
+        if not token or "/" in token or "\\" in token:
+            return Response(status_code=404)
+        meta_path = _dir_previews_fotos() / f"{token}.json"
+        if not meta_path.exists():
+            return Response(status_code=404)
+        try:
+            meta = _json.loads(meta_path.read_text(encoding="utf-8"))
+        except Exception:
+            return Response(status_code=404)
+        for item in meta.get("casados", []):
+            if item["idx"] == idx:
+                caminho = Path(meta["pasta"]) / item["arquivo"]
+                if caminho.exists():
+                    ext = caminho.suffix.lower().lstrip(".")
+                    media = "image/jpeg" if ext in ("jpg", "jpeg") else (
+                        "image/png" if ext == "png" else "application/octet-stream")
+                    return Response(content=caminho.read_bytes(), media_type=media)
+                break
+        return Response(status_code=404)
+
     # ---------------- lista ----------------
     @app.get("/funcionarios")
-    def funcionarios(request: Request, busca: str = "", page: int = 1,
+    def funcionarios(request: Request, busca: str = "", page: int = 1, per: int = PER_PAGE,
                      user: dict = auth.require_permission("funcionarios")):
         er = EmployeeRepository()
         busca = (busca or "").strip()
+        per = per if per in PER_OPCOES else PER_PAGE
         todos = (er.search(busca, limit=1_000_000) if busca
                  else er.get_all(limit=1_000_000))
         total = len(todos)
         page = max(1, page)
-        paginas = max(1, (total + PER_PAGE - 1) // PER_PAGE)
+        paginas = max(1, (total + per - 1) // per)
         page = min(page, paginas)
-        fatia = todos[(page - 1) * PER_PAGE: page * PER_PAGE]
+        fatia = todos[(page - 1) * per: page * per]
+        params = []
+        if busca:
+            params.append(f"busca={busca}")
+        if per != PER_PAGE:
+            params.append(f"per={per}")
+        pg_base = "/funcionarios" + (("?" + "&".join(params)) if params else "")
         return templates.TemplateResponse(
             request=request, name="funcionarios.html",
             context=ctx(request, lista=fatia, total=total, page=page,
-                        paginas=paginas, busca=busca,
+                        paginas=paginas, pg_base=pg_base, busca=busca, per=per,
+                        per_opcoes=PER_OPCOES,
                         pode_escrever=pode_escrever(user["papel"], "funcionarios")))
-
-    # ---------------- ficha ----------------
-    @app.get("/funcionarios/{emp_id}")
-    def ficha(emp_id: int, request: Request,
-              user: dict = auth.require_permission("funcionarios")):
-        er = EmployeeRepository()
-        emp = er.get_by_id(emp_id)
-        if emp is None:
-            flash(request, erro="Funcionário não encontrado.")
-            return RedirectResponse("/funcionarios", status_code=303)
-        hr = HistoryRepository()
-        return templates.TemplateResponse(
-            request=request, name="funcionario_ficha.html",
-            context=ctx(request, emp=emp, docs=er.list_docs(emp_id),
-                        certificados=hr.get_by_employee(emp_id),
-                        pode_escrever=pode_escrever(user["papel"], "funcionarios")))
-
-    @app.get("/funcionarios/{emp_id}/foto")
-    def foto(emp_id: int):
-        emp = EmployeeRepository().get_by_id(emp_id)
-        if emp is None or not emp.foto:
-            return Response(status_code=404)
-        return Response(content=emp.foto, media_type=_mime_imagem(emp.foto))
 
     # ---------------- novo ----------------
+    # IMPORTANTE: declarado ANTES de /funcionarios/{emp_id} — o FastAPI casa
+    # rotas na ordem de declaração e "novo" seria capturado como emp_id.
     @app.get("/funcionarios/novo")
     def novo_form(request: Request,
                   user: dict = auth.require_permission("funcionarios")):
@@ -190,8 +336,38 @@ def register(app, deps: dict):
             registro_ctps=c["ctps"] or None, cnh_ear=c["ear"])
         if isinstance(foto_res, (bytes, bytearray)):
             er.update_foto(emp_id, bytes(foto_res))
+        users.audit("criar-funcionario", user["username"], c["nome"])
         flash(request, msg=f"Funcionário '{c['nome']}' cadastrado.")
         return RedirectResponse(f"/funcionarios/{emp_id}", status_code=303)
+
+    # ---------------- ficha ----------------
+    @app.get("/funcionarios/{emp_id}")
+    def ficha(emp_id: int, request: Request,
+              user: dict = auth.require_permission("funcionarios")):
+        er = EmployeeRepository()
+        emp = er.get_by_id(emp_id)
+        if emp is None:
+            flash(request, erro="Funcionário não encontrado.")
+            return RedirectResponse("/funcionarios", status_code=303)
+        hr = HistoryRepository()
+        try:
+            from src.core.epi_repo import EpiRepository
+            epi_count = len(EpiRepository().get_by_employee(emp_id))
+        except Exception:
+            epi_count = 0
+        return templates.TemplateResponse(
+            request=request, name="funcionario_ficha.html",
+            context=ctx(request, emp=emp, docs=er.list_docs(emp_id),
+                        certificados=hr.get_by_employee(emp_id),
+                        epi_count=epi_count,
+                        pode_escrever=pode_escrever(user["papel"], "funcionarios")))
+
+    @app.get("/funcionarios/{emp_id}/foto")
+    def foto(emp_id: int):
+        emp = EmployeeRepository().get_by_id(emp_id)
+        if emp is None or not emp.foto:
+            return Response(status_code=404)
+        return Response(content=emp.foto, media_type=_mime_imagem(emp.foto))
 
     # ---------------- editar ----------------
     @app.get("/funcionarios/{emp_id}/editar")

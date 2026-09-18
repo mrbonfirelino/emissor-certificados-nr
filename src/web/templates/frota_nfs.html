@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block titulo %}NFs do abastecimento {{ a.serial }} — NormaTech{% endblock %}
+{% block conteudo %}
+{% macro br(d) %}{% if d %}{{ d[8:10] }}/{{ d[5:7] }}/{{ d[0:4] }}{% else %}—{% endif %}{% endmacro %}
+<div class="card">
+  <a class="btn-voltar" href="/frota/abastecimentos">&larr; Voltar para Abastecimentos</a>
+  <h1>Notas fiscais — {{ a.serial }}</h1>
+  <p class="sub">{{ veiculo_rotulo }} · {{ data_br }} · {{ combustivel_label }}
+     {% if a.litros %} · {{ a.litros }} L{% endif %}{% if a.valor %} · {{ 'R$ %.2f' % a.valor }}{% endif %}</p>
+
+  {% if pode_escrever %}
+  <form method="post" action="/frota/abastecimentos/{{ a.id }}/valores" class="filtros" style="margin-bottom:16px; border:1px solid var(--borda); border-radius:8px; padding:10px;">
+    <div class="campo">
+      <label for="v-lit">Litros (completar depois)</label>
+      <input type="text" id="v-lit" name="litros" inputmode="decimal" value="{{ a.litros if a.litros is not none }}" placeholder="Ex: 42,7">
+    </div>
+    <div class="campo">
+      <label for="v-val">Valor em R$ (completar depois)</label>
+      <input type="text" id="v-val" name="valor" inputmode="decimal" value="{{ ('%.2f' % a.valor)|replace('.', ',') if a.valor is not none }}" placeholder="Ex: 289,50">
+    </div>
+    <div class="campo" style="align-self:end;">
+      <button type="submit" class="verde">Salvar valores</button>
+    </div>
+  </form>
+
+  <form method="post" action="/frota/abastecimentos/{{ a.id }}/nfs" enctype="multipart/form-data" class="filtros" style="margin-bottom:12px;">
+    <div class="campo">
+      <label for="n-num">Número da NF</label>
+      <input type="text" id="n-num" name="numero" placeholder="Ex: 10245">
+    </div>
+    <div class="campo">
+      <label for="n-data">Data da NF</label>
+      <input type="text" id="n-data" name="data_nf" placeholder="dd/mm/aaaa">
+    </div>
+    <div class="campo">
+      <label for="n-valor">Valor (R$)</label>
+      <input type="text" id="n-valor" name="valor_nf" inputmode="decimal" placeholder="Ex: 289,50">
+    </div>
+    <div class="campo">
+      <label for="n-arq">Arquivo * (PDF/JPG/PNG)</label>
+      <input type="file" id="n-arq" name="arquivo" accept=".pdf,.jpg,.jpeg,.png" required>
+    </div>
+    <button type="submit" class="verde">Anexar NF</button>
+  </form>
+  {% endif %}
+
+  <table>
+    <thead><tr><th>Número</th><th>Data</th><th>Valor</th><th>Arquivo</th><th>Enviada em</th><th></th></tr></thead>
+    <tbody>
+    {% for n in nfs %}
+      <tr>
+        <td>{{ n.numero or '—' }}</td>
+        <td>{{ br(n.data) }}</td>
+        <td>{{ 'R$ %.2f' % n.valor if n.valor is not none else '—' }}</td>
+        <td><a href="/frota/nfs/{{ n.id }}/download">{{ n.filename }}</a></td>
+        <td>{{ (n.created_at or '')[:10] }}</td>
+        <td class="acoes">
+          {% if pode_escrever %}
+          <form method="post" action="/frota/nfs/{{ n.id }}/excluir"
+                onsubmit="return confirm('Excluir esta NF?');">
+            <button type="submit" class="vermelho">Excluir</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6" class="muted">Nenhuma NF anexada a este abastecimento.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <details class="opcoes" style="margin-top:16px;">
+    <summary class="btn {{ 'verde' if assinado else 'cinza' }}">{{ 'Abastecimento assinado anexado' if assinado else 'Anexar abastecimento assinado (PDF/JPG/PNG)' }}</summary>
+    <div class="anexo-box">
+      {% if assinado %}
+      <p style="margin:0 0 8px 0;">
+        <a href="/frota/abastecimentos/{{ a.id }}/assinado/download">Baixar arquivo ({{ assinado.assinado_filename }})</a>
+      </p>
+      {% if pode_escrever %}
+      <form method="post" action="/frota/abastecimentos/{{ a.id }}/assinado/excluir"
+            onsubmit="return confirm('Remover o anexo assinado?');">
+        <button type="submit" class="vermelho">Remover anexo</button>
+      </form>
+      {% endif %}
+      {% endif %}
+      {% if pode_escrever %}
+      <form method="post" action="/frota/abastecimentos/{{ a.id }}/assinado" enctype="multipart/form-data" style="margin-top:8px;">
+        <label class="upload-area">
+          <input type="file" name="arquivo" accept=".pdf,.jpg,.jpeg,.png" required
+                 onchange="this.parentElement.querySelector('.arq-txt').textContent = this.files[0] ? this.files[0].name : 'Escolher arquivo (PDF, JPG ou PNG)';">
+          <span class="arq-txt">Escolher arquivo (PDF, JPG ou PNG)</span>
+        </label>
+        <button type="submit" class="verde">Anexar assinado</button>
+      </form>
+      {% endif %}
+    </div>
+  </details>
+</div>
+{% endblock %}

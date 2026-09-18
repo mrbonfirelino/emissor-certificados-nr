@@ -95,6 +95,30 @@ class UsersRepository:
                 "SELECT * FROM audit_log ORDER BY id DESC LIMIT ?", (limit,)
             ).fetchall()
 
+    def audit_page(self, q: str = "", limit: int = 20, offset: int = 0,
+                   data_de: str = None, data_ate: str = None) -> tuple:
+        """Busca paginada no audit_log. Retorna (rows, total)."""
+        conds, args = [], []
+        if (q or "").strip():
+            filtro = f"%{(q or '').strip().lower()}%"
+            conds.append("(lower(username) LIKE ? OR lower(acao) LIKE ?"
+                         " OR lower(alvo) LIKE ? OR lower(detalhe) LIKE ?)")
+            args += [filtro, filtro, filtro, filtro]
+        if data_de:
+            conds.append("substr(created_at,1,10) >= ?")
+            args.append(data_de)
+        if data_ate:
+            conds.append("substr(created_at,1,10) <= ?")
+            args.append(data_ate)
+        where = (" WHERE " + " AND ".join(conds)) if conds else ""
+        with self._get_conn() as conn:
+            total = conn.execute(
+                f"SELECT COUNT(*) FROM audit_log{where}", args).fetchone()[0]
+            rows = conn.execute(
+                f"SELECT * FROM audit_log{where} ORDER BY id DESC LIMIT ? OFFSET ?",
+                args + [limit, offset]).fetchall()
+        return rows, total
+
     # -- login / senha ---------------------------------------------------
     def get_by_username(self, username: str) -> Optional[sqlite3.Row]:
         username = (username or "").strip().lower()

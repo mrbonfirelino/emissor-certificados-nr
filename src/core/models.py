@@ -192,6 +192,9 @@ class CertificateData(BaseModel):
     campos_extra: Dict[str, str] = {}
     conteudo_programatico: List[str] = []
     assinaturas: List[Dict[str, Any]] = []
+    # texto opcional (ex.: "17/09/2026 14:32") impresso junto ao numero do
+    # certificado quando a opcao esta ativa em Configuracoes
+    data_hora_impressao: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
         meses_pt = {

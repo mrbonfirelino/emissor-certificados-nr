@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block titulo %}Backup — NormaTech{% endblock %}
+
+{% block conteudo %}
+<div class="linha-botoes" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+  <h1 style="margin:0;">Backup</h1>
+  <form method="post" action="/backup/criar">
+    <button type="submit" class="btn verde">Fazer backup agora</button>
+  </form>
+</div>
+
+{% if msg %}<p class="msg">{{ msg }}</p>{% endif %}
+{% if erro %}<p class="erro">{{ erro }}</p>{% endif %}
+
+<div class="card">
+  <p class="muted">
+    {{ total }} backup(s) encontrados. Os backups automáticos seguem a
+    configuração da aba <a href="/configuracoes">Configurações</a>.
+    Para restaurar, use o app desktop ou substitua o arquivo do banco
+    manualmente (portal desligado).
+  </p>
+  {% if itens %}
+  <table>
+    <tr><th>Arquivo</th><th>Tamanho</th><th>Data</th><th></th></tr>
+    {% for b in itens %}
+    <tr>
+      <td>{{ b.nome }}</td>
+      <td>{{ b.tam_kb }} KB</td>
+      <td>{{ b.quando }}</td>
+      <td><a class="btn cinza" href="/backup/{{ b.nome }}/download">Baixar</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% with paginas = paginas %}{% include "_paginacao.html" %}{% endwith %}
+  {% else %}
+  <p class="muted">Nenhum backup ainda — clique em "Fazer backup agora".</p>
+  {% endif %}
+</div>
+{% endblock %}

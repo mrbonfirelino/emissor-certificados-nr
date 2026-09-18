@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block titulo %}Listas de Presença — NormaTech{% endblock %}
+{% block conteudo %}
+<div class="card">
+  <h1>Listas de Presença</h1>
+  <p class="sub">{{ total }} lista(s). Controles: <span class="badge b-amarelo">{{ pend }} pendente(s)</span> <span class="badge b-azul">{{ parcial }} parcial(is)</span> <span class="badge b-verde">{{ assinadas }} assinada(s)</span></p>
+
+  {% if pode_escrever %}
+  <p class="linha-botoes">
+    <a class="btn verde" href="/presencas/nova">+ Nova lista</a>
+  </p>
+  {% endif %}
+
+  <form method="get" action="/presencas" class="filtros" style="margin-bottom:12px;">
+    <div class="campo">
+      <label for="busca">Buscar</label>
+      <input type="text" id="busca" name="busca" value="{{ busca }}" placeholder="Serial, NR ou assunto...">
+    </div>
+    <button type="submit">Buscar</button>
+    {% if busca %}<a class="btn cinza" href="/presencas">Limpar</a>{% endif %}
+  </form>
+
+  <form class="filtros" style="margin-bottom:12px;" onsubmit="if(this.cd.value){window.location='/presencas/compilado/'+this.cd.value;} return false;">
+    <div class="campo">
+      <label for="cd">Baixar compilado de um dia (PDF &uacute;nico)</label>
+      <input type="date" id="cd" required>
+    </div>
+    <button type="submit" class="cinza">Baixar compilado</button>
+  </form>
+
+  <table>
+    <thead><tr><th>Serial</th><th>NR</th><th>Data referente</th><th>Participantes</th><th>Carga</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for it in itens %}
+      <tr>
+        <td><a href="/presencas/{{ it.id }}" style="color:var(--azul); font-weight:600;">{{ it.serial }}</a></td>
+        <td>{{ it.nr_code }}</td>
+        <td>{{ it.data_br }}</td>
+        <td>{{ it.participantes | length }}</td>
+        <td>{{ '%g' % it.carga_horaria }}h</td>
+        <td><span class="badge {{ it.status_classe }}">{{ it.status_label }}</span></td>
+        <td><a href="/presencas/{{ it.id }}">Ver</a></td>
+      </tr>
+    {% else %}
+      <tr><td colspan="7" class="muted">Nenhuma lista encontrada.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  {% with paginas = paginas %}{% include "_paginacao.html" %}{% endwith %}
+</div>
+{% endblock %}

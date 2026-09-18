@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block titulo %}Frota — NormaTech{% endblock %}
+{% block conteudo %}
+<div class="card">
+  <h1>Frota</h1>
+  <p class="sub">{{ total }} veículo(s) cadastrado(s).</p>
+
+  {% if pode_escrever %}
+  <p class="linha-botoes">
+    <a class="btn verde" href="/frota/novo">+ Novo veículo</a>
+    <a class="btn" href="/frota/abastecimentos">Abastecimentos</a>
+    <a class="btn cinza" href="/frota/empresas">Empresas de veículos</a>
+    <a class="btn cinza" href="/frota/fornecedores">Fornecedores</a>
+    <a class="btn cinza" href="/frota/exportar">Exportar Excel</a>
+  </p>
+  <form method="post" action="/frota/importar" enctype="multipart/form-data" class="filtros" style="margin-bottom:12px;">
+    <div class="campo">
+      <label>Importar veículos (Excel)</label>
+      <input type="file" name="arquivo" accept=".xlsx" required>
+    </div>
+    <button type="submit" class="verde">Importar</button>
+    <a class="muted" href="/importacoes/modelo/veiculos">baixar modelo</a>
+  </form>
+  {% endif %}
+
+  <form method="get" action="/frota" class="filtros" style="margin-bottom:12px;">
+    <div class="campo">
+      <label for="busca">Buscar</label>
+      <input type="text" id="busca" name="busca" value="{{ busca }}" placeholder="Modelo, marca, placa ou empresa...">
+    </div>
+    <div class="campo">
+      <label for="per">Por página</label>
+      <select id="per" name="per" onchange="this.form.submit();">
+        {% for p in per_opcoes %}<option value="{{ p }}" {{ 'selected' if p == per }}>{{ p }}</option>{% endfor %}
+      </select>
+    </div>
+    <button type="submit">Buscar</button>
+    {% if busca %}<a class="btn cinza" href="/frota">Limpar</a>{% endif %}
+  </form>
+
+  <div style="max-height:560px; overflow-y:auto;">
+  <table>
+    <thead><tr><th></th><th>Veículo</th><th>Tipo</th><th>Status</th><th>Motorista</th><th>Destino</th><th>Possse</th><th>Empresa</th></tr></thead>
+    <tbody>
+    {% for v in veiculos %}
+      <tr>
+        <td>{% if v.tem_foto %}<img src="/frota/{{ v.id }}/foto" alt="" style="width:44px; height:33px; object-fit:cover; border-radius:4px; border:1px solid #ccc;">{% else %}<span class="muted">—</span>{% endif %}</td>
+        <td><a href="/frota/{{ v.id }}" style="color:var(--azul); font-weight:600;">{% if v.placa %}{{ v.placa }} - {% endif %}{{ v.marca }} {{ v.modelo }}</a></td>
+        <td>{{ v.tipo_label }}{% if v.sub_label %} <span class="muted">({{ v.sub_label }})</span>{% endif %}</td>
+        <td><span class="badge {{ v.status_classe }}">{{ v.status_label }}</span></td>
+        <td>{{ v.motorista_atual or '—' }}</td>
+        <td>{{ v.destino_atual or '—' }}</td>
+        <td>{{ v.possse }}</td>
+        <td>{{ v.empresa_nome or '—' }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="8" class="muted">Nenhum veículo encontrado.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+
+  {% with paginas = paginas %}{% include "_paginacao.html" %}{% endwith %}
+</div>
+{% endblock %}

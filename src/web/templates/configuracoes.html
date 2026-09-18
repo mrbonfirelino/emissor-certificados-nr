@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block titulo %}Configurações — NormaTech{% endblock %}
+{% block conteudo %}
+{% set v_empresa = form.empresa if form else (cfg.empresa_nome if cfg else '') %}
+{% set v_cnpj = form.cnpj if form else (cfg.empresa_cnpj if cfg else '') %}
+{% set v_local = form.local if form else (cfg.local_treinamento if cfg else '') %}
+{% set v_instrutor = form.instrutor if form else (cfg.instrutor_nome if cfg else '') %}
+{% set v_registro = form.registro if form else (cfg.instrutor_registro_mte if cfg else '') %}
+{% set chk_duplo = form.backup_duplo if form else s.get('backup_duplo', true) %}
+{% set chk_rede = form.backup_rede if form else s.get('backup_rede_ativo', true) %}
+{% set v_backup_caminho = form.backup_rede_caminho if form else (s.get('backup_rede_caminho') or '') %}
+{% set chk_docs = form.rede_docs if form else s.get('rede_documentos_ativo', false) %}
+{% set v_docs_caminho = form.rede_docs_caminho if form else (s.get('rede_documentos_caminho') or '') %}
+{% set chk_task = form.tarefa_ativa if form else s.get('tarefa_agendada_ativo', false) %}
+{% set v_task_hora = form.tarefa_hora if form else (s.get('tarefa_agendada_hora') or '12:00') %}
+{% set v_intervalo = form.backup_intervalo if form else s.get('backup_intervalo_min', 15) %}
+
+<h1>Configurações</h1>
+<p class="sub">Mesmas opções do NormaTech Desktop — dados que saem nos certificados, backups e diagnósticos.</p>
+
+<form method="post" action="/configuracoes/salvar">
+  <details class="opcoes" open>
+    <summary>Dados da Empresa</summary>
+    <div class="form-grid">
+      <div class="campo"><label>Nome da Empresa *</label>
+        <input name="empresa" value="{{ v_empresa }}" required></div>
+      <div class="campo"><label>CNPJ *</label>
+        <input name="cnpj" id="i-cnpj" value="{{ v_cnpj }}" placeholder="00.000.000/0000-00" required
+               oninput="fmtCnpj(this)"></div>
+      <div class="campo"><label>Local do Treinamento *</label>
+        <input name="local" value="{{ v_local }}" required></div>
+      <div class="campo"><label>Instrutor Responsável *</label>
+        <input name="instrutor" value="{{ v_instrutor }}" required></div>
+      <div class="campo"><label>Registro MTE do Instrutor *</label>
+        <input name="registro" id="i-mte" value="{{ v_registro }}" placeholder="44633/RJ" required
+               oninput="fmtMte(this)"></div>
+    </div>
+  </details>
+
+  <details class="opcoes">
+    <summary>Segurança</summary>
+    <p class="muted">Senha necessária para restaurar backups. Guarde em local seguro.
+      {% if tem_senha %}<span class="badge b-verde">Senha de restauração já configurada</span>
+      {% else %}<span class="badge b-amarelo">Senha de restauração NÃO configurada</span>{% endif %}</p>
+    <div class="form-grid">
+      <div class="campo"><label>Nova senha de restauração (opcional)</label>
+        <input type="password" name="senha_restore" autocomplete="new-password"></div>
+      <div class="campo"><label>Confirmar senha</label>
+        <input type="password" name="senha_confirm" autocomplete="new-password"></div>
+    </div>
+  </details>
+
+  <details class="opcoes">
+    <summary>Backups</summary>
+    <p class="muted">Backup periódico enquanto o servidor estiver rodando (além do semanal).</p>
+    <div class="form-grid">
+      <div class="campo"><label>Intervalo (minutos)</label>
+        <input type="number" name="backup_intervalo" value="{{ v_intervalo }}" min="1" max="720"></div>
+    </div>
+    <div class="campo"><label><input type="checkbox" name="backup_duplo" value="1" style="width:auto"
+      {% if chk_duplo %}checked{% endif %}> Backup externo (cópias em Documentos\NormaTech-Backup e C:\NormaTech-Backup)</label></div>
+    <div class="campo"><label><input type="checkbox" name="backup_rede" value="1" style="width:auto"
+      {% if chk_rede %}checked{% endif %}> Backup em rede (drive mapeado — pula com aviso se o drive estiver fora)</label></div>
+    <div class="campo"><label>Caminho na rede</label>
+      <input name="backup_rede_caminho" value="{{ v_backup_caminho }}"></div>
+    <div class="campo"><label><input type="checkbox" name="tarefa_ativa" value="1" style="width:auto"
+      {% if chk_task %}checked{% endif %}> Tarefa Agendada do Windows (backup diário com o portal fechado)</label></div>
+    <div class="form-grid">
+      <div class="campo"><label>Horário (HH:MM)</label>
+        <input name="tarefa_hora" value="{{ v_task_hora }}" placeholder="12:00"></div>
+      <div class="campo"><label>Status</label>
+        {% if task_ativa %}<span class="badge b-verde">Tarefa ativa — backup diário</span>
+        {% else %}<span class="badge b-cinza">Tarefa inativa</span>{% endif %}</div>
+    </div>
+  </details>
+
+  <details class="opcoes">
+    <summary>Documentos em Rede</summary>
+    <p class="muted">Cópia de certificados, cartões, assinados e outros documentos em pastas por funcionário.
+       Estrutura: {Funcionário}/Certificados/{NR} (vencidos em 00_Certificados_OLD), Cartões, Certificados Assinados e Outros;
+       lotes em Cartoes_Gerais.</p>
+    <div class="campo"><label><input type="checkbox" name="rede_docs" value="1" style="width:auto"
+      {% if chk_docs %}checked{% endif %}> Salvar cópia dos documentos em pasta de rede</label></div>
+    <div class="campo"><label>Caminho na rede</label>
+      <input name="rede_docs_caminho" value="{{ v_docs_caminho }}"></div>
+    <button type="submit" class="btn cinza" form="f-sync">Sincronizar Agora</button>
+  </details>
+
+  <details class="opcoes">
+    <summary>Certificados</summary>
+    <div class="campo"><label><input type="checkbox" name="pdf_data_hora" value="1" style="width:auto"
+      {% if (form.pdf_data_hora if form else s.get('pdf_data_hora_emissao', false)) %}checked{% endif %}>
+      Imprimir data e hora da emissão no PDF (pequeno, junto ao número do certificado)</label></div>
+  </details>
+
+  <details class="opcoes">
+    <summary>Diagnóstico — Log de Erros</summary>
+    <p class="muted">Últimos erros capturados (data/error.log).</p>
+    <pre class="log-box">{{ log_tail or 'Nenhum erro registrado.' }}</pre>
+    <div class="linha-botoes">
+      <a class="btn cinza" href="/configuracoes">Atualizar</a>
+      <a class="btn cinza" href="/configuracoes/log/download">Baixar log</a>
+      <button type="submit" class="btn vermelho" form="f-log">Limpar</button>
+    </div>
+  </details>
+
+  <div class="linha-botoes">
+    <button type="submit" class="btn verde">Salvar Configuração</button>
+    <a class="btn cinza" href="/">Cancelar</a>
+  </div>
+</form>
+
+<form id="f-sync" method="post" action="/configuracoes/sincronizar"></form>
+<form id="f-log" method="post" action="/configuracoes/log/limpar"></form>
+
+<script>
+function fmtCnpj(i) {
+  var d = i.value.replace(/\D/g, "").slice(0, 14), f = d;
+  if (d.length > 12) f = d.slice(0,2)+"."+d.slice(2,5)+"."+d.slice(5,8)+"/"+d.slice(8,12)+"-"+d.slice(12);
+  else if (d.length > 8) f = d.slice(0,2)+"."+d.slice(2,5)+"."+d.slice(5,8)+"/"+d.slice(8);
+  else if (d.length > 5) f = d.slice(0,2)+"."+d.slice(2,5)+"."+d.slice(5);
+  else if (d.length > 2) f = d.slice(0,2)+"."+d.slice(2);
+  i.value = f;
+}
+function fmtMte(i) {
+  var m = i.value.toUpperCase().match(/(?:MTE\s*)?(\d{1,6})\s*\/?\s*([A-Z]{2})/);
+  if (m) i.value = "MTE " + m[1] + "/" + m[2];
+}
+</script>
+{% endblock %}

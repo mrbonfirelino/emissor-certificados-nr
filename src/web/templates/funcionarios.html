@@ -5,12 +5,19 @@
   <h1>Funcionários</h1>
   <p class="sub">{{ total }} funcionário(s) no banco de dados.</p>
 
-  {% if pode_escrever %}<p><a class="btn verde" href="/funcionarios/novo">+ Novo funcionário</a></p>{% endif %}
+  {% if pode_escrever %}<p><a class="btn verde" href="/funcionarios/novo">+ Novo funcionário</a>
+  <a class="btn" href="/funcionarios/importar-fotos">Importar Fotos</a></p>{% endif %}
 
   <form method="get" action="/funcionarios" class="filtros" style="margin-bottom:12px;">
     <div class="campo">
       <label for="busca">Buscar</label>
       <input type="text" id="busca" name="busca" value="{{ busca }}" placeholder="Nome ou CPF...">
+    </div>
+    <div class="campo">
+      <label for="per">Ver por página</label>
+      <select id="per" name="per" onchange="this.form.submit()" style="max-width:90px;">
+        {% for op in per_opcoes %}<option value="{{ op }}" {{ 'selected' if op == per else '' }}>{{ op }}</option>{% endfor %}
+      </select>
     </div>
     <button type="submit">Buscar</button>
     {% if busca %}<a class="btn cinza" href="/funcionarios">Limpar</a>{% endif %}
@@ -33,12 +40,6 @@
     </tbody>
   </table>
 
-  {% if paginas > 1 %}
-  <div class="paginacao">
-    {% if page > 1 %}<a href="?busca={{ busca }}&page={{ page - 1 }}">&laquo; Anterior</a>{% endif %}
-    <span class="atual">Página {{ page }} de {{ paginas }}</span>
-    {% if page < paginas %}<a href="?busca={{ busca }}&page={{ page + 1 }}">Próxima &raquo;</a>{% endif %}
-  </div>
-  {% endif %}
+  {% include "_paginacao.html" %}
 </div>
 {% endblock %}

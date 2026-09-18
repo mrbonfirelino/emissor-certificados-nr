@@ -120,6 +120,7 @@ def register(app, deps: dict):
             numero = max(todos, key=lambda r: r.id).cert_number
         except Exception:
             numero = None
+        users.audit("emitir-certificado", user["username"], nr, "1 certificado(s)")
         flash(request, msg=f"Certificado {numero or ''} emitido para {emp.nome}.")
         return RedirectResponse(f"/certificados/{numero}", status_code=303) \
             if numero else RedirectResponse("/historico", status_code=303)

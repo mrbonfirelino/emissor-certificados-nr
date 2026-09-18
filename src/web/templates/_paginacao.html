@@ -1,0 +1,16 @@
+{% if paginas > 1 %}
+{% set sep = '&' if '?' in pg_base else '?' %}
+<div class="paginacao">
+  {% if page > 1 %}<a href="{{ pg_base }}{{ sep }}page={{ page - 1 }}">&laquo;</a>{% endif %}
+  <span class="atual">Página {{ page }} de {{ paginas }}</span>
+  {% set inicio = [1, page - 2] | max %}
+  {% set fim = [paginas, page + 2] | min %}
+  {% if inicio > 1 %}<a href="{{ pg_base }}{{ sep }}page=1">1</a>{% if inicio > 2 %}<span class="reticencias">…</span>{% endif %}{% endif %}
+  {% for p in range(inicio, fim + 1) %}
+    {% if p == page %}<a class="pg-atual" href="{{ pg_base }}{{ sep }}page={{ p }}">{{ p }}</a>
+    {% else %}<a href="{{ pg_base }}{{ sep }}page={{ p }}">{{ p }}</a>{% endif %}
+  {% endfor %}
+  {% if fim < paginas %}{% if fim < paginas - 1 %}<span class="reticencias">…</span>{% endif %}<a href="{{ pg_base }}{{ sep }}page={{ paginas }}">{{ paginas }}</a>{% endif %}
+  {% if page < paginas %}<a href="{{ pg_base }}{{ sep }}page={{ page + 1 }}">&raquo;</a>{% endif %}
+</div>
+{% endif %}

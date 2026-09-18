@@ -1,3 +1,471 @@
+## [1.45.0] - 2026-09-17
+
+### Adicionado
+- **Portal — barra de progresso real (ROADMAP 2.32.1)**: emissão em lote e
+  importações (funcionários, certificados, ASOs, cartões) rodam em job de
+  fundo com barra de percentual, contador i/total e item atual; o navegador
+  consulta o status a cada 500 ms (/jobs/{id}). Chamadas sem JavaScript
+  continuam funcionando no modo síncrono anterior.
+- **Portal — importar fotos dos funcionários (ROADMAP 2.32.1)**: botão
+  “Importar Fotos” na página de Funcionários. Aceita vários arquivos
+  (JPG/PNG/BMP/WEBP até 50 MB), casa pelo CPF (11 dígitos no nome do
+  arquivo) ou nome exato, mostra prévia com foto nova x atual, marca
+  “SUBSTITUIR/adicionar” e só grava o que for confirmado.
+- **Portal — menu renomeado (ROADMAP 2.31.4)**: grupo “Cadastros” passou a
+  se chamar “Funcionários” e o item interno “Funcionários” passou a se
+  chamar “Cadastros” (troca literal de interface).
+
+### Alterado
+- **Dashboard — animação de contagem em ~2 segundos** (antes 0,8 s).
+- **Solicitação de Abastecimento — aprovação sem nome (ROADMAP 2.32.2)**:
+  o PDF não imprime mais o nome do aprovador — fica apenas a linha de
+  assinatura com “Aprovado” embaixo. O campo “Aprovação (superior)” saiu
+  do formulário e da validação; a coluna “Superior” saiu da exportação
+  Excel (coluna segue no banco, ignorada).
+- Corrigida a codificação (mojibake) do formulário de checklist semanal.
+
+## [1.44.0] - 2026-09-17
+
+### Adicionado
+- **Frota — status do veículo derivado automaticamente** (ROADMAP 2.31):
+  lista com badge Em Viagem (saída aberta), Em Manutenção (manutenção
+  urgente), Indisponível (manutenção vencida ou alugado com contrato
+  vencido) e Disponível; colunas Motorista e Destino da viagem atual.
+- **Frota — lista simplificada**: coluna Veículo mostra "PLACA - Marca
+  Modelo" (colunas Placa e Ano/Cor removidas) e a tabela ganhou barra de
+  rolagem própria (não estica a página).
+- **Frota — máscara de data/hora** (dd/mm/aaaa e HH:MM) nos campos de
+  saída/entrada de movimentações.
+- **Frota — checklist em branco pré-preenchido**: botão na ficha gera o PDF
+  do checklist semanal com veículo, placa, KM atual e data já preenchidos
+  para imprimir, preencher à mão, assinar e anexar de volta (registro criado
+  com serial CKL).
+- **Frota — abastecimento assinado**: anexar foto/PDF do abastecimento
+  assinado na tela de NFs (upload, download e exclusão).
+- **Menu reorganizado**: grupo "Segurança" (Certificados, Emissão em Lote,
+  Histórico, Listas de Presença, Ficha de EPIs, Crachás, Cartões,
+  Vencimentos), grupo "Cadastros" (Funcionários, ASO, Integrações) e botão
+  dedicado "Gestão de Frota" no topo do menu.
+- **Dashboard**: atalho Vencimentos, contagem animada nos cards e barra de
+  rolagem no card de aniversariantes do mês.
+
+## [1.43.0] - 2026-09-17
+
+### Corrigido
+- **Portal — importação de certificados em lote voltou a funcionar com planilhas grandes**:
+  a prévia era guardada na sessão (cookie) e, com ~40 linhas ou mais, o cookie
+  estourava o limite de 4 KB dos navegadores e era descartado — ao clicar em
+  "Emitir", o servidor não encontrava a prévia e mostrava "Nenhuma prévia
+  pendente — envie a planilha novamente.". Agora a prévia é gravada em
+  `data/tmp_importacoes/{token}.json` (a sessão guarda só o token) e o arquivo
+  é apagado após a emissão; órfãos com mais de 24h são limpos automaticamente.
+- **Listas de presença NR-01 com carga quebrada**: a carga horária chega do
+  banco como número decimal (8.0) e o formato `{n:02d}HS` do modelo não aceita
+  decimal ("Unknown format code 'd'"). Agora o valor é convertido para inteiro
+  quando não tem parte fracionária antes de formatar (E4 = "08HS").
+
+### Adicionado
+- **Usuários — "Definir senha"**: o admin pode definir uma senha específica
+  para um usuário (mínimo 6 caracteres), sem depender da senha provisória
+  aleatória (Ações → Definir senha).
+- **Certificados — data e hora da emissão no PDF (opcional)**: nova opção em
+  Configurações → Certificados ("Incluir data e hora da emissão no PDF").
+  Quando ativa, imprime `dd/mm/aaaa HH:MM` pequeno junto ao número do
+  certificado (CERT-XXXXXX • dd/mm/aaaa HH:MM). Vale para os PDFs JSON/ReportLab
+  e para os modelos PPTX da técnica.
+- **Abastecimento — propriedade do veículo na solicitação**: o PDF agora indica
+  "— Próprio" ou "— Alugado (contratante: X)" ao lado do veículo.
+
+## [1.42.0] - 2026-09-17
+
+### Adicionado (ROADMAP 2.29.7 — Frota)
+- **Importar/Exportar veículos** (Excel): botões na lista de Frota; modelo
+  `MODELO VEICULOS.xlsx` disponível para download; empresa inexistente é
+  criada automaticamente; erros são por linha.
+- **Motorista/Condutor por lista de funcionários ou "Outro"** nos formulários
+  de movimentação e abastecimento.
+- **Checklist assinado de volta**: anexar ao checklist o PDF/foto assinado
+  (download e remoção pelo mesmo ponto).
+- **Conflito de movimentações**: com uma saída aberta, novas saídas são
+  bloqueadas até registrar a entrada.
+- **Tags nos documentos do veículo**: Manutenção (Nota Fiscal), Documento,
+  Abastecimento, Outros.
+- **Valor e Litros opcionais**: podem ficar em branco na emissão e ser
+  completados depois na tela de NFs (custo/KM-L continuam funcionando).
+- **Combustível por tipo**: Arla/Diesel/Arla+Diesel bloqueados para carros
+  (no servidor e no formulário).
+- **Abastecimento a partir da ficha**: botão leva ao formulário com o
+  veículo pré-preenchido (botão em tom amarelo).
+- **"Ver por página"** na lista de veículos e de abastecimentos
+  (10/20/25/50).
+
+### Adicionado (ROADMAP 2.30)
+- **Notificações pop** (lateral direita, auto-fecha) substituindo os banners
+  de mensagem.
+- **Menu em grupos** no header (Certificados, Cadastros, Controle, Sistema).
+- **Pop-up de progresso** durante emissões/gerações (overlay com spinner em
+  todo POST do portal).
+- **Auditoria**: busca por data (de/até), linhas por página (10/20/30/50) e
+  coluna "Ação" truncada com tooltip.
+- **Download do log de erros** e **download de backups** pelo admin
+  (com proteção anti-traversal).
+- **Card "Vencem em 8 a 15 dias"** em Vencimentos (com filtro dedicado).
+
+### Alterado
+- Datas/horas de movimentação no formato `17/09/2026, 07:00`; KM com ponto
+  de milhar (ex.: 100.000) na ficha do veículo.
+- Seções da ficha do veículo viraram **abas retráteis** (Documentos, Laudos,
+  Movimentações, Abastecimentos, Custo, Checklist, Manutenções).
+- Popover da foto do veículo abre para dentro da tela.
+- CI: workflow `.github/workflows/tests.yml` (unitário + portal); ROADMAP
+  2.12 fechado (CI concluído; Multiusuário/GPU superados pelo Portal Web).
+
+## [1.41.0] - 2026-09-16
+
+### Alterado
+- **Listas de Presença** (ajustes de layout pedidos após testes):
+  - Campo **empresa** (ao lado do nome) sempre preenchido com
+    `ALTEC INDUSTRIAL` — modelos e layout padrão.
+  - PDFs sempre em **folha vertical** (paisagem não ficou bom).
+  - **Serial da lista** gravado na célula `{SERIAL}` do modelo e
+    **paginação** (`Pag X de Y`) na célula `{PAGINACAO}`.
+  - **Muitos participantes**: o mesmo modelo é preenchido em folhas
+    separadas (vagas do registry; 20 no padrão) com `Pag 1 de N`,
+    `Pag 2 de N`… e os PDFs são mesclados em um único arquivo.
+  - Logo do modelo não é mais reinserida (vinha duplicada: o openpyxl
+    preserva a imagem embutida do XLSX; o layout padrão continua com logo).
+
+## [1.40.0] - 2026-09-16
+
+### Corrigido
+- **Conteúdo programático das listas de presença não é mais alterado**: o
+  gerador reescrevia o número de horas dentro do texto do template
+  (ex.: "CONTEÚDO PROGRAMÁTICO — 03 HORAS") com a carga da emissão. O texto
+  do modelo fica intacto agora (mesma regra dos certificados PPTX). A célula
+  dedicada de carga da NR-01 continua sendo preenchida normalmente.
+- **Compilado de listas usa só as listas da emissão**: o dialog pós-emissão
+  agora baixa um PDF com exatamente as listas geradas naquele momento
+  (link com `?ids=...`), e não mais tudo do dia — emissões anteriores no
+  mesmo dia não vazam para dentro. O mini-form "Baixar compilado de um dia"
+  da listagem continua gerando o dia completo.
+- Regressão coberta por testes: PDFs sem rastro de `comtypes` (texto de
+  versões antigas), sem abas de outras NRs e com a carga original
+  preservada.
+
+## [1.39.0] - 2026-09-16## [1.39.0] - 2026-09-16
+
+### Corrigido
+- **Portal — Listas de Presença: preenchimento deixou de usar o Excel COM**.
+  Na máquina do servidor, a escrita via COM não persistia (mesma classe do
+  bug de binding já corrigido) e as listas saíam com campos vazios ou com os
+  dados de exemplo do template. Agora o preenchimento é 100% openpyxl
+  (determinístico): edita data, carga e participantes, **limpa as vagas não
+  utilizadas** (exemplos do template somem) e o Excel é usado apenas para a
+  conversão final em PDF.
+- **Folhas em branco no PDF**: área de impressão explícita (`print_area`) +
+  ajuste de largura + paisagem + grade nos modelos preenchidos e no layout
+  padrão — sem páginas vazias.
+- **Popup do compilado não fechava**: "Baixar compilado" agora fecha o
+  diálogo e volta para a listagem (download continua em paralelo).
+- A logo do modelo XLSX é extraída do arquivo original e reancorada na
+  posição lida do XML do template (openpyxl perde imagens ao re-salvar).
+
+## [1.38.1] - 2026-09-16
+
+### Corrigido
+- **Portal — Listas de Presença: dados do sistema não apareciam nas listas
+  (NRs com modelo)**: o preenchimento via Excel alterava o arquivo na
+  memória, mas o fechamento descartava as alterações (`Close` sem salvar) —
+  o PDF saía com o modelo em branco, sem data nem colaboradores. Agora o
+  workbook é salvo antes de fechar. A data impressa é a data referente
+  escolhida na emissão (o dia em que os certificados foram emitidos).
+
+## [1.38.0] - 2026-09-15
+
+### Corrigido
+- **Portal — Listas de Presença: geração dos modelos NR-01/06/12/18/35 voltou a
+  funcionar**: dois problemas de COM no servidor, só no preenchimento do
+  modelo Excel (o layout padrão, como Brigadista, não passa por ele):
+  1. `CreateObject` sem `CoInitialize` nas threads do servidor ("CoInitialize
+     não foi chamado") — agora Excel COM é iniciado por um helper único
+     (`_excel_app`), usado no preenchimento e na conversão para PDF.
+  2. Gravação de células (`Range.Value`) passou a falhar com
+     `AttributeError: Value` — a interoperabilidade dinâmica do comtypes
+     deixou de resolver a gravação da propriedade nesta combinação de
+     Office/Windows. Corrigido com fallback que obtém o identificador da
+     propriedade (via Bind GET) e grava direto em `IDispatch::Invoke`
+     (PROPERTYPUT); NumberFormat, PageSetup e demais escritas usam o mesmo
+     caminho quando necessário.
+
+### Alterado
+- **Portal — Listas de Presença em folha horizontal e organizadas**: todas as
+  listas (modelo ou layout padrão) saem em orientação paisagem, com ajuste
+  para caber em 1 página de largura, linhas de divisão visíveis (grade como
+  no Excel) e conteúdo centralizado horizontalmente.
+
+## [1.37.0] - 2026-09-15
+
+### Alterado
+- **Portal — Listas de Presença: emissão do dia inteiro de uma vez**:
+  em "+ Nova lista" agora basta informar a **data** — o portal mostra uma
+  seção por NR com os participantes daquele dia (marcadas por padrão) e o
+  botão **Emitir listas do dia** gera todas de uma vez (uma NR com problema
+  não bloqueia as demais; o resumo mostra geradas e falhas).
+
+### Adicionado
+- **Compilado das listas do dia (PDF único)**: após emitir, um diálogo
+  pergunta se quer baixar o compilado (todas as listas do dia em um único
+  PDF, pronto para imprimir); também dá para baixar depois pela listagem
+  informando a data.
+
+### Corrigido
+- **Portal — uso de Excel/PowerPoint (COM) nas rotas web**: as chamadas COM
+  falhavam dentro das threads do servidor ("CoInitialize não foi chamado").
+  Corrigido em `presenca_generator` (Excel) e `pptx_card_service`
+  (PowerPoint — afetava também cartões e certificados PPTX no portal).
+
+## [1.36.0] - 2026-09-15
+
+### Adicionado
+- **Portal — aba "Listas de Presença"**: geração e controle das listas de
+  presença de treinamento, uma lista por NR:
+  - **Geração automática**: escolha a NR e a data; o portal puxa sozinho os
+    funcionários que tiveram certificado daquela NR emitido no dia (com nome,
+    função e carga horária detectada). Prévia antes de gerar; datas antigas
+    funcionam (histórico por data final do certificado).
+  - **Modelos reais**: NR-01, NR-06, NR-12, NR-18 e NR-35 usam as planilhas
+    da empresa (`LISTA DE PRESENÇA\` copiadas para
+    `templates/listas_presenca/` + mapeamento em `registry.json`) — o
+    preenchimento é feito via **Excel COM** na cópia (preserva logo e
+    formatação) e convertido para PDF. NRs sem modelo recebem um **layout
+    padrão** com logo da empresa, dados da configuração e grade de
+    assinaturas.
+  - **Controle por lista**: serial único `LP-{ano}-{seq}`, status
+    (Pendente/Parcial/Assinada com badges e contadores), PDF salvo em
+    `data/listas_presenca/`, upload da **lista assinada** escaneada
+    (PDF/JPG/PNG até 50 MB) que muda o status para Assinada, download e
+    remoção do anexo.
+  - Permissões: admin e emissor editam; consulta apenas consulta.
+  - Auditoria: gerar, assinar e excluir listas.
+- `src/core/presenca_repo.py` + `src/core/presenca_generator.py` +
+  `src/web/routers/presencas.py` + templates (lista, nova com prévia,
+  detalhe).
+- `test_web_presencas.py` (31 checks): rotas mockadas (28 P01–P28) + E2E
+  real com Excel gerando exemplos de modelo (NR-01, NR-06) e layout padrão
+  (NR-33) em `comparacao_listas/` para conferência manual.
+
+## [1.35.0] - 2026-09-15
+
+### Adicionado
+- **Certificados PPTX da técnica de segurança (NR-06, NR-12, NR-18, NR-35)**:
+  os modelos PowerPoint usados pela técnica agora são suportados de ponta a
+  ponta, sem alterar texto, design ou o conteúdo programático:
+  - `tools/prepare_nr_pptx.py`: converte os originais de `MODELOS NR pptx\`
+    em modelos com tokens (`{{NOME}}`, `{{CPF}}`, `{{DIA}}/{{MES}}/{{ANO}}`)
+    preservando toda a formatação, salvando em
+    `templates/certificados_pptx/NR-XX.pptx` (originais intocados; pode ser
+    reexecutado a qualquer momento).
+  - `src/core/pptx_certificate_service.py`: preenche os tokens (nome em
+    caixa alta, CPF do cadastro, data por extenso no corpo **e** na
+    assinatura) e adiciona o número do certificado (ex.: `CERT-000491`) em
+    cinza, pequeno, no canto inferior direito de todos os slides; converte
+    para PDF via PowerPoint.
+  - Gancho em `CertificateService`: se existir
+    `templates/certificados_pptx/NR-XX.pptx`, a emissão usa o modelo PPTX;
+    senão, o fluxo JSON/ReportLab atual. Portal, desktop, emissão em lote e
+    importação de planilha ganham automaticamente (todos usam o mesmo
+    serviço), com histórico, pastas por funcionário e espelhamento em rede
+    funcionando como antes.
+  - A carga horária impressa nos modelos permanece a do texto original
+    (fixa); a carga digitada continua registrada no histórico.
+- `test_pptx_certificados.py` (33 checks): parte unitária (tokens,
+  formatação por run, datas) + E2E gerando os 4 PDFs reais e copiando para
+  `comparacao_pptx/` para conferência manual.
+
+## [1.34.0] - 2026-09-15
+
+### Adicionado
+- **Portal — Fase 4 concluída (v1.34.0)**:
+  - **Backup** (admin): botão "Fazer backup agora" + lista dos backups
+    existentes (nome, tamanho, data). Sem restore pela web (decisão de
+    projeto — restaurar pelo desktop ou com o portal desligado).
+  - **Auditoria** (admin): nova tela com busca e paginação lendo o
+    `audit_log`; agora também registramos emissões (certificado, lote,
+    crachás, cartões, ASO), abertura de ficha EPI, importações (4 tipos),
+    criar funcionário, salvar configurações, backup manual e todas as
+    operações de Frota.
+- **Frota — Checklist semanal de veículos leves (2.29.5)**: formulário no
+  portal replica o papel da empresa (itens 1.1–1.19, 2.1–2.9 e 3.1–3.6 ×
+  dias 2ª a sábado, S/N), "Pode-se operar com segurança?", observações por
+  dia, motorista e líder. Gera PDF preenchido no formato do formulário
+  (`data/frota/checklists/`, serial CKL-{ano}-{seq}) com histórico no
+  veículo e download.
+- **Frota — Notas fiscais e custo (2.29.6)**: abastecimentos aceitam
+  **Litros** e **Valor**; anexo de NFs (PDF/imagem) por abastecimento com
+  download; ficha do veículo com total abastecido, **média KM/L real**
+  (cruzando movimentações) e custo por km; exportação da lista de
+  abastecimentos para Excel.
+- **Frota — Manutenção preventiva por KM**: itens com intervalo (ex.: troca
+  de óleo a cada 10.000 km), progresso calculado pelas movimentações,
+  conclusão com KM do serviço e aviso no menu Vencimentos (itens próximos/
+  vencidos por KM).
+- **Frota — Campos novos do veículo**: cor, ano, carroceria (hatch/sedan,
+  apenas carros), fim do contrato de aluguel (apenas alugados), KM/L da
+  ficha técnica e **foto do veículo** (miniatura na lista e na ficha).
+- **Dashboard**: cards de frota (veículos cadastrados, saídas em aberto e
+  custo de abastecimento do mês) para quem tem acesso ao módulo.
+
+### Removido
+- ROADMAP: item 2.1 "Drive Mapeado" (obsoleto — o portal web na rede já
+  atende o caso de uso).
+
+## [1.33.0] - 2026-09-14
+
+### Adicionado
+- **Portal Web — módulo Frota (ROADMAP 2.29, blocos 2.29.1 a 2.29.4)**:
+  gestão completa de veículos com banco próprio (7 tabelas) e permissões
+  (admin/emissor escrevem, consulta lê).
+  - **Cadastro de veículos**: tipo (Caminhão com subtipos Caçamba/Munck/
+    Plataforma, Pickup, Carro, Van, Empilhadeira, Retroescavadeira, Outros),
+    placa obrigatória exceto Empilhadeira/Retroescavadeira, próprio ou
+    alugado (com contratante), empresa do veículo (cadastro próprio) e
+    pasta virtual de documentos (CRV, CRLV, contratos, inspeções).
+  - **Solicitação de Abastecimento**: PDF com logo e dados da empresa,
+    serial único `AB-{ano}-{sequência}` (sequência global que nunca
+    reinicia), fornecedor posto (Nome/CNPJ/Endereço com cadastro próprio),
+    combustível (Gasolina/Álcool/Diesel/Arla/GNV/ARLA+Diesel), data,
+    viagem/serviço, KM, observações, veículo da lista, condutor digitado e
+    campos de assinatura (condutor + aprovação do superior).
+  - **Saída/Entrada de veículos**: registro de saída (data, hora, KM
+    inicial, destino, motivo, obs, motorista, autorizado por) e entrada
+    posterior (data, hora, KM final — não pode ser menor que o inicial),
+    com KM rodado calculado.
+  - **Laudos e documentos com vencimento**: upload do arquivo + tipo
+    (Certificado Final, CRLV, Fumaça Preta, Laudo de Avaliação, Laudo
+    Eletromecânico, Plano de Manutenção, Seguro, Outro) + data de validade,
+    com badges de status e download; **integrado à aba Vencimentos e aos
+    contadores do dashboard** (vencidos/7 dias/30 dias).
+  - Listas com busca e paginação; ficha do veículo reúne documentos,
+    laudos, movimentações e abastecimentos.
+
+## [1.32.0] - 2026-09-14
+
+### Adicionado
+- **Portal Web — dashboard estilo tela inicial do desktop**: logo da empresa
+  (nova rota `/logo.png`), data completa + relógio, boas-vindas, 3 cartões de
+  resumo (certificados / funcionários / NRs), atalhos rápidos e aniversariantes
+  do dia e do mês. Chips de vencimento e tabelas por NR/mês continuam
+  disponíveis no painel recolhível "Ver indicadores".
+- **Portal Web — tela de Configurações (somente admin)**: espelho da tela do
+  desktop — Dados da Empresa (CNPJ e Registro MTE com formatação e validação),
+  Segurança (senha de restauração de backup), Backups (intervalo, cópia
+  externa, rede e Tarefa Agendada do Windows), Documentos em Rede (com botão
+  "Sincronizar Agora") e Diagnóstico com visualização/limpeza do log de erros.
+  Aparece no menu apenas para administrador.
+- **Confirmação com lista de nomes antes de emissões em massa**: ao emitir
+  certificados em lote, crachás ou cartões, um popup mostra os selecionados
+  (nome + CPF) para conferir antes de confirmar.
+
+### Alterado
+- **Portal Web — Crachás e Cartões ganharam busca e paginação** (20 por
+  página, páginas numeradas), acompanhando o padrão das demais listagens.
+
+## [1.31.1] - 2026-09-11
+
+### Corrigido
+- **Portal Web não depende mais do desktop para importar funcionários**:
+  `excel_importer` importava `src.ui.pages.funcoes`, que arrastava
+  customtkinter (interface gráfica). No servidor sem desktop, o POST de
+  importação de funcionários falharia. A lógica de `funcoes.json` foi
+  extraída para `src/utils/funcoes_store.py` (a página desktop importa
+  daí também — sem mudança de comportamento).
+
+### Alterado
+- **`requirements-web.txt` virou auto-suficiente para o servidor**: além das
+  dependências web, inclui as bibliotecas core usadas pelo portal (pydantic,
+  reportlab, pillow, pymupdf, python-pptx, apscheduler, comtypes etc.) com
+  pisos de versão compatíveis com Pythons novos. O `requirements.txt`
+  (desktop, com pins exatos) continua intocado — instalar os dois juntos no
+  servidor podia abortar o pip inteiro por causa de pins sem build para o
+  Python do servidor (ex.: `pyinstaller==6.8.0`).
+- `INICIAR-PORTAL.bat` e `INSTALAR_PORTAL.bat` instalam apenas
+  `requirements-web.txt` e o teste de dependências agora importa também os
+  4 importadores de planilha (pega acoplamentos como o de cima).
+
+## [1.31.0] - 2026-09-11
+
+### Corrigido
+- **Portal Web — tela "Novo funcionário" voltou a abrir**: a rota
+  `/funcionarios/novo` estava declarada depois de `/funcionarios/{emp_id}` e o
+  FastAPI capturava "novo" como se fosse um ID (erro `int_parsing` ao tentar
+  cadastrar).
+
+### Alterado
+- **Portal Web — Cartões de bloqueio: formulário adapta-se ao modelo**:
+  campo **Setor**, colunas **Matrícula** e **Papel** e a linha "Este modelo
+  usa…" aparecem somente quando o modelo selecionado realmente usa o campo
+  (lido dos placeholders do PPTX); modelos JSON continuam pedindo apenas
+  telefone/foto. A emissão também só envia as opções que o modelo usa.
+
+### Adicionado
+- **Deploy**: `INICIAR-PORTAL.bat` na raiz (sobe o portal na rede; aceita a
+  porta como argumento, ex.: `INICIAR-PORTAL.bat 80` para `http://normatech`
+  sem `:porta`). `deploy\web\INSTALAR_PORTAL.bat` com porta configurável
+  (`set PORT=80`), correção do teste de dependências (uvicorn) e auto-start do
+  serviço NSSM. `docs/PORTAL/02-DEPLOY_SERVIDOR.md` atualizado (porta 80,
+  nome `normatech` na rede, troubleshooting de porta ocupada).
+
+## [1.30.1] - 2026-09-11
+
+### Alterado
+- **Portal Web — polimento de UI/UX em todos os módulos**:
+  - Layout fluido (fim da largura fixa 1080px) e contorno preto de 1px em todas
+    as tabelas.
+  - **Certificados**: campo de funcionário virou **busca com dropdown** (digita
+    nome/CPF e clica no resultado); trocar a NR recarrega a página e os campos
+    extras agora correspondem sempre à NR selecionada (ex.: Tipo de brigada);
+    campos opcionais ficam em menu "Campos adicionais (opcional)" abre/fecha.
+  - **Emissão em lote**: busca e seletor **ver por página (10/20/25/50) junto à
+    tabela**, com paginação no navegador que preserva os ajustes individuais
+    digitados nas linhas fora da página.
+  - **Funcionários**: seletor de itens por página (10/20/25/50); no perfil,
+    botão **Voltar largo no topo** do cartão e atalho para as fichas de EPI.
+  - **Paginação numerada** ("Página X de Y" + links 1 2 3 …): Funcionários,
+    Histórico, Vencimentos, ASOs e EPI.
+  - **Histórico**: anexo de documento assinado em menu sanfona com área de
+    upload estilizada (mostra o nome do arquivo escolhido).
+  - **Vencimentos**: painéis de resumo por severidade (vencidos/7/30 dias)
+    clicáveis, aplicando o filtro correspondente.
+  - **EPI**: filtro por situação (Abertas/Fechadas/**Itens devolvidos** — ficha
+    aberta com todos os itens devolvidos), seletor 10/20/25/50, paginação,
+    página **/epi/funcionario/{id}** com todas as fichas do funcionário (link na
+    lista e no perfil), badge azul "Itens devolvidos" e campo "QTD devolvida"
+    **desabilitado automaticamente** quando a devolução do item é marcada Total.
+
+## [1.30.0] - 2026-09-11
+
+### Adicionado
+- **Portal Web — Fase 3 concluída (Cartões, Importações e Integrações no navegador)**:
+  - Aba **Cartões de Bloqueio**: emissão de lotes com todos os modelos (JSON/ReportLab
+    e PPTX com setor, líder/liderado e matrícula obrigatória preenchida só na emissão —
+    PPTX exige PowerPoint no servidor), saída em folha única ou um cartão por página,
+    importação da lista de bloqueios (.xlsx) pré-selecionando funcionários e listagem
+    dos PDFs gerados em `data/cartoes` (LOTES + pasta por funcionário) com ver/baixar.
+  - Aba **Importações**: os 4 importadores do desktop no navegador — funcionários
+    (colunas A–I), certificados em lote com **prévia antes de emitir** (cria
+    funcionários inexistentes; sem CPF registra sem PDF), ASOs em lote (A/P/M/R/D) e
+    lista de bloqueios de cartões — com modelos oficiais de `MODELOS DE IMPORTACAO/`
+    para download.
+  - Aba **Integrações**: integrações funcionário/empresa com tipo livre, datas e
+    observações (status Em dia/Vencida pela mesma regra do desktop), CRUD de
+    **empresas clientes** (nome única, CNPJ, exclusão protegida com integrações
+    vinculadas) — alimenta a aba Vencimentos.
+- Menu do portal completo (Cartões, Integrações e Importações só para
+  admin/emissor; consulta segue só leitura).
+
+### Alterado
+- `requirements-web.txt`: adicionado `openpyxl` (importações .xlsx no portal).
+
 ## [1.29.0] - 2026-09-11
 
 ### Adicionado

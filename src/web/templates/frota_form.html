@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block titulo %}{{ 'Editar veículo' if v else 'Novo veículo' }} — NormaTech{% endblock %}
+{% block conteudo %}
+<div class="card" style="max-width:760px;">
+  <a class="btn-voltar" href="{{ '/frota/' ~ v.id if v else '/frota' }}">&larr; {{ 'Voltar para a ficha' if v else 'Voltar para Frota' }}</a>
+  <h1>{{ 'Editar veículo' if v else 'Novo veículo' }}</h1>
+  {% if erro %}<p class="erro">{{ erro }}</p>{% endif %}
+
+  <form method="post" action="{{ '/frota/' ~ v.id ~ '/editar' if v else '/frota/criar' }}">
+    <div class="form-grid">
+      <div class="campo">
+        <label for="modelo">Modelo *</label>
+        <input type="text" id="modelo" name="modelo" required value="{{ f_modelo }}" placeholder="Ex: Strada, HR, 2428...">
+      </div>
+      <div class="campo">
+        <label for="marca">Marca</label>
+        <input type="text" id="marca" name="marca" value="{{ f_marca }}" placeholder="Ex: Fiat, Hyundai...">
+      </div>
+      <div class="campo">
+        <label for="tipo">Tipo *</label>
+        <select id="tipo" name="tipo" onchange="aplicarTipo()">
+          {% for cod, rot in tipos %}
+          <option value="{{ cod }}" data-sem-placa="{{ '1' if cod in ('empilhadeira', 'retroescavadeira') else '0' }}" {{ 'selected' if cod == f_tipo }}>{{ rot }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="campo" id="campo-subtipo">
+        <label for="subtipo">Subtipo do caminhão *</label>
+        <select id="subtipo" name="subtipo">
+          <option value="">— selecione —</option>
+          {% for cod, rot in subtipos %}
+          <option value="{{ cod }}" {{ 'selected' if cod == f_subtipo }}>{{ rot }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="campo" id="campo-placa">
+        <label for="placa">Placa</label>
+        <input type="text" id="placa" name="placa" value="{{ f_placa }}" maxlength="10" placeholder="ABC1D23" style="text-transform:uppercase;">
+      </div>
+      <div class="campo">
+        <label for="proprio">Possse *</label>
+        <select id="proprio" name="proprio" onchange="aplicarTipo()">
+          <option value="1" {{ 'selected' if f_proprio }}>Próprio</option>
+          <option value="0" {{ 'selected' if not f_proprio }}>Alugado</option>
+        </select>
+      </div>
+      <div class="campo" id="campo-contratante">
+        <label for="contratante">Quem contratou *</label>
+        <input type="text" id="contratante" name="contratante" value="{{ f_contratante }}" placeholder="Nome de quem contratou o veículo">
+      </div>
+      <div class="campo" id="campo-fim-contrato">
+        <label for="fim_contrato">Fim do contrato de aluguel</label>
+        <input type="text" id="fim_contrato" name="fim_contrato" value="{{ f_fim_contrato }}" maxlength="10" placeholder="dd/mm/aaaa">
+      </div>
+      <div class="campo">
+        <label for="ano">Ano</label>
+        <input type="text" id="ano" name="ano" value="{{ f_ano }}" maxlength="10" placeholder="Ex: 2021/2022">
+      </div>
+      <div class="campo">
+        <label for="cor">Cor</label>
+        <input type="text" id="cor" name="cor" value="{{ f_cor }}" placeholder="Ex: Branca, Prata...">
+      </div>
+      <div class="campo" id="campo-carroceria">
+        <label for="carroceria">Carroceria</label>
+        <select id="carroceria" name="carroceria">
+          <option value="">—</option>
+          {% for cod, rot in carroc %}
+          <option value="{{ cod }}" {{ 'selected' if cod == f_carroceria }}>{{ rot }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="campo">
+        <label for="km_l">KM/L esperado (ficha técnica)</label>
+        <input type="text" id="km_l" name="km_l" value="{{ f_km_l }}" placeholder="Ex: 8,5">
+      </div>
+      <div class="campo">
+        <label for="empresa_id">Empresa do veículo</label>
+        <select id="empresa_id" name="empresa_id">
+          <option value="">— nenhuma —</option>
+          {% for e in emp_opts %}
+          <option value="{{ e.id }}" {{ 'selected' if e.id == f_empresa_id }}>{{ e.nome }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="campo">
+      <label for="obs">Observações</label>
+      <textarea id="obs" name="obs" rows="3">{{ f_obs }}</textarea>
+    </div>
+    <p class="linha-botoes">
+      <button type="submit" class="verde">Salvar</button>
+      <a class="btn cinza" href="{{ '/frota/' ~ v.id if v else '/frota' }}">Cancelar</a>
+    </p>
+  </form>
+</div>
+
+<script>
+function aplicarTipo() {
+  var opt = document.querySelector('#tipo option:checked');
+  var semPlaca = opt && opt.dataset.semPlaca === '1';
+  var caminhao = document.getElementById('tipo').value === 'caminhao';
+  var alugado = document.getElementById('proprio').value === '0';
+  document.getElementById('campo-placa').style.display = semPlaca ? 'none' : '';
+  document.getElementById('placa').required = !semPlaca;
+  if (semPlaca) document.getElementById('placa').value = '';
+  document.getElementById('campo-subtipo').style.display = caminhao ? '' : 'none';
+  document.getElementById('subtipo').required = caminhao;
+  document.getElementById('campo-contratante').style.display = alugado ? '' : 'none';
+  document.getElementById('contratante').required = alugado;
+  var carro = document.getElementById('tipo').value === 'carro';
+  document.getElementById('campo-carroceria').style.display = carro ? '' : 'none';
+  var fc = document.getElementById('campo-fim-contrato');
+  if (fc) fc.style.display = alugado ? '' : 'none';
+}
+document.addEventListener('DOMContentLoaded', aplicarTipo);
+</script>
+{% endblock %}

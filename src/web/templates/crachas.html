@@ -11,6 +11,13 @@
   <p><a class="btn verde" href="/crachas/novo">Emitir crachás</a></p>
   {% endif %}
 
+  <form method="get" action="/crachas" class="filtros">
+    <div class="campo"><label>Buscar</label>
+      <input type="text" name="busca" value="{{ busca }}" placeholder="Funcionário, número ou NR"></div>
+    <button type="submit">Filtrar</button>
+    {% if busca %}<a class="btn cinza" href="/crachas">Limpar</a>{% endif %}
+  </form>
+
   {% if linhas %}
   <table>
     <tr><th>Número</th><th>Funcionário</th><th>Data</th><th>NRs</th><th>PDF</th></tr>
@@ -32,7 +39,9 @@
     {% endfor %}
   </table>
   {% else %}
-  <p class="muted">Nenhum crachá emitido ainda.</p>
+  <p class="muted">Nenhum crachá {% if busca %}encontrado para "{{ busca }}"{% else %}emitido ainda{% endif %}.</p>
   {% endif %}
+
+  {% with paginas = paginas %}{% include "_paginacao.html" %}{% endwith %}
 </div>
 {% endblock %}

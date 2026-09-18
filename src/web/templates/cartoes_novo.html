@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block titulo %}Novo lote de cartões{% endblock %}
+
+{% block conteudo %}
+<div class="card">
+  <h1>Novo lote de cartões</h1>
+
+  {% if erro %}
+  <p class="erro">{{ erro }}</p>
+  <p><a class="btn cinza" href="/cartoes">Voltar</a></p>
+  {% else %}
+
+  <form method="post" action="/cartoes/emitir" enctype="multipart/form-data" data-confirmar-lista>
+    <div class="form-grid">
+      <div class="campo">
+        <label>Modelo do cartão</label>
+        <select name="template_code" onchange="aplicarCampos()">
+          {% for t in tpls %}
+          <option value="{{ t.code }}"
+                  data-usa-setor="{{ '1' if t.usa_setor else '0' }}"
+                  data-usa-papel="{{ '1' if t.usa_papel else '0' }}"
+                  data-usa-matricula="{{ '1' if t.matricula else '0' }}">{{ t.nome }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="campo">
+        <label>Saída</label>
+        <select name="saida">
+          <option value="folha">Folha única (vários cartões por folha)</option>
+          <option value="pagina">Um cartão por página (um PDF por funcionário)</option>
+        </select>
+      </div>
+      <div class="campo" id="campo-setor" style="display:none">
+        <label>Setor</label>
+        <input type="text" name="setor" placeholder="Ex.: Manutenção">
+      </div>
+    </div>
+    <p class="muted" id="req-modelo"></p>
+
+    <h2>Funcionários</h2>
+    <p class="muted">Modelos JSON exigem telefone e foto 3x4; modelos PPTX exigem apenas
+       os campos que usam. Os campos exibidos acima e as colunas da tabela se
+       ajustam ao modelo selecionado.</p>
+
+    <p class="upload">Importar lista de bloqueios (.xlsx — colunas Nome e CPF):
+       <input type="file" name="arquivo" accept=".xlsx"></p>
+    <button class="btn" type="submit" formaction="/cartoes/importar" formnovalidate>Importar lista</button>
+
+    {% if linhas %}
+    <table>
+      <tr><th>Emitir</th><th>Funcionário</th><th>CPF</th><th>Telefone</th><th>Foto</th>
+          <th class="col-matricula">Matrícula (só na emissão)</th><th class="col-papel">Papel</th></tr>
+      {% for f in linhas %}
+      <tr data-nome="{{ f.nome }}" data-det="{{ f.cpf }}">
+        <td><input type="checkbox" name="sel_{{ f.id }}" {{ 'checked' if f.sel }}></td>
+        <td>{{ f.nome }}</td>
+        <td>{{ f.cpf }}</td>
+        <td>{% if f.telefone %}<span class="badge b-verde">ok</span>{% else %}<span class="badge b-vermelho">sem telefone</span>{% endif %}</td>
+        <td>{% if f.foto %}<span class="badge b-verde">ok</span>{% else %}<span class="badge b-vermelho">sem foto</span>{% endif %}</td>
+        <td class="col-matricula"><input type="text" name="matricula_{{ f.id }}" style="max-width:130px" placeholder="—"></td>
+        <td class="col-papel">
+          <select name="papel_{{ f.id }}" style="max-width:120px">
+            <option value="LIDERADO">Liderado</option>
+            <option value="LIDER">Líder</option>
+          </select>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}
+    <p class="muted">Nenhum funcionário cadastrado.</p>
+    {% endif %}
+
+    <div class="linha-botoes">
+      <button class="btn verde" type="submit" formaction="/cartoes/emitir">Emitir cartões</button>
+      <a class="btn cinza" href="/cartoes">Cancelar</a>
+    </div>
+  </form>
+
+  <script>
+  function aplicarCampos() {
+    var sel = document.querySelector('select[name="template_code"]');
+    if (!sel) return;
+    var opt = sel.options[sel.selectedIndex];
+    if (!opt) return;
+    var setor = opt.dataset.usaSetor === '1';
+    var papel = opt.dataset.usaPapel === '1';
+    var mat = opt.dataset.usaMatricula === '1';
+    var campoSetor = document.getElementById('campo-setor');
+    if (campoSetor) campoSetor.style.display = setor ? '' : 'none';
+    document.querySelectorAll('.col-matricula').forEach(function (el) {
+      el.style.display = mat ? '' : 'none';
+    });
+    document.querySelectorAll('.col-papel').forEach(function (el) {
+      el.style.display = papel ? '' : 'none';
+    });
+    var reqs = [];
+    if (setor) reqs.push('Setor');
+    if (papel) reqs.push('Papel (líder/liderado)');
+    if (mat) reqs.push('Matrícula por funcionário (obrigatória)');
+    var alvo = document.getElementById('req-modelo');
+    if (alvo) alvo.textContent = reqs.length
+      ? 'Este modelo usa: ' + reqs.join(' · ') + '.'
+      : 'Este modelo não usa setor, papel nem matrícula.';
+  }
+  document.addEventListener('DOMContentLoaded', aplicarCampos);
+  </script>
+  {% endif %}
+</div>
+{% endblock %}

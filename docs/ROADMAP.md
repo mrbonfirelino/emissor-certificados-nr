@@ -1,7 +1,7 @@
 # Roadmap - NormaTech
 
 ## Status do Projeto
- - Versao atual: 1.24.0
+ - Versao atual: 1.45.0
 - NRs disponiveis: 17 (01, 05, 06, 09, 10, 11, 12, 17, 18, 26, 33, 34, 35 + FDS, BRIGADISTA-NR23, PTA, MOTOSERRA, MUNCK, PONTE-ROLANTE, DIR-DEFENSIVA, CIPAA)
 
 ---
@@ -36,7 +36,6 @@
 
 | Item | Descricao | Prioridade | Status |
 |------|-----------|------------|--------|
-| Drive Mapeado | Verificar viabilidade de rodar em rede | Alta | Pendente (checklist em docs/REDE.md — aguarda validacao no ambiente real) |
 | Backup Duplo | Backup na pasta do programa + pasta Documents do PC | Media | Concluído |
 | Backup Periódico | Backup automático a cada 15 minutos (intervalo configurável) enquanto o programa estiver em execução | Alta | Concluído |
 
@@ -138,7 +137,6 @@ Requisitos: Microsoft PowerPoint instalado na máquina (conversão via COM).
 | Inserção no Registro | Inserir o documento digitalizado vinculado ao registro correto no histórico (mesmo fluxo do item 2.8, mas com tela dedicada de digitalização) | Alta | Concluído |
 | Crop/Ajuste | Opção de recortar, girar ou ajustar brilho/contraste antes de inserir | Media | Concluído |
 | Multi-página | Frente/verso: páginas digitalizadas combinadas em um único PDF anexado | Alta | Concluído (v1.5.0) |
-| Histórico de Digitalizações | Permitir visualizar digitalizações anteriores de um certificado (múltiplos scans) | Baixa | Pendente (exige mudança de esquema) |
 
 ### 2.10 Notificações Windows (Toast) (CONCLUÍDA)
 
@@ -163,10 +161,9 @@ Requisitos: Microsoft PowerPoint instalado na máquina (conversão via COM).
 
 | Item | Documento | Status |
 |------|-----------|--------|
-| QR code de autenticidade | docs/QR_CODE.md | Planejado |
-| CI GitHub Actions | docs/CI_GITHUB_ACTIONS.md | Planejado |
-| Multiusuário/servidor | docs/MULTIUSUARIO.md | Estudo (pré: REDE.md) |
-| Interface GPU | docs/UI_GPU.md | Estudo |
+| CI GitHub Actions | docs/CI_GITHUB_ACTIONS.md | Concluído (v1.42.0) |
+| Multiusuário/servidor | docs/MULTIUSUARIO.md | Superado pelo Portal Web (login, papéis e auditoria em produção) |
+| Interface GPU | docs/UI_GPU.md | Superado pelo Portal Web (quick-wins aplicados; estudo arquivado) |
 
 ### 2.13 Documentos em Rede + Estrutura de Pastas (CONCLUÍDA)
 
@@ -323,8 +320,173 @@ Requisitos: Microsoft PowerPoint instalado na máquina (conversão via COM).
 |------|-----------|------------|--------|
 | Fase 1 — Esqueleto + login + papeis + dashboard + usuarios/auditoria | FastAPI + waitress + NSSM; acesso em 2 maquinas com login | Alta | Concluído (v1.24.0) |
 | Fase 2 — Funcionarios, Certificados e Historico no portal | CRUD/consulta pelo navegador com a matriz de permissoes | Alta | Concluído (v1.25.0) |
-| Fase 3 — ASO, EPI, Crachas, Cartoes, Vencimentos, Importacoes | Demais modulos de leitura/operacao | Media | Em andamento (v1.28.0: Vencimentos e ASO; v1.29.0: EPI e Crachás) |
-| Fase 4 — Admin completo (backup, auditoria avancada) | Painel administrativo final | Media | Pendente |
+| Fase 3 — ASO, EPI, Crachas, Cartoes, Vencimentos, Importacoes | Demais modulos de leitura/operacao | Media | Concluído (v1.28.0: Vencimentos e ASO; v1.29.0: EPI e Crachás; v1.30.0: Cartões, Importações e Integrações) |
+| Fase 4 — Admin completo (backup, auditoria avancada) | Painel administrativo final | Media | Concluído (v1.32.0: Configurações; v1.34.0: Backup, Auditoria e audit_log nas ações) |
+
+### 2.29 Gestão de Frota (Veículos) (CONCLUÍDA — 2.29.1 a 2.29.4 e 2.29.6 no Portal Web em v1.33.0/v1.34.0; 2.29.5 concluído em v1.34.0 com checklist de veículos leves)
+
+#### 2.29.1 Cadastro Completo de Veículos
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Cadastro de veículos | Modelo, marca e tipo: Caminhão (subtipos: Caçamba, Munck, Plataforma), Pickup, Carro, Van, Empilhadeira, Retroescavadeira e Outros | Alta | Concluído (v1.33.0) |
+| Placa condicional | Placa obrigatória para todos os tipos, exceto Empilhadeira e Retroescavadeira (não possuem placa) | Alta | Concluído (v1.33.0) |
+| Propriedade do veículo | Indicar se é veículo próprio (sem nome) ou alugado (informar nome da pessoa que contratou) | Alta | Concluído (v1.33.0) |
+| Empresa do veículo | Indicar a qual empresa o veículo pertence (ex: Altec Industrial, Ferro Fácil...) com cadastro/lista de empresas | Alta | Concluído (v1.33.0) |
+| Pasta virtual do veículo | Pasta virtual própria por veículo para documentos relevantes (CRV, CRLV, Contratos, Inspeções etc.), mesmo padrão da pasta virtual do funcionário | Alta | Concluído (v1.33.0) |
+
+#### 2.29.2 Solicitação de Abastecimento
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Documento PDF | Documento "Solicitação de Abastecimento" com logotipo da empresa | Alta | Concluído (v1.33.0) |
+| Código serial | Código Identificador Serial único (não pode repetir) | Alta | Concluído (v1.33.0) |
+| Fornecedor | Nome do posto de gasolina; permitir cadastrar empresas fornecedoras (Nome, CNPJ, Endereço) | Alta | Concluído (v1.33.0) |
+| Tipo de combustível | Gasolina, Álcool, Diesel, Arla, GNV + opção específica "ARLA + DIESEL" | Alta | Concluído (v1.33.0) |
+| Dados da solicitação | Data da solicitação, Viagem/Serviço (descrição rápida), KM do veículo no momento, campo de Descrição/Observações | Alta | Concluído (v1.33.0) |
+| Veículo | Seleção a partir da lista de veículos cadastrados | Alta | Concluído (v1.33.0) |
+| Condutor | Nome digitado na hora (o motorista pode ser de fora da empresa) | Alta | Concluído (v1.33.0) |
+| Assinaturas | Campo de assinatura/rubrica do condutor + campo de aprovação do superior (nome para digitar + rubrica) | Alta | Concluído (v1.33.0) |
+
+#### 2.29.3 Controle Individual de Veículos (Saída/Entrada)
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Registro de Saída/Retirada | Data, hora, KM inicial, destino, motivo, descrições/observações | Alta | Concluído (v1.33.0) |
+| Registro de Entrada/Devolução | Data, hora, KM final | Alta | Concluído (v1.33.0) |
+| Motorista e Autorização | Nome do motorista + campo "Autorizado Por" (usuário digita o nome de quem autorizou) | Alta | Concluído (v1.33.0) |
+
+#### 2.29.4 Laudos e Documentos com Vencimento
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Laudos manuais | Usuário insere laudos/documentos gerados manualmente, com data de vencimento | Alta | Concluído (v1.33.0) |
+| Download do laudo | Opção de baixar o laudo/documento pelo usuário | Alta | Concluído (v1.33.0) |
+| Aviso de vencimento | Sistema avisa quando estiver perto do vencimento (integrado ao menu Vencimentos, toast e dashboard) | Alta | Concluído (v1.33.0) |
+| Documentos veículos pesados | Certificado Final, CRLV, Fumaça Preta, Laudo de Avaliação, Laudo Eletromecânico, Plano de Manutenção | Alta | Concluído (v1.33.0) |
+| Documentos veículos leves | CRLV e Seguro | Alta | Concluído (v1.33.0) |
+| Validade padrão | 1 ano por padrão (configurável) | Media | Concluído (v1.33.0 — validade informada por laudo) |
+
+#### 2.29.5 Relatório de Verificação Semanal (Checklist)
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Checklist semanal | Checklist de verificação para veículos leves e pesados | Baixa | Concluído (v1.34.0 — veículos leves, replicando o formulário em papel; pesados sem modelo definido) |
+| Informações do relatório | Data Inicial, Data Final, KM Rodado, Veículo (com placa) | Baixa | Concluído (v1.34.0) |
+
+#### 2.29.6 Notas Fiscais e Custo de Abastecimento (Longo Prazo)
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Cadastro de notas fiscais | Notas fiscais vinculadas às solicitações de abastecimento (e também NFs realizadas durante viagens) | Baixa | Concluído (v1.34.0 — NF com arquivo anexado ao abastecimento) |
+| Custo por veículo | Noção do custo de abastecimento acumulado por veículo | Baixa | Concluído (v1.34.0) |
+| Média KM/L | Calcular média de KM/L por veículo e comparar com a ficha técnica | Baixa | Concluído (v1.34.0) |
+| Autonomia no cadastro | Campos de autonomia/dados da ficha técnica nos detalhes do veículo | Baixa | Concluído (v1.34.0 — campo KM/L esperado) |
+
+#### 2.29.7 Ajustes e Melhorias da Frota (CONCLUÍDA — v1.42.0)
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Importar/Exportar veículos | Opção de importar e exportar veículos da frota (Excel, mesmo padrão das demais importações) | Alta | Concluído (v1.42.0) |
+| Janela de foto do veículo | Janela de seleção de foto deve abrir para o outro lado — atualmente sai da tela (indo para a esquerda) | Media | Concluído (v1.42.0) |
+| Formatação de data/hora | Na ficha do veículo (adicionar movimentação), a data de saída/entrada e hora devem sair formatadas (ex: 17/09/2026, 07:00) | Alta | Concluído (v1.42.0) |
+| Formatação de KM | Incluir ponto de milhar na KM para facilitar a leitura (ex: 100.000 KM) | Media | Concluído (v1.42.0) |
+| Motorista — funcionário ou "Outro" | Permitir escolher um funcionário da lista ou marcar checkbox "Outro" e escrever o nome do motorista | Alta | Concluído (v1.42.0) |
+| Campos Motivo e Obs | Aumentar um pouco o tamanho dos campos "Motivo" e "Obs" e ativar scroll para esses campos | Media | Concluído (v1.42.0) |
+| Abas retráteis na ficha | Deixar as abas da ficha do veículo retráteis (Documentos, Laudos e Documentos com Vencimento, Movimentações, Abastecimentos, Custo e Consumo, Checklist Semanal, Manutenções Preventivas por KM) | Media | Concluído (v1.42.0) |
+| Cor do botão de abastecimento | Alterar a cor do botão "Nova Solicitação de Abastecimento" — um tom amarelo deve ficar bom | Baixa | Concluído (v1.42.0) |
+| Abastecimento a partir da ficha | Se o usuário estiver na ficha do veículo e pedir abastecimento, levar para a tela de abastecimento com o veículo já preenchido | Alta | Concluído (v1.42.0) |
+| Combustível por tipo de veículo | Não permitir Arla, Diesel e Arla + Diesel em carros | Alta | Concluído (v1.42.0) |
+| Remover Valor e Litros | Remover os campos Valor e Litros da solicitação de abastecimento (sempre enchemos o tanque) | Media | Concluído (v1.42.0) |
+| Funcionário ou "Outro" no abastecimento | Na ficha de abastecimento, permitir incluir funcionário da lista ou "Outro" | Alta | Concluído (v1.42.0) |
+| Checklist semanal em PDF | Checklist semanal do veículo deve ser um documento gerado em PDF, impresso, preenchido, assinado e enviado de volta ao sistema (anexado ao veículo) | Alta | Concluído (v1.42.0) |
+| Validação de conflito de movimentações | Se o veículo tem uma saída aberta, não pode ter outra saída; verificar conflito de horários e datas | Alta | Concluído (v1.42.0) |
+| Tags nos documentos do veículo | Ao adicionar documentos na ficha do veículo, permitir selecionar "tags" para o arquivo (ex: Manutenções (Nota Fiscal), Documentos, Abastecimentos, Outros) | Media | Concluído (v1.42.0) |
+| Ver por página | Em Frota, adicionar opção "Ver por página" (paginação da lista) | Media | Concluído (v1.42.0) |
+
+### 2.30 Melhorias Gerais de Usabilidade e Sistema (CONCLUÍDA — v1.42.0)
+
+#### 2.30.1 Notificações e Navegação
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Notificações "pop" | Notificações na lateral direita da tela para avisos rápidos (ex: Salvo com sucesso, Documento emitido etc.) | Alta | Concluído (v1.42.0) |
+| Grupos no header | Melhorar a organização das abas no header, separando por grupos (ex: Certificados → Emitir, Emissão em Lote; Vencimentos etc.) | Media | Concluído (v1.42.0) |
+| Pop-up de progresso | Adicionar pop-up para mostrar progresso da emissão, geração de documentos etc. | Alta | Concluído (v1.42.0) |
+
+#### 2.30.2 Auditoria e Sistema
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Tabela de auditoria | Ajustar a lista: itens da coluna "Ação" estão ficando muito grandes comparados ao restante | Alta | Concluído (v1.42.0) |
+| Linhas por página (auditoria) | Adicionar botão para ajustar quantas linhas vão aparecer na lista (10/20/30/50) | Media | Concluído (v1.42.0) |
+| Busca por data (auditoria) | Permitir ao usuário buscar registros da auditoria pela data | Alta | Concluído (v1.42.0) |
+| Salvar log de erros | Adicionar botão para salvar o log de erros | Media | Concluído (v1.42.0) |
+| Download de backups | Permitir ao administrador baixar backups | Alta | Concluído (v1.42.0) |
+
+#### 2.30.3 Vencimentos
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Card de 15 dias | Em Vencimentos, adicionar um card para itens que vão vencer em 15 dias | Alta | Concluído (v1.42.0) |
+
+### 2.31 Frota, Menu e Dashboard (CONCLUÍDA — v1.44.0/v1.45.0)
+
+#### 2.31.1 Lista da Aba "Frota" — Detalhes de Status
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Badges de status | Incluir badges indicando o status do veículo: Disponível, Indisponível, Em Manutenção, Em Viagem, Outros etc. | Alta | Concluído (v1.44.0 — status derivado: Em Viagem/Em Manutenção/Indisponível/Disponível) |
+| Coluna "Veículo" simplificada | Ajustar o campo "Veículo" para mostrar apenas placa e modelo (ex: KWK-6C02 - New Fiesta); remover as colunas "Placa" e "Ano/Cor" | Alta | Concluído (v1.44.0) |
+| Motorista atual | Adicionar campo com o nome do motorista atual do veículo | Media | Concluído (v1.44.0) |
+| Local/destino da viagem | Adicionar coluna para informar o local/destino da viagem | Media | Concluído (v1.44.0) |
+| Scrollbars na lista | Colocar scrollbar lateral (horizontal) se for o caso, e scrollbar vertical também | Media | Concluído (v1.44.0) |
+
+#### 2.31.2 Ficha do Veículo — Movimentações e Abastecimentos
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Data/hora com máscara | Ao registrar saída/entrada, a formatação dos campos Data da saída e hora deve ser aplicada conforme o usuário digita (mostrar corretamente na hora e indicar caso tenha algum erro) | Alta | Concluído (v1.44.0) |
+| Abastecimento assinado + NF | Permitir ao usuário enviar o abastecimento assinado e inserir foto ou PDF da nota fiscal também | Alta | Concluído (v1.44.0 — NF já existia) |
+
+#### 2.31.3 Checklist Semanal — Template Pré-preenchido
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Template do checklist | Transformar o Checklist semanal em um template: o usuário baixa o template com os dados do veículo, KM atual, placa e data já preenchidos pelo sistema; depois imprime, preenche, assina e anexa de volta no sistema | Alta | Concluído (v1.44.0 — "Gerar em branco" com cabeçalho pré-preenchido) |
+
+#### 2.31.4 Reorganização do Menu/Header (apenas interface)
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Botão dedicado "Gestão de Frota" | No menu/Header, tirar a Frota do submenu e colocar como botão dedicado, renomeando para "Gestão de Frota" | Alta | Concluído (v1.44.0) |
+| Menu "Certificados" → "Segurança" | Alterar o nome do menu "Certificados" para "Segurança" | Alta | Concluído (v1.44.0) |
+| Aba "EPI" → "Ficha de EPIs" | Renomear a aba "EPI" para "Ficha de EPIs" e colocá-la dentro do menu "Segurança" | Alta | Concluído (v1.44.0) |
+| "Crachás" e "Cartões" em "Segurança" | Colocar as abas "Crachás" e "Cartões" dentro do menu "Segurança" | Alta | Concluído (v1.44.0) |
+| Aba "Vencimentos" em "Segurança" | Colocar a aba "Vencimentos" dentro de "Segurança" | Alta | Concluído (v1.44.0) |
+| Menu "Cadastros" → "Funcionários" | Renomear o menu "Cadastros" para "Funcionários" e o botão "Funcionários" para "Cadastros" (apenas interface) | Alta | Concluído (v1.45.0 — troca literal: grupo "Funcionários" contém "Cadastros", ASO e Integrações) |
+
+#### 2.31.5 Dashboard
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Atalho para Vencimentos | Adicionar um botão/atalho para Vencimentos no Dashboard | Alta | Concluído (v1.44.0) |
+| Animação de contagem nos cards | Adicionar animação de números crescendo nos cards do dashboard (cerca de 2 segundos até chegar ao valor final) | Baixa | Concluído (v1.44.0; duração ajustada para ~2s em v1.45.0) |
+
+### 2.32 Portal, Importações e Abastecimento (CONCLUÍDA — v1.45.0)
+
+#### 2.32.1 Portal — Progresso e Importação de Fotos
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Barra de progresso | Adicionar barra de progresso (se possível com percentual) ao emitir certificados em lote e durante importações | Alta | Concluído (v1.45.0 — jobs em background com barra %, contador i/total e item atual; polling `/jobs/{id}`) |
+| Importar fotos dos funcionários | O botão de importar as fotos dos funcionários não está disponível no site — adicionar/restaurar no portal | Alta | Concluído (v1.45.0 — "Importar Fotos" em Funcionários: upload múltiplo, casa por CPF/nome, prévia com conferência antes de aplicar) |
+
+#### 2.32.2 Solicitação de Abastecimento — Template de Aprovação
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Aprovação sem nome | Alterar o template da Solicitação de Abastecimento: não especificar o nome do aprovador, deixando apenas um campo para assinatura e, embaixo, escrito "Aprovado" | Alta | Concluído (v1.45.0 — nome do aprovador removido do PDF, formulário e validação) |
 
 
 ---
@@ -341,7 +503,7 @@ Requisitos: Microsoft PowerPoint instalado na máquina (conversão via COM).
 - [x] Implementar upload e armazenamento de fotos no banco de dados
 
 ### Sprint 3 (3-4 semanas)
-- [ ] Testar viabilidade de drive mapeado em rede (ver docs/REDE.md)
+ - [x] Testar viabilidade de drive mapeado em rede (obsoleto — substituído pelo Portal Web em rede, v1.24.0+)
 - [x] Implementar backup duplo (programa + Documents)
 - [x] Implementar backup periódico automático (padrão 15 min, configurável) durante a execução
 
@@ -399,10 +561,9 @@ Requisitos: Microsoft PowerPoint instalado na máquina (conversão via COM).
 - Indicador na lista de histórico para certificados com documento assinado anexado
 - Documentos ficam dentro do DB, portanto já incluídos nos backups automáticos
 
-### Para drive mapeado:
-- Verificar caminhos relativos no config.py
-- Testar acesso ao banco SQLite em rede
-- Verificar performance do backup
+### Para drive mapeado (OBSOLETO):
+- Substituído pelo Portal Web (Fase 1, v1.24.0): o acesso em rede é feito
+  pelo navegador, sem mapear drive nem expor o SQLite na rede.
 
 ### Para backup duplo:
 - Configurar segundo destino no backup_manager.py

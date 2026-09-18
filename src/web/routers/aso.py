@@ -57,6 +57,7 @@ def register(app, deps) -> None:
     templates = deps["templates"]
     ctx = deps["ctx"]
     flash = deps["flash"]
+    users = deps["users"]
     rotas = APIRouter()
 
     def _repos():
@@ -98,6 +99,7 @@ def register(app, deps) -> None:
         return templates.TemplateResponse(request=request, name="aso.html",
             context=ctx(request, linhas=linhas, busca=busca, page=max(page, 1),
                         total_paginas=total_paginas, total=total,
+                        pg_base=("/aso?busca=" + busca) if busca else "/aso",
                         pode_escrever=pode_escrever(user["papel"], "aso")))
 
     @rotas.get("/aso/novo")
@@ -158,6 +160,7 @@ def register(app, deps) -> None:
                 network_sync.run_async(network_sync.sync_aso, salvo, employee)
         except Exception:
             pass
+        users.audit("emitir-aso", (auth.current_user(request) or {}).get("username", ""), numero)
         flash(request, msg=f"ASO {numero} cadastrado.")
         return RedirectResponse(f"/aso/{novo_id}", status_code=303)
 

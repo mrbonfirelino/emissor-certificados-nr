@@ -55,10 +55,21 @@
           <a class="btn" href="/historico/{{ cert.cert_number }}/assinado">Assinado</a>
           {% endif %}
           {% if pode_escrever %}
-          <form method="post" action="/historico/{{ cert.cert_number }}/assinado" enctype="multipart/form-data" style="display:inline;">
-            <input type="file" name="arquivo" accept=".pdf,.jpg,.jpeg,.png" required style="width:auto; max-width:200px; font-size:12px; padding:3px;">
-            <button type="submit" class="cinza">Anexar assinado</button>
-          </form>
+          <details class="anexo-pop">
+            <summary class="btn cinza">Anexar assinado</summary>
+            <div class="anexo-box">
+              <form method="post" action="/historico/{{ cert.cert_number }}/assinado" enctype="multipart/form-data">
+                <label class="upload-area">
+                  <input type="file" name="arquivo" accept=".pdf,.jpg,.jpeg,.png" required
+                         onchange="var t=this.parentNode.querySelector('.arq-txt'); t.textContent=this.files.length ? this.files[0].name : 'Escolher arquivo (PDF, JPG ou PNG)'; this.parentNode.classList.toggle('selecionado', !!this.files.length);">
+                  <span class="arq-txt">Escolher arquivo (PDF, JPG ou PNG)</span>
+                </label>
+                <div class="linha-botoes" style="margin-top:10px;">
+                  <button type="submit" class="verde">Confirmar</button>
+                </div>
+              </form>
+            </div>
+          </details>
           {% if cert.has_signed_doc %}
           <form method="post" action="/historico/{{ cert.cert_number }}/assinado/remover" style="display:inline;"
                 onsubmit="return confirm('Remover o documento assinado deste certificado?');">
@@ -74,12 +85,6 @@
     </tbody>
   </table>
 
-  {% if paginas > 1 %}
-  <div class="paginacao">
-    {% if page > 1 %}<a href="?{{ qs }}{{ '&' if qs else '' }}page={{ page - 1 }}">&laquo; Anterior</a>{% endif %}
-    <span class="atual">Página {{ page }} de {{ paginas }}</span>
-    {% if page < paginas %}<a href="?{{ qs }}{{ '&' if qs else '' }}page={{ page + 1 }}">Próxima &raquo;</a>{% endif %}
-  </div>
-  {% endif %}
+  {% include "_paginacao.html" %}
 </div>
 {% endblock %}

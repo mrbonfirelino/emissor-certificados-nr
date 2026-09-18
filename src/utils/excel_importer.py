@@ -1,7 +1,7 @@
 import re
 from pathlib import Path
 from typing import Tuple, List
-from src.ui.pages.funcoes import load_funcoes, save_funcoes
+from src.utils.funcoes_store import load_funcoes, save_funcoes
 
 
 def _normalize_cpf(val) -> str:
@@ -102,7 +102,8 @@ def import_employees_from_excel(
     adm_col: int = 6,
     ctps_col: int = 7,
     ear_col: int = 8,
-    skip_header: bool = True
+    skip_header: bool = True,
+    on_progress=None
 ) -> Tuple[int, int, int, List[str]]:
     """
     Importa funcionarios de um arquivo Excel (.xlsx).
@@ -141,12 +142,22 @@ def import_employees_from_excel(
     def cell(row, col):
         return row[col] if col < len(row) else None
 
+    total_rows = max((ws.max_row or 1) - (1 if skip_header else 0), 1)
+    if on_progress:
+        on_progress(0, total_rows, "")
     for i, row in enumerate(ws.iter_rows(values_only=True)):
         if i == 0 and skip_header:
             continue
 
         if not row or all(c is None for c in row):
             continue
+
+        if on_progress:
+            try:
+                _nome_prog = str(cell(row, name_col) or "")
+            except Exception:
+                _nome_prog = ""
+            on_progress(i, total_rows, _nome_prog)
 
         try:
             name_val = cell(row, name_col)

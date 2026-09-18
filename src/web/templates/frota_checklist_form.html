@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block titulo %}Checklist semanal — {{ rotulo }} — NormaTech{% endblock %}
+{% block conteudo %}
+{% macro br(d) %}{% if d %}{{ d[8:10] }}/{{ d[5:7] }}/{{ d[0:4] }}{% else %}—{% endif %}{% endmacro %}
+<div class="card">
+  <a class="btn-voltar" href="/frota/{{ v.id }}">&larr; Voltar para a ficha</a>
+  <h1>Checklist semanal — {{ rotulo }}</h1>
+  <p class="sub">Marque <strong>S</strong> (atende) ou <strong>N</strong> (não atende) para cada item em cada dia da semana. O PDF é gerado no formato do formulário da empresa.</p>
+  {% if erro %}<p class="erro">{{ erro }}</p>{% endif %}
+
+  {% if pode_escrever %}
+  <form method="post" action="/frota/{{ v.id }}/checklist">
+    <div class="form-grid">
+      <div class="campo">
+        <label for="data_inicial">Data inicial *</label>
+        <input type="text" id="data_inicial" name="data_inicial" value="{{ hoje }}" required placeholder="dd/mm/aaaa">
+      </div>
+      <div class="campo">
+        <label for="data_final">Data final *</label>
+        <input type="text" id="data_final" name="data_final" value="{{ hoje }}" required placeholder="dd/mm/aaaa">
+      </div>
+      <div class="campo">
+        <label for="km_rodado">KM rodado *</label>
+        <input type="number" id="km_rodado" name="km_rodado" min="0" required>
+      </div>
+      <div class="campo">
+        <label for="motorista">Motorista *</label>
+        <input type="text" id="motorista" name="motorista" required>
+      </div>
+      <div class="campo">
+        <label for="lider">Líder *</label>
+        <input type="text" id="lider" name="lider" required>
+      </div>
+      <div class="campo">
+        <label>Pode-se operar com segurança? *</label>
+        <select name="pode_operar" required>
+          <option value="S">SIM</option>
+          <option value="N">NÃO (comunicar o líder imediato)</option>
+        </select>
+      </div>
+    </div>
+
+    {% for gnum, gtitulo, gitens in grupos %}
+    <h2 style="margin-top:18px;">{{ gtitulo }}</h2>
+    <table style="max-width:860px;">
+      <thead>
+        <tr><th style="width:280px;">Item</th>
+        {% for dia in dias %}<th>{{ dia }}</th>{% endfor %}
+      </tr></thead>
+      <tbody>
+      {% for num, rotulo_item in gitens %}
+        <tr>
+          <td>{{ num }}. {{ rotulo_item }}</td>
+          {% for dia in dias %}
+          <td style="text-align:center;">
+            <input type="radio" name="item_{{ num }}_{{ dia }}" value="S" title="Sim"><label>S</label>
+            <input type="radio" name="item_{{ num }}_{{ dia }}" value="N" style="margin-left:4px;" title="Não"><label>N</label>
+          </td>
+          {% endfor %}
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% endfor %}
+
+    <h2 style="margin-top:18px;">Observações (informar sempre que houver N)</h2>
+    <div class="form-grid">
+      {% for dia in dias %}
+      <div class="campo">
+        <label>{{ dia }}</label>
+        <input type="text" name="obs_{{ dia }}">
+      </div>
+      {% endfor %}
+    </div>
+
+    <p class="linha-botoes" style="margin-top:16px;">
+      <button type="submit" class="verde">Salvar e gerar PDF</button>
+      <a class="btn cinza" href="/frota/{{ v.id }}">Cancelar</a>
+    </p>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

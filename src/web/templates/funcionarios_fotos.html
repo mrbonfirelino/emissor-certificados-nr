@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block titulo %}Importar Fotos — NormaTech{% endblock %}
+
+{% block conteudo %}
+<div class="card">
+  <h1>Importar Fotos dos Funcionários</h1>
+  <p class="sub">Selecione várias fotos de uma vez. Cada arquivo é casado com o
+     cadastro pelo <strong>CPF (11 dígitos no nome do arquivo)</strong> ou pelo
+     <strong>nome exato</strong> (sem extensão). Você confere a prévia antes de aplicar.</p>
+
+  <form method="post" action="/funcionarios/importar-fotos" enctype="multipart/form-data" class="filtros">
+    <div class="campo upload">
+      <label for="fotos">Fotos (JPG, PNG, BMP ou WEBP — até 50 MB cada)</label>
+      <input type="file" id="fotos" name="fotos" accept=".jpg,.jpeg,.png,.bmp,.webp" multiple required>
+    </div>
+    <button class="btn verde" type="submit">Conferir fotos</button>
+    <a class="btn cinza" href="/funcionarios">Voltar</a>
+  </form>
+
+  <p class="muted">Exemplos de nome: <code>12345678901.jpg</code> (CPF) ou
+     <code>JOAO DA SILVA.png</code> (nome igual ao cadastro, acentos ignorados).</p>
+</div>
+{% endblock %}

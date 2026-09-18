@@ -3,6 +3,10 @@ setlocal EnableExtensions
 title NormaTech Portal - Instalacao
 cd /d "%~dp0"
 
+REM Porta do portal. Padrao 8000 (http://normatech:8000).
+REM Use 80 para acessar por http://normatech (sem :porta na URL).
+set PORT=8000
+
 echo ============================================
 echo  NORMATECH PORTAL - INSTALACAO (Fase 1)
 echo ============================================
@@ -42,14 +46,15 @@ if errorlevel 1 ( echo [ERRO] Falha no pip install & pause & exit /b 1 )
 
 REM 4) Teste de importacao
 echo [4/6] Testando importacoes ...
-".venv\Scripts\python.exe" -c "import fastapi, waitress, jinja2, itsdangerous, multipart; print('imports OK')"
+".venv\Scripts\python.exe" -c "from src.web.app import create_app; from src.utils.excel_importer import import_employees_from_excel; from src.utils.batch_importer import generate_batch_certificates; from src.utils.aso_importer import import_asos_from_excel; from src.utils.blocking_importer import import_blocking_list; print('imports OK')"
 if errorlevel 1 ( echo [ERRO] Falha ao importar dependencias & pause & exit /b 1 )
 
 REM 5) Servico Windows (NSSM opcional)
 set NSSM=tools\nssm.exe
 if exist "%NSSM%" (
     echo [5/6] Instalando servico NormaTechPortal via NSSM ...
-    "%NSSM%" install NormaTechPortal "%CD%\.venv\Scripts\python.exe" run_web.py --host 0.0.0.0 --port 8000
+    "%NSSM%" install NormaTechPortal "%CD%\.venv\Scripts\python.exe" run_web.py --host 0.0.0.0 --port %PORT%
+    "%NSSM%" set NormaTechPortal AppStartup AUTO
     "%NSSM%" set NormaTechPortal AppDirectory "%CD%"
     "%NSSM%" set NormaTechPortal AppStdout "%CD%\logs\portal_out.log"
     "%NSSM%" set NormaTechPortal AppStderr "%CD%\logs\portal_err.log"
@@ -58,21 +63,26 @@ if exist "%NSSM%" (
     echo        Servico NormaTechPortal instalado e iniciado.
 ) else (
     echo [5/6] tools\nssm.exe nao encontrado - servico NAO instalado.
-    echo        Para testar manualmente:  .venv\Scripts\python run_web.py --host 0.0.0.0 --port 8000
-    echo        (coloque nssm.exe em tools\ e rode este script de novo p/ virar servico)
+    echo        Para testar manualmente:  .venv\Scripts\python run_web.py --host 0.0.0.0 --port %PORT%
+    echo        (ou rode INICIAR-PORTAL.bat na raiz)
 )
 
 REM 6) Firewall
-echo [6/6] Liberando porta 8000 no firewall ...
+echo [6/6] Liberando porta %PORT% no firewall ...
 netsh advfirewall firewall delete rule name="NormaTech Portal" >nul 2>&1
-netsh advfirewall firewall add rule name="NormaTech Portal" dir=in action=allow protocol=TCP localport=8000 >nul
+netsh advfirewall firewall add rule name="NormaTech Portal" dir=in action=allow protocol=TCP localport=%PORT% >nul
 if errorlevel 1 ( echo [AVISO] Nao consegui liberar o firewall - rode como Administrador. ) else ( echo        Firewall OK. )
 
 echo.
 echo ============================================
 echo  CONCLUIDO. Acesso na rede:
-echo    http://NOME-DO-SERVIDOR:8000
-echo    http://IP-DO-SERVIDOR:8000
+if "%PORT%"=="80" (
+echo    http://NOME-DO-SERVIDOR
+echo    http://IP-DO-SERVIDOR
+) else (
+echo    http://NOME-DO-SERVIDOR:%PORT%
+echo    http://IP-DO-SERVIDOR:%PORT%
+)
 echo  1o acesso: senha do admin aparece no
 echo  console do servico (logs\portal_out.log)
 echo  e em data\web_admin_provisorio.txt

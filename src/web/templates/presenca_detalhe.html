@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block titulo %}{{ it.serial }} — NormaTech{% endblock %}
+{% block conteudo %}
+<div class="card">
+  <a class="btn-voltar" href="/presencas">&larr; Voltar para Listas de Presença</a>
+  <h1>{{ it.serial }} <span class="badge {{ it.status_classe }}">{{ it.status_label }}</span></h1>
+  <p class="sub">{{ it.nr_label }}</p>
+
+  <table style="max-width:640px;">
+    <tbody>
+      <tr><th style="width:180px;">Norma</th><td>{{ it.nr_code }}</td></tr>
+      <tr><th>Data referente</th><td>{{ it.data_br }}</td></tr>
+      <tr><th>Carga horária</th><td>{{ '%g' % it.carga_horaria }}h</td></tr>
+      <tr><th>Participantes</th><td>{{ it.participantes | length }}</td></tr>
+      <tr><th>Criada por</th><td>{{ it.criado_por or '—' }} <span class="muted">em {{ it.criado_em }}</span></td></tr>
+    </tbody>
+  </table>
+
+  {% if pode_escrever %}
+  <p class="linha-botoes" style="margin-top:14px;">
+    {% if it.pdf_path %}
+    <a class="btn" href="/presencas/{{ it.id }}/pdf" target="_blank">Abrir PDF</a>
+    <a class="btn cinza" href="/presencas/{{ it.id }}/pdf/download">Baixar PDF</a>
+    {% endif %}
+  </p>
+
+  {% if anexo_nome %}
+  <p><span class="badge b-verde">Assinada</span> <span class="muted">{{ anexo_nome }}</span>
+     <a href="/presencas/{{ it.id }}/assinada">baixar lista assinada</a></p>
+  {% endif %}
+
+  <div class="linha-botoes" style="margin-top:14px;">
+    <form method="post" action="/presencas/{{ it.id }}/status" style="display:inline-flex; gap:8px; align-items:center;">
+      <select name="status" style="max-width:150px;">
+        {% for s in status_opcoes %}<option value="{{ s }}" {% if s == it.status %}selected{% endif %}>{{ {'pendente':'Pendente','parcial':'Parcial','assinada':'Assinada'}[s] }}</option>{% endfor %}
+      </select>
+      <button type="submit" class="cinza">Alterar status</button>
+    </form>
+  </div>
+
+  <details class="anexo-pop" style="margin-top:12px;">
+    <summary class="btn cinza">{{ 'Trocar lista assinada' if anexo_nome else 'Enviar lista assinada' }}</summary>
+    <div class="anexo-box">
+      <form method="post" action="/presencas/{{ it.id }}/assinar" enctype="multipart/form-data">
+        <label class="upload-area">
+          <input type="file" name="arquivo" accept=".pdf,.jpg,.jpeg,.png" required>
+        </label>
+        <button type="submit" class="verde">Anexar assinada</button>
+        <span class="muted" style="font-size:12px;">PDF, JPG ou PNG (máx. 50 MB)</span>
+      </form>
+      {% if anexo_nome %}
+      <form method="post" action="/presencas/{{ it.id }}/assinada/excluir" style="margin-top:8px;">
+        <button type="submit" class="vermelho">Remover anexo</button>
+      </form>
+      {% endif %}
+    </div>
+  </details>
+
+  <details class="opcoes" style="margin-top:16px;">
+    <summary>Zona de risco</summary>
+    <form method="post" action="/presencas/{{ it.id }}/excluir"
+          onsubmit="return confirm('Excluir a lista {{ it.serial }} e o PDF gerado?');">
+      <button type="submit" class="vermelho">Excluir lista</button>
+    </form>
+  </details>
+  {% endif %}
+
+  <h2 style="margin-top:22px;">Participantes</h2>
+  <table>
+    <thead><tr><th>Nº</th><th>Nome</th><th>Função</th><th>CPF</th></tr></thead>
+    <tbody>
+    {% for p in it.participantes %}
+      <tr><td>{{ loop.index }}</td><td>{{ p.nome }}</td><td>{{ p.funcao or '—' }}</td><td>{{ p.cpf or '—' }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

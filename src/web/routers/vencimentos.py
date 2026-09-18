@@ -47,6 +47,16 @@ def _carregar_items() -> list:
         itens += IntegracaoRepository().get_integracoes_with_expiration()
     except Exception:
         pass
+    try:
+        from src.core.frota_repo import FrotaRepository
+        itens += FrotaRepository().get_laudos_with_expiration()
+    except Exception:
+        pass
+    try:
+        from src.core.frota_repo import FrotaRepository
+        itens += FrotaRepository().get_manutencoes_with_expiration()
+    except Exception:
+        pass
     return itens
 
 
@@ -80,20 +90,28 @@ def register(app, deps: dict):
         page = min(page, total_paginas)
         fatia = filtrados[(page - 1) * PER_PAGE:page * PER_PAGE]
 
-        linhas = [{
-            "numero": c.get("cert_number", ""),
-            "nr": c.get("nr_code", ""),
-            "item": c.get("descricao_treinamento", ""),
-            "funcionario": c.get("funcionario_nome", ""),
-            "cpf": c.get("funcionario_cpf", ""),
-            "validade": _br(c.get("data_validade")),
-            "dias": c.get("dias_para_vencer"),
-            "status": c.get("status", ""),
-            "classe": STATUS_CLASSE.get(c.get("status", ""), "b-verde"),
-        } for c in fatia]
+        linhas = []
+        for c in fatia:
+            if c.get("por_km"):
+                validade, dias = "— (por KM)", f"{c['dias_para_vencer']} km"
+            else:
+                validade, dias = _br(c.get("data_validade")), \
+                    c.get("dias_para_vencer")
+            linhas.append({
+                "numero": c.get("cert_number", ""),
+                "nr": c.get("nr_code", ""),
+                "item": c.get("descricao_treinamento", ""),
+                "funcionario": c.get("funcionario_nome", ""),
+                "cpf": c.get("funcionario_cpf", ""),
+                "validade": validade,
+                "dias": dias,
+                "status": c.get("status", ""),
+                "classe": STATUS_CLASSE.get(c.get("status", ""), "b-verde"),
+            })
 
         vencidos = sum(1 for c in filtrados if c["dias_para_vencer"] < 0)
         sete = sum(1 for c in filtrados if 0 <= c["dias_para_vencer"] <= 7)
+        quinze = sum(1 for c in filtrados if 8 <= c["dias_para_vencer"] <= 15)
         trinta = sum(1 for c in filtrados if 0 <= c["dias_para_vencer"] <= 30)
 
         filtros = {"nr": nr or "TODAS", "periodo": periodo or "",
@@ -106,5 +124,7 @@ def register(app, deps: dict):
                         periodo_opcoes=PERIODOS, periodo_sel=periodo or "",
                         nrs=nrs, nr_sel=nr or "TODAS", busca=filtros["busca"],
                         linhas=linhas, page=page, total_paginas=total_paginas,
-                        total=total, vencidos=vencidos, sete=sete, trinta=trinta,
+                        pg_base=("/vencimentos?" + qs) if qs else "/vencimentos",
+                        total=total, vencidos=vencidos, sete=sete,
+                        quinze=quinze, trinta=trinta,
                         qs=qs, qs_prefix=("&" + qs) if qs else ""))

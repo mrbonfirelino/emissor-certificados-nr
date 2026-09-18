@@ -11,7 +11,6 @@ from datetime import date, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 
-import customtkinter  # noqa: F401  (import antecipado, igual as outras suites)
 from PIL import Image
 from fastapi.testclient import TestClient
 

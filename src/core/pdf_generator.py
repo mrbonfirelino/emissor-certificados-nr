@@ -347,6 +347,14 @@ def generate_certificate_pdf(
             border_inset + 8 * mm,
             sig_data['cert_number']
         )
+        # Data/hora da emissao (opcional, pequena, logo abaixo do numero)
+        if getattr(data, 'data_hora_impressao', ''):
+            canvas.setFont('Helvetica', 6)
+            canvas.drawRightString(
+                page_width - margins["right"] * mm,
+                border_inset + 5 * mm,
+                data.data_hora_impressao
+            )
 
         canvas.restoreState()
 

@@ -5,17 +5,22 @@ Uma página: escolhe a NR, marca funcionários (sem CPF = bloqueado), define
 dados globais (data/carga/validade/descrição/campos extras) com ajuste
 individual opcional por funcionário, e emite em sequência no servidor.
 Consulta (somente leitura) não acessa: emissão é operação de admin/emissor.
+
+v1.45.0: quando o POST vem via fetch (header X-Requested-With: fetch),
+a emissão roda em um job de fundo (src/web/jobs.py) com barra de progresso
+(roadmap 2.32.1); chamadas comuns continuam síncronas (compatibilidade).
 """
 
+import threading
 from datetime import date
 
 from fastapi import Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 
 from src.core.employee_repo import EmployeeRepository
 from src.core.template_loader import load_all_templates
 from src.utils.validators import validar_data
-from src.web import auth
+from src.web import auth, jobs
 from src.web.permissions import pode_escrever
 
 MAX_LISTA = 500
@@ -26,6 +31,7 @@ def _templates_ordenados() -> dict:
 
 
 def register(app, deps: dict):
+    users = deps["users"]
     templates = deps["templates"]
     ctx = deps["ctx"]
     flash = deps["flash"]
@@ -51,10 +57,104 @@ def register(app, deps: dict):
                         hoje_br=date.today().strftime("%d/%m/%Y"),
                         total=len(todos), cortados=max(0, len(todos) - MAX_LISTA)))
 
+    def _coletar(form, tmpl, nr, data_global, carga_global, validade_global,
+                 descricao, campos, selecionados):
+        er = EmployeeRepository()
+        itens = []
+        for id_txt in selecionados:
+            try:
+                emp = er.get_by_id(int(id_txt))
+            except ValueError:
+                emp = None
+            if emp is None:
+                itens.append({"emp": None, "nome": f"(id {id_txt})",
+                              "erro": "Funcionário não encontrado."})
+                continue
+            if not (emp.cpf or "").strip():
+                itens.append({"emp": emp, "nome": emp.nome,
+                              "erro": "Sem CPF cadastrado."})
+                continue
+            d_txt = (form.get(f"data_{emp.id}") or "").strip()
+            data_item = validar_data(d_txt) if d_txt else data_global
+            if d_txt and data_item is None:
+                itens.append({"emp": emp, "nome": emp.nome,
+                              "erro": f"Data individual inválida ({d_txt})."})
+                continue
+            c_txt = (form.get(f"carga_{emp.id}") or "").strip()
+            try:
+                carga_item = int(c_txt) if c_txt else carga_global
+            except ValueError:
+                carga_item = 0
+            if carga_item < tmpl.carga_horaria_minima:
+                itens.append({"emp": emp, "nome": emp.nome,
+                              "erro": f"Carga individual abaixo da mínima "
+                                       f"({tmpl.carga_horaria_minima}h)."})
+                continue
+            v_txt = (form.get(f"validade_{emp.id}") or "").strip()
+            validade_item = validade_global
+            if v_txt:
+                try:
+                    validade_item = int(v_txt)
+                    if not 1 <= validade_item <= 120:
+                        raise ValueError
+                except ValueError:
+                    itens.append({"emp": emp, "nome": emp.nome,
+                                  "erro": f"Validade individual inválida ({v_txt})."})
+                    continue
+            itens.append({"emp": emp, "nome": emp.nome, "data": data_item,
+                          "carga": carga_item, "validade": validade_item,
+                          "erro": None})
+        return itens
+
+    def _executar_emissao(itens, nr, descricao, campos, progresso=None):
+        """Emite em sequência; progresso(i, total, nome) opcional (job 2.32.1)."""
+        from src.core.certificate_service import CertificateService
+        service = CertificateService()
+        gerados, erros = [], []
+        validos = [it for it in itens if not it["erro"]]
+        total = len(itens)
+        if progresso:
+            progresso(0, total, "")
+        for i, it in enumerate(itens, start=1):
+            if it["erro"]:
+                erros.append(f"{it['nome']}: {it['erro']}")
+                if progresso:
+                    progresso(i, total, it["nome"])
+                continue
+            try:
+                if progresso:
+                    progresso(i - 1, total, it["emp"].nome)
+                caminho = service.generate_certificate(
+                    nr_code=nr, employee=it["emp"], data_treinamento=it["data"],
+                    carga_horaria=it["carga"],
+                    descricao_treinamento=descricao, campos_extra=campos,
+                    validade_meses=it["validade"])
+                numero = None
+                try:
+                    from src.core.history_repo import HistoryRepository
+                    registros = HistoryRepository().get_by_employee(it["emp"].id)
+                    numero = max(registros, key=lambda r: r.id).cert_number
+                except Exception:
+                    numero = None
+                gerados.append({"nome": it["emp"].nome, "numero": numero,
+                                "pdf": bool(caminho)})
+            except ValueError as e:
+                erros.append(f"{it['emp'].nome}: {e}")
+            except Exception:
+                erros.append(f"{it['emp'].nome}: falha ao gerar o certificado.")
+            if progresso:
+                progresso(i, total, it["emp"].nome)
+        return gerados, erros
+
     @app.post("/emissao-lote/emitir")
     async def emitir(request: Request,
                      user: dict = auth.require_permission("certificados")):
+        via_fetch = (request.headers.get("x-requested-with") or "").lower() == "fetch"
+
         def _voltar(erro: str):
+            if via_fetch:
+                return JSONResponse({"ok": False, "erro": erro,
+                                     "redirect": "/emissao-lote"})
             flash(request, erro=erro)
             return RedirectResponse("/emissao-lote", status_code=303)
 
@@ -105,79 +205,53 @@ def register(app, deps: dict):
         if not selecionados:
             return _voltar("Selecione pelo menos um funcionário.")
 
-        er = EmployeeRepository()
-        itens = []
-        for id_txt in selecionados:
-            try:
-                emp = er.get_by_id(int(id_txt))
-            except ValueError:
-                emp = None
-            if emp is None:
-                itens.append({"emp": None, "nome": f"(id {id_txt})",
-                              "erro": "Funcionário não encontrado."})
-                continue
-            if not (emp.cpf or "").strip():
-                itens.append({"emp": emp, "nome": emp.nome,
-                              "erro": "Sem CPF cadastrado."})
-                continue
-            d_txt = (form.get(f"data_{emp.id}") or "").strip()
-            data_item = validar_data(d_txt) if d_txt else data_global
-            if d_txt and data_item is None:
-                itens.append({"emp": emp, "nome": emp.nome,
-                              "erro": f"Data individual inválida ({d_txt})."})
-                continue
-            c_txt = (form.get(f"carga_{emp.id}") or "").strip()
-            try:
-                carga_item = int(c_txt) if c_txt else carga_global
-            except ValueError:
-                carga_item = 0
-            if carga_item < tmpl.carga_horaria_minima:
-                itens.append({"emp": emp, "nome": emp.nome,
-                              "erro": f"Carga individual abaixo da mínima "
-                                       f"({tmpl.carga_horaria_minima}h)."})
-                continue
-            v_txt = (form.get(f"validade_{emp.id}") or "").strip()
-            validade_item = validade_global
-            if v_txt:
-                try:
-                    validade_item = int(v_txt)
-                    if not 1 <= validade_item <= 120:
-                        raise ValueError
-                except ValueError:
-                    itens.append({"emp": emp, "nome": emp.nome,
-                                  "erro": f"Validade individual inválida ({v_txt})."})
-                    continue
-            itens.append({"emp": emp, "nome": emp.nome, "data": data_item,
-                          "carga": carga_item, "validade": validade_item,
-                          "erro": None})
+        itens = _coletar(form, tmpl, nr, data_global, carga_global,
+                         validade_global, descricao, campos, selecionados)
 
-        from src.core.certificate_service import CertificateService
-        service = CertificateService()
-        gerados, erros = [], []
-        for it in itens:
-            if it["erro"]:
-                erros.append(f"{it['nome']}: {it['erro']}")
-                continue
-            try:
-                caminho = service.generate_certificate(
-                    nr_code=nr, employee=it["emp"], data_treinamento=it["data"],
-                    carga_horaria=it["carga"],
-                    descricao_treinamento=descricao, campos_extra=campos,
-                    validade_meses=it["validade"])
-                numero = None
-                try:
-                    from src.core.history_repo import HistoryRepository
-                    registros = HistoryRepository().get_by_employee(it["emp"].id)
-                    numero = max(registros, key=lambda r: r.id).cert_number
-                except Exception:
-                    numero = None
-                gerados.append({"nome": it["emp"].nome, "numero": numero,
-                                "pdf": bool(caminho)})
-            except ValueError as e:
-                erros.append(f"{it['emp'].nome}: {e}")
-            except Exception:
-                erros.append(f"{it['emp'].nome}: falha ao gerar o certificado.")
+        if via_fetch:
+            job = jobs.criar_job(titulo=f"Emissão em Lote {nr}")
+            jid = job["id"]
 
+            def progresso(atual, total, nome):
+                jobs.job_iniciar(jid, total)
+                jobs.job_progresso(jid, atual, nome)
+
+            def rodar():
+                try:
+                    gerados, erros = _executar_emissao(itens, nr, descricao,
+                                                       campos, progresso)
+                    if gerados:
+                        users.audit("emissao-lote", user["username"], nr,
+                                    f"gerados={len(gerados)}")
+                    jobs.job_resultado(jid, {"nr": nr, "gerados": gerados,
+                                             "erros": erros})
+                    jobs.job_finalizar(
+                        jid, redirect=f"/emissao-lote/resultado/{jid}")
+                except Exception as e:  # pragma: no cover - rede de segurança
+                    jobs.job_finalizar(jid, erro_fatal=str(e))
+
+            threading.Thread(target=rodar, daemon=True).start()
+            return JSONResponse({"ok": True, "job": jid,
+                                 "status_url": f"/jobs/{jid}"})
+
+        gerados, erros = _executar_emissao(itens, nr, descricao, campos)
+        if gerados:
+            users.audit("emissao-lote", user["username"], nr,
+                        f"gerados={len(gerados)}")
         return templates.TemplateResponse(
             request=request, name="lote_resultado.html",
             context=ctx(request, nr=nr, gerados=gerados, erros=erros))
+
+    @app.get("/emissao-lote/resultado/{jid}")
+    def resultado(jid: str, request: Request,
+                  user: dict = auth.require_permission("certificados")):
+        data = jobs.dados_resultado(jid)
+        if not data or data.get("resultado") is None:
+            flash(request, erro="Resultado não encontrado ou expirado.")
+            return RedirectResponse("/emissao-lote", status_code=303)
+        res = data["resultado"]
+        return templates.TemplateResponse(
+            request=request, name="lote_resultado.html",
+            context=ctx(request, nr=res.get("nr", ""),
+                        gerados=res.get("gerados", []),
+                        erros=res.get("erros", [])))

@@ -7,7 +7,7 @@
   <h1>Ficha de EPI {{ ficha.epi_number }}</h1>
   <p class="sub">{{ ficha.funcionario_nome }}{% if ficha.funcionario_cpf %} — {{ ficha.funcionario_cpf }}{% endif %}
      · Emissão: {{ ficha.data_emissao }}
-     · {% if ficha.status == 'fechado' %}<span class="badge b-cinza">Fechada</span>{% else %}<span class="badge b-verde">Aberta</span>{% endif %}</p>
+     · {% if ficha.status == 'fechado' %}<span class="badge b-cinza">Fechada</span>{% elif devolvidos %}<span class="badge b-azul">Itens devolvidos</span>{% else %}<span class="badge b-verde">Aberta</span>{% endif %}</p>
 
   <p>
     {% if tem_pdf %}
@@ -50,13 +50,14 @@
       <tr>
         <td>{{ it.descricao }} ({{ it.quantidade }})</td>
         <td>
-          <select name="dev_modo_{{ loop.index0 }}">
+          <select name="dev_modo_{{ loop.index0 }}" data-alvo="dev_qtd_{{ loop.index0 }}"
+                  onchange="alternarQtd(this)">
             <option value="pendente" {% if not it.estado %}selected{% endif %}>Pendente</option>
             <option value="total" {% if it.estado == 'Total' %}selected{% endif %}>Total</option>
             <option value="parcial" {% if it.estado == 'Parcial' %}selected{% endif %}>Parcial</option>
           </select>
         </td>
-        <td><input type="text" name="dev_qtd_{{ loop.index0 }}" placeholder="Ex.: 2" style="width:70px"></td>
+        <td><input type="text" name="dev_qtd_{{ loop.index0 }}" id="dev_qtd_{{ loop.index0 }}" placeholder="Ex.: 2" style="width:70px"></td>
       </tr>
       {% endfor %}
     </table>
@@ -69,6 +70,16 @@
     <p class="muted">Sem itens para devolver.</p>
     {% endif %}
   </form>
+
+  <script>
+  function alternarQtd(sel) {
+    var q = document.getElementById(sel.dataset.alvo);
+    if (!q) return;
+    if (sel.value === 'total') { q.value = ''; q.disabled = true; }
+    else { q.disabled = false; }
+  }
+  document.querySelectorAll('select[name^="dev_modo_"]').forEach(alternarQtd);
+  </script>
 
   <form method="post" action="/epi/{{ ficha.id }}/status" style="margin-top:12px">
     <button class="btn {{ 'cinza' if aberto else 'verde' }}" type="submit">

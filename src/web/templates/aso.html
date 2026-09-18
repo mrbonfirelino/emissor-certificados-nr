@@ -35,12 +35,6 @@
     </tbody>
   </table>
 
-  {% if total_paginas > 1 %}
-  <div class="paginacao">
-    {% if page > 1 %}<a href="?busca={{ busca }}&page={{ page - 1 }}">&laquo; Anterior</a>{% endif %}
-    <span class="atual">Página {{ page }} de {{ total_paginas }}</span>
-    {% if page < total_paginas %}<a href="?busca={{ busca }}&page={{ page + 1 }}">Próxima &raquo;</a>{% endif %}
-  </div>
-  {% endif %}
+  {% with paginas = total_paginas %}{% include "_paginacao.html" %}{% endwith %}
 </div>
 {% endblock %}

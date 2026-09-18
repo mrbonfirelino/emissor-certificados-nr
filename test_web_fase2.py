@@ -83,9 +83,9 @@ def main():
           client.get("/", follow_redirects=False).status_code in (200, 303))
     _trocar_senha(client, prov)
 
-    # nav da fase 2
+    # nav da fase 2 (2.31.4: grupo "Funcionários" contém item "Cadastros")
     r = client.get("/")
-    nav_ok = all(x in r.text for x in (">Certificados<", ">Funcionários<",
+    nav_ok = all(x in r.text for x in (">Certificados<", ">Cadastros<",
                                        ">Histórico<"))
     check("4. nav mostra modulos da fase 2", r.status_code == 200 and nav_ok)
 

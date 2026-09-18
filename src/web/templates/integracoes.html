@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block titulo %}Integrações{% endblock %}
+
+{% block conteudo %}
+<div class="card">
+  <h1>Integrações com fábricas de clientes</h1>
+  <p class="sub">{{ total }} integração(ões) — marcador de validade por funcionário/empresa.</p>
+
+  <div class="filtros">
+    <form method="get" action="/integracoes" class="filtros">
+      <div class="campo">
+        <label>Buscar (funcionário, empresa ou tipo)</label>
+        <input type="text" name="q" value="{{ q }}" placeholder="Ex.: ArcelorMittal">
+      </div>
+      <button class="btn" type="submit">Buscar</button>
+      {% if q %}<a class="btn cinza" href="/integracoes">Limpar</a>{% endif %}
+    </form>
+  </div>
+
+  {% if pode_escrever %}
+  <div class="linha-botoes">
+    <a class="btn verde" href="/integracoes/novo">+ Nova integração</a>
+    <a class="btn" href="/empresas">Empresas clientes</a>
+  </div>
+  {% endif %}
+
+  {% if linhas %}
+  <table>
+    <tr><th>Funcionário</th><th>Empresa</th><th>Tipo</th><th>Início</th>
+        <th>Validade</th><th>Status</th>{% if pode_escrever %}<th>Ações</th>{% endif %}</tr>
+    {% for i in linhas %}
+    <tr>
+      <td>{{ i.funcionario }}</td>
+      <td>{{ i.empresa }}</td>
+      <td>{{ i.tipo }}</td>
+      <td>{{ i.inicio }}</td>
+      <td>{{ i.validade }}</td>
+      <td><span class="badge {{ status_classe[i.status] }}">{{ status_label[i.status] }}</span></td>
+      {% if pode_escrever %}
+      <td class="acoes">
+        <a class="btn cinza" href="/integracoes/{{ i.id }}/editar">Editar</a>
+        <form method="post" action="/integracoes/{{ i.id }}/excluir"
+              onsubmit="return confirm('Excluir esta integração?')">
+          <button class="btn vermelho" type="submit">Excluir</button>
+        </form>
+      </td>
+      {% endif %}
+    </tr>
+    {% endfor %}
+  </table>
+
+  {% if paginas > 1 %}
+  <div class="paginacao">
+    {% for p in range(1, paginas + 1) %}
+      {% if p == page %}<span class="atual">{{ p }}</span>
+      {% else %}<a href="{{ base_url }}page={{ p }}">{{ p }}</a>{% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% else %}
+  <p class="muted">Nenhuma integração cadastrada{% if q %} para “{{ q }}”{% endif %}.</p>
+  {% endif %}
+</div>
+{% endblock %}

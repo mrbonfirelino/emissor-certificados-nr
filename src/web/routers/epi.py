@@ -16,6 +16,9 @@ from src.utils.paths import get_epis_dir
 from src.web import auth
 
 PER_PAGE = 20
+PER_OPCOES = (10, 20, 25, 50)
+STATUS_FILTROS = [("", "Todas"), ("aberto", "Abertas"),
+                  ("fechado", "Fechadas"), ("devolvidos", "Itens devolvidos")]
 _MIME = {"pdf": "application/pdf", "jpg": "image/jpeg", "jpeg": "image/jpeg",
          "png": "image/png", "gif": "image/gif", "txt": "text/plain"}
 
@@ -54,6 +57,19 @@ def _estado(item: dict) -> str:
     return "Parcial"
 
 
+def _estado_ficha(ficha: dict) -> str:
+    """'fechado' | 'devolvidos' | 'aberto' — p/ filtros e badges da lista.
+
+    'devolvidos' = ficha aberta em que TODOS os itens estão devolvidos (Total).
+    """
+    if (ficha.get("status") or "aberto") == "fechado":
+        return "fechado"
+    itens = ficha.get("items") or []
+    if itens and all(_estado(it) == "Total" for it in itens):
+        return "devolvidos"
+    return "aberto"
+
+
 def _resolver_devolucao(items, escolhas, data_iso):
     """Cópia da lógica do desktop (epi_manager_dialog) — sem customtkinter.
 
@@ -84,13 +100,24 @@ def _resolver_devolucao(items, escolhas, data_iso):
 
 
 def register(app, deps):
+    users = deps["users"]
     templates = deps["templates"]
     ctx = deps["ctx"]
     flash = deps["flash"]
 
+    def _linhas_fichas(fichas: list) -> list:
+        return [{"id": f["id"], "numero": f["epi_number"],
+                 "funcionario": f.get("funcionario_nome") or "—",
+                 "employee_id": f.get("employee_id"),
+                 "data": _br(f.get("data_emissao")),
+                 "estado_ficha": _estado_ficha(f),
+                 "itens": len(f.get("items") or [])}
+                for f in fichas]
+
     @app.get("/epi")
     def epi_lista(request: Request, user: dict = auth.require_permission("epi"),
-                  page: int = 1, busca: str = ""):
+                  page: int = 1, busca: str = "", status: str = "",
+                  per: int = PER_PAGE):
         from src.core.epi_repo import EpiRepository
         repo = EpiRepository()
         todas = repo.get_all(limit=1000000)
@@ -99,22 +126,60 @@ def register(app, deps):
             todas = [f for f in todas
                      if termo in (f.get("funcionario_nome") or "").lower()
                      or termo in (f.get("epi_number") or "").lower()]
+        status = status if status in ("aberto", "fechado", "devolvidos") else ""
+        if status:
+            todas = [f for f in todas if _estado_ficha(f) == status]
+        per = per if per in PER_OPCOES else PER_PAGE
         todas.sort(key=lambda f: (f.get("created_at") or "", f.get("id") or 0),
                    reverse=True)
         total = len(todas)
-        total_paginas = max(1, (total + PER_PAGE - 1) // PER_PAGE)
+        total_paginas = max(1, (total + per - 1) // per)
         page = min(max(1, page), total_paginas)
-        fatia = todas[(page - 1) * PER_PAGE: page * PER_PAGE]
-        linhas = [{"id": f["id"], "numero": f["epi_number"],
-                   "funcionario": f.get("funcionario_nome") or "—",
-                   "data": _br(f.get("data_emissao")),
-                   "status": f.get("status") or "aberto",
-                   "itens": len(f.get("items") or [])}
-                  for f in fatia]
+        fatia = todas[(page - 1) * per: page * per]
+        params = []
+        if termo:
+            params.append(f"busca={busca.strip()}")
+        if status:
+            params.append(f"status={status}")
+        if per != PER_PAGE:
+            params.append(f"per={per}")
+        pg_base = "/epi" + (("?" + "&".join(params)) if params else "")
         return templates.TemplateResponse(
             request=request, name="epi.html",
-            context=ctx(request, linhas=linhas, busca=busca or "", page=page,
-                        total_paginas=total_paginas, total=total,
+            context=ctx(request, linhas=_linhas_fichas(fatia), busca=busca or "",
+                        page=page, total_paginas=total_paginas, pg_base=pg_base,
+                        total=total, status_sel=status, status_opcoes=STATUS_FILTROS,
+                        per=per, per_opcoes=PER_OPCOES, funcionario=None,
+                        pode_escrever=auth.pode_escrever(user["papel"], "epi")))
+
+    @app.get("/epi/funcionario/{emp_id}")
+    def epi_por_funcionario(request: Request, emp_id: int,
+                            user: dict = auth.require_permission("epi"),
+                            page: int = 1, per: int = PER_PAGE):
+        """Todas as fichas de EPI de um funcionário (link no perfil)."""
+        from src.core.employee_repo import EmployeeRepository
+        from src.core.epi_repo import EpiRepository
+        emp = EmployeeRepository().get_by_id(emp_id)
+        if emp is None:
+            return RedirectResponse("/epi", status_code=303)
+        repo = EpiRepository()
+        todas = repo.get_by_employee(emp_id)
+        per = per if per in PER_OPCOES else PER_PAGE
+        todas.sort(key=lambda f: (f.get("created_at") or "", f.get("id") or 0),
+                   reverse=True)
+        total = len(todas)
+        total_paginas = max(1, (total + per - 1) // per)
+        page = min(max(1, page), total_paginas)
+        fatia = todas[(page - 1) * per: page * per]
+        pg_base = (f"/epi/funcionario/{emp_id}" +
+                   (f"?per={per}" if per != PER_PAGE else ""))
+        return templates.TemplateResponse(
+            request=request, name="epi.html",
+            context=ctx(request, linhas=_linhas_fichas(fatia), busca="",
+                        page=page, total_paginas=total_paginas, pg_base=pg_base,
+                        total=total, status_sel="", status_opcoes=STATUS_FILTROS,
+                        per=per, per_opcoes=PER_OPCOES,
+                        funcionario={"id": emp.id, "nome": emp.nome},
                         pode_escrever=auth.pode_escrever(user["papel"], "epi")))
 
     @app.get("/epi/nova")
@@ -197,6 +262,8 @@ def register(app, deps):
             network_sync.run_async(network_sync.sync_epi, ficha, employee)
         except Exception:
             pass
+        users.audit("abrir-ficha-epi", user["username"], f"func={funcionario_id}",
+                    f"epi={numero}")
         flash(request, msg=f"Ficha {numero} aberta.")
         return RedirectResponse(f"/epi/{epi_id}", status_code=303)
 
@@ -228,6 +295,7 @@ def register(app, deps):
             context=ctx(request, ficha=ficha, itens=itens, anexos=anexos,
                         tem_pdf=tem_pdf, hoje_br=_hoje_br(),
                         aberto=(ficha.get("status") != "fechado"),
+                        devolvidos=(_estado_ficha(ficha) == "devolvidos"),
                         pode_escrever=auth.pode_escrever(user["papel"], "epi")))
 
     def _epi_pdf_response(epi_id: int, attachment: bool):

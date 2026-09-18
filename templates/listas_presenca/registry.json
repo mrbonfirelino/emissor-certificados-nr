@@ -1,0 +1,37 @@
+{
+  "NR-01": {
+    "arquivo": "LISTA NR 01 ALTEC.xlsx",
+    "sheet": "NR 01 ALTEC INDUSTRIAL",
+    "data": { "cel": "A6", "prefixo": "", "data_pura": true },
+    "carga": { "cel": "E4", "formato": "{:02d}HS" },
+    "linhas": { "inicio": 9, "num": "A", "empresa": "B", "nome": "C", "funcao": "G", "vagas": 13 }
+  },
+  "NR-06": {
+    "arquivo": "LISTAS DE TREINAMENTOS.xlsx",
+    "sheet": "NR 6",
+    "data": { "cel": "A4", "prefixo": "Data: " },
+    "carga_texto": { "cel": "A5", "regex": "([0-9]{1,2})\\s*HORAS", "formato": "{} HORAS" },
+    "linhas": { "inicio": 8, "empresa": "C", "nome": "B", "funcao": "A", "vagas": 23 }
+  },
+  "NR-12": {
+    "arquivo": "LISTAS DE TREINAMENTOS.xlsx",
+    "sheet": "NR 12",
+    "data": { "cel": "A3", "prefixo": "Data: " },
+    "carga_texto": { "cel": "A4", "regex": "([0-9]{1,2})\\s*HORAS", "formato": "{} HORAS" },
+    "linhas": { "inicio": 6, "empresa": "C", "nome": "B", "funcao": "A", "vagas": 16 }
+  },
+  "NR-18": {
+    "arquivo": "LISTAS DE TREINAMENTOS.xlsx",
+    "sheet": "NR 18 - INTEGRAÇÃO",
+    "data": { "cel": "A3", "prefixo": "Data: " },
+    "carga_texto": { "cel": "A4", "regex": "([0-9]{1,2})\\s*HORAS", "formato": "{} HORAS" },
+    "linhas": { "inicio": 6, "empresa": "C", "nome": "B", "funcao": "A", "vagas": 15 }
+  },
+  "NR-35": {
+    "arquivo": "LISTAS DE TREINAMENTOS.xlsx",
+    "sheet": "NR 35",
+    "data": { "cel": "A3", "prefixo": "Data: " },
+    "carga_texto": { "cel": "A4", "regex": "([0-9]{1,2})\\s*HORAS", "formato": "{} HORAS" },
+    "linhas": { "inicio": 6, "empresa": "C", "nome": "B", "funcao": "A", "vagas": 14 }
+  }
+}

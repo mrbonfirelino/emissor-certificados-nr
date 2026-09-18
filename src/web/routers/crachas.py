@@ -13,6 +13,7 @@ from fastapi.responses import FileResponse, RedirectResponse, Response
 from src.web import auth
 
 _MIME = "application/pdf"
+_PER_PAGE = 20
 
 
 def _br(iso) -> str:
@@ -27,6 +28,7 @@ def _hoje_br() -> str:
 
 
 def register(app, deps):
+    users = deps["users"]
     templates = deps["templates"]
     ctx = deps["ctx"]
     flash = deps["flash"]
@@ -40,22 +42,39 @@ def register(app, deps):
 
     @app.get("/crachas")
     def crachas_lista(request: Request,
+                      busca: str = "",
+                      page: int = 1,
                       user: dict = auth.require_permission("crachas")):
+        from urllib.parse import quote_plus
         from src.core.cracha_repo import CrachaRepository
         repo = CrachaRepository()
         todos = repo.get_all(limit=500)
         todos.sort(key=lambda c: (c.get("created_at") or "", c.get("id") or 0),
                    reverse=True)
+        q = (busca or "").strip().lower()
+        if q:
+            def _casado(c):
+                nrs_txt = " ".join(str(n.get("nr", "")) for n in (c.get("nrs") or []))
+                return (q in (c.get("employee_nome") or "").lower()
+                        or q in (c.get("cracha_number") or "").lower()
+                        or q in nrs_txt.lower())
+            todos = [c for c in todos if _casado(c)]
+        total = len(todos)
+        paginas = max(1, (total + _PER_PAGE - 1) // _PER_PAGE)
+        page = max(1, min(page, paginas))
+        fatia = todos[(page - 1) * _PER_PAGE: page * _PER_PAGE]
         linhas = [{"id": c.get("id"), "numero": c.get("cracha_number"),
                    "funcionario": c.get("employee_nome") or "—",
                    "data": _br(c.get("data_emissao")),
                    "nrs": len(c.get("nrs") or []),
                    "tem_pdf": bool(c.get("pdf_path"))
                    and Path(c["pdf_path"]).exists()}
-                  for c in todos]
+                  for c in fatia]
+        pg_base = ("/crachas?busca=" + quote_plus(q)) if q else "/crachas"
         return templates.TemplateResponse(
             request=request, name="crachas.html",
-            context=ctx(request, linhas=linhas, total=len(linhas),
+            context=ctx(request, linhas=linhas, total=total, busca=q,
+                        page=page, paginas=paginas, pg_base=pg_base,
                         pode_escrever=auth.pode_escrever(user["papel"], "crachas")))
 
     @app.get("/crachas/novo")
@@ -171,6 +190,8 @@ def register(app, deps):
             session_paths.append(str(p))
             gerados.append({"nome": Path(p).name, "idx": len(session_paths) - 1})
         request.session["cracha_pdfs"] = session_paths[-20:]
+        users.audit("emitir-crachas", user["username"], template_code,
+                    f"{len(gerados)} cracha(s)")
         return templates.TemplateResponse(
             request=request, name="crachas_resultado.html",
             context=ctx(request, gerados=gerados, faltantes=faltantes,

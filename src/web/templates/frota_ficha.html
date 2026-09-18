@@ -1,0 +1,405 @@
+{% extends "base.html" %}
+{% block titulo %}{{ rotulo }} — NormaTech{% endblock %}
+{% block conteudo %}
+{% macro br(d) %}{% if d %}{{ d[8:10] }}/{{ d[5:7] }}/{{ d[0:4] }}{% else %}—{% endif %}{% endmacro %}
+<div class="card">
+  <a class="btn-voltar" href="/frota">&larr; Voltar para Frota</a>
+  <h1>{{ rotulo }} {% if v.placa %}<span class="muted" style="font-size:0.6em;">{{ v.placa }}</span>{% endif %}</h1>
+  <p class="sub">{{ tipo_label }}{% if sub_label %} — {{ sub_label }}{% endif %} ·
+     {{ 'Próprio' if v.proprio else 'Alugado — ' ~ (v.contratante or '?') }}
+     {% if v.empresa_nome %} · {{ v.empresa_nome }}{% endif %}</p>
+
+  <div style="display:flex; gap:18px; align-items:flex-start;">
+    {% if v.foto %}
+    <img src="/frota/{{ v.id }}/foto" alt="Foto do veículo" style="width:150px; height:112px; object-fit:cover; border-radius:6px; border:1px solid #000;">
+    {% endif %}
+    {% if pode_escrever %}
+    <details class="anexo-pop">
+      <summary class="btn cinza">{{ 'Trocar foto' if v.foto else '+ Foto do veículo' }}</summary>
+      <div class="anexo-box abre-dir" style="width:280px;">
+        <form method="post" action="/frota/{{ v.id }}/foto" enctype="multipart/form-data">
+          <label class="upload-area">
+            <input type="file" name="arquivo" accept=".jpg,.jpeg,.png,.gif,.webp" required onchange="this.closest('form').querySelector('.arq-txt').textContent = this.files.length ? this.files[0].name : 'Escolher arquivo (JPG, PNG, GIF ou WEBP)';">
+            <span class="arq-txt">Escolher arquivo (JPG, PNG, GIF ou WEBP)</span>
+          </label>
+          <button type="submit" class="verde">Enviar foto</button>
+        </form>
+      </div>
+    </details>
+    {% endif %}
+  </div>
+
+  {% if pode_escrever %}
+  <p class="linha-botoes" style="margin-top:10px;">
+    <a class="btn" href="/frota/{{ v.id }}/editar">Editar</a>
+    <a class="btn amarelo" href="/frota/abastecimentos/novo?veiculo={{ v.id }}">Nova solicitação de abastecimento</a>
+    <form method="post" action="/frota/{{ v.id }}/excluir"
+          onsubmit="return confirm('Excluir o veículo e TODOS os seus registros (docs, laudos, movimentações e abastecimentos)?');">
+      <button type="submit" class="vermelho">Excluir</button>
+    </form>
+  </p>
+  {% endif %}
+
+  <table style="max-width:640px; margin-top:14px;">
+    <tbody>
+      <tr><th style="text-align:left; width:170px;">Marca / Modelo</th><td>{{ (v.marca or '—') }} / {{ v.modelo }}</td></tr>
+      <tr><th style="text-align:left;">Placa</th><td>{{ v.placa or '—' }}</td></tr>
+      {% if v.ano or v.cor %}<tr><th style="text-align:left;">Ano / Cor</th><td>{{ v.ano or '—' }}{% if v.cor %} / {{ v.cor }}{% endif %}</td></tr>{% endif %}
+      {% if v.carroceria %}<tr><th style="text-align:left;">Carroceria</th><td>{{ {'hatch': 'Hatch', 'sedan': 'Sedã'}.get(v.carroceria, v.carroceria) }}</td></tr>{% endif %}
+      <tr><th style="text-align:left;">Possse</th><td>{{ 'Próprio' if v.proprio else 'Alugado — ' ~ (v.contratante or '?') }}{% if not v.proprio and v.fim_contrato_aluguel %} (contrato até {{ br(v.fim_contrato_aluguel) }}){% endif %}</td></tr>
+      {% if v.km_l_esperado %}<tr><th style="text-align:left;">KM/L esperado</th><td>{{ v.km_l_esperado }}</td></tr>{% endif %}
+      {% if v.empresa_nome %}<tr><th style="text-align:left;">Empresa</th><td>{{ v.empresa_nome }}</td></tr>{% endif %}
+      {% if v.obs %}<tr><th style="text-align:left;">Observações</th><td>{{ v.obs }}</td></tr>{% endif %}
+    </tbody>
+  </table>
+</div>
+
+<details class="card" open>
+  <summary>Documentos <span class="muted" style="font-size:0.7em;">(pasta virtual)</span></summary>
+  <table>
+    <thead><tr><th>Arquivo</th><th>Tag</th><th>Tamanho</th><th>Anexado em</th><th></th></tr></thead>
+    <tbody>
+    {% for d in docs %}
+      <tr>
+        <td><a href="/frota/{{ v.id }}/docs/{{ d.id }}/download">{{ d.filename }}</a></td>
+        <td>{% if d.tag %}<span class="badge b-cinza">{{ (tags_doc or []) | selectattr('0', 'equalto', d.tag) | map(attribute='1') | first | default(d.tag) }}</span>{% else %}—{% endif %}</td>
+        <td>{{ (d.tamanho / 1024) | round(1) }} KB</td>
+        <td>{{ d.created_at[:10] if d.created_at else '—' }}</td>
+        <td class="acoes">
+          {% if pode_escrever %}
+          <form method="post" action="/frota/{{ v.id }}/docs/{{ d.id }}/excluir"
+                onsubmit="return confirm('Excluir este documento?');">
+            <button type="submit" class="vermelho">Excluir</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5" class="muted">Nenhum documento anexado.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% if pode_escrever %}
+  <form method="post" action="/frota/{{ v.id }}/docs" enctype="multipart/form-data" class="filtros" style="margin-top:10px;">
+    <div class="campo">
+      <label>Novo documento</label>
+      <input type="file" name="arquivo" required>
+    </div>
+    <div class="campo">
+      <label for="d-tag">Tag</label>
+      <select id="d-tag" name="tag">
+        {% for cod, rot in tags_doc %}<option value="{{ cod }}">{{ rot }}</option>{% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="verde">Anexar</button>
+  </form>
+  {% endif %}
+</details>
+
+<details class="card">
+  <summary>Laudos e documentos com vencimento</summary>
+  <table>
+    <thead><tr><th>Tipo</th><th>Descrição</th><th>Arquivo</th><th>Emissão</th><th>Validade</th><th>Situação</th><th></th></tr></thead>
+    <tbody>
+    {% for l in laudos %}
+      <tr>
+        <td>{{ l.tipo_label }}</td>
+        <td>{{ l.descricao or '—' }}</td>
+        <td><a href="/frota/{{ v.id }}/laudos/{{ l.id }}/download">{{ l.filename }}</a></td>
+        <td>{{ br(l.data_emissao) }}</td>
+        <td>{{ br(l.data_validade) }}</td>
+        <td><span class="badge {{ 'b-vermelho' if l.status in ('vencido', 'urgente') else ('b-amarelo' if l.status == 'atenção' else 'b-verde') }}">{{ l.status }}</span></td>
+        <td class="acoes">
+          {% if pode_escrever %}
+          <form method="post" action="/frota/{{ v.id }}/laudos/{{ l.id }}/excluir"
+                onsubmit="return confirm('Excluir este laudo?');">
+            <button type="submit" class="vermelho">Excluir</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="7" class="muted">Nenhum laudo registrado.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% if pode_escrever %}
+  <details class="opcoes" style="margin-top:10px;">
+    <summary class="btn cinza">+ Registrar laudo</summary>
+    <form method="post" action="/frota/{{ v.id }}/laudos" enctype="multipart/form-data" class="form-grid" style="margin-top:10px;">
+      <div class="campo">
+        <label for="l-tipo">Tipo *</label>
+        <select id="l-tipo" name="tipo" required>
+          {% for cod, rot in tipos_laudo %}<option value="{{ cod }}">{{ rot }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="campo">
+        <label for="l-desc">Descrição</label>
+        <input type="text" id="l-desc" name="descricao" placeholder="Opcional">
+      </div>
+      <div class="campo">
+        <label for="l-emissao">Data de emissão</label>
+        <input type="text" id="l-emissao" name="emissao" placeholder="dd/mm/aaaa">
+      </div>
+      <div class="campo">
+        <label for="l-validade">Validade *</label>
+        <input type="text" id="l-validade" name="validade" required placeholder="dd/mm/aaaa">
+      </div>
+      <div class="campo">
+        <label for="l-arquivo">Arquivo *</label>
+        <input type="file" id="l-arquivo" name="arquivo" required>
+      </div>
+      <div class="campo" style="align-self:end;">
+        <button type="submit" class="verde">Registrar laudo</button>
+      </div>
+    </form>
+  </details>
+  {% endif %}
+</details>
+
+<details class="card">
+  <summary>Movimentações (saída / entrada)</summary>
+  <table>
+    <thead><tr><th>Saída</th><th>KM ini.</th><th>Motorista</th><th>Destino</th><th>Entrada</th><th>KM fin.</th><th>KM rodado</th><th></th></tr></thead>
+    <tbody>
+    {% for m in movs %}
+      <tr>
+        <td>{{ br(m.data_saida) }}, {{ m.hora_saida or '—' }}</td>
+        <td>{{ m.km_inicial | milhar if m.km_inicial is not none else '—' }}</td>
+        <td>{{ m.motorista }}</td>
+        <td>{{ m.destino or '—' }}</td>
+        {% if m.aberta %}
+        <td><span class="badge b-amarelo">aberta</span></td>
+        <td>—</td><td>—</td>
+        <td class="acoes">
+          {% if pode_escrever %}
+          <details class="anexo-pop">
+            <summary class="btn verde">Registrar entrada</summary>
+            <div class="anexo-box abre-dir" style="width:290px;">
+              <form method="post" action="/frota/movimentacoes/{{ m.id }}/entrada" class="form-grid">
+                <div class="campo"><label>Data *</label><input type="text" name="data_entrada" placeholder="dd/mm/aaaa" required></div>
+                <div class="campo"><label>Hora *</label><input type="text" name="hora_entrada" placeholder="HH:MM" required></div>
+                <div class="campo"><label>KM final *</label><input type="number" name="km_final" min="{{ m.km_inicial }}" required></div>
+                <button type="submit" class="verde">Confirmar entrada</button>
+              </form>
+            </div>
+          </details>
+          <form method="post" action="/frota/movimentacoes/{{ m.id }}/excluir"
+                onsubmit="return confirm('Excluir esta movimentação?');">
+            <button type="submit" class="vermelho">Excluir</button>
+          </form>
+          {% endif %}
+        </td>
+        {% else %}
+        <td>{{ br(m.data_entrada) }}, {{ m.hora_entrada or '—' }}</td>
+        <td>{{ m.km_final | milhar if m.km_final is not none else '—' }}</td>
+        <td>{{ m.km_rodado | milhar if m.km_rodado is not none else '—' }}</td>
+        <td class="acoes">
+          {% if pode_escrever %}
+          <form method="post" action="/frota/movimentacoes/{{ m.id }}/excluir"
+                onsubmit="return confirm('Excluir esta movimentação?');">
+            <button type="submit" class="vermelho">Excluir</button>
+          </form>
+          {% endif %}
+        </td>
+        {% endif %}
+      </tr>
+    {% else %}
+      <tr><td colspan="8" class="muted">Nenhuma movimentação registrada.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% if pode_escrever %}
+  <details class="opcoes" style="margin-top:10px;">
+    <summary class="btn cinza">+ Registrar saída</summary>
+    <form method="post" action="/frota/{{ v.id }}/movimentacoes" class="form-grid" style="margin-top:10px;">
+      <div class="campo"><label>Data da saída *</label><input type="text" name="data_saida" placeholder="dd/mm/aaaa" required></div>
+      <div class="campo"><label>Hora *</label><input type="text" name="hora" placeholder="HH:MM" required></div>
+      <div class="campo"><label>KM inicial *</label><input type="number" name="km_inicial" required></div>
+      <div class="campo">
+        <label>Motorista *</label>
+        {% if funcionarios %}
+        <select onchange="if (this.value === '__outro__') { this.name=''; document.getElementById('mot-outro').name='motorista'; document.getElementById('mot-outro').style.display='inline-block'; } else { document.getElementById('mot-outro').name=''; document.getElementById('mot-outro').style.display='none'; this.name='motorista'; }" id="mot-sel">
+          <option value="" disabled selected>— selecione —</option>
+          {% for f in funcionarios %}<option value="{{ f }}">{{ f }}</option>{% endfor %}
+          <option value="__outro__">Outro...</option>
+        </select>
+        <input type="text" id="mot-outro" placeholder="Nome do motorista" style="display:none;">
+        {% else %}
+        <input type="text" name="motorista" required>
+        {% endif %}
+      </div>
+      <div class="campo"><label>Autorizado por</label><input type="text" name="autorizado_por"></div>
+      <div class="campo"><label>Destino</label><input type="text" name="destino"></div>
+      <div class="campo" style="grid-column:1 / -1;"><label>Motivo</label><textarea name="motivo" rows="3" class="txt-largo"></textarea></div>
+      <div class="campo" style="grid-column:1 / -1;"><label>Obs</label><textarea name="obs" rows="3" class="txt-largo"></textarea></div>
+      <div class="campo" style="align-self:end;"><button type="submit" class="verde">Registrar saída</button></div>
+    </form>
+  </details>
+  {% endif %}
+</details>
+
+<details class="card">
+  <summary>Abastecimentos</summary>
+  <table>
+    <thead><tr><th>Serial</th><th>Data</th><th>Combustível</th><th>KM</th><th>Litros</th><th>Valor</th><th>Condutor</th><th>Fornecedor</th><th></th></tr></thead>
+    <tbody>
+    {% for a in abasts %}
+      <tr>
+        <td><a href="/frota/abastecimentos">{{ a.serial }}</a></td>
+        <td>{{ br(a.data) }}</td>
+        <td>{{ a.combustivel_label }}</td>
+        <td>{{ a.km | milhar if a.km is not none else '—' }}</td>
+        <td>{{ a.litros if a.litros is not none else '—' }}</td>
+        <td>{{ 'R$ %.2f' % a.valor if a.valor is not none else '—' }}</td>
+        <td>{{ a.condutor }}</td>
+        <td>{{ a.fornecedor or '—' }}</td>
+        <td class="acoes">
+          {% if pode_escrever %}<a class="btn cinza" href="/frota/abastecimentos/{{ a.id }}/nfs">NF / valores</a>{% endif %}
+          {% if a.pdf_path %}
+          <a class="btn" href="/frota/abastecimentos/{{ a.id }}/pdf" target="_blank">Ver</a>
+          <a class="btn cinza" href="/frota/abastecimentos/{{ a.id }}/pdf/download">Baixar</a>
+          {% endif %}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="9" class="muted">Nenhum abastecimento registrado.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="muted">Litros e valor são opcionais — podem ser completados depois na tela de NFs.</p>
+</details>
+
+<details class="card">
+  <summary>Custo e consumo</summary>
+  {% if resumo.litros or resumo.valor %}
+  <table style="max-width:640px;">
+    <tbody>
+      <tr><th style="text-align:left; width:220px;">Total abastecido</th><td>{{ resumo.litros }} L · {{ 'R$ %.2f' % resumo.valor }}</td></tr>
+      <tr><th style="text-align:left;">Média KM/L (real)</th><td>{{ '%.2f' % resumo.media_km_l if resumo.media_km_l else '—' }}</td></tr>
+      {% if v.km_l_esperado %}<tr><th style="text-align:left;">KM/L esperado</th><td>{{ v.km_l_esperado }}</td></tr>{% endif %}
+      {% if resumo.custo_km %}<tr><th style="text-align:left;">Custo por km</th><td>R$ {{ '%.2f' % resumo.custo_km }}</td></tr>{% endif %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">Sem abastecimentos com litros/valor informados ainda.</p>
+  {% endif %}
+</details>
+
+<details class="card">
+  <summary>Checklist semanal</summary>
+  {% if pode_escrever %}
+  <p class="linha-botoes"><a class="btn verde" href="/frota/{{ v.id }}/checklist/novo">+ Novo checklist semanal</a><form method="get" action="/frota/{{ v.id }}/checklist/branco" style="display:inline;"><button type="submit" class="btn">Gerar em branco (preenchimento manual)</button></form></p></p>
+  {% endif %}
+  <table>
+    <thead><tr><th>Serial</th><th>Período</th><th>KM rodado</th><th>Motorista</th><th>Operável?</th><th></th></tr></thead>
+    <tbody>
+    {% for c in checklists %}
+      <tr>
+        <td>{{ c.serial }}</td>
+        <td>{{ br(c.data_inicial) }} — {{ br(c.data_final) }}</td>
+        <td>{{ c.km_rodado | milhar if c.km_rodado is not none else '—' }}</td>
+        <td>{{ c.motorista }}</td>
+        <td><span class="badge {{ 'b-verde' if c.pode_operar == 'S' else 'b-vermelho' }}">{{ 'SIM' if c.pode_operar == 'S' else 'NÃO' }}</span></td>
+        <td class="acoes">
+          {% if c.pdf_path %}
+          <a class="btn" href="/frota/checklists/{{ c.id }}/pdf" target="_blank">Ver</a>
+          <a class="btn cinza" href="/frota/checklists/{{ c.id }}/pdf/download">Baixar</a>
+          {% endif %}
+          {% if pode_escrever %}
+          <details class="anexo-pop">
+            <summary class="btn {{ 'cinza' if not c.tem_assinado else 'verde' }}">{{ 'Anexar assinado' if not c.tem_assinado else 'Assinado ✓' }}</summary>
+            <div class="anexo-box abre-dir" style="width:280px;">
+              {% if c.tem_assinado %}
+              <p style="margin:0 0 8px 0;"><a href="/frota/checklists/{{ c.id }}/assinado/download">Baixar arquivo assinado</a></p>
+              <form method="post" action="/frota/checklists/{{ c.id }}/assinado/excluir"
+                    onsubmit="return confirm('Remover o anexo assinado?');">
+                <button type="submit" class="vermelho">Remover anexo</button>
+              </form>
+              {% endif %}
+              <form method="post" action="/frota/checklists/{{ c.id }}/assinado" enctype="multipart/form-data" style="margin-top:8px;">
+                <label class="upload-area">
+                  <input type="file" name="arquivo" accept=".pdf,.jpg,.jpeg,.png" required onchange="this.closest('form').querySelector('.chk-txt').textContent = this.files.length ? this.files[0].name : 'Escolher arquivo (PDF, JPG ou PNG)';">
+                  <span class="chk-txt">Escolher arquivo (PDF, JPG ou PNG)</span>
+                </label>
+                <button type="submit" class="verde">Anexar assinado</button>
+              </form>
+            </div>
+          </details>
+          <form method="post" action="/frota/checklists/{{ c.id }}/excluir"
+                onsubmit="return confirm('Excluir este checklist?');">
+            <button type="submit" class="vermelho">Excluir</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6" class="muted">Nenhum checklist registrado.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</details>
+
+<details class="card">
+  <summary>Manutenções preventivas (por KM)</summary>
+  <table>
+    <thead><tr><th>Item</th><th>Intervalo</th><th>Última (KM)</th><th>Feito em</th><th>Situação</th><th></th></tr></thead>
+    <tbody>
+    {% for m in manutencoes %}
+      <tr>
+        <td>{{ m.descricao }}</td>
+        <td>{{ m.intervalo_km | milhar }} km</td>
+        <td>{{ m.km_ultima | milhar if m.km_ultima else '—' }}</td>
+        <td>{{ br(m.data_ultima) }}</td>
+        <td>
+          {% if m.status == 'ok' %}<span class="badge b-verde">{{ m.restante | milhar }} km restantes</span>
+          {% elif m.status in ('atencao', 'proximo') %}<span class="badge b-amarelo">{{ m.restante | milhar }} km restantes</span>
+          {% elif m.status in ('urgente', 'critico') %}<span class="badge b-amarelo">só {{ m.restante | milhar }} km!</span>
+          {% else %}<span class="badge b-vermelho">vencida há {{ -m.restante | milhar }} km</span>{% endif %}
+        </td>
+        <td class="acoes">
+          {% if pode_escrever %}
+          <details class="anexo-pop">
+            <summary class="btn verde">Concluir</summary>
+            <div class="anexo-box abre-dir" style="width:260px;">
+              <form method="post" action="/frota/manutencoes/{{ m.id }}/concluir" class="form-grid">
+                <div class="campo"><label>KM do serviço *</label><input type="number" name="km_feito" required></div>
+                <div class="campo"><label>Data</label><input type="text" name="data_feito" placeholder="dd/mm/aaaa"></div>
+                <button type="submit" class="verde">Confirmar</button>
+              </form>
+            </div>
+          </details>
+          <form method="post" action="/frota/manutencoes/{{ m.id }}/excluir"
+                onsubmit="return confirm('Excluir este item de manutenção?');">
+            <button type="submit" class="vermelho">Excluir</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6" class="muted">Nenhuma manutenção cadastrada.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% if pode_escrever %}
+  <details class="opcoes" style="margin-top:10px;">
+    <summary class="btn cinza">+ Nova manutenção preventiva</summary>
+    <form method="post" action="/frota/{{ v.id }}/manutencoes" class="form-grid" style="margin-top:10px;">
+      <div class="campo"><label>Item * (ex: Troca de óleo)</label><input type="text" name="descricao" required></div>
+      <div class="campo"><label>Intervalo (km) *</label><input type="number" name="intervalo_km" min="1" required></div>
+      <div class="campo"><label>KM da última troca</label><input type="number" name="km_ultima"></div>
+      <div class="campo"><label>Data da última</label><input type="text" name="data_ultima" placeholder="dd/mm/aaaa"></div>
+      <div class="campo"><label>Obs</label><input type="text" name="obs"></div>
+      <div class="campo" style="align-self:end;"><button type="submit" class="verde">Cadastrar</button></div>
+    </form>
+  </details>
+  {% endif %}
+</details>
+{% endblock %}
+
+<script>
+function _masc_d(i){var v=i.value.replace(/\D/g,"").slice(0,8);var o=v;if(v.length>4){o=v.slice(0,2)+"/"+v.slice(2,4)+"/"+v.slice(4)}i.value=o}
+function _masc_h(i){var v=i.value.replace(/\D/g,"").slice(0,4);var o=v;if(v.length>2){o=v.slice(0,2)+":"+v.slice(2)}i.value=o}
+document.querySelectorAll('input[name^="data_"]').forEach(function(i){i.addEventListener('input',function(){_masc_d(i)})});
+document.querySelectorAll('input[name^="hora_"]').forEach(function(i){i.addEventListener('input',function(){_masc_h(i)})});
+</script>

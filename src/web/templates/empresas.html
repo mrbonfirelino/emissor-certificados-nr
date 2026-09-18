@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block titulo %}Empresas clientes{% endblock %}
+
+{% block conteudo %}
+<div class="card">
+  <h1>Empresas clientes</h1>
+  <p class="sub">Empresas onde funcionários podem ter integrações (fábricas de clientes).</p>
+
+  {% if pode_escrever %}
+  <h2>Nova empresa</h2>
+  <form method="post" action="/empresas/criar" class="filtros">
+    <div class="campo">
+      <label>Nome *</label>
+      <input type="text" name="nome" required placeholder="Ex.: ArcelorMittal">
+    </div>
+    <div class="campo">
+      <label>CNPJ</label>
+      <input type="text" name="cnpj" placeholder="00.000.000/0000-00">
+    </div>
+    <button class="btn verde" type="submit">Criar empresa</button>
+  </form>
+  {% endif %}
+
+  <h2>Empresas cadastradas</h2>
+  {% if linhas %}
+  <table>
+    <tr><th>Nome</th><th>CNPJ</th><th class="num">Integrações</th>{% if pode_escrever %}<th>Ações</th>{% endif %}</tr>
+    {% for e in linhas %}
+    <tr>
+      <td>{{ e.nome }}</td>
+      <td class="muted">{{ e.cnpj or '—' }}</td>
+      <td class="num">{{ e.integracoes }}</td>
+      {% if pode_escrever %}
+      <td class="acoes">
+        <form method="post" action="/empresas/{{ e.id }}/renomear" class="filtros">
+          <div class="campo"><input type="text" name="nome" value="{{ e.nome }}" required style="max-width:180px"></div>
+          <div class="campo"><input type="text" name="cnpj" value="{{ e.cnpj or '' }}" style="max-width:150px"></div>
+          <button class="btn" type="submit">Salvar</button>
+        </form>
+        {% if e.integracoes == 0 %}
+        <form method="post" action="/empresas/{{ e.id }}/excluir"
+              onsubmit="return confirm('Excluir {{ e.nome }}?')">
+          <button class="btn vermelho" type="submit">Excluir</button>
+        </form>
+        {% else %}
+        <span class="badge b-cinza">tem integrações</span>
+        {% endif %}
+      </td>
+      {% endif %}
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="muted">Nenhuma empresa cadastrada.</p>
+  {% endif %}
+
+  <div class="linha-botoes">
+    <a class="btn cinza" href="/integracoes">Voltar às integrações</a>
+  </div>
+</div>
+{% endblock %}

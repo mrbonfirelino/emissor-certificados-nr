@@ -15,7 +15,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
 from src.utils.paths import get_data_dir
-from src.web import auth
+from src.web import auth, jobs
 from src.web.permissions import ROLE_LABELS, pode, pode_escrever
 from src.web.users_repo import ROLES, UsersRepository
 
@@ -66,33 +66,67 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
     if senha_bootstrap:
         _anunciar_senha_provisoria(senha_bootstrap)
 
-    # Módulos implementados no portal (Fase 1+2); a matriz de permissões
-    # (permissions.pode) filtra o que cada papel vê.
-    _MODULOS_NAV = [
-        ("Dashboard", "/", "dashboard"),
-        ("Certificados", "/certificados", "certificados"),
-        ("Emissão em Lote", "/emissao-lote", "certificados"),
-        ("Funcionários", "/funcionarios", "funcionarios"),
-        ("Histórico", "/historico", "historico"),
-        ("Vencimentos", "/vencimentos", "vencimentos"),
-        ("ASO", "/aso", "aso"),
-        ("EPI", "/epi", "epi"),
-        ("Crachás", "/crachas", "crachas"),
+    # Módulos implementados no portal; a matriz de permissões
+    # (permissions.pode) filtra o que cada papel vê. Nav organizada em
+    # grupos (2.30.1): titulo=None vira link direto no topo da barra.
+    _GRUPOS_NAV = [
+        (None, [("Dashboard", "/", "dashboard")]),
+        ("__botao__", [("Gest\u00e3o de Frota", "/frota", "frota")]),
+        ("Seguran\u00e7a", [
+            ("Certificados", "/certificados", "certificados"),
+            ("Emiss\u00e3o em Lote", "/emissao-lote", "certificados"),
+            ("Hist\u00f3rico", "/historico", "historico"),
+            ("Listas de Presen\u00e7a", "/presencas", "presencas"),
+            ("Ficha de EPIs", "/epi", "epi"),
+            ("Crach\u00e1s", "/crachas", "crachas"),
+            ("Cart\u00f5es", "/cartoes", "cartoes"),
+            ("Vencimentos", "/vencimentos", "vencimentos"),
+        ]),
+        ("Funcion\u00e1rios", [
+            ("Cadastros", "/funcionarios", "funcionarios"),
+            ("ASO", "/aso", "aso"),
+            ("Integra\u00e7\u00f5es", "/integracoes", "integracoes"),
+        ]),
+        ("Controle", [
+            ("Importa\u00e7\u00f5es", "/importacoes", "importacoes"),
+        ]),
     ]
 
     def _nav(user: dict, caminho: str = "") -> list:
-        itens = []
-        for label, url, modulo in _MODULOS_NAV:
-            if not pode(user["papel"], modulo):
-                continue
-            if url == "/emissao-lote" and not pode_escrever(user["papel"], "certificados"):
-                continue  # lote é operação: só admin/emissor veem no menu
-            ativo = (caminho == url) if url == "/" else caminho.startswith(url)
-            itens.append({"label": label, "url": url, "ativo": ativo})
-        if pode(user["papel"], "usuarios"):
-            itens.append({"label": "Usuários", "url": "/usuarios",
-                          "ativo": caminho.startswith("/usuarios")})
-        return itens
+        def item(label, url, ativo):
+            return {"label": label, "url": url, "ativo": ativo}
+
+        grupos = []
+        for titulo, modulos in _GRUPOS_NAV:
+            itens = []
+            for label, url, modulo in modulos:
+                if not pode(user["papel"], modulo):
+                    continue
+                if url == "/emissao-lote" and not pode_escrever(user["papel"], "certificados"):
+                    continue  # lote é operação: só admin/emissor veem no menu
+                ativo = (caminho == url) if url == "/" else caminho.startswith(url)
+                itens.append(item(label, url, ativo))
+            if itens:
+                grupos.append({"titulo": titulo, "itens": itens})
+        sistema = []
+        for label, url, modulo in (("Usuários", "/usuarios", "usuarios"),
+                                   ("Backup", "/backup", "backup"),
+                                   ("Auditoria", "/auditoria", "auditoria"),
+                                   ("Configurações", "/configuracoes", "config")):
+            if pode(user["papel"], modulo):
+                sistema.append(item(label, url, caminho.startswith(url)))
+        if sistema:
+            grupos.append({"titulo": "Sistema", "itens": sistema})
+        return grupos
+
+    def _milhar(v):
+        """Ponto de milhar para KMs (100000 -> 100.000)."""
+        try:
+            return "{:,.0f}".format(float(v)).replace(",", ".")
+        except (TypeError, ValueError):
+            return v
+
+    templates.env.filters["milhar"] = _milhar
 
     def _ctx(request: Request, **extra) -> dict:
         user = auth.current_user(request)
@@ -183,12 +217,69 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
         return RedirectResponse("/", status_code=303)
 
     # ---------------- dashboard ----------------
+    _DIAS_PT = ["segunda-feira", "terça-feira", "quarta-feira", "quinta-feira",
+                "sexta-feira", "sábado", "domingo"]
+    _MESES_PT = ["janeiro", "fevereiro", "março", "abril", "maio", "junho",
+                 "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"]
+
+    @app.get("/logo.png")
+    def logo_png(user: dict = auth.require_permission("dashboard")):
+        from fastapi.responses import FileResponse, Response
+        from src.utils.paths import get_logo_path
+        try:
+            p = get_logo_path()
+        except Exception:
+            p = None
+        if p and Path(p).exists():
+            return FileResponse(str(p), media_type="image/png")
+        return Response(status_code=404)
+
     @app.get("/")
     def dashboard(request: Request, user: dict = auth.require_permission("dashboard")):
+        from datetime import datetime
+        from src.core.employee_repo import EmployeeRepository
         from src.core.history_repo import HistoryRepository
-        stats = HistoryRepository().get_dashboard_stats()
-        return templates.TemplateResponse(request=request, name="dashboard.html",
-                                          context=_ctx(request, stats=stats))
+        er = EmployeeRepository()
+        hr = HistoryRepository()
+        stats = hr.get_dashboard_stats()
+        agora = datetime.now()
+        anivers_hoje = er.get_aniversariantes(agora.month, agora.day)
+        anivers_mes = er.get_aniversariantes(agora.month)
+        frota_stats = None
+        if pode(user["papel"], "frota"):
+            try:
+                from src.core.frota_repo import FrotaRepository
+                fr = FrotaRepository()
+                _, n_veic = fr.list_veiculos(limit=1)
+                frota_stats = {"veiculos": n_veic,
+                               "movs_abertas": fr.count_movs_abertas(),
+                               "custo_mes": fr.custo_mes()}
+            except Exception:
+                frota_stats = None
+        return templates.TemplateResponse(
+            request=request, name="dashboard.html",
+            context=_ctx(
+                request, stats=stats,
+                total_funcionarios=er.count_total(),
+                total_nrs=len(hr.distinct_nrs()),
+                data_extensa=f"{_DIAS_PT[agora.weekday()]}, "
+                             f"{agora.day} de {_MESES_PT[agora.month - 1]} de {agora.year}",
+                hora_init=agora.strftime("%H:%M:%S"),
+                mes_nome=_MESES_PT[agora.month - 1].capitalize(),
+                anivers_hoje=anivers_hoje,
+                anivers_mes=anivers_mes,
+                frota_stats=frota_stats,
+                pode_lote=pode_escrever(user["papel"], "certificados")))
+
+    # ---------------- jobs de fundo (progresso, 2.32.1) ----------------
+    @app.get("/jobs/{jid}")
+    def job_status(jid: str, user: dict = auth.require_permission("dashboard")):
+        from fastapi.responses import JSONResponse
+        snap = jobs.snapshot(jid)
+        if snap is None:
+            return JSONResponse({"ok": False, "erro": "job não encontrado"},
+                                status_code=404)
+        return JSONResponse({"ok": True, **snap})
 
     # ---------------- usuarios (admin) ----------------
     @app.get("/usuarios")
@@ -257,6 +348,28 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
                                 f" (exibida uma única vez).")
         return RedirectResponse("/usuarios", status_code=303)
 
+    @app.post("/usuarios/{user_id}/senha")
+    def usuarios_definir_senha(request: Request, user_id: int,
+                               nova: str = Form(""), confirma: str = Form(""),
+                               user: dict = auth.require_permission("usuarios")):
+        """Admin define a senha do usuário diretamente (sem senha aleatória)."""
+        alvo = users.get_by_id(user_id)
+        if alvo is None:
+            _flash(request, erro="Usuário não encontrado.")
+            return RedirectResponse("/usuarios", status_code=303)
+        if len(nova.strip()) < 6:
+            _flash(request, erro="A nova senha precisa ter ao menos 6 caracteres.")
+            return RedirectResponse("/usuarios", status_code=303)
+        if nova != confirma:
+            _flash(request, erro="A confirmação não confere com a nova senha.")
+            return RedirectResponse("/usuarios", status_code=303)
+        if not users.change_password(user_id, nova.strip()):
+            _flash(request, erro="Não foi possível alterar a senha.")
+            return RedirectResponse("/usuarios", status_code=303)
+        users.audit("definir-senha", user["username"], alvo["username"])
+        _flash(request, msg=f"Senha de '{alvo['username']}' definida.")
+        return RedirectResponse("/usuarios", status_code=303)
+
     # ---------------- routers da Fase 2+3 ----------------
     deps = {"users": users, "templates": templates, "ctx": _ctx, "flash": _flash}
     from src.web.routers import employees as rotas_funcionarios
@@ -267,6 +380,14 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
     from src.web.routers import aso as rotas_aso
     from src.web.routers import epi as rotas_epi
     from src.web.routers import crachas as rotas_crachas
+    from src.web.routers import cartoes as rotas_cartoes
+    from src.web.routers import integracoes as rotas_integracoes
+    from src.web.routers import importacoes as rotas_importacoes
+    from src.web.routers import configuracoes as rotas_configuracoes
+    from src.web.routers import frota as rotas_frota
+    from src.web.routers import backup as rotas_backup
+    from src.web.routers import auditoria as rotas_auditoria
+    from src.web.routers import presencas as rotas_presencas
     rotas_funcionarios.register(app, deps)
     rotas_certificados.register(app, deps)
     rotas_historico.register(app, deps)
@@ -275,5 +396,13 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
     rotas_aso.register(app, deps)
     rotas_epi.register(app, deps)
     rotas_crachas.register(app, deps)
+    rotas_cartoes.register(app, deps)
+    rotas_integracoes.register(app, deps)
+    rotas_importacoes.register(app, deps)
+    rotas_configuracoes.register(app, deps)
+    rotas_frota.register(app, deps)
+    rotas_backup.register(app, deps)
+    rotas_auditoria.register(app, deps)
+    rotas_presencas.register(app, deps)
 
     return app

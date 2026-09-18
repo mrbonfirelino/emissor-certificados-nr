@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block titulo %}Nova lista de presença{% endblock %}
+
+{% block conteudo %}
+<h1>Nova lista de presença</h1>
+<p class="muted">Escolha a data do treinamento: o sistema mostra os participantes de cada NR emitida nesse dia. Confira as seções abaixo e clique no botão verde para gerar todas as listas de uma vez.</p>
+
+<form class="filtros" method="get" action="/presencas/nova">
+    <label>Data do treinamento
+        <input type="date" name="data" value="{{ data }}" required>
+    </label>
+    <button class="btn">Ver participantes</button>
+</form>
+
+{% if iso %}
+    {% if secoes %}
+    <form method="post" action="/presencas/emitir-dia" id="f-emitir">
+        <input type="hidden" name="data" value="{{ data }}">
+        {% for s in secoes %}
+        <div class="card" style="margin-top:14px">
+            <h2 style="margin-top:0">
+                <label style="display:inline-flex;align-items:center;gap:8px">
+                    <input type="checkbox" name="incluir_{{ s.nr }}" checked>
+                    {{ s.nr }}{% if s.label and s.label != s.nr %} — {{ s.label }}{% endif %}
+                </label>
+                {% if s.tem_modelo %}<span class="badge b-verde">modelo pronto</span>
+                {% else %}<span class="badge b-cinza">layout padrão</span>{% endif %}
+            </h2>
+            <p class="muted">{{ s.participantes|length }} participante(s) · carga horária detectada: {{ s.carga|int }}h</p>
+            <table>
+                <tr><th>Nº</th><th>Nome</th><th>Função</th></tr>
+                {% for p in s.participantes %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ p.nome }}</td>
+                    <td>{{ p.funcao or '—' }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+        {% endfor %}
+        {% if pode_escrever %}
+        <div class="linha-botoes" style="margin-top:14px">
+            <button class="btn verde">Emitir listas do dia</button>
+            <a class="btn cinza" href="/presencas">Cancelar</a>
+        </div>
+        {% endif %}
+    </form>
+    {% else %}
+    <div class="card" style="margin-top:14px">
+        <p>Nenhuma emissão de certificado encontrada em <strong>{{ data_br }}</strong>.
+        Gere os certificados dessa data primeiro ou escolha outro dia.</p>
+    </div>
+    {% endif %}
+{% endif %}
+{% endblock %}

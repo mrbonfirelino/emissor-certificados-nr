@@ -1,6 +1,6 @@
 # Portal Web NormaTech — Visão Geral (Documento Mestre)
 
-> Status: **planejamento aprovado — implementação ainda não iniciada**.
+> Status: **implantado - Fases 1, 2, 3 e 4 concluídas (v1.34.0); Frota concluída (v1.33.0/v1.34.0); Listas de Presença concluída (v1.36.0)**.
 > Público: TI/responsável pelo sistema.
 > Índice completo da pasta: [00-INDICE.md](00-INDICE.md)
 
@@ -94,7 +94,7 @@ Nenhuma lógica de negócio nova é escrita.
 
 ## 5. Módulos do portal (1:1 com as telas atuais)
 
-Dashboard • Funcionários • Certificados • ASO • EPI • Crachás •
+Dashboard • Funcionários • Certificados • ASO • EPI • Frota • Crachás •
 Cartões de Bloqueio • Histórico • Vencimentos • Importações • Integrações •
 Configurações • Backup • **Usuários** (novo) • **Auditoria** (novo)
 
@@ -114,6 +114,8 @@ Configurações • Backup • **Usuários** (novo) • **Auditoria** (novo)
 | Dashboard | ✓ | ✓ | ✓ |
 | Funcionários / Certificados / Histórico / Vencimentos | ✓ | ✓ | só ver |
 | ASO / EPI / Crachás | ✓ | ✓ | só ver |
+| Frota (veículos, abastecimentos, laudos) | ✓ | ✓ | só ver |
+| Listas de Presença | V | V | só ver |
 | Importações / Integrações / Cartões de Bloqueio | ✓ | ✓ | ✗ |
 | Configurações / Backup / Usuários / Auditoria | ✓ | ✗ | ✗ |
 
@@ -201,8 +203,8 @@ Detalhes completos em [04-SCANNER.md](04-SCANNER.md). Resumo:
 | **0** | Documentação (esta pasta) | ✅ Feita |
 | **1** | Esqueleto web: app.py, login, users/roles, dashboard read-only, run_web.py + NSSM | Portal abre em 2 máquinas com login funcionando |
 | **2** ✅ Feita (v1.25.0)  Núcleo de valor: Funcionários (CRUD + foto), Certificados (emissão + PDF + download), Histórico com filtros | Técnica emite um certificado pelo navegador |
-| **3** (em andamento — Vencimentos e ASO no v1.28.0; EPI e Crachás no v1.29.0) | ASO, EPI, Crachás, Cartões, Vencimentos, Importações Excel/CSV | Desktop não é mais necessário no dia a dia |
-| **4** | Admin: Configurações, Backup na tela, Gestão de usuários, audit_log, NormaAgent | Fechamento do ciclo + auditoria ativa |
+| **3** ✅ Feita (v1.28.0 Vencimentos e ASO; v1.29.0 EPI e Crachás; v1.30.0 Cartões, Importações e Integrações) | ASO, EPI, Crachás, Cartões, Vencimentos, Importações Excel/CSV | Desktop não é mais necessário no dia a dia |
+| **4** ✅ Feita (v1.32.0 Configurações; v1.34.0 Backup, Auditoria e audit_log nas ações) | Admin: Configurações, Backup na tela, Gestão de usuários, audit_log | Fechamento do ciclo + auditoria ativa |
 
 ## 9. Riscos e mitigações
 

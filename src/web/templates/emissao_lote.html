@@ -14,12 +14,6 @@
         {% endfor %}
       </select>
     </div>
-    <div class="campo">
-      <label for="busca">Buscar</label>
-      <input type="text" id="busca" name="busca" value="{{ busca }}" placeholder="Nome ou CPF...">
-    </div>
-    <button type="submit">Filtrar</button>
-    {% if busca %}<a class="btn cinza" href="/emissao-lote?nr={{ nr_sel }}">Limpar</a>{% endif %}
   </form>
 
   {% if tmpl %}
@@ -27,7 +21,7 @@
     Carga mínima: <b>{{ tmpl.carga_horaria_minima }}h</b> · Validade padrão: <b>{{ tmpl.validade_meses }} meses</b>
   </p>
 
-  <form method="post" action="/emissao-lote/emitir">
+  <form method="post" action="/emissao-lote/emitir" data-confirmar-lista data-com-progresso data-progresso-titulo="Emissão em Lote">
     <input type="hidden" name="nr" value="{{ nr_sel }}">
 
     <h2 style="font-size:16px; margin:12px 0 6px;">Dados do lote (aplicados a todos)</h2>
@@ -68,11 +62,28 @@
     <h2 style="font-size:16px; margin:16px 0 6px;">Funcionários</h2>
     <p class="muted" style="margin-bottom:8px;">Marque quem receberá o treinamento. Ajuste data/carga/validade individuais se precisar (vazio = usa o do lote).</p>
 
-    <table>
+    <div class="filtros" style="margin-bottom:8px;">
+      <div class="campo">
+        <label for="f-busca">Buscar na lista</label>
+        <input type="text" id="f-busca" placeholder="Nome ou CPF..." style="max-width:260px;">
+      </div>
+      <div class="campo">
+        <label for="f-per">Ver por página</label>
+        <select id="f-per" style="max-width:90px;">
+          <option value="10">10</option>
+          <option value="20" selected>20</option>
+          <option value="25">25</option>
+          <option value="50">50</option>
+        </select>
+      </div>
+    </div>
+
+    <table id="tab-funcs">
       <thead><tr><th></th><th>Nome</th><th>CPF</th><th>Função</th><th>Data individual</th><th>Carga</th><th>Validade</th></tr></thead>
       <tbody>
       {% for emp in funcionarios %}
-      <tr>
+      <tr class="linha-func" data-busca="{{ (emp.nome ~ ' ' ~ (emp.cpf or '')) | lower }}"
+        data-nome="{{ emp.nome }}" data-det="{{ emp.cpf or 'sem CPF' }}">
         <td>
           {% if emp.cpf %}
           <input type="checkbox" name="sel_{{ emp.id }}" value="1">
@@ -94,6 +105,8 @@
       {% endfor %}
       </tbody>
     </table>
+    <p class="muted" id="f-info" style="margin:6px 0 0;"></p>
+    <div class="paginacao" id="f-pager" style="margin-top:6px;"></div>
     {% if cortados %}<p class="muted">Lista limitada a {{ funcionarios|length }} de {{ total }} — refine a busca para ver os demais.</p>{% endif %}
 
     <div class="linha-botoes" style="margin-top:14px;">
@@ -103,4 +116,72 @@
   </form>
   {% endif %}
 </div>
+
+{% if tmpl and funcionarios %}
+<script>
+(function () {
+  var linhas = Array.prototype.slice.call(document.querySelectorAll('#tab-funcs tr.linha-func'));
+  if (!linhas.length) return;
+  var inp = document.getElementById('f-busca');
+  var sel = document.getElementById('f-per');
+  var info = document.getElementById('f-info');
+  var pager = document.getElementById('f-pager');
+  var filtro = '', porPagina = 20, pagina = 1;
+
+  function visiveis() {
+    return linhas.filter(function (tr) {
+      return !filtro || tr.dataset.busca.indexOf(filtro) >= 0;
+    });
+  }
+
+  function botao(txt, alvo, atual, desab) {
+    var a = document.createElement(atual ? 'span' : 'a');
+    a.textContent = txt;
+    if (atual) { a.className = 'pg-atual'; a.style.padding = '4px 10px'; }
+    else {
+      a.href = '#';
+      a.onclick = function (ev) { ev.preventDefault(); pagina = alvo; aplicar(); window.scrollTo(0, 0); };
+    }
+    if (desab) { a.style.opacity = '.45'; a.style.pointerEvents = 'none'; }
+    return a;
+  }
+
+  function aplicar() {
+    filtro = inp.value.trim().toLowerCase();
+    porPagina = parseInt(sel.value, 10) || 20;
+    var lista = visiveis();
+    var total = lista.length;
+    var paginas = Math.max(1, Math.ceil(total / porPagina));
+    if (pagina > paginas) pagina = paginas;
+    var ini = (pagina - 1) * porPagina;
+    linhas.forEach(function (tr) { tr.style.display = 'none'; });
+    lista.slice(ini, ini + porPagina).forEach(function (tr) { tr.style.display = ''; });
+    info.textContent = total
+      ? 'Mostrando ' + (ini + 1) + '\u2013' + Math.min(ini + porPagina, total) + ' de ' + total + ' funcion\u00e1rio(s).'
+      : 'Nenhum funcion\u00e1rio encontrado nessa busca.';
+    pager.innerHTML = '';
+    if (paginas > 1) {
+      pager.appendChild(botao('\u00ab', pagina - 1, false, pagina <= 1));
+      pager.appendChild(document.createTextNode('P\u00e1gina ' + pagina + ' de ' + paginas));
+      var inicio = Math.max(1, pagina - 2), fim = Math.min(paginas, pagina + 2);
+      if (inicio > 1) { pager.appendChild(botao('1', 1, false, false)); if (inicio > 2) pager.appendChild(reticencias()); }
+      for (var p = inicio; p <= fim; p++) pager.appendChild(botao(String(p), p, p === pagina, false));
+      if (fim < paginas) { if (fim < paginas - 1) pager.appendChild(reticencias()); pager.appendChild(botao(String(paginas), paginas, false, false)); }
+      pager.appendChild(botao('\u00bb', pagina + 1, false, pagina >= paginas));
+    }
+  }
+
+  function reticencias() {
+    var s = document.createElement('span');
+    s.className = 'reticencias';
+    s.textContent = '\u2026';
+    return s;
+  }
+
+  inp.addEventListener('input', function () { pagina = 1; aplicar(); });
+  sel.addEventListener('change', function () { pagina = 1; aplicar(); });
+  aplicar();
+})();
+</script>
+{% endif %}
 {% endblock %}

@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block titulo %}{{ emp.nome }} — NormaTech{% endblock %}
 {% block conteudo %}
+<a class="btn-voltar" href="/funcionarios">&larr; Voltar para Funcionários</a>
 <div class="card" style="display:flex; gap:20px; align-items:flex-start;">
   <div>
     {% if emp.foto %}<img class="foto" src="/funcionarios/{{ emp.id }}/foto" alt="Foto">
@@ -20,7 +21,7 @@
     </table>
     <div class="linha-botoes">
       {% if pode_escrever %}<a class="btn" href="/funcionarios/{{ emp.id }}/editar">Editar</a>{% endif %}
-      <a class="btn cinza" href="/funcionarios">Voltar</a>
+      <a class="btn cinza" href="/epi/funcionario/{{ emp.id }}">Fichas de EPI ({{ epi_count }})</a>
     </div>
   </div>
 </div>

@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block titulo %}Nova solicitação de abastecimento — NormaTech{% endblock %}
+{% block conteudo %}
+<div class="card" style="max-width:760px;">
+  <a class="btn-voltar" href="/frota/abastecimentos">&larr; Voltar para Abastecimentos</a>
+  <h1>Nova solicitação de abastecimento</h1>
+  <p class="sub">O PDF é gerado automaticamente com logo da empresa, dados e campos de assinatura. Litros e valor são opcionais — podem ser completados depois junto da NF.</p>
+  {% if erro %}<p class="erro">{{ erro }}</p>{% endif %}
+
+  {% if veiculos %}
+  <form method="post" action="/frota/abastecimentos/criar">
+    <div class="form-grid">
+      <div class="campo">
+        <label for="veiculo_id">Veículo *</label>
+        <select id="veiculo_id" name="veiculo_id" required>
+          <option value="">— selecione —</option>
+          {% for v in veiculos %}
+          <option value="{{ v.id }}" data-tipo="{{ v.tipo }}" {{ 'selected' if veiculo_sel == v.id }}>{{ v.modelo }}{% if v.marca %} {{ v.marca }}{% endif %}{% if v.placa %} — {{ v.placa }}{% endif %}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="campo">
+        <label for="combustivel">Combustível *</label>
+        <select id="combustivel" name="combustivel" required>
+          {% for cod, rot in combustiveis %}<option value="{{ cod }}">{{ rot }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="campo">
+        <label for="data">Data da solicitação *</label>
+        <input type="text" id="data" name="data" value="{{ hoje }}" required placeholder="dd/mm/aaaa">
+      </div>
+      <div class="campo">
+        <label for="fornecedor_id">Fornecedor (posto)</label>
+        <select id="fornecedor_id" name="fornecedor_id">
+          <option value="">— não informado —</option>
+          {% for f in fornecedores %}<option value="{{ f.id }}">{{ f.nome }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="campo">
+        <label for="km">KM do veículo</label>
+        <input type="number" id="km" name="km" min="0">
+      </div>
+      <div class="campo">
+        <label for="litros">Litros (opcional)</label>
+        <input type="text" id="litros" name="litros" inputmode="decimal" placeholder="Ex: 42,7">
+      </div>
+      <div class="campo">
+        <label for="valor">Valor em R$ (opcional)</label>
+        <input type="text" id="valor" name="valor" inputmode="decimal" placeholder="Ex: 289,50">
+      </div>
+      <div class="campo">
+        <label for="viagem_servico">Viagem / Serviço</label>
+        <input type="text" id="viagem_servico" name="viagem_servico" placeholder="Ex: Viagem Obra X / Serviço interno">
+      </div>
+      <div class="campo">
+        <label for="condutor">Condutor *</label>
+        {% if funcionarios %}
+        <select onchange="if (this.value === '__outro__') { this.name=''; document.getElementById('cond-outro').name='condutor'; document.getElementById('cond-outro').style.display='inline-block'; } else { document.getElementById('cond-outro').name=''; document.getElementById('cond-outro').style.display='none'; this.name='condutor'; }" id="cond-sel" required>
+          <option value="" disabled selected>— selecione —</option>
+          {% for f in funcionarios %}<option value="{{ f }}">{{ f }}</option>{% endfor %}
+          <option value="__outro__">Outro...</option>
+        </select>
+        <input type="text" id="cond-outro" placeholder="Nome de quem abastece" style="display:none;">
+        {% else %}
+        <input type="text" id="condutor" name="condutor" required placeholder="Nome de quem abastece">
+        {% endif %}
+      </div>
+    </div>
+    <div class="campo">
+      <label for="obs">Descrição / Observações</label>
+      <textarea id="obs" name="obs" rows="3" class="txt-largo"></textarea>
+    </div>
+    <p class="linha-botoes">
+      <button type="submit" class="verde">Gerar solicitação (PDF)</button>
+      <a class="btn cinza" href="/frota/abastecimentos">Cancelar</a>
+    </p>
+  </form>
+  <script>
+  (function () {
+    var sel = document.getElementById('veiculo_id');
+    var comb = document.getElementById('combustivel');
+    var bloqueados = {arla: 1, diesel: 1, arla_diesel: 1};
+    function aplicar() {
+      var opt = sel.options[sel.selectedIndex];
+      var tipo = opt ? opt.getAttribute('data-tipo') : '';
+      if (tipo === 'carro') {
+        for (var i = 0; i < comb.options.length; i++) {
+          var o = comb.options[i];
+          o.disabled = !!bloqueados[o.value];
+          if (o.disabled && o.selected) { o.selected = false; comb.selectedIndex = 0; }
+        }
+      } else {
+        for (var j = 0; j < comb.options.length; j++) comb.options[j].disabled = false;
+      }
+    }
+    sel.addEventListener('change', aplicar);
+    aplicar();
+  })();
+  </script>
+  {% else %}
+  <p class="erro">Cadastre um veículo antes de solicitar abastecimento.</p>
+  <p><a class="btn verde" href="/frota/novo">+ Novo veículo</a></p>
+  {% endif %}
+</div>
+{% endblock %}

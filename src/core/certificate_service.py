@@ -53,6 +53,16 @@ class CertificateService:
 
         cert_number = self.history.next_certificate_number()
 
+        # opcao: imprimir data/hora da emissao junto ao numero (Configuracoes)
+        data_hora_impressao = ""
+        try:
+            from src.core.app_settings import get_setting
+            if get_setting("pdf_data_hora_emissao", False):
+                from datetime import datetime as _dt
+                data_hora_impressao = _dt.now().strftime("%d/%m/%Y %H:%M")
+        except Exception:
+            pass
+
         cert_data = CertificateData(
             cert_number=cert_number,
             nr_code=template.nr_code,
@@ -69,7 +79,8 @@ class CertificateService:
             descricao_treinamento=descricao_treinamento,
             campos_extra=campos_extra,
             conteudo_programatico=template.conteudo_programatico,
-            assinaturas=template.assinaturas
+            assinaturas=template.assinaturas,
+            data_hora_impressao=data_hora_impressao
         )
 
         output_dir = output_dir or get_certificados_dir() / _pasta_funcionario(employee) / template.nr_code
@@ -77,7 +88,16 @@ class CertificateService:
         pdf_filename = f"{cert_number}_{nr_code}_{employee.nome.replace(' ', '_')}.pdf"
         pdf_path = output_dir / pdf_filename
 
-        generate_certificate_pdf(cert_data, template, pdf_path)
+        # templates PPTX da tecnica (templates/certificados_pptx/NR-XX.pptx)
+        # tem prioridade; sem PowerPoint/COM o fluxo JSON/ReportLab continua
+        from src.core import pptx_certificate_service as pptx_cert
+        if pptx_cert.get_pptx_template_path(nr_code):
+            pptx_cert.gerar_pdf_pptx(
+                nr_code, employee, data_treinamento, cert_number, pdf_path,
+                data_hora=data_hora_impressao
+            )
+        else:
+            generate_certificate_pdf(cert_data, template, pdf_path)
 
         record = CertificateRecord(
             cert_number=cert_number,

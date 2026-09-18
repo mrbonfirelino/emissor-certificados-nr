@@ -43,7 +43,7 @@ Papéis existentes:
 |-------|-----------|
 | **Admin** | Tudo: módulos operacionais + configurações, backup e gestão de usuários |
 | **Emissor** | Opera o dia a dia: cadastrar funcionários, emitir certificados/ASO/EPI/crachás, importar planilhas |
-| **Consulta** | Só visualiza: dashboard, funcionários, histórico e vencimentos (sem emitir nem editar) |
+| **Consulta** | Só visualiza: dashboard, funcionários, histórico, vencimentos, frota e listas de presença (sem emitir nem editar) |
 
 | Módulo | Para que serve |
 |--------|---------------|
@@ -54,10 +54,11 @@ Papéis existentes:
 | **Vencimentos** | Certificados vencidos/próximos do vencimento, com ações rápidas de reemissão |
 | **ASO** | Emissão de fichas/ASO em PDF |
 | **EPI** | Fichas de EPI por funcionário |
+| **Frota** | Veículos (com pasta de documentos e laudos com vencimento), solicitações de abastecimento em PDF e registro de saída/entrada com KM — laudos vencidos aparecem em Vencimentos |
 | **Crachás** | Crachás de identificação por funcionário |
-| **Cartões de Bloqueio** | Cartões de bloqueio de energia (modelos PPTX) |
-| **Importações** | Importar funcionários e treinamentos por planilha (Excel/CSV) |
-| **Integrações** | Configurações de integração entre telas/dados |
+| **Cartões de Bloqueio** | Cartões de bloqueio de energia (modelos JSON e PPTX) e importação da lista de bloqueios. O formulário se adapta ao modelo: exibe **Setor**, **Matrícula** e **Papel** somente quando o modelo selecionado usa esses campos |
+| **Importações** | Importar funcionários, certificados em lote, ASOs e lista de bloqueios por planilha (Excel) |
+| **Integrações** | Vínculos funcionário × empresa cliente com validade (aparecem também em Vencimentos) |
 | **Configurações** *(admin)* | Dados da empresa, instrutor, senha de restauração |
 | **Backup** *(admin)* | Backup manual agora + histórico de backups automáticos |
 | **Usuários** *(admin)* | Criar/desativar usuários e definir papéis |
@@ -114,7 +115,79 @@ que tem o scanner — ver `04-SCANNER.md`):**
   **Emitir** (reemite o treinamento com os dados do funcionário)
 - Recomendação: rode a tela de Vencimentos **1x por semana**
 
-## 8. Perguntas frequentes (FAQ)
+## 8. Frota: veículos, abastecimento, checklist e custos
+
+1. **Cadastrar veículo**: Frota → **Novo veículo** → tipo (Caminhão mostra
+   subtipo; Empilhadeira/Retroescavadeira não têm placa), próprio ou alugado
+   (alugado pede contratante) e empresa → **Salvar**
+2. **Documentos do veículo**: na ficha do veículo, anexe CRV, CRLV,
+   contratos, inspeções (mesmo jeito da pasta do funcionário)
+3. **Laudo com vencimento**: na ficha → **Adicionar laudo** → tipo (CRLV,
+   Fumaça Preta etc.), arquivo e data de validade. Laudo vencendo/vencido
+   aparece em **Vencimentos** e no painel do **Dashboard**
+4. **Saída/entrada**: na ficha → **Registrar saída** (data, hora, KM,
+   destino, motorista, autorizado por). Na volta, **Registrar entrada** com
+   o KM final — o sistema calcula o KM rodado
+5. **Abastecimento**: Frota → **Abastecimentos** → **Nova solicitação** →
+   veículo, combustível, KM, **litros e valor**, condutor e aprovação →
+   gera PDF com serial único (ex.: `AB-2026-00007`) pronto para imprimir
+   e assinar. Use **Exportar Excel** para custos e o link **NF** para
+   anexar a nota fiscal do abastecimento
+6. **Checklist semanal (veículos leves)**: na ficha do veículo →
+   **Novo checklist semanal** → marque S/N para cada item em cada dia
+   (2ª a sábado), informe motorista, líder e se o veículo pode operar →
+   **Salvar e gerar PDF** no formato do formulário da empresa
+7. **Manutenção preventiva**: na ficha → cadastre o item (ex.: troca de
+   óleo, intervalo 10.000 km) — o sistema avisa quanto falta em
+   **Vencimentos** e na própria ficha; use **Concluir** quando fizer
+8. **Custo e consumo**: no fim da ficha do veículo, o bloco "Custo e
+   consumo" mostra o total abastecido e a média KM/L real comparada com a
+   ficha técnica. No **Dashboard**, os cards de frota mostram veículos,
+   saídas em aberto e custo do mês
+9. **Status do veículo**: a lista de veículos mostra automaticamente se
+   cada um está **Em Viagem** (com motorista e destino), **Em
+   Manutenção**, **Indisponível** ou **Disponível**
+10. **Checklist em branco**: na ficha, use **Gerar em branco (preenchimento
+    manual)** para baixar o PDF do checklist semanal já com veículo, placa,
+    KM e data — imprima, preencha, assine e anexe de volta em **Checklist →
+    Anexar assinado**. O mesmo vale para o **abastecimento assinado**
+    (tela de NFs do abastecimento)
+11. **Menu**: o portal agora agrupa o menu em **Segurança** (Certificados,
+    Emissão em Lote, Histórico, Listas de Presença, Ficha de EPIs, Crachás,
+    Cartões, Vencimentos), **Cadastros** (Funcionários, ASO, Integrações) e
+    o botão dedicado **Gestão de Frota** no topo
+
+## 9. Listas de presença: gerar e anexar a assinada
+
+1. **Gerar (fluxo do dia)**: Listas de Presença → **+ Nova lista** → informe
+   só a **data** → o portal mostra, para cada NR emitida naquele dia, uma
+   seção com os participantes para conferir (marcada por padrão) →
+   **Emitir listas do dia** gera todas de uma vez.
+2. **Compilado**: após emitir, aparece um aviso perguntando se você quer
+   **baixar o compilado** — um PDF único com todas as listas do dia, pronto
+   para imprimir. Também é possível baixá-lo depois pelo botão no topo da
+   listagem (informando a data).
+3. **Imprimir**: abra o PDF pelo detalhe da lista e distribua para os
+   participantes assinarem.
+4. **Registrar assinaturas**: no detalhe da lista, use **Enviar lista
+   assinada** para anexar o escaneio (PDF, JPG ou PNG) — o status vira
+   **Assinada** automaticamente.
+5. **Status**: use **Alterar status** para marcar **Parcial** enquanto nem
+   todos assinaram. Pendente/Parcial/Assinada aparecem com cores diferentes
+   na listagem.
+6. NRs com modelo pronto (NR-01, 06, 12, 18, 35) saem na planilha da
+   empresa; as demais usam o layout padrão com a logo.
+
+## 10. Backup e Auditoria (admin)
+
+- **Backup**: menu **Backup** (só admin) → **Fazer backup agora** cria um
+  ponto de segurança na hora; a lista abaixo mostra os backups existentes.
+  Os automáticos continuam sendo configurados em **Configurações**
+- **Auditoria**: menu **Auditoria** (só admin) → histórico de quem fez o
+  quê (logins, emissões, importações, exclusões, frota, configurações, listas de presença),
+  com busca
+
+## 11. Perguntas frequentes (FAQ)
 
 **O portal não abre (`normatech:8000` não carrega)**
 1. Confira se escreveu certo; tente `http://normatech:8000`
@@ -149,7 +222,7 @@ o computador.
 Sim, enquanto a migração dura. Prefira o portal para o dia a dia — os dados
 são os mesmos.
 
-## 9. Com quem falar
+## 11. Com quem falar
 
 | Assunto | Quem |
 |---------|------|

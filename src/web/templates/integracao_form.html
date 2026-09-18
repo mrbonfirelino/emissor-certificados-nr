@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block titulo %}{{ 'Editar' if integ else 'Nova' }} integração{% endblock %}
+
+{% block conteudo %}
+<div class="card">
+  <h1>{{ 'Editar integração #' ~ integ.id if integ else 'Nova integração' }}</h1>
+
+  {% if erro %}
+  <p class="erro">{{ erro }}</p>
+  <p><a class="btn cinza" href="/integracoes">Voltar</a></p>
+  {% else %}
+
+  <form method="post" action="{{ '/integracoes/' ~ integ.id ~ '/editar' if integ else '/integracoes/novo' }}">
+    <div class="form-grid">
+      <div class="campo largo">
+        <label>Funcionário</label>
+        <select name="employee_id" required>
+          <option value="">— selecione —</option>
+          {% for f in funcionarios %}
+          <option value="{{ f.id }}" {{ 'selected' if integ and integ.employee_id == f.id }}>{{ f.nome }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="campo largo">
+        <label>Empresa cliente</label>
+        <select name="empresa_id" required>
+          <option value="">— selecione —</option>
+          {% for e in empresas %}
+          <option value="{{ e.id }}" {{ 'selected' if integ and integ.empresa_id == e.id }}>{{ e.nome }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="campo largo">
+        <label>Tipo da integração</label>
+        <input type="text" name="tipo" value="{{ integ.tipo if integ else '' }}"
+               placeholder="Ex.: Integração de máquinas, Assistência técnica...">
+      </div>
+      <div class="campo">
+        <label>Data de início</label>
+        <input type="date" name="data_inicio" value="{{ integ.data_inicio if integ and integ.data_inicio else '' }}">
+      </div>
+      <div class="campo">
+        <label>Data de validade *</label>
+        <input type="date" name="data_validade" required
+               value="{{ integ.data_validade if integ and integ.data_validade else validade_padrao }}">
+      </div>
+      <div class="campo largo">
+        <label>Observações</label>
+        <input type="text" name="obs" value="{{ integ.obs if integ else '' }}">
+      </div>
+    </div>
+
+    <div class="linha-botoes">
+      <button class="btn verde" type="submit">Salvar</button>
+      <a class="btn cinza" href="/integracoes">Cancelar</a>
+    </div>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

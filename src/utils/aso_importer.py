@@ -67,7 +67,8 @@ def _so_digitos(val) -> str:
     return "".join(ch for ch in str(val or "") if ch.isdigit())
 
 
-def import_asos_from_excel(filepath, aso_repo, employee_repo) -> Dict[str, List]:
+def import_asos_from_excel(filepath, aso_repo, employee_repo,
+                           on_progress=None) -> Dict[str, List]:
     """Importa ASOs em lote. Retorna {'criados': [...], 'erros': n, 'detalhes': [...]}."""
     import openpyxl
 
@@ -89,7 +90,13 @@ def import_asos_from_excel(filepath, aso_repo, employee_repo) -> Dict[str, List]
     linhas = list(ws.iter_rows(values_only=True))
     wb.close()
 
+    total = max(len(linhas) - 1, 1)
+    if on_progress:
+        on_progress(0, total, "")
     for i, row in enumerate(linhas[1:], start=2):
+        if on_progress:
+            _nome_prog = str(row[0] or "").strip() if row else ""
+            on_progress(i - 1, total, _nome_prog)
         try:
             if not row or all(c is None or str(c).strip() == "" for c in row[:5]):
                 continue

@@ -11,7 +11,7 @@
   <p><a class="btn cinza" href="/crachas">Voltar</a></p>
   {% else %}
 
-  <form method="post" action="/crachas/emitir">
+  <form method="post" action="/crachas/emitir" data-confirmar-lista>
     <div class="form-grid">
       <div class="campo">
         <label>Modelo</label>
@@ -39,7 +39,7 @@
     <table>
       <tr><th>Emitir</th><th>Funcionário</th><th>CPF</th><th>NRs válidas (mais recentes)</th></tr>
       {% for e in elegiveis %}
-      <tr>
+      <tr data-nome="{{ e.nome }}" data-det="{{ e.cpf }}">
         <td><input type="checkbox" name="sel_{{ e.id }}" checked></td>
         <td>{{ e.nome }}</td>
         <td>{{ e.cpf }}</td>

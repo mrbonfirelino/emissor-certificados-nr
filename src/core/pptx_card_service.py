@@ -521,25 +521,39 @@ def _pptx_to_pdf_batch(pairs: List[Tuple[Path, Path]]):
     except ImportError:
         raise RuntimeError("Biblioteca comtypes nao instalada. Instale com: pip install comtypes")
 
+    # handlers web rodam em threads do anyio sem COM inicializado
     try:
-        app = comtypes.client.CreateObject("PowerPoint.Application", dynamic=True)
-    except Exception as e:
-        raise RuntimeError(
-            "Microsoft PowerPoint nao encontrado neste computador.\n"
-            "Templates PPTX exigem o PowerPoint instalado (Office).\n"
-            f"Detalhe: {e}"
-        ) from e
+        import comtypes
+        comtypes.CoInitialize()
+    except Exception:
+        pass
 
     try:
-        for src, dst in pairs:
-            pres = app.Presentations.Open(str(Path(src).resolve()), True, False, False)
+        try:
+            app = comtypes.client.CreateObject("PowerPoint.Application", dynamic=True)
+        except Exception as e:
+            raise RuntimeError(
+                "Microsoft PowerPoint nao encontrado neste computador.\n"
+                "Templates PPTX exigem o PowerPoint instalado (Office).\n"
+                f"Detalhe: {e}"
+            ) from e
+
+        try:
+            for src, dst in pairs:
+                pres = app.Presentations.Open(str(Path(src).resolve()), True, False, False)
+                try:
+                    pres.SaveAs(str(Path(dst).resolve()), PP_SAVE_AS_PDF)
+                finally:
+                    pres.Close()
+        finally:
             try:
-                pres.SaveAs(str(Path(dst).resolve()), PP_SAVE_AS_PDF)
-            finally:
-                pres.Close()
+                app.Quit()
+            except Exception:
+                pass
     finally:
         try:
-            app.Quit()
+            import comtypes
+            comtypes.CoUninitialize()
         except Exception:
             pass
 

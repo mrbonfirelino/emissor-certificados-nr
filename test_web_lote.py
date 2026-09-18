@@ -30,6 +30,7 @@ def make_env():
     import src.core.employee_repo as er_mod
     import src.core.history_repo as hr_mod
     import src.core.certificate_service as cert_mod
+    import src.core.pptx_certificate_service as pptx_cert_mod
     import src.web.app as app_mod
 
     paths_mod.get_data_dir = lambda: tmp
@@ -40,6 +41,7 @@ def make_env():
         empresa_nome="Empresa Teste LTDA", empresa_cnpj="11.222.333/0001-81",
         local_treinamento="Planta Teste", instrutor_nome="Instrutor Teste",
         instrutor_registro_mte="MTE 44633/RJ")
+    pptx_cert_mod.get_templates_dir = lambda: tmp / "sem-templates-pptx"
     app_mod.get_data_dir = lambda: tmp
 
     from src.web.app import create_app

@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block titulo %}Listas do dia geradas{% endblock %}
+
+{% block conteudo %}
+<h1>Listas de presença — {{ info.data_br }}</h1>
+
+{% if info.geradas %}
+<div class="card">
+    <h2 style="margin-top:0">Geradas ({{ info.geradas|length }})</h2>
+    <table>
+        <tr><th>Serial</th><th>NR</th><th>Participantes</th><th></th></tr>
+        {% for g in info.geradas %}
+        <tr>
+            <td>{{ g.serial }}</td>
+            <td>{{ g.nr }}</td>
+            <td>{{ g.n }}</td>
+            <td><a class="btn cinza" href="/presencas/{{ g.pid }}">Abrir</a></td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+{% else %}
+<div class="card"><p>Nenhuma lista foi gerada.</p></div>
+{% endif %}
+
+{% if info.falhas %}
+<div class="card" style="margin-top:14px">
+    <h2 style="margin-top:0">Não geradas ({{ info.falhas|length }})</h2>
+    <table>
+        <tr><th>NR</th><th>Motivo</th></tr>
+        {% for f in info.falhas %}
+        <tr><td>{{ f.nr }}</td><td>{{ f.motivo }}</td></tr>
+        {% endfor %}
+    </table>
+</div>
+{% endif %}
+
+{% if info.geradas %}
+{% set ids = info.geradas | map(attribute='pid') | join(',') %}
+<dialog class="modal" id="dlg-compilado">
+    <div class="modal-topo"><strong>Baixar compilado das listas</strong></div>
+    <div class="modal-corpo">
+        <p>Quer baixar o <strong>compilado das listas desta emissão</strong>?
+        É um PDF único com as {{ info.geradas | length }} lista(s) gerada(s)
+        agora de {{ info.data_br }} — ideal para imprimir de uma vez.</p>
+    </div>
+    <div class="modal-pe">
+        <a class="btn verde" href="/presencas/compilado/{{ info.data }}?ids={{ ids }}"
+           onclick="fecharCompilado()">Baixar compilado</a>
+        <a class="btn cinza" href="/presencas" onclick="fecharCompilado()">Agora não</a>
+    </div>
+</dialog>
+{% endif %}
+
+<div class="linha-botoes" style="margin-top:14px">
+    <a class="btn cinza" href="/presencas">Voltar para Listas de Presença</a>
+</div>
+
+<script>
+    var dlg = document.getElementById("dlg-compilado");
+    if (dlg && typeof dlg.showModal === "function") { dlg.showModal(); }
+
+    function fecharCompilado() {
+        if (dlg && typeof dlg.close === "function") { dlg.close(); }
+        // aguarda o navegador iniciar o download do href antes de navegar
+        setTimeout(function () { window.location.href = "/presencas"; }, 400);
+    }
+</script>
+{% endblock %}

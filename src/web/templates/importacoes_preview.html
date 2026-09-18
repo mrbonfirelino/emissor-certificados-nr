@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block titulo %}Prévia — certificados em lote{% endblock %}
+
+{% block conteudo %}
+<div class="card">
+  <h1>Prévia — certificados em lote</h1>
+  <p class="sub">{{ total }} linha(s) válida(s) na planilha. Confira antes de emitir.</p>
+
+  {% if erros %}
+  <p class="erro">Linhas ignoradas ({{ erros | length }}):</p>
+  <ul class="muted">
+    {% for e in erros %}<li>{{ e }}</li>{% endfor %}
+  </ul>
+  {% endif %}
+
+  {% if faltando %}
+  <p class="erro">Funcionários ainda não cadastrados — serão criados automaticamente
+     (sem CPF, o certificado fica registrado sem PDF):</p>
+  <ul class="muted">
+    {% for f in faltando %}<li>{{ f }}</li>{% endfor %}
+  </ul>
+  {% endif %}
+
+  <table>
+    <tr><th class="num">#</th><th>Funcionário</th><th>NR</th><th>Data</th></tr>
+    {% for r in linhas %}
+    <tr>
+      <td class="num">{{ loop.index }}</td>
+      <td>{{ r.nome }}</td>
+      <td><b>{{ r.nr_code }}</b></td>
+      <td>{{ r.data }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  <form method="post" action="/importacoes/certificados/confirmar" data-com-progresso data-progresso-titulo="Importação de certificados">
+    <div class="linha-botoes">
+      <button class="btn verde" type="submit">Emitir {{ total }} certificado(s)</button>
+      <a class="btn cinza" href="/importacoes">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

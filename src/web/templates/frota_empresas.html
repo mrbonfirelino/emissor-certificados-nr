@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block titulo %}Empresas de veículos — NormaTech{% endblock %}
+{% block conteudo %}
+<div class="card" style="max-width:760px;">
+  <a class="btn-voltar" href="/frota">&larr; Voltar para Frota</a>
+  <h1>Empresas de veículos</h1>
+  <p class="sub">Empresas às quais os veículos da frota pertencem.</p>
+
+  {% if pode_escrever %}
+  <details class="opcoes" {% if not empresas %}open{% endif %}>
+    <summary class="btn verde">+ Nova empresa</summary>
+    <form method="post" action="/frota/empresas/criar" class="filtros" style="margin-top:10px;">
+      <div class="campo">
+        <label for="nome">Nome *</label>
+        <input type="text" id="nome" name="nome" required placeholder="Nome da empresa">
+      </div>
+      <div class="campo">
+        <label for="cnpj">CNPJ</label>
+        <input type="text" id="cnpj" name="cnpj" placeholder="00.000.000/0000-00">
+      </div>
+      <button type="submit" class="verde">Cadastrar</button>
+    </form>
+  </details>
+  {% endif %}
+
+  <table style="margin-top:14px;">
+    <thead><tr><th>Nome</th><th>CNPJ</th><th>Veículos</th><th></th></tr></thead>
+    <tbody>
+    {% for e in empresas %}
+      <tr>
+        <td>{{ e.nome }}</td>
+        <td>{{ e.cnpj or '—' }}</td>
+        <td>{{ e.veiculos }}</td>
+        {% if pode_escrever %}
+        <td class="acoes">
+          <details class="anexo-pop">
+            <summary class="btn">Renomear</summary>
+            <div class="anexo-box" style="width:320px;">
+              <form method="post" action="/frota/empresas/{{ e.id }}/editar" class="form-grid">
+                <div class="campo"><label>Nome *</label><input type="text" name="nome" value="{{ e.nome }}" required></div>
+                <div class="campo"><label>CNPJ</label><input type="text" name="cnpj" value="{{ e.cnpj or '' }}"></div>
+                <button type="submit" class="verde">Salvar</button>
+              </form>
+            </div>
+          </details>
+          <form method="post" action="/frota/empresas/{{ e.id }}/excluir"
+                onsubmit="return confirm('Excluir a empresa {{ e.nome }}?');">
+            <button type="submit" class="vermelho">Excluir</button>
+          </form>
+        </td>
+        {% else %}<td></td>{% endif %}
+      </tr>
+    {% else %}
+      <tr><td colspan="4" class="muted">Nenhuma empresa cadastrada.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

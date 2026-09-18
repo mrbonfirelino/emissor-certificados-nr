@@ -33,7 +33,8 @@ def _match_employee(nome: str, cpf: str, employee_repo):
     return None
 
 
-def import_blocking_list(filepath: str, employee_repo) -> Tuple[List, List[str]]:
+def import_blocking_list(filepath: str, employee_repo,
+                         on_progress=None) -> Tuple[List, List[str]]:
     """
     Le a planilha e casa com funcionarios cadastrados.
 
@@ -54,14 +55,20 @@ def import_blocking_list(filepath: str, employee_repo) -> Tuple[List, List[str]]
     wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
     try:
         ws = wb.active
+        linhas = [r for r in ws.iter_rows(values_only=True)]
+        total = max(len(linhas) - 1, 1)
+        if on_progress:
+            on_progress(0, total, "")
         encontrados, nao_encontrados = [], []
         seen = set()
-        for i, row in enumerate(ws.iter_rows(values_only=True)):
+        for i, row in enumerate(linhas):
             if i == 0:
                 continue  # cabecalho
             if not row or all(c is None for c in row):
                 continue
             nome = str(row[0] or "").strip()
+            if on_progress:
+                on_progress(i, total, nome)
             cpf = _digits(row[1] if len(row) > 1 else None)
             if not nome:
                 continue

@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block titulo %}Confirmar Fotos — NormaTech{% endblock %}
+
+{% block conteudo %}
+<div class="card">
+  <h1>Confirmar Importação de Fotos</h1>
+  <p class="sub">{{ casados|length }} foto(s) casada(s) e {{ nao|length }} sem correspondência.
+     Desmarque o que não deve ser aplicado e confirme.</p>
+
+  <form method="post" action="/funcionarios/importar-fotos/confirmar">
+    <input type="hidden" name="token" value="{{ token }}">
+
+    <table>
+      <thead>
+        <tr><th>Aplicar</th><th>Nova foto</th><th>Funcionário</th><th>Atual</th><th>Arquivo</th><th>Ação</th></tr>
+      </thead>
+      <tbody>
+      {% for c in casados %}
+        {% set emp = c.employee %}
+        <tr>
+          <td><input type="checkbox" name="aplicar_{{ loop.index0 }}" checked></td>
+          <td><img class="foto-pequena" src="/funcionarios/importar-fotos/preview/{{ token }}/{{ loop.index0 }}" alt=""></td>
+          <td><a href="/funcionarios/{{ emp.id }}" style="color:var(--azul); font-weight:600;">{{ emp.nome }}</a></td>
+          <td>
+            {% if emp.foto %}<img class="foto-pequena" src="/funcionarios/{{ emp.id }}/foto" alt="">
+            {% else %}<span class="muted">sem foto</span>{% endif %}
+          </td>
+          <td class="muted">{{ c.path.name }}</td>
+          <td>{% if emp.foto %}<span class="badge b-amarelo">SUBSTITUIR</span>{% else %}<span class="badge b-verde">adicionar</span>{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+
+    {% if nao %}
+    <h2 style="margin-top:18px;">Sem correspondência (não importadas)</h2>
+    <table>
+      <thead><tr><th>Arquivo</th><th>Motivo</th></tr></thead>
+      <tbody>
+      {% for n in nao %}
+        <tr><td>{{ n.path.name }}</td><td class="muted">{{ n.motivo }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+
+    <p class="linha-botoes" style="margin-top:14px;">
+      <button class="btn verde" type="submit">Importar selecionadas</button>
+      <a class="btn cinza" href="/funcionarios/importar-fotos">Cancelar</a>
+    </p>
+  </form>
+</div>
+{% endblock %}

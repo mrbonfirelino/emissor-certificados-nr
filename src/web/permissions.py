@@ -17,6 +17,8 @@ PERMISSIONS = {
     "vencimentos": {"admin", "emissor", "consulta"},
     "aso": {"admin", "emissor", "consulta"},
     "epi": {"admin", "emissor", "consulta"},
+    "frota": {"admin", "emissor", "consulta"},
+        "presencas": {"admin", "emissor", "consulta"},
     "crachas": {"admin", "emissor", "consulta"},
     "importacoes": {"admin", "emissor"},
     "integracoes": {"admin", "emissor"},
@@ -35,7 +37,7 @@ def pode(role: str, modulo: str) -> bool:
 # Modulos onde consulta ve apenas ("só ver" na matriz) — escrita exige
 # admin/emissor. Admin-only (config/backup/usuarios/auditoria) nunca entra aqui.
 SO_LEITURA = {"funcionarios", "certificados", "historico", "vencimentos",
-              "aso", "epi", "crachas"}
+              "aso", "epi", "frota", "presencas", "crachas"}
 
 
 def pode_escrever(role: str, modulo: str) -> bool:
@@ -54,6 +56,6 @@ def pode_escrever(role: str, modulo: str) -> bool:
 def modulos_do(role: str) -> list:
     """Modulos visiveis no menu para o papel, em ordem de exibicao."""
     ordem = ["dashboard", "certificados", "funcionarios", "historico", "vencimentos",
-             "aso", "epi", "crachas", "cartoes", "importacoes", "integracoes",
+             "aso", "epi", "frota", "presencas", "crachas", "cartoes", "importacoes", "integracoes",
              "backup", "usuarios"]
     return [m for m in ordem if pode(role, m)]

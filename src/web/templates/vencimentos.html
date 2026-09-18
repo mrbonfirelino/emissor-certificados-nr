@@ -5,10 +5,23 @@
   <h1>Controle de Vencimentos</h1>
   <p class="sub">Certificados, ASOs e integrações com validade — {{ total }} item(ns).</p>
 
-  <div class="chips" style="margin-bottom:12px;">
-    <div class="chip"><span class="chip-numero" style="color:#C62828;">{{ vencidos }}</span> Vencidos</div>
-    <div class="chip"><span class="chip-numero" style="color:#E65100;">{{ sete }}</span> Vencem em 7 dias</div>
-    <div class="chip"><span class="chip-numero" style="color:#BF5300;">{{ trinta }}</span> Vencem em 30 dias</div>
+  <div class="paineis">
+    <a class="painel p-vermelho" href="/vencimentos?periodo=vencidos" title="Filtrar vencidos">
+      <span class="num-p">{{ vencidos }}</span>
+      <span class="rot-p">Vencidos</span>
+    </a>
+    <a class="painel p-laranja" href="/vencimentos?periodo=dias_7" title="Filtrar próximos 7 dias">
+      <span class="num-p">{{ sete }}</span>
+      <span class="rot-p">Vencem em 7 dias</span>
+    </a>
+    <a class="painel p-ambar" href="/vencimentos?periodo=dias_15" title="Filtrar próximos 15 dias">
+      <span class="num-p">{{ quinze }}</span>
+      <span class="rot-p">Vencem em 8 a 15 dias</span>
+    </a>
+    <a class="painel p-ambar" href="/vencimentos?periodo=mes_1" title="Filtrar próximos 30 dias">
+      <span class="num-p">{{ trinta }}</span>
+      <span class="rot-p">Vencem em 30 dias</span>
+    </a>
   </div>
 
   <form method="get" action="/vencimentos" class="filtros" style="margin-bottom:12px;">
@@ -54,12 +67,6 @@
     </tbody>
   </table>
 
-  {% if total_paginas > 1 %}
-  <div class="paginacao">
-    {% if page > 1 %}<a href="?{{ qs }}{{ '&' if qs else '' }}page={{ page - 1 }}">&laquo; Anterior</a>{% endif %}
-    <span class="atual">Página {{ page }} de {{ total_paginas }}</span>
-    {% if page < total_paginas %}<a href="?{{ qs }}{{ '&' if qs else '' }}page={{ page + 1 }}">Próxima &raquo;</a>{% endif %}
-  </div>
-  {% endif %}
+  {% with paginas = total_paginas %}{% include "_paginacao.html" %}{% endwith %}
 </div>
 {% endblock %}

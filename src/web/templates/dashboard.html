@@ -1,35 +1,126 @@
 {% extends "base.html" %}
 {% block titulo %}Dashboard — NormaTech{% endblock %}
 {% block conteudo %}
-<div class="chips">
-  <div class="chip"><div class="rotulo">Certificados emitidos</div><div class="valor">{{ stats.total }}</div></div>
-  <div class="chip ok"><div class="rotulo">Assinados</div><div class="valor">{{ stats.assinados }}</div></div>
-  <div class="chip vencido"><div class="rotulo">Vencidos</div><div class="valor">{{ stats.vencidos }}</div></div>
-  <div class="chip alerta"><div class="rotulo">Vencem em 7 dias</div><div class="valor">{{ stats.vencer_7 }}</div></div>
-  <div class="chip alerta"><div class="rotulo">Vencem em 30 dias</div><div class="valor">{{ stats.vencer_30 }}</div></div>
+<div class="hero">
+  <img src="/logo.png" alt="Logo">
+  <div class="sep"></div>
+  <div>
+    <p class="data-hora"><span id="data-ext">{{ data_extensa }}</span> · <span id="hora">{{ hora_init }}</span></p>
+    <h1 class="bemvindo">Bem-vindo ao NormaTech!</h1>
+    <p class="sub2">Sistema de emissão e controle de certificados, ASO, EPI, crachás e cartões.</p>
+  </div>
 </div>
 
-<div class="card">
-  <h2>Emissões por NR (top 5)</h2>
-  {% if stats.por_nr %}
-  <table>
-    <tr><th>NR</th><th class="num">Emissões</th></tr>
-    {% for nr, n in stats.por_nr %}
-    <tr><td>{{ nr }}</td><td class="num">{{ n }}</td></tr>
-    {% endfor %}
-  </table>
-  {% else %}<p class="muted">Sem emissões ainda.</p>{% endif %}
+<div class="stat-cards">
+  <a class="stat-card" href="/historico"><span class="num">{{ stats.total }}</span><span class="rot">Certificados emitidos</span></a>
+  <a class="stat-card" href="/funcionarios"><span class="num">{{ total_funcionarios }}</span><span class="rot">Funcionários cadastrados</span></a>
+  <a class="stat-card" href="/certificados"><span class="num">{{ total_nrs }}</span><span class="rot">NRs disponíveis</span></a>
+  {% if frota_stats %}
+  <a class="stat-card" href="/frota"><span class="num">{{ frota_stats.veiculos }}</span><span class="rot">Veículos na frota</span></a>
+  <a class="stat-card" href="/frota"><span class="num">{{ frota_stats.movs_abertas }}</span><span class="rot">Saídas em aberto</span></a>
+  <a class="stat-card" href="/frota/abastecimentos"><span class="num">{{ 'R$ %.2f' % frota_stats.custo_mes }}</span><span class="rot">Custo de abastecimento (mês)</span></a>
+  {% endif %}
 </div>
 
-<div class="card">
-  <h2>Emissões por mês (últimos 6)</h2>
-  {% if stats.por_mes %}
-  <table>
-    <tr><th>Mês</th><th class="num">Emissões</th></tr>
-    {% for mes, n in stats.por_mes %}
-    <tr><td>{{ mes }}</td><td class="num">{{ n }}</td></tr>
-    {% endfor %}
-  </table>
-  {% else %}<p class="muted">Sem emissões ainda.</p>{% endif %}
+<div class="atalhos">
+  <a class="btn verde" href="/certificados">🎓 Emitir Certificado</a>
+  <a class="btn" href="/funcionarios">👥 Funcionários</a>
+  <a class="btn cinza" href="/historico">📋 Histórico</a>
+  <a class="btn cinza" href="/vencimentos">⏰ Vencimentos</a>
+  {% if pode_lote %}<a class="btn" href="/emissao-lote">📦 Emissão em Lote</a>{% endif %}
 </div>
+
+<div class="duo">
+  <div class="card">
+    <h2>🎂 Aniversariantes de hoje</h2>
+    {% if anivers_hoje %}
+      <p>{{ anivers_hoje | map(attribute='nome') | join(', ') }}</p>
+    {% else %}
+      <p class="muted">Ninguém faz aniversário hoje.</p>
+    {% endif %}
+  </div>
+  <div class="card">
+    <h2>📅 Aniversariantes de {{ mes_nome }}</h2>
+    {% if anivers_mes %}
+      <div style="max-height:220px; overflow-y:auto;">
+      <table>
+        <tr><th style="width:70px">Dia</th><th>Funcionário</th></tr>
+        {% for e in anivers_mes %}
+        <tr><td>{{ e.data_nascimento[8:10] }}</td><td>{{ e.nome }}</td></tr>
+        {% endfor %}
+      </table>
+      </div>
+    {% else %}
+      <p class="muted">Sem aniversários neste mês.</p>
+    {% endif %}
+  </div>
+</div>
+
+<details class="opcoes">
+  <summary>Ver indicadores</summary>
+  <div class="chips">
+    <div class="chip"><div class="rotulo">Assinados</div><div class="valor">{{ stats.assinados }}</div></div>
+    <div class="chip vencido"><div class="rotulo">Vencidos</div><div class="valor">{{ stats.vencidos }}</div></div>
+    <div class="chip alerta"><div class="rotulo">Vencem em 7 dias</div><div class="valor">{{ stats.vencer_7 }}</div></div>
+    <div class="chip alerta"><div class="rotulo">Vencem em 30 dias</div><div class="valor">{{ stats.vencer_30 }}</div></div>
+  </div>
+
+  <div class="duo">
+    <div class="card">
+      <h2>Emissões por NR (top 5)</h2>
+      {% if stats.por_nr %}
+      <table>
+        <tr><th>NR</th><th class="num">Emissões</th></tr>
+        {% for nr, n in stats.por_nr %}
+        <tr><td>{{ nr }}</td><td class="num">{{ n }}</td></tr>
+        {% endfor %}
+      </table>
+      {% else %}<p class="muted">Sem emissões ainda.</p>{% endif %}
+    </div>
+
+    <div class="card">
+      <h2>Emissões por mês (últimos 6)</h2>
+      {% if stats.por_mes %}
+      <table>
+        <tr><th>Mês</th><th class="num">Emissões</th></tr>
+        {% for mes, n in stats.por_mes %}
+        <tr><td>{{ mes }}</td><td class="num">{{ n }}</td></tr>
+        {% endfor %}
+      </table>
+      {% else %}<p class="muted">Sem emissões ainda.</p>{% endif %}
+    </div>
+  </div>
+</details>
+
+<script>
+(function () {
+  function tick() {
+    var h = document.getElementById("hora");
+    if (h) h.textContent = new Date().toLocaleTimeString("pt-BR");
+  }
+  setInterval(tick, 1000);
+})();
+
+// contagem animada nos cards (só números inteiros)
+(function () {
+  var els = document.querySelectorAll(".num");
+  els.forEach(function (el) {
+    var alvo = (el.textContent || "").trim();
+    if (!/^\d+$/.test(alvo) || alvo === "0") return;
+    var n = parseInt(alvo, 10);
+    if (n > 9999) return; // evita animações longas demais
+    var t0 = null;
+    function passo(ts) {
+      if (!t0) t0 = ts;
+      var p = Math.min(1, (ts - t0) / 2000);
+      var e = 1 - Math.pow(1 - p, 3); // ease-out
+      el.textContent = String(Math.round(n * e));
+      if (p < 1) requestAnimationFrame(passo);
+      else el.textContent = alvo;
+    }
+    el.textContent = "0";
+    requestAnimationFrame(passo);
+  });
+})();
+</script>
 {% endblock %}

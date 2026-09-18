@@ -24,6 +24,14 @@ A primeira linha (azul) e o cabecalho — nao apague.
    Tipos validos: Admissional, Periódico, Mudança de Função, Retorno ao Trabalho, Demissional
    O funcionario precisa estar cadastrado. Os PDFs sao gerados automaticamente.
 
+5) MODELO VEICULOS.xlsx  →  aba Frota > botao Importar
+   A Modelo* | B Marca | C Tipo* | D Subtipo (so caminhao) | E Placa
+   F Proprio (Sim/Nao) | G Contratante (se alugado) | H Empresa
+   I Cor | J Carroceria (Hatch/Sedan, so carro) | K Ano
+   L Fim do contrato (dd/mm/aaaa) | M KM/L esperado | N Obs
+   Tipos validos: Caminhao, Pickup, Carro, Van, Empilhadeira, Retroescavadeira, Outros
+   Empresa inexistente e cadastrada automaticamente.
+
 Dicas gerais:
 - Linhas com erro NAO param a importacao — o app mostra o resumo com os detalhes.
 - Datas podem ser digitadas como dd/mm/aaaa ou no formato de data do Excel.

@@ -1,0 +1,65 @@
+﻿=====================================================================
+ NORMATECH PORTAL WEB v1.44.0 - PACOTE PARA O SERVIDOR
+=====================================================================
+
+O QUE E ISTO
+------------
+Pasta pronta para copiar e colar no servidor. Copie a pasta inteira
+para C:\NormaTech no servidor (fora de OneDrive/Google Drive!).
+
+O que vem aqui:
+  src\, templates\, assets\     -> codigo, modelos de certificado/cartao, logo
+  INICIAR-PORTAL.bat            -> sobe o portal na rede (1a vez instala tudo)
+  INICIAR-COM-WINDOWS.bat       -> portal abre sozinho quando o PC ligar
+  deploy\web\*.bat              -> utilitarios (atualizar/remover/zera dados)
+  docs\PORTAL\                  -> guias (02 = deploy, 03 = manual de uso)
+  MODELOS DE IMPORTACAO\        -> planilhas modelo para os clientes baixarem
+  data\                         -> BANCO E ARQUIVOS ATUAIS (funcionarios,
+                                   certificados, ASOs, EPIs, cracas, cartoes)
+  run_web.py, requirements-web.txt -> servidor + dependencias
+                                   (auto-suficiente; nao precisa do
+                                    requirements.txt do desktop)
+
+PASSO A PASSO NO SERVIDOR (simples, sem servico)
+------------------------------------------------
+1. Copie esta pasta para C:\NormaTech
+2. Instale o Python 3.10+ (python.org â€” marque "Add to PATH")
+3. Rode INICIAR-PORTAL.bat
+   - Na 1a execucao ele cria o ambiente e instala TODAS as dependencias
+   - Deixe essa janela aberta enquanto usa o portal
+4. Rode INICIAR-COM-WINDOWS.bat (uma vez; de preferencia como
+   Administrador para liberar o firewall) â€” pronto: o portal inicia
+   sozinho quando o computador ligar. Para desfazer, apague o atalho
+   "NormaTech Portal" em shell:startup
+5. De outra maquina da rede, acesse: http://NOME-DO-SERVIDOR:8000
+   - O nome do servidor (hostname) funciona mesmo com IP mudando,
+     desde que a rede esteja como perfil "Privado". Teste: ping NOME
+   - Quer sem ":8000"? Rode: INICIAR-PORTAL.bat 80
+     (e libere a porta 80 no firewall; se a 80 estiver ocupada, fique na 8000)
+   - Celulares: tente http://NOME.local:8000
+6. 1o acesso: usuario admin com senha provisoria (aparece no console
+   e em data\web_admin_provisorio.txt) -> TROQUE A SENHA
+7. Guia completo (inclui opcao avancada de servico do Windows):
+   docs\PORTAL\02-DEPLOY_SERVIDOR.md
+
+CARTOES PPTX
+------------
+Modelos de cartao PPTX (ARCELORMITTAL, CSN, LOTOTO...) exigem o
+PowerPoint instalado NO SERVIDOR. Sem PowerPoint, os modelos JSON
+continuam funcionando normalmente.
+
+LEMBRETES
+---------
+- Backup automatico do banco ja roda junto com o portal (pasta data\backups).
+- Atualizacoes futuras: substitua src\, templates\, docs\ e rode
+  deploy\web\ATUALIZAR_PORTAL.bat (ou apenas rode INICIAR-PORTAL.bat de novo).
+- Nao renomeie nem mova a pasta data\ depois de instalado.
+=====================================================================
+
+
+
+
+
+
+
+

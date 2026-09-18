@@ -9,22 +9,22 @@
   {% if not templates_nr %}<p class="erro">Nenhum modelo de NR encontrado no servidor.</p>{% endif %}
 
   {% if pode_escrever and funcionarios and templates_nr %}
-  <form method="post" action="/certificados/emitir">
+  <form method="post" action="/certificados/emitir" id="form-emitir">
     <div class="form-grid">
       <div class="campo largo">
-        <label for="funcionario_id">Funcionário *</label>
-        <select id="funcionario_id" name="funcionario_id" required>
-          {% for emp in funcionarios %}
-          <option value="{{ emp.id }}">{{ emp.nome }}{% if emp.cpf %} — {{ emp.cpf }}{% else %} (sem CPF){% endif %}</option>
-          {% endfor %}
-        </select>
+        <label for="func_busca">Funcionário *</label>
+        <div class="combo">
+          <input type="text" id="func_busca" placeholder="Digite o nome ou CPF do funcionário..." autocomplete="off">
+          <input type="hidden" name="funcionario_id" id="funcionario_id">
+          <div class="combo-lista" id="combo_lista" style="display:none;"></div>
+        </div>
         <span class="muted">Funcionários sem CPF não podem receber certificado.</span>
       </div>
       <div class="campo">
         <label for="nr">Treinamento (NR) *</label>
-        <select id="nr" name="nr" onchange="aplicarDefaults()">
+        <select id="nr" name="nr" onchange="window.location='/certificados?nr='+encodeURIComponent(this.value)">
           {% for codigo, t in templates_nr.items() %}
-          <option value="{{ codigo }}" data-carga="{{ t.carga_horaria_minima }}" data-validade="{{ t.validade_meses }}" data-desc="{{ t.descricao_padrao }}" {{ 'selected' if codigo == nr_sel else '' }}>{{ codigo }}</option>
+          <option value="{{ codigo }}" {{ 'selected' if codigo == nr_sel else '' }}>{{ codigo }}</option>
           {% endfor %}
         </select>
         {% if tmpl %}<span class="muted">Carga mínima: {{ tmpl.carga_horaria_minima }}h · Validade padrão: {{ tmpl.validade_meses }} meses</span>{% endif %}
@@ -46,9 +46,11 @@
         <input type="text" id="descricao" name="descricao" value="{{ tmpl.descricao_padrao if tmpl else '' }}">
       </div>
       {% if tmpl %}
-      {% for extra in tmpl.campos_extra %}
+      {% set obrigatorios = tmpl.campos_extra | selectattr('obrigatorio') | list %}
+      {% set opcionais = tmpl.campos_extra | rejectattr('obrigatorio') | list %}
+      {% for extra in obrigatorios %}
       <div class="campo">
-        <label for="campo_{{ extra.id }}">{{ extra.label }}{{ ' *' if extra.obrigatorio else '' }}</label>
+        <label for="campo_{{ extra.id }}">{{ extra.label }} *</label>
         {% if extra.tipo == 'select' %}
         <select id="campo_{{ extra.id }}" name="campo_{{ extra.id }}">
           <option value="">—</option>
@@ -59,6 +61,26 @@
         {% endif %}
       </div>
       {% endfor %}
+      {% if opcionais %}
+      <details class="opcoes" style="grid-column:1 / -1;">
+        <summary>Campos adicionais (opcional)</summary>
+        <div class="form-grid">
+          {% for extra in opcionais %}
+          <div class="campo">
+            <label for="campo_{{ extra.id }}">{{ extra.label }}</label>
+            {% if extra.tipo == 'select' %}
+            <select id="campo_{{ extra.id }}" name="campo_{{ extra.id }}">
+              <option value="">—</option>
+              {% for opcao in extra.opcoes %}<option value="{{ opcao }}">{{ opcao }}</option>{% endfor %}
+            </select>
+            {% else %}
+            <input type="{{ 'number' if extra.tipo == 'number' else 'text' }}" id="campo_{{ extra.id }}" name="campo_{{ extra.id }}" placeholder="{{ extra.placeholder }}">
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </details>
+      {% endif %}
       {% endif %}
     </div>
     <div class="linha-botoes">
@@ -72,13 +94,62 @@
   {% endif %}
 </div>
 
+{% if pode_escrever and funcionarios and templates_nr %}
 <script>
-function aplicarDefaults() {
-  var sel = document.getElementById('nr');
-  var op = sel.options[sel.selectedIndex];
-  document.getElementById('carga').value = op.dataset.carga || 8;
-  document.getElementById('validade').value = op.dataset.validade || '';
-  document.getElementById('descricao').value = op.dataset.desc || '';
-}
+var FUNCS = [
+{% for emp in funcionarios %}
+  {id: {{ emp.id }}, nome: {{ emp.nome | tojson }}, cpf: {{ (emp.cpf or '') | tojson }} }{{ ',' if not loop.last }}
+{% endfor %}
+];
+(function () {
+  var inp = document.getElementById('func_busca');
+  var hid = document.getElementById('funcionario_id');
+  var lista = document.getElementById('combo_lista');
+
+  function escolher(f) {
+    hid.value = f.id;
+    inp.value = f.nome + (f.cpf ? ' — ' + f.cpf : ' (sem CPF)');
+    lista.style.display = 'none';
+  }
+
+  function render() {
+    var q = inp.value.trim().toLowerCase();
+    hid.value = '';
+    lista.innerHTML = '';
+    if (!q) { lista.style.display = 'none'; return; }
+    var achou = 0;
+    for (var i = 0; i < FUNCS.length && achou < 30; i++) {
+      var f = FUNCS[i];
+      if (f.nome.toLowerCase().indexOf(q) >= 0 || f.cpf.indexOf(q) >= 0) {
+        var d = document.createElement('div');
+        d.textContent = f.nome + (f.cpf ? ' — ' + f.cpf : ' (sem CPF)');
+        d.onmousedown = (function (func) { return function () { escolher(func); }; })(f);
+        lista.appendChild(d);
+        achou++;
+      }
+    }
+    if (!achou) {
+      var v = document.createElement('div');
+      v.className = 'combo-vazio';
+      v.textContent = 'Nenhum funcionário encontrado.';
+      lista.appendChild(v);
+    }
+    lista.style.display = 'block';
+  }
+
+  inp.addEventListener('input', render);
+  inp.addEventListener('focus', render);
+  inp.addEventListener('blur', function () {
+    setTimeout(function () { lista.style.display = 'none'; }, 150);
+  });
+  document.getElementById('form-emitir').addEventListener('submit', function (ev) {
+    if (!hid.value) {
+      ev.preventDefault();
+      alert('Selecione o funcionário na busca.');
+      inp.focus();
+    }
+  });
+})();
 </script>
+{% endif %}
 {% endblock %}

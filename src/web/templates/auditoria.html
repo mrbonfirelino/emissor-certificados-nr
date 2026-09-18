@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block titulo %}Auditoria — NormaTech{% endblock %}
+
+{% block conteudo %}
+<h1>Auditoria</h1>
+
+<form class="filtros" method="get" action="/auditoria">
+  <div class="campo"><label>Buscar</label>
+    <input type="text" name="busca" value="{{ q }}" placeholder="Usuário, ação, alvo ou detalhe..." style="max-width:300px;">
+  </div>
+  <div class="campo"><label>Data de</label>
+    <input type="date" name="data_de" value="{{ de }}">
+  </div>
+  <div class="campo"><label>até</label>
+    <input type="date" name="data_ate" value="{{ ate }}">
+  </div>
+  <div class="campo"><label>Linhas</label>
+    <select name="per">
+      {% for p in per_opcoes %}<option value="{{ p }}" {{ 'selected' if p == per }}>{{ p }}</option>{% endfor %}
+    </select>
+  </div>
+  <button type="submit" class="btn">Filtrar</button>
+  {% if q or de or ate %}<a class="btn cinza" href="/auditoria">Limpar</a>{% endif %}
+</form>
+
+<div class="card">
+  <p class="muted">{{ total }} registro(s).</p>
+  {% if itens %}
+  <table>
+    <tr><th>Quando</th><th>Usuário</th><th class="col-acao">Ação</th><th>Alvo</th><th>Detalhe</th></tr>
+    {% for a in itens %}
+    <tr>
+      <td>{{ a.quando }}</td>
+      <td>{{ a.username or '—' }}</td>
+      <td class="col-acao" title="{{ a.acao }}">{{ a.acao }}</td>
+      <td>{{ a.alvo or '—' }}</td>
+      <td>{{ a.detalhe or '—' }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% with paginas = paginas %}{% include "_paginacao.html" %}{% endwith %}
+  {% else %}
+  <p class="muted">Nenhum registro{% if q or de or ate %} com os filtros informados{% endif %}.</p>
+  {% endif %}
+</div>
+{% endblock %}

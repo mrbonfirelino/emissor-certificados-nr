@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block titulo %}Importações{% endblock %}
+
+{% block conteudo %}
+<div class="card">
+  <h1>Importações</h1>
+  <p class="sub">Envie planilhas .xlsx (até {{ 50 }} MB) usando os modelos oficiais abaixo.
+     Cada importação valida linha a linha e mostra o resultado ao final.</p>
+
+  {% if not pode_escrever %}
+  <p class="erro">Somente administrador ou emissor podem importar.</p>
+  {% endif %}
+
+  <h2>Funcionários</h2>
+  {% if pode_escrever %}
+  <form method="post" action="/importacoes/funcionarios" enctype="multipart/form-data" class="filtros" data-com-progresso data-progresso-titulo="Importação de funcionários">
+    <div class="campo upload"><input type="file" name="arquivo" accept=".xlsx" required></div>
+    <button class="btn verde" type="submit">Importar funcionários</button>
+    <a class="btn cinza" href="/importacoes/modelo/funcionarios">Baixar modelo</a>
+  </form>
+  <p class="muted">Colunas: Nome*, CPF, Função, Telefone, Nascimento, Tipo Sanguíneo,
+     Admissão, CTPS, CNH EAR. Duplicados (mesmo CPF/nome) são ignorados.</p>
+  {% endif %}
+
+  <h2>Certificados em lote</h2>
+  {% if pode_escrever %}
+  <form method="post" action="/importacoes/certificados" enctype="multipart/form-data" class="filtros">
+    <div class="campo upload"><input type="file" name="arquivo" accept=".xlsx" required></div>
+    <button class="btn verde" type="submit">Enviar planilha (prévia)</button>
+    <a class="btn cinza" href="/importacoes/modelo/certificados">Baixar modelo</a>
+  </form>
+  <p class="muted">Colunas: Nome*, NR*, Data*. Você confere a prévia antes de emitir —
+     funcionários inexistentes são cadastrados; sem CPF fica registrado sem PDF.</p>
+  {% endif %}
+
+  <h2>ASOs em lote</h2>
+  {% if pode_escrever %}
+  <form method="post" action="/importacoes/asos" enctype="multipart/form-data" class="filtros" data-com-progresso data-progresso-titulo="Importação de ASOs">
+    <div class="campo upload"><input type="file" name="arquivo" accept=".xlsx" required></div>
+    <button class="btn verde" type="submit">Importar ASOs</button>
+    <a class="btn cinza" href="/importacoes/modelo/aso">Baixar modelo</a>
+  </form>
+  <p class="muted">Colunas: Nome*, CPF, Tipo* (A/P/M/R/D), Data do exame*, Validade (meses).
+     O funcionário precisa estar cadastrado.</p>
+  {% endif %}
+
+  <h2>Lista de bloqueios (cartões)</h2>
+  {% if pode_escrever %}
+  <form method="post" action="/importacoes/cartoes" enctype="multipart/form-data" class="filtros" data-com-progresso data-progresso-titulo="Importação de cartões">
+    <div class="campo upload"><input type="file" name="arquivo" accept=".xlsx" required></div>
+    <button class="btn verde" type="submit">Importar lista</button>
+    <a class="btn cinza" href="/importacoes/modelo/cartoes">Baixar modelo</a>
+  </form>
+  <p class="muted">Colunas: Nome*, CPF. Casa com o cadastro (CPF exato → nome exato) e
+     pré-seleciona os funcionários na tela de emissão de cartões.</p>
+  {% endif %}
+
+  <h2>Modelos e instruções</h2>
+  <table>
+    <tr><th>Arquivo</th><th>Ações</th></tr>
+    {% for m in modelos %}
+    <tr>
+      <td>{{ m.arquivo }}</td>
+      <td class="acoes">
+        {% if m.disponivel %}
+        <a class="btn cinza" href="/importacoes/modelo/{{ m.slug }}">Baixar</a>
+        {% else %}
+        <span class="badge b-cinza">indisponível no servidor</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}

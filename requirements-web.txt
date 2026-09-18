@@ -1,8 +1,27 @@
-# Dependencias do Portal Web NormaTech (nao usadas pelo app desktop)
+# Dependencias do Portal Web NormaTech — AUTO-SUFICIENTE para o servidor
+# (nao precisa do requirements.txt do desktop; nao inclui customtkinter,
+#  pyinstaller, windows-toasts nem python-docx)
 # Instalar com: pip install -r requirements-web.txt
+
+# --- web ---
 fastapi==0.115.6
 uvicorn==0.34.0
 jinja2==3.1.5
 python-multipart==0.0.20
 itsdangerous==2.2.0
 httpx==0.28.1
+openpyxl==3.1.5
+argon2-cffi==23.1.0
+
+# --- usados pelos servicos core reutilizados pelo portal ---
+# pisos de versao (>=) para o pip escolher builds com suporte ao
+# Python do servidor (3.10 a 3.14+)
+pydantic>=2.8.2
+pydantic-settings>=2.3.3
+reportlab>=4.2.5
+pillow>=10.4.0
+apscheduler>=3.10.4,<4
+pymupdf>=1.28.2
+python-dateutil>=2.9.0.post0
+python-pptx>=1.0.0
+comtypes>=1.4.8; sys_platform == "win32"

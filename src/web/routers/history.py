@@ -59,7 +59,8 @@ def register(app, deps: dict):
         return templates.TemplateResponse(
             request=request, name="historico.html",
             context=ctx(request, itens=itens, total=total, page=page,
-                        paginas=paginas, busca=busca, nr=nr, de=de, ate=ate,
+                        paginas=paginas, pg_base=("/historico?" + qs) if qs else "/historico",
+                        busca=busca, nr=nr, de=de, ate=ate,
                         assinado=assinado, nrs=hr.distinct_nrs(), qs=qs,
                         pode_escrever=pode_escrever(user["papel"], "historico")))
 
