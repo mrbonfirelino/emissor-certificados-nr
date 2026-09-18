@@ -27,7 +27,7 @@
       </div>
       <div class="campo">
         <label for="data">Data da solicitação *</label>
-        <input type="text" id="data" name="data" value="{{ hoje }}" required placeholder="dd/mm/aaaa">
+        <input type="text" id="data" name="data" class="js-data" value="{{ hoje }}" required placeholder="dd/mm/aaaa">
       </div>
       <div class="campo">
         <label for="fornecedor_id">Fornecedor (posto)</label>
@@ -42,11 +42,11 @@
       </div>
       <div class="campo">
         <label for="litros">Litros (opcional)</label>
-        <input type="text" id="litros" name="litros" inputmode="decimal" placeholder="Ex: 42,7">
+        <input type="text" id="litros" name="litros" class="js-dec" inputmode="decimal" placeholder="Ex: 42,7">
       </div>
       <div class="campo">
         <label for="valor">Valor em R$ (opcional)</label>
-        <input type="text" id="valor" name="valor" inputmode="decimal" placeholder="Ex: 289,50">
+        <input type="text" id="valor" name="valor" class="js-dec" inputmode="decimal" placeholder="Ex: 289,50">
       </div>
       <div class="campo">
         <label for="viagem_servico">Viagem / Serviço</label>

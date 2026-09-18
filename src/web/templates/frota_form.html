@@ -50,7 +50,7 @@
       </div>
       <div class="campo" id="campo-fim-contrato">
         <label for="fim_contrato">Fim do contrato de aluguel</label>
-        <input type="text" id="fim_contrato" name="fim_contrato" value="{{ f_fim_contrato }}" maxlength="10" placeholder="dd/mm/aaaa">
+        <input type="text" id="fim_contrato" name="fim_contrato" class="js-data" value="{{ f_fim_contrato }}" maxlength="10" placeholder="dd/mm/aaaa">
       </div>
       <div class="campo">
         <label for="ano">Ano</label>
@@ -71,7 +71,7 @@
       </div>
       <div class="campo">
         <label for="km_l">KM/L esperado (ficha técnica)</label>
-        <input type="text" id="km_l" name="km_l" value="{{ f_km_l }}" placeholder="Ex: 8,5">
+        <input type="text" id="km_l" name="km_l" class="js-dec" inputmode="decimal" value="{{ f_km_l }}" placeholder="Ex: 8,5">
       </div>
       <div class="campo">
         <label for="empresa_id">Empresa do veículo</label>

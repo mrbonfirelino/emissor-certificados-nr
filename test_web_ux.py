@@ -123,7 +123,11 @@ def main():
     r = client.get("/certificados")
     check("U10 combobox busca funcionario", 'id="func_busca"' in r.text
           and 'name="funcionario_id"' in r.text and 'id="combo_lista"' in r.text)
-    check("U11 nr recarrega pagina", "window.location='/certificados?nr='" in r.text)
+    # v1.45.3: NR troca sem recarregar (JSON embutido), seleção preservada
+    check("U11 nr troca sem recarregar (TMPLS embutido)",
+          "var TMPLS = {" in r.text
+          and "window.location='/certificados?nr='" not in r.text
+          and 'id="extras-din"' in r.text)
     check("U12 campos opcionais em details", 'details class="opcoes"' in r.text
           or "Campos adicionais (opcional)" in r.text)
 

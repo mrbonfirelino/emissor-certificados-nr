@@ -139,11 +139,11 @@
       </div>
       <div class="campo">
         <label for="l-emissao">Data de emissão</label>
-        <input type="text" id="l-emissao" name="emissao" placeholder="dd/mm/aaaa">
+        <input type="text" id="l-emissao" name="emissao" class="js-data" placeholder="dd/mm/aaaa">
       </div>
       <div class="campo">
         <label for="l-validade">Validade *</label>
-        <input type="text" id="l-validade" name="validade" required placeholder="dd/mm/aaaa">
+        <input type="text" id="l-validade" name="validade" class="js-data" required placeholder="dd/mm/aaaa">
       </div>
       <div class="campo">
         <label for="l-arquivo">Arquivo *</label>
@@ -177,8 +177,8 @@
             <summary class="btn verde">Registrar entrada</summary>
             <div class="anexo-box abre-dir" style="width:290px;">
               <form method="post" action="/frota/movimentacoes/{{ m.id }}/entrada" class="form-grid">
-                <div class="campo"><label>Data *</label><input type="text" name="data_entrada" placeholder="dd/mm/aaaa" required></div>
-                <div class="campo"><label>Hora *</label><input type="text" name="hora_entrada" placeholder="HH:MM" required></div>
+                <div class="campo"><label>Data *</label><input type="text" name="data_entrada" class="js-data" placeholder="dd/mm/aaaa" required></div>
+                <div class="campo"><label>Hora *</label><input type="text" name="hora_entrada" class="js-hora" placeholder="HH:MM" required></div>
                 <div class="campo"><label>KM final *</label><input type="number" name="km_final" min="{{ m.km_inicial }}" required></div>
                 <button type="submit" class="verde">Confirmar entrada</button>
               </form>
@@ -213,8 +213,8 @@
   <details class="opcoes" style="margin-top:10px;">
     <summary class="btn cinza">+ Registrar saída</summary>
     <form method="post" action="/frota/{{ v.id }}/movimentacoes" class="form-grid" style="margin-top:10px;">
-      <div class="campo"><label>Data da saída *</label><input type="text" name="data_saida" placeholder="dd/mm/aaaa" required></div>
-      <div class="campo"><label>Hora *</label><input type="text" name="hora" placeholder="HH:MM" required></div>
+      <div class="campo"><label>Data da saída *</label><input type="text" name="data_saida" class="js-data" placeholder="dd/mm/aaaa" required></div>
+      <div class="campo"><label>Hora *</label><input type="text" name="hora" class="js-hora" placeholder="HH:MM" required></div>
       <div class="campo"><label>KM inicial *</label><input type="number" name="km_inicial" required></div>
       <div class="campo">
         <label>Motorista *</label>
@@ -364,7 +364,7 @@
             <div class="anexo-box abre-dir" style="width:260px;">
               <form method="post" action="/frota/manutencoes/{{ m.id }}/concluir" class="form-grid">
                 <div class="campo"><label>KM do serviço *</label><input type="number" name="km_feito" required></div>
-                <div class="campo"><label>Data</label><input type="text" name="data_feito" placeholder="dd/mm/aaaa"></div>
+                <div class="campo"><label>Data</label><input type="text" name="data_feito" class="js-data" placeholder="dd/mm/aaaa"></div>
                 <button type="submit" class="verde">Confirmar</button>
               </form>
             </div>
@@ -388,7 +388,7 @@
       <div class="campo"><label>Item * (ex: Troca de óleo)</label><input type="text" name="descricao" required></div>
       <div class="campo"><label>Intervalo (km) *</label><input type="number" name="intervalo_km" min="1" required></div>
       <div class="campo"><label>KM da última troca</label><input type="number" name="km_ultima"></div>
-      <div class="campo"><label>Data da última</label><input type="text" name="data_ultima" placeholder="dd/mm/aaaa"></div>
+      <div class="campo"><label>Data da última</label><input type="text" name="data_ultima" class="js-data" placeholder="dd/mm/aaaa"></div>
       <div class="campo"><label>Obs</label><input type="text" name="obs"></div>
       <div class="campo" style="align-self:end;"><button type="submit" class="verde">Cadastrar</button></div>
     </form>
@@ -397,9 +397,3 @@
 </details>
 {% endblock %}
 
-<script>
-function _masc_d(i){var v=i.value.replace(/\D/g,"").slice(0,8);var o=v;if(v.length>4){o=v.slice(0,2)+"/"+v.slice(2,4)+"/"+v.slice(4)}i.value=o}
-function _masc_h(i){var v=i.value.replace(/\D/g,"").slice(0,4);var o=v;if(v.length>2){o=v.slice(0,2)+":"+v.slice(2)}i.value=o}
-document.querySelectorAll('input[name^="data_"]').forEach(function(i){i.addEventListener('input',function(){_masc_d(i)})});
-document.querySelectorAll('input[name^="hora_"]').forEach(function(i){i.addEventListener('input',function(){_masc_h(i)})});
-</script>

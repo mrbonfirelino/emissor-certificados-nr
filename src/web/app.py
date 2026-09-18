@@ -14,6 +14,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
+from src.core.version import APP_VERSION
 from src.utils.paths import get_data_dir
 from src.web import auth, jobs
 from src.web.permissions import ROLE_LABELS, pode, pode_escrever
@@ -134,6 +135,7 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
         ctx = {"request": request, "user": user,
                "nav": _nav(user, request.url.path) if user else [],
                "papel_label": ROLE_LABELS.get(user["papel"], user["papel"]) if user else "",
+               "versao": APP_VERSION,
                "msg": sessao.get("msg") or extra.pop("msg", None),
                "erro": sessao.get("erro") or extra.pop("erro", None)}
         ctx.update(extra)

@@ -6,6 +6,7 @@ abastecimento com PDF. Escrita exige admin/emissor; consulta navega em
 modo leitura.
 """
 
+import re
 from datetime import date, datetime
 from pathlib import Path
 from urllib.parse import quote_plus
@@ -56,6 +57,19 @@ def _iso(data_br: str) -> str:
                                  "%d/%m/%Y").strftime("%Y-%m-%d")
     except ValueError:
         return None
+
+
+def _cnpj_invalido(cnpj: str):
+    """CNPJ opcional: se preenchido, exige 14 dígitos (formato, sem DV).
+
+    Retorna a mensagem de erro ou None se ok (v1.45.3).
+    """
+    digitos = re.sub(r"\D", "", cnpj or "")
+    if not digitos:
+        return None
+    if len(digitos) != 14 or digitos == digitos[0] * 14:
+        return "CNPJ inválido: informe os 14 dígitos (ou deixe vazio)."
+    return None
 
 
 def _mime(tipo: str) -> str:
@@ -448,6 +462,10 @@ def register(app, deps):
         red = _bloqueio(request, user, "/frota/empresas")
         if red:
             return red
+        erro_cnpj = _cnpj_invalido(cnpj)
+        if erro_cnpj:
+            flash(request, erro=erro_cnpj)
+            return RedirectResponse("/frota/empresas", status_code=303)
         try:
             _repo().add_empresa(nome, cnpj)
             flash(request, msg="Empresa cadastrada.")
@@ -462,6 +480,10 @@ def register(app, deps):
         red = _bloqueio(request, user, "/frota/empresas")
         if red:
             return red
+        erro_cnpj = _cnpj_invalido(cnpj)
+        if erro_cnpj:
+            flash(request, erro=erro_cnpj)
+            return RedirectResponse("/frota/empresas", status_code=303)
         try:
             _repo().update_empresa(empresa_id, nome, cnpj)
             flash(request, msg="Empresa atualizada.")
@@ -501,6 +523,10 @@ def register(app, deps):
         red = _bloqueio(request, user, "/frota/fornecedores")
         if red:
             return red
+        erro_cnpj = _cnpj_invalido(cnpj)
+        if erro_cnpj:
+            flash(request, erro=erro_cnpj)
+            return RedirectResponse("/frota/fornecedores", status_code=303)
         try:
             _repo().add_fornecedor(nome, cnpj, endereco)
             flash(request, msg="Fornecedor cadastrado.")
@@ -516,6 +542,10 @@ def register(app, deps):
         red = _bloqueio(request, user, "/frota/fornecedores")
         if red:
             return red
+        erro_cnpj = _cnpj_invalido(cnpj)
+        if erro_cnpj:
+            flash(request, erro=erro_cnpj)
+            return RedirectResponse("/frota/fornecedores", status_code=303)
         try:
             _repo().update_fornecedor(forn_id, nome, cnpj, endereco)
             flash(request, msg="Fornecedor atualizado.")

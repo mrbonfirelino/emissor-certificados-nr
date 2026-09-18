@@ -12,11 +12,11 @@
   <form method="post" action="/frota/abastecimentos/{{ a.id }}/valores" class="filtros" style="margin-bottom:16px; border:1px solid var(--borda); border-radius:8px; padding:10px;">
     <div class="campo">
       <label for="v-lit">Litros (completar depois)</label>
-      <input type="text" id="v-lit" name="litros" inputmode="decimal" value="{{ a.litros if a.litros is not none }}" placeholder="Ex: 42,7">
+      <input type="text" id="v-lit" name="litros" class="js-dec" inputmode="decimal" value="{{ a.litros if a.litros is not none }}" placeholder="Ex: 42,7">
     </div>
     <div class="campo">
       <label for="v-val">Valor em R$ (completar depois)</label>
-      <input type="text" id="v-val" name="valor" inputmode="decimal" value="{{ ('%.2f' % a.valor)|replace('.', ',') if a.valor is not none }}" placeholder="Ex: 289,50">
+      <input type="text" id="v-val" name="valor" class="js-dec" inputmode="decimal" value="{{ ('%.2f' % a.valor)|replace('.', ',') if a.valor is not none }}" placeholder="Ex: 289,50">
     </div>
     <div class="campo" style="align-self:end;">
       <button type="submit" class="verde">Salvar valores</button>
@@ -30,11 +30,11 @@
     </div>
     <div class="campo">
       <label for="n-data">Data da NF</label>
-      <input type="text" id="n-data" name="data_nf" placeholder="dd/mm/aaaa">
+      <input type="text" id="n-data" name="data_nf" class="js-data" placeholder="dd/mm/aaaa">
     </div>
     <div class="campo">
       <label for="n-valor">Valor (R$)</label>
-      <input type="text" id="n-valor" name="valor_nf" inputmode="decimal" placeholder="Ex: 289,50">
+      <input type="text" id="n-valor" name="valor_nf" class="js-dec" inputmode="decimal" placeholder="Ex: 289,50">
     </div>
     <div class="campo">
       <label for="n-arq">Arquivo * (PDF/JPG/PNG)</label>

@@ -1,3 +1,34 @@
+## [1.45.3] - 2026-09-18
+
+### Adicionado
+- **Versão do sistema no cabeçalho do portal** (ex.: `v1.45.3`) ao lado da
+  marca NormaTech — aparece em todas as páginas, inclusive no login.
+- **Calendário para escolher datas**: todo campo de data do portal ganhou o
+  botão 📅 que abre o calendário do navegador e preenche a data sozinho
+  (dd/mm/aaaa). O campo também só aceita números e insere as barras
+  automaticamente. Aplicado em: certificados (individual e lote),
+  funcionários (nascimento/admissão), ASO, EPI (entrega, itens, devolução),
+  crachás, frota (abastecimento, checklist, laudos, saída/entrada,
+  manutenções, NFs), histórico (filtros De/Até).
+- **Máscara de telefone** no cadastro de funcionário (só números, máx. 11).
+- **Máscara de CNPJ** nas empresas/fornecedores (frota, integrações) e
+  validação ao salvar: se preenchido, exige os 14 dígitos (vazio continua
+  permitido).
+
+### Corrigido
+- **Emissão individual: funcionário não perde mais a seleção ao trocar a
+  NR** — a página não recarrega mais; carga, validade, descrição e campos
+  extras se ajustam na hora (o funcionário escolhido continua selecionado).
+- **Emissão em lote: marcação dos funcionários sobrevive à troca da NR**.
+- **Aviso “Gerando documento” não aparece mais quando há erro de
+  preenchimento** (ex.: enviar sem selecionar funcionário) — o carregamento
+  só é exibido quando o formulário realmente é enviado.
+- Campos numéricos que aceitavam texto viraram numéricos de verdade (carga
+  e validade na emissão em lote, quantidades de EPI); litros/valores/KM-L
+  só aceitam números e vírgula.
+- Máscaras de data/hora da ficha de frota, que existiam no código mas nunca
+  eram executadas, foram substituídas pelas máscaras globais do portal.
+
 ## [1.45.2] - 2026-09-18
 
 ### Corrigido

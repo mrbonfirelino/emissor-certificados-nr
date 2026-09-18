@@ -5,6 +5,7 @@ CRUD de integrações e empresas reaproveitando IntegracaoRepository; status
 Módulo só para admin/emissor (matriz docs/PORTAL/01 §6).
 """
 
+import re
 from datetime import date
 from urllib.parse import quote
 
@@ -196,6 +197,10 @@ def register(app, deps: dict):
         if not nome:
             flash(request, erro="Informe o nome da empresa.")
             return RedirectResponse("/empresas", status_code=303)
+        digitos = re.sub(r"\D", "", cnpj)
+        if digitos and (len(digitos) != 14 or digitos == digitos[0] * 14):
+            flash(request, erro="CNPJ inválido: informe os 14 dígitos (ou deixe vazio).")
+            return RedirectResponse("/empresas", status_code=303)
         try:
             if _repo().get_empresa_por_nome(nome):
                 raise ValueError(f"Empresa '{nome}' já existe.")
@@ -216,6 +221,10 @@ def register(app, deps: dict):
         cnpj = str(form.get("cnpj") or "").strip()
         if not nome:
             flash(request, erro="Informe o nome da empresa.")
+            return RedirectResponse("/empresas", status_code=303)
+        digitos = re.sub(r"\D", "", cnpj)
+        if digitos and (len(digitos) != 14 or digitos == digitos[0] * 14):
+            flash(request, erro="CNPJ inválido: informe os 14 dígitos (ou deixe vazio).")
             return RedirectResponse("/empresas", status_code=303)
         atual = _repo().get_empresa(empresa_id)
         if atual is None:

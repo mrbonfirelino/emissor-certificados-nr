@@ -57,13 +57,13 @@
             <option value="parcial" {% if it.estado == 'Parcial' %}selected{% endif %}>Parcial</option>
           </select>
         </td>
-        <td><input type="text" name="dev_qtd_{{ loop.index0 }}" id="dev_qtd_{{ loop.index0 }}" placeholder="Ex.: 2" style="width:70px"></td>
+        <td><input type="text" name="dev_qtd_{{ loop.index0 }}" id="dev_qtd_{{ loop.index0 }}" class="js-num" placeholder="Ex.: 2" style="width:70px"></td>
       </tr>
       {% endfor %}
     </table>
     <div class="form-grid">
       <div class="campo"><label>Data da devolução</label>
-        <input type="text" name="data_devolucao" value="{{ hoje_br }}"></div>
+        <input type="text" name="data_devolucao" class="js-data" value="{{ hoje_br }}"></div>
     </div>
     <button class="btn verde" type="submit">Salvar devolução</button>
     {% else %}

@@ -5,10 +5,10 @@
   <h1>Emissão em Lote</h1>
   <p class="sub">Emita o mesmo treinamento para vários funcionários de uma vez, com ajuste individual opcional.</p>
 
-  <form method="get" action="/emissao-lote" class="filtros" style="margin-bottom:12px;">
+  <form method="get" action="/emissao-lote" id="form-nr" class="filtros" style="margin-bottom:12px;">
     <div class="campo">
       <label for="nr">Treinamento (NR)</label>
-      <select id="nr" name="nr" onchange="this.form.submit()">
+      <select id="nr" name="nr">
         {% for codigo, t in templates_nr.items() %}
         <option value="{{ codigo }}" {{ 'selected' if codigo == nr_sel else '' }}>{{ codigo }} — {{ t.nr_name }}</option>
         {% endfor %}
@@ -28,15 +28,15 @@
     <div class="form-grid">
       <div class="campo">
         <label for="data">Data do treinamento *</label>
-        <input type="text" id="data" name="data" value="{{ hoje_br }}" required>
+        <input type="text" id="data" name="data" class="js-data" value="{{ hoje_br }}" required>
       </div>
       <div class="campo">
         <label for="carga">Carga horária (h) *</label>
-        <input type="text" id="carga" name="carga" value="{{ tmpl.carga_horaria_minima }}" required>
+        <input type="number" id="carga" name="carga" min="1" value="{{ tmpl.carga_horaria_minima }}" required>
       </div>
       <div class="campo">
         <label for="validade">Validade (meses)</label>
-        <input type="text" id="validade" name="validade" value="{{ tmpl.validade_meses }}">
+        <input type="number" id="validade" name="validade" min="1" max="120" value="{{ tmpl.validade_meses }}">
       </div>
       <div class="campo" style="grid-column: span 2;">
         <label for="descricao">Descrição do treinamento *</label>
@@ -96,9 +96,9 @@
         </td>
         <td>{{ emp.cpf or '—' }}</td>
         <td>{{ emp.funcao or '—' }}</td>
-        <td><input type="text" name="data_{{ emp.id }}" placeholder="dd/mm/aaaa" style="width:100px; font-size:12px; padding:3px;"></td>
-        <td><input type="text" name="carga_{{ emp.id }}" placeholder="h" style="width:50px; font-size:12px; padding:3px;"></td>
-        <td><input type="text" name="validade_{{ emp.id }}" placeholder="meses" style="width:60px; font-size:12px; padding:3px;"></td>
+        <td><input type="text" name="data_{{ emp.id }}" class="js-data" placeholder="dd/mm/aaaa" style="width:120px; font-size:12px; padding:3px;"></td>
+        <td><input type="number" name="carga_{{ emp.id }}" min="1" placeholder="h" style="width:55px; font-size:12px; padding:3px;"></td>
+        <td><input type="number" name="validade_{{ emp.id }}" min="1" max="120" placeholder="meses" style="width:65px; font-size:12px; padding:3px;"></td>
       </tr>
       {% else %}
       <tr><td colspan="7" class="muted">Nenhum funcionário encontrado.</td></tr>
@@ -119,6 +119,32 @@
 
 {% if tmpl and funcionarios %}
 <script>
+// restaura a seleção ao trocar a NR (v1.45.3)
+(function () {
+  var selNR = document.getElementById('nr');
+  var formNR = document.getElementById('form-nr');
+  try {
+    var brutos = sessionStorage.getItem('lote_sel');
+    if (brutos) {
+      sessionStorage.removeItem('lote_sel');
+      JSON.parse(brutos).forEach(function (name) {
+        var cb = document.querySelector('#tab-funcs input[type=checkbox][name="' + name + '"]');
+        if (cb && !cb.disabled) cb.checked = true;
+      });
+    }
+  } catch (e) {}
+  if (selNR && formNR) {
+    selNR.addEventListener('change', function () {
+      try {
+        var ids = [];
+        document.querySelectorAll('#tab-funcs input[type=checkbox][name^="sel_"]:checked')
+          .forEach(function (cb) { ids.push(cb.name); });
+        sessionStorage.setItem('lote_sel', JSON.stringify(ids));
+      } catch (e) {}
+      formNR.submit();
+    });
+  }
+})();
 (function () {
   var linhas = Array.prototype.slice.call(document.querySelectorAll('#tab-funcs tr.linha-func'));
   if (!linhas.length) return;

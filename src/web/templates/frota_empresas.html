@@ -16,7 +16,7 @@
       </div>
       <div class="campo">
         <label for="cnpj">CNPJ</label>
-        <input type="text" id="cnpj" name="cnpj" placeholder="00.000.000/0000-00">
+        <input type="text" id="cnpj" name="cnpj" class="js-cnpj" placeholder="00.000.000/0000-00">
       </div>
       <button type="submit" class="verde">Cadastrar</button>
     </form>
@@ -38,7 +38,7 @@
             <div class="anexo-box" style="width:320px;">
               <form method="post" action="/frota/empresas/{{ e.id }}/editar" class="form-grid">
                 <div class="campo"><label>Nome *</label><input type="text" name="nome" value="{{ e.nome }}" required></div>
-                <div class="campo"><label>CNPJ</label><input type="text" name="cnpj" value="{{ e.cnpj or '' }}"></div>
+                <div class="campo"><label>CNPJ</label><input type="text" name="cnpj" class="js-cnpj" value="{{ e.cnpj or '' }}"></div>
                 <button type="submit" class="verde">Salvar</button>
               </form>
             </div>

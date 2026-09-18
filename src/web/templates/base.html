@@ -11,6 +11,7 @@
   body { margin:0; font-family:"Segoe UI",Arial,sans-serif; background:var(--fundo); color:var(--texto); }
   header { background:var(--azul); color:#fff; padding:10px 22px; display:flex; align-items:center; gap:16px; }
   header .marca { font-size:19px; font-weight:700; }
+  header .versao { font-size:12px; opacity:.7; }
   header .quem { margin-left:auto; font-size:13px; opacity:.92; }
   header a.sair { color:#fff; background:rgba(255,255,255,.14); padding:5px 12px; border-radius:6px;
                   text-decoration:none; font-size:13px; }
@@ -191,6 +192,7 @@
 <body>
 <header>
   <span class="marca">NormaTech — Portal</span>
+  <span class="versao">v{{ versao }}</span>
   {% if user %}
     <span class="quem">{{ user.nome or user.username }} · {{ papel_label }} </span>
     <a class="sair" href="/logout">Sair</a>
@@ -384,6 +386,7 @@
       return;
     }
     f.addEventListener("submit", function (ev) {
+      if (ev.defaultPrevented) return; // validação client já bloqueou o envio
       var b = ev.submitter;
       if (b && (b.hasAttribute("formnovalidate") || b.hasAttribute("formaction"))) return;
       mostrarProgresso();
@@ -393,6 +396,101 @@
   document.querySelectorAll(".toast").forEach(function (t) {
     setTimeout(function () { t.remove(); }, t.classList.contains("erro") ? 9000 : 6000);
   });
+  // ---- máscaras + calendário nativo (v1.45.3) ----
+  function _digitos(v, max) {
+    v = (v || "").replace(/\D/g, "");
+    return max ? v.slice(0, max) : v;
+  }
+  function _mascData(inp) {
+    var d = _digitos(inp.value, 8);
+    if (d.length > 4) d = d.slice(0, 2) + "/" + d.slice(2, 4) + "/" + d.slice(4);
+    else if (d.length > 2) d = d.slice(0, 2) + "/" + d.slice(2);
+    inp.value = d;
+  }
+  function _mascHora(inp) {
+    var d = _digitos(inp.value, 4);
+    if (d.length > 2) d = d.slice(0, 2) + ":" + d.slice(2);
+    inp.value = d;
+  }
+  function _mascCnpj(inp) {
+    var d = _digitos(inp.value, 14);
+    if (d.length > 12) d = d.slice(0, 2) + "." + d.slice(2, 5) + "." + d.slice(5, 8) + "/" + d.slice(8, 12) + "-" + d.slice(12);
+    else if (d.length > 8) d = d.slice(0, 2) + "." + d.slice(2, 5) + "." + d.slice(5, 8) + "/" + d.slice(8);
+    else if (d.length > 5) d = d.slice(0, 2) + "." + d.slice(2, 5) + "." + d.slice(5);
+    else if (d.length > 2) d = d.slice(0, 2) + "." + d.slice(2);
+    inp.value = d;
+  }
+  function _botaoCalendario(inp) {
+    if (inp.getAttribute("data-cal")) return;
+    inp.setAttribute("data-cal", "1");
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.title = "Selecionar data no calend\u00e1rio";
+    btn.setAttribute("aria-label", "Selecionar data");
+    btn.textContent = "\uD83D\uDCC5";
+    btn.style.cssText = "width:32px;padding:5px 0;margin-left:-34px;background:none;border:0;"
+      + "cursor:pointer;font-size:15px;line-height:1;position:relative;z-index:5;";
+    inp.style.paddingRight = "36px";
+    if (inp.nextSibling) inp.parentNode.insertBefore(btn, inp.nextSibling);
+    else inp.parentNode.appendChild(btn);
+    var cal = document.createElement("input");
+    cal.type = "date";
+    cal.tabIndex = -1;
+    cal.setAttribute("aria-hidden", "true");
+    cal.style.cssText = "position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;border:0;padding:0;";
+    document.body.appendChild(cal);
+    btn.addEventListener("click", function () {
+      var m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec((inp.value || "").trim());
+      cal.value = m ? (m[3] + "-" + m[2] + "-" + m[1]) : "";
+      var r = inp.getBoundingClientRect();
+      cal.style.left = r.left + "px";
+      cal.style.top = r.bottom + "px";
+      try {
+        if (typeof cal.showPicker === "function") cal.showPicker();
+        else { cal.focus(); cal.click(); }
+      } catch (e) { try { cal.focus(); cal.click(); } catch (e2) {} }
+    });
+    cal.addEventListener("change", function () {
+      if (!cal.value) return;
+      var p = cal.value.split("-");
+      inp.value = p[2] + "/" + p[1] + "/" + p[0];
+      try {
+        inp.dispatchEvent(new Event("input", { bubbles: true }));
+        inp.dispatchEvent(new Event("change", { bubbles: true }));
+      } catch (e) {}
+    });
+  }
+  function _ligarMascaras(root) {
+    (root || document).querySelectorAll("input.js-data:not([data-mask])").forEach(function (i) {
+      i.setAttribute("data-mask", "1");
+      i.addEventListener("input", function () { _mascData(i); });
+      _botaoCalendario(i);
+    });
+    (root || document).querySelectorAll("input.js-hora:not([data-mask])").forEach(function (i) {
+      i.setAttribute("data-mask", "1");
+      i.addEventListener("input", function () { _mascHora(i); });
+    });
+    (root || document).querySelectorAll("input.js-cnpj:not([data-mask])").forEach(function (i) {
+      i.setAttribute("data-mask", "1");
+      i.addEventListener("input", function () { _mascCnpj(i); });
+      i.setAttribute("maxlength", "18");
+    });
+    (root || document).querySelectorAll("input.js-num:not([data-mask])").forEach(function (i) {
+      i.setAttribute("data-mask", "1");
+      i.addEventListener("input", function () { i.value = _digitos(i.value, i.getAttribute("data-max")); });
+    });
+    (root || document).querySelectorAll("input.js-dec:not([data-mask])").forEach(function (i) {
+      i.setAttribute("data-mask", "1");
+      i.addEventListener("input", function () { i.value = (i.value || "").replace(/[^\d.,]/g, ""); });
+    });
+    (root || document).querySelectorAll("input.js-tel:not([data-mask])").forEach(function (i) {
+      i.setAttribute("data-mask", "1");
+      i.addEventListener("input", function () { i.value = _digitos(i.value, 11); });
+      i.setAttribute("inputmode", "numeric");
+    });
+  }
+  _ligarMascaras(document);
+  window.normaTechMascaras = _ligarMascaras;
 })();
 </script>
 </body>

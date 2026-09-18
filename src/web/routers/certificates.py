@@ -26,6 +26,24 @@ def register(app, deps: dict):
     def _templates_ordenados() -> dict:
         return {k: v for k, v in sorted(load_all_templates().items())}
 
+    def _tmpls_dados(templates_nr: dict) -> dict:
+        """Dados por NR para troca sem recarregar a página (v1.45.3)."""
+        dados = {}
+        for codigo, t in templates_nr.items():
+            dados[codigo] = {
+                "carga": t.carga_horaria_minima,
+                "validade": t.validade_meses,
+                "descricao": t.descricao_padrao,
+                "extras": [
+                    {"id": e.id, "label": e.label, "tipo": e.tipo,
+                     "obrigatorio": bool(e.obrigatorio),
+                     "placeholder": e.placeholder or "",
+                     "opcoes": list(e.opcoes or [])}
+                    for e in t.campos_extra
+                ],
+            }
+        return dados
+
     # ---------------- formulário de emissão ----------------
     @app.get("/certificados")
     def form(request: Request, nr: str = "",
@@ -38,7 +56,7 @@ def register(app, deps: dict):
         return templates.TemplateResponse(
             request=request, name="certificados.html",
             context=ctx(request, funcionarios=funcs, templates_nr=templates_nr,
-                        nr_sel=nr_sel, tmpl=tmpl,
+                        nr_sel=nr_sel, tmpl=tmpl, tmpls_dados=_tmpls_dados(templates_nr),
                         hoje_br=date.today().strftime("%d/%m/%Y"),
                         pode_escrever=pode_escrever(user["papel"], "certificados")))
 

@@ -17,20 +17,20 @@
       </div>
       <div class="campo">
         <label for="data_emissao">Data da entrega *</label>
-        <input type="text" id="data_emissao" name="data_emissao" value="{{ hoje }}" required>
+        <input type="text" id="data_emissao" name="data_emissao" class="js-data" value="{{ hoje }}" required>
       </div>
     </div>
 
     <h2 style="margin-top:16px;">Itens entregues</h2>
     <table>
-      <thead><tr><th style="width:110px;">C.A.</th><th>Descrição</th><th style="width:70px;">Qtde</th><th style="width:120px;">Data</th></tr></thead>
+      <thead><tr><th style="width:110px;">C.A.</th><th>Descrição</th><th style="width:70px;">Qtde</th><th style="width:150px;">Data</th></tr></thead>
       <tbody id="linhas">
         {% for i in range(4) %}
         <tr>
           <td><input type="text" name="item_ca_{{ i }}" placeholder="00000"></td>
           <td><input type="text" name="item_desc_{{ i }}" placeholder="Ex.: Luva nitrílica"></td>
-          <td><input type="text" name="item_qtd_{{ i }}" placeholder="1"></td>
-          <td><input type="text" name="item_data_{{ i }}" value="{{ hoje }}"></td>
+          <td><input type="text" name="item_qtd_{{ i }}" class="js-num" placeholder="1"></td>
+          <td><input type="text" name="item_data_{{ i }}" class="js-data" value="{{ hoje }}"></td>
         </tr>
         {% endfor %}
       </tbody>
@@ -51,9 +51,10 @@ function addLinha() {
   var tr = document.createElement('tr');
   tr.innerHTML = '<td><input type="text" name="item_ca_' + LINHA + '"></td>' +
     '<td><input type="text" name="item_desc_' + LINHA + '"></td>' +
-    '<td><input type="text" name="item_qtd_' + LINHA + '"></td>' +
-    '<td><input type="text" name="item_data_' + LINHA + '" value="{{ hoje }}"></td>';
+    '<td><input type="text" name="item_qtd_' + LINHA + '" class="js-num"></td>' +
+    '<td><input type="text" name="item_data_' + LINHA + '" class="js-data" value="{{ hoje }}"></td>';
   tbody.appendChild(tr);
+  if (window.normaTechMascaras) normaTechMascaras(tr);
   LINHA += 1;
 }
 </script>

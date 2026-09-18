@@ -22,16 +22,16 @@
       </div>
       <div class="campo">
         <label for="nr">Treinamento (NR) *</label>
-        <select id="nr" name="nr" onchange="window.location='/certificados?nr='+encodeURIComponent(this.value)">
+        <select id="nr" name="nr">
           {% for codigo, t in templates_nr.items() %}
           <option value="{{ codigo }}" {{ 'selected' if codigo == nr_sel else '' }}>{{ codigo }}</option>
           {% endfor %}
         </select>
-        {% if tmpl %}<span class="muted">Carga mínima: {{ tmpl.carga_horaria_minima }}h · Validade padrão: {{ tmpl.validade_meses }} meses</span>{% endif %}
+        {% if tmpl %}<span class="muted" id="nr-info">Carga mínima: {{ tmpl.carga_horaria_minima }}h · Validade padrão: {{ tmpl.validade_meses }} meses</span>{% endif %}
       </div>
       <div class="campo">
         <label for="data">Data do treinamento *</label>
-        <input type="text" id="data" name="data" placeholder="dd/mm/aaaa" value="{{ hoje_br }}">
+        <input type="text" id="data" name="data" class="js-data" placeholder="dd/mm/aaaa" value="{{ hoje_br }}">
       </div>
       <div class="campo">
         <label for="carga">Carga horária (h) *</label>
@@ -45,43 +45,7 @@
         <label for="descricao">Descrição do treinamento *</label>
         <input type="text" id="descricao" name="descricao" value="{{ tmpl.descricao_padrao if tmpl else '' }}">
       </div>
-      {% if tmpl %}
-      {% set obrigatorios = tmpl.campos_extra | selectattr('obrigatorio') | list %}
-      {% set opcionais = tmpl.campos_extra | rejectattr('obrigatorio') | list %}
-      {% for extra in obrigatorios %}
-      <div class="campo">
-        <label for="campo_{{ extra.id }}">{{ extra.label }} *</label>
-        {% if extra.tipo == 'select' %}
-        <select id="campo_{{ extra.id }}" name="campo_{{ extra.id }}">
-          <option value="">—</option>
-          {% for opcao in extra.opcoes %}<option value="{{ opcao }}">{{ opcao }}</option>{% endfor %}
-        </select>
-        {% else %}
-        <input type="{{ 'number' if extra.tipo == 'number' else 'text' }}" id="campo_{{ extra.id }}" name="campo_{{ extra.id }}" placeholder="{{ extra.placeholder }}">
-        {% endif %}
-      </div>
-      {% endfor %}
-      {% if opcionais %}
-      <details class="opcoes" style="grid-column:1 / -1;">
-        <summary>Campos adicionais (opcional)</summary>
-        <div class="form-grid">
-          {% for extra in opcionais %}
-          <div class="campo">
-            <label for="campo_{{ extra.id }}">{{ extra.label }}</label>
-            {% if extra.tipo == 'select' %}
-            <select id="campo_{{ extra.id }}" name="campo_{{ extra.id }}">
-              <option value="">—</option>
-              {% for opcao in extra.opcoes %}<option value="{{ opcao }}">{{ opcao }}</option>{% endfor %}
-            </select>
-            {% else %}
-            <input type="{{ 'number' if extra.tipo == 'number' else 'text' }}" id="campo_{{ extra.id }}" name="campo_{{ extra.id }}" placeholder="{{ extra.placeholder }}">
-            {% endif %}
-          </div>
-          {% endfor %}
-        </div>
-      </details>
-      {% endif %}
-      {% endif %}
+      <div id="extras-din" style="grid-column:1 / -1;"></div>
     </div>
     <div class="linha-botoes">
       <button type="submit" class="verde">Emitir certificado</button>
@@ -101,6 +65,7 @@ var FUNCS = [
   {id: {{ emp.id }}, nome: {{ emp.nome | tojson }}, cpf: {{ (emp.cpf or '') | tojson }} }{{ ',' if not loop.last }}
 {% endfor %}
 ];
+var TMPLS = {{ tmpls_dados | tojson }};
 (function () {
   var inp = document.getElementById('func_busca');
   var hid = document.getElementById('funcionario_id');
@@ -149,6 +114,84 @@ var FUNCS = [
       inp.focus();
     }
   });
+})();
+
+// troca de NR sem recarregar (mantém o funcionário selecionado) — v1.45.3
+(function () {
+  var sel = document.getElementById('nr');
+  if (!sel) return;
+
+  function campoExtra(e) {
+    var wrap = document.createElement('div');
+    wrap.className = 'campo';
+    var lab = document.createElement('label');
+    lab.htmlFor = 'campo_' + e.id;
+    lab.textContent = e.label + (e.obrigatorio ? ' *' : '');
+    wrap.appendChild(lab);
+    var ctl;
+    if (e.tipo === 'select') {
+      ctl = document.createElement('select');
+      var vazio = document.createElement('option');
+      vazio.value = '';
+      vazio.textContent = '—';
+      ctl.appendChild(vazio);
+      (e.opcoes || []).forEach(function (op) {
+        var o = document.createElement('option');
+        o.value = op;
+        o.textContent = op;
+        ctl.appendChild(o);
+      });
+    } else {
+      ctl = document.createElement('input');
+      ctl.type = (e.tipo === 'number') ? 'number' : 'text';
+      if (e.placeholder) ctl.placeholder = e.placeholder;
+    }
+    ctl.id = 'campo_' + e.id;
+    ctl.name = 'campo_' + e.id;
+    wrap.appendChild(ctl);
+    return wrap;
+  }
+
+  function renderExtras(t) {
+    var host = document.getElementById('extras-din');
+    if (!host) return;
+    host.innerHTML = '';
+    if (!t) return;
+    var obr = (t.extras || []).filter(function (e) { return e.obrigatorio; });
+    var opc = (t.extras || []).filter(function (e) { return !e.obrigatorio; });
+    if (obr.length) {
+      var g = document.createElement('div');
+      g.className = 'form-grid';
+      obr.forEach(function (e) { g.appendChild(campoExtra(e)); });
+      host.appendChild(g);
+    }
+    if (opc.length) {
+      var det = document.createElement('details');
+      det.className = 'opcoes';
+      var sum = document.createElement('summary');
+      sum.textContent = 'Campos adicionais (opcional)';
+      det.appendChild(sum);
+      var g2 = document.createElement('div');
+      g2.className = 'form-grid';
+      opc.forEach(function (e) { g2.appendChild(campoExtra(e)); });
+      det.appendChild(g2);
+      host.appendChild(det);
+    }
+  }
+
+  function aplicarNR() {
+    var t = TMPLS[sel.value];
+    if (!t) return; // NR sem dados: mantém a página como está
+    document.getElementById('carga').value = t.carga;
+    document.getElementById('validade').value = t.validade || '';
+    document.getElementById('descricao').value = t.descricao || '';
+    var info = document.getElementById('nr-info');
+    if (info) info.textContent = 'Carga mínima: ' + t.carga + 'h · Validade padrão: ' + (t.validade || '—') + ' meses';
+    renderExtras(t);
+  }
+
+  sel.addEventListener('change', aplicarNR);
+  renderExtras(TMPLS[sel.value]);
 })();
 </script>
 {% endif %}
