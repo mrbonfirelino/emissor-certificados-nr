@@ -40,6 +40,8 @@ _ROTULO_TIPO = {
 def _txt(val) -> str:
     if val is None:
         return ""
+    if isinstance(val, float) and val.is_integer():
+        return str(int(val))
     s = str(val).strip()
     if s.endswith(".0") and re.fullmatch(r"\d+\.0", s):
         s = s[:-2]
@@ -139,6 +141,11 @@ def import_veiculos_from_excel(filepath, frota_repo) -> Tuple[int, List[str]]:
                 importados += 1
             except (ValueError, TypeError) as e:
                 erros.append(f"Linha {i + 1}: {e}")
+            except Exception as e:
+                # erro de banco numa linha nao pode abortar o resto da planilha
+                from src.utils.error_log import log_error
+                log_error("importar-veiculos-linha", e)
+                erros.append(f"Linha {i + 1}: erro inesperado ({e})")
     finally:
         wb.close()
     return importados, erros

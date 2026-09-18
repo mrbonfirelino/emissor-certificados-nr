@@ -54,9 +54,15 @@
           <summary class="btn cinza">Definir senha</summary>
           <form method="post" action="/usuarios/{{ u.id }}/senha" style="margin-top:8px; display:grid; gap:8px; max-width:280px;">
             <div class="campo"><label>Nova senha (mín. 6)</label>
-              <input type="password" name="nova" required minlength="6"></div>
+              <div style="display:flex; gap:6px;">
+                <input type="password" id="nova-{{ u.id }}" name="nova" required minlength="6" style="flex:1;">
+                <button type="button" class="btn cinza" onclick="_alternarSenha(this, 'nova-{{ u.id }}')">Exibir</button>
+              </div></div>
             <div class="campo"><label>Confirmar</label>
-              <input type="password" name="confirma" required></div>
+              <div style="display:flex; gap:6px;">
+                <input type="password" id="confirma-{{ u.id }}" name="confirma" required style="flex:1;">
+                <button type="button" class="btn cinza" onclick="_alternarSenha(this, 'confirma-{{ u.id }}')">Exibir</button>
+              </div></div>
             <button class="verde">Salvar senha</button>
           </form>
         </details>
@@ -65,4 +71,12 @@
     {% endfor %}
   </table>
 </div>
+<script>
+function _alternarSenha(btn, id) {
+  var inp = document.getElementById(id);
+  var mostrar = inp.type === "password";
+  inp.type = mostrar ? "text" : "password";
+  btn.textContent = mostrar ? "Ocultar" : "Exibir";
+}
+</script>
 {% endblock %}

@@ -8,7 +8,11 @@ A primeira linha (azul) e o cabecalho — nao apague.
    A Nome* | B CPF | C Funcao | D Telefone | E Data Nascimento (dd/mm/aaaa)
    F Tipo Sanguineo (A+, A-, B+, B-, AB+, AB-, O+, O-) | G Data Admissao (dd/mm/aaaa)
    H Registro CTPS | I CNH EAR (Sim/Nao)
-   * Nome e obrigatorio. CPF, se informado, deve ser valido.
+   * Nome e obrigatorio.
+   * CPF: digite apenas os 11 NUMEROS, sem ponto e sem hifen (ex: 52998224725).
+     A coluna CPF ja vem formatada como Texto no modelo (preserva zeros a esquerda).
+     Nao misture letras e nao use mais nem menos de 11 numeros.
+   * Telefone: 11 numeros, DDD + 9 + numero (ex: 21984209236).
 
 2) MODELO CERTIFICADOS.xlsx  →  aba Emissao em Massa > botao Procurar...
    A Nome* | B NR* | C Data do Treinamento (dd/mm/aaaa)*
@@ -36,3 +40,5 @@ Dicas gerais:
 - Linhas com erro NAO param a importacao — o app mostra o resumo com os detalhes.
 - Datas podem ser digitadas como dd/mm/aaaa ou no formato de data do Excel.
 - Campos vazios nas colunas opcionais sao aceitos normalmente.
+- CPF: apenas 11 numeros (sem ponto/hifen). Se um CPF vier com erro na
+  importacao, confira se nao faltou numero ou se nao ha letras misturadas.

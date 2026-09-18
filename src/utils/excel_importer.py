@@ -4,11 +4,22 @@ from typing import Tuple, List
 from src.utils.funcoes_store import load_funcoes, save_funcoes
 
 
-def _normalize_cpf(val) -> str:
-    """Extrai apenas digitos de um valor CPF."""
+def _valor_texto(val) -> str:
+    """Converte celula do Excel em texto sem corromper numeros.
+
+    Excel guarda numeros como float: o CPF 11144477735 digitado como numero
+    chega como 11144477735.0 e um str() direto viraria '11144477735.0'.
+    """
     if val is None:
         return ""
-    s = str(val).strip()
+    if isinstance(val, float) and val.is_integer():
+        return str(int(val))
+    return str(val).strip()
+
+
+def _normalize_cpf(val) -> str:
+    """Extrai apenas digitos de um valor CPF (aceita com ponto/hifen)."""
+    s = _valor_texto(val)
     return re.sub(r'\D', '', s)
 
 
@@ -21,12 +32,7 @@ def _normalize_name(val) -> str:
 
 def _normalize_telefone(val) -> str:
     """Extrai apenas digitos do telefone (plano: DDD+numero, ex 21984209236)."""
-    if val is None:
-        return ""
-    # openpyxl pode ler numero como float (21984209236.0)
-    s = str(val).strip()
-    if s.endswith(".0"):
-        s = s[:-2]
+    s = _valor_texto(val)
     return re.sub(r'\D', '', s)
 
 
@@ -190,7 +196,15 @@ def import_employees_from_excel(
         if cpf:
             if not _is_valid_cpf_digits(cpf):
                 errors += 1
-                error_details.append(f"Linha {i+1}: CPF invalido ({cpf_val})")
+                if len(cpf) > 11:
+                    error_details.append(
+                        f"Linha {i+1}: CPF tem mais de 11 numeros ({len(cpf)}) "
+                        f"- digite apenas os 11 numeros do CPF")
+                else:
+                    error_details.append(
+                        f"Linha {i+1}: CPF tem menos de 11 numeros ({len(cpf)}) "
+                        f"- zeros a esquerda podem ter sido perdidos; formate a "
+                        f"coluna CPF como Texto e digite apenas os numeros")
                 continue
             cpf_formatted = f"{cpf[:3]}.{cpf[3:6]}.{cpf[6:9]}-{cpf[9:]}"
 
@@ -236,26 +250,35 @@ def import_employees_from_excel(
             error_details.append(f"Linha {i+1}: CNH EAR invalida ({ear_val}) - use Sim ou Nao")
             continue
 
-        # Verificar se ja existe funcionario com mesmo nome
-        existing = employee_repo.search(name, limit=5)
-        found = False
-        for e in existing:
-            if e.nome.lower() == name.lower():
-                found = True
-                break
+        try:
+            # Verificar se ja existe funcionario com mesmo nome
+            existing = employee_repo.search(name, limit=5)
+            found = False
+            for e in existing:
+                if e.nome.lower() == name.lower():
+                    found = True
+                    break
 
-        if found:
-            duplicates += 1
-            continue
+            if found:
+                duplicates += 1
+                continue
 
-        result = employee_repo.create(name, cpf_formatted, funcao, None, telefone_val,
-                                      data_nascimento=nascimento_iso, tipo_sanguineo=ts_iso,
-                                      data_admissao=admissao_iso, registro_ctps=ctps, cnh_ear=ear)
-        if result:
-            imported += 1
-        else:
+            result = employee_repo.create(name, cpf_formatted, funcao, None, telefone_val,
+                                          data_nascimento=nascimento_iso, tipo_sanguineo=ts_iso,
+                                          data_admissao=admissao_iso, registro_ctps=ctps, cnh_ear=ear)
+            if result:
+                imported += 1
+            else:
+                errors += 1
+                error_details.append(
+                    f"Linha {i+1}: erro ao cadastrar '{name}' "
+                    f"(verifique se o CPF ja esta cadastrado)")
+        except Exception as e:
+            # erro de banco numa linha nao pode abortar o resto da planilha
+            from src.utils.error_log import log_error
+            log_error("import-funcionarios-linha", e)
             errors += 1
-            error_details.append(f"Linha {i+1}: erro ao cadastrar '{name}'")
+            error_details.append(f"Linha {i+1}: erro inesperado ao cadastrar '{name}' ({e})")
 
     wb.close()
     if funcoes_encontradas:

@@ -15,6 +15,8 @@ from typing import List, Tuple
 def _digits(val) -> str:
     if val is None:
         return ""
+    if isinstance(val, float) and val.is_integer():
+        return str(int(val))
     s = str(val).strip()
     if s.endswith(".0"):
         s = s[:-2]
@@ -72,7 +74,13 @@ def import_blocking_list(filepath: str, employee_repo,
             cpf = _digits(row[1] if len(row) > 1 else None)
             if not nome:
                 continue
-            emp = _match_employee(nome, cpf, employee_repo)
+            try:
+                emp = _match_employee(nome, cpf, employee_repo)
+            except Exception as e:
+                from src.utils.error_log import log_error
+                log_error("importar-bloqueio-linha", e)
+                nao_encontrados.append(f"{nome} (erro na linha: {e})")
+                continue
             if emp:
                 if emp.id not in seen:
                     seen.add(emp.id)

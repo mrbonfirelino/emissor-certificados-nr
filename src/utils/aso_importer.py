@@ -64,7 +64,12 @@ def _parse_validade(val) -> int:
 
 
 def _so_digitos(val) -> str:
-    return "".join(ch for ch in str(val or "") if ch.isdigit())
+    """Extrai digitos; celulas numericas do Excel chegam como float (x.0)."""
+    if val is None:
+        return ""
+    if isinstance(val, float) and val.is_integer():
+        return str(int(val))
+    return "".join(ch for ch in str(val) if ch.isdigit())
 
 
 def import_asos_from_excel(filepath, aso_repo, employee_repo,

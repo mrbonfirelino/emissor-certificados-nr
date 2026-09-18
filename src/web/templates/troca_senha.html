@@ -8,17 +8,34 @@
   <form method="post" action="/troca-senha">
     <div class="campo">
       <label for="atual">Senha atual</label>
-      <input id="atual" name="atual" type="password" required>
+      <div style="display:flex; gap:6px;">
+        <input id="atual" name="atual" type="password" required style="flex:1;">
+        <button type="button" class="btn cinza" onclick="_alternarSenha(this, 'atual')">Exibir</button>
+      </div>
     </div>
     <div class="campo">
       <label for="nova">Nova senha (mínimo 6 caracteres)</label>
-      <input id="nova" name="nova" type="password" minlength="6" required>
+      <div style="display:flex; gap:6px;">
+        <input id="nova" name="nova" type="password" minlength="6" required style="flex:1;">
+        <button type="button" class="btn cinza" onclick="_alternarSenha(this, 'nova')">Exibir</button>
+      </div>
     </div>
     <div class="campo">
       <label for="confirma">Confirmar nova senha</label>
-      <input id="confirma" name="confirma" type="password" minlength="6" required>
+      <div style="display:flex; gap:6px;">
+        <input id="confirma" name="confirma" type="password" minlength="6" required style="flex:1;">
+        <button type="button" class="btn cinza" onclick="_alternarSenha(this, 'confirma')">Exibir</button>
+      </div>
     </div>
     <button type="submit" class="verde">Salvar nova senha</button>
   </form>
 </div>
+<script>
+function _alternarSenha(btn, id) {
+  var inp = document.getElementById(id);
+  var mostrar = inp.type === "password";
+  inp.type = mostrar ? "text" : "password";
+  btn.textContent = mostrar ? "Ocultar" : "Exibir";
+}
+</script>
 {% endblock %}

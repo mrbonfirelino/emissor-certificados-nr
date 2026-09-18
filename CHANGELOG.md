@@ -1,3 +1,28 @@
+## [1.45.1] - 2026-09-18
+
+### Adicionado
+- **Portal — botão “Exibir senha”**: nos formulários de senha (página
+  Usuários → “Definir senha” e Trocar senha) cada campo ganhou o botão
+  Exibir/Ocultar para conferir o que foi digitado.
+- **Portal — máscara de CPF no cadastro de funcionário**: o campo CPF só
+  aceita números e formata sozinho (000.000.000-00) enquanto se digita.
+
+### Corrigido
+- **Importação de funcionários — CPF robusto**: células numéricas do Excel
+  (CPF digitado como número chega como `11144477735.0`) não são mais
+  corrompidas; o importador aceita CPF com ponto/hífen ou números puros e
+  rejeita com mensagem clara qualquer coisa que não tenha exatamente 11
+  números (ex.: “CPF tem mais de 11 numeros”, “menos de 11 numeros — zeros
+  à esquerda podem ter sido perdidos”).
+- **Importações — erro em uma linha não derruba o resto**: falha de banco
+  ao cadastrar uma linha (ex.: CPF duplicado, banco ocupado) vira erro
+  daquela linha no resumo; as demais linhas continuam sendo importadas
+  (funcionários, veículos, bloqueios de cartão).
+- **Modelos de importação**: coluna CPF dos modelos FUNCIONARIOS, ASO e
+  CARTOES BLOQUEIO agora é Texto (preserva zeros à esquerda), exemplos em
+  números puros, comentário de instrução no cabeçalho e aba “LEIA-ME” no
+  modelo de funcionários. LEIA-ME.txt atualizado.
+
 ## [1.45.0] - 2026-09-17
 
 ### Adicionado
