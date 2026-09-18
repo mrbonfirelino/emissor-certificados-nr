@@ -1,6 +1,7 @@
 import sqlite3
 from pathlib import Path
 from typing import Optional, List
+from pydantic import ValidationError
 from src.utils.paths import get_db_path
 from src.core.models import Employee
 from src.utils.text_utils import normalize_text
@@ -386,7 +387,7 @@ class EmployeeRepository:
             ear_val = bool(row["cnh_ear"])
         except Exception:
             ear_val = False
-        return Employee(
+        dados = dict(
             id=row["id"],
             nome=row["nome"],
             cpf=cpf_val,
@@ -398,5 +399,17 @@ class EmployeeRepository:
             data_admissao=adm_val or None,
             registro_ctps=ctps_val or None,
             cnh_ear=ear_val,
-            created_at=row["created_at"]
+            created_at=row["created_at"],
         )
+        try:
+            return Employee(**dados)
+        except ValidationError as exc:
+            # Dado legado invalido (ex.: CPF com DV errado ou tamanho incorreto,
+            # gravado por versao antiga/importacao) nao pode derrubar listagens,
+            # fichas nem emissoes — reconstrói sem validacao e registra no log.
+            try:
+                from src.utils.error_log import log_error
+                log_error("employee-row-invalida", exc)
+            except Exception:
+                pass
+            return Employee.model_construct(**dados)

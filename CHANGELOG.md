@@ -1,3 +1,18 @@
+## [1.45.2] - 2026-09-18
+
+### Corrigido
+- **Portal fora do ar por CPF inválido**: um funcionário com CPF digitado
+  errado (dígito verificador inválido, ex.: `211.323.497-22`) derrubava a
+  listagem de funcionários inteira com erro de validação. Duas correções:
+  - O sistema agora aceita qualquer CPF com 11 números (a verificação do
+    dígito verificador foi removida — CPF só é validado pelo formato:
+    11 dígitos, sem repetições tipo 111.111.111-11);
+  - Blindagem extra: se qualquer registro antigo com dado inválido existir
+    no banco, ele não derruba mais listagens/fichas/emissões — o
+    funcionário aparece normalmente e o erro é registrado em
+    `data/error.log`.
+- Vale para cadastro manual (portal e desktop) e importações por planilha.
+
 ## [1.45.1] - 2026-09-18
 
 ### Adicionado

@@ -4,20 +4,13 @@ from typing import Optional
 
 
 def validar_cpf(cpf: str) -> bool:
-    """Valida CPF (formato e dígitos verificadores)."""
+    """Valida CPF pelo formato: 11 dígitos (sem repetição total).
+
+    Não verifica dígito verificador: CPFs digitados errado (DV inválido)
+    não podem derrubar cadastros, importações nem o portal (v1.45.2).
+    """
     cpf = re.sub(r'\D', '', cpf)
-    if len(cpf) != 11 or cpf == cpf[0] * 11:
-        return False
-    
-    # Calcula primeiro dígito
-    soma = sum(int(cpf[i]) * (10 - i) for i in range(9))
-    digito1 = (soma * 10 % 11) % 10
-    
-    # Calcula segundo dígito
-    soma = sum(int(cpf[i]) * (11 - i) for i in range(10))
-    digito2 = (soma * 10 % 11) % 10
-    
-    return cpf[-2:] == f"{digito1}{digito2}"
+    return len(cpf) == 11 and cpf != cpf[0] * 11
 
 
 def formatar_cpf(cpf: str) -> str:
