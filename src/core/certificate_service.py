@@ -165,6 +165,102 @@ class CertificateService:
         generate_certificate_pdf(cert_data, template, output_path)
         return output_path
 
+    def regenerar_pdf(self, record: CertificateRecord) -> Path:
+        """Recria o PDF de um certificado existente (2.33.3), mantendo o mesmo
+        numero (CERT-XXXXXX) e atualizando pdf_path no registro — sem criar
+        registro novo.
+
+        Levanta ValueError com motivo amigavel quando nao e possivel:
+        empresa nao configurada, modelo da NR ausente ou funcionario sem CPF.
+        """
+        from datetime import datetime as _dt
+
+        company = load_company_config()
+        if not company:
+            raise ValueError("Empresa nao configurada (preencha em Configuracoes).")
+
+        template = load_nr_template(record.nr_code)
+        if not template:
+            raise ValueError(f"Modelo {record.nr_code} nao encontrado no servidor.")
+
+        try:
+            employee = self.employees.get_by_id(record.employee_id)
+        except Exception:
+            employee = None
+
+        cpf = (record.funcionario_cpf or "").strip()
+        if not cpf and employee is not None:
+            cpf = (employee.cpf or "").strip()
+        if not cpf:
+            raise ValueError(
+                "Funcionario sem CPF cadastrado — cadastre o CPF do funcionario "
+                "e tente gerar o PDF novamente."
+            )
+
+        try:
+            data_treino = date.fromisoformat(
+                (record.data_fim or record.data_inicio or "")[:10])
+        except ValueError:
+            data_treino = hoje()
+
+        try:
+            campos = json.loads(record.campos_extra or "{}")
+            if not isinstance(campos, dict):
+                campos = {}
+        except Exception:
+            campos = {}
+
+        data_hora_impressao = ""
+        try:
+            from src.core.app_settings import get_setting
+            if get_setting("pdf_data_hora_emissao", False):
+                data_hora_impressao = _dt.now().strftime("%d/%m/%Y %H:%M")
+        except Exception:
+            pass
+
+        cert_data = CertificateData(
+            cert_number=record.cert_number,
+            nr_code=template.nr_code,
+            nr_name=template.nr_name,
+            funcionario_nome=record.funcionario_nome,
+            funcionario_cpf=cpf,
+            empresa_nome=company.empresa_nome,
+            empresa_cnpj=company.empresa_cnpj,
+            local_treinamento=company.local_treinamento,
+            instrutor_nome=company.instrutor_nome,
+            instrutor_registro_mte=company.instrutor_registro_mte,
+            data_treinamento=data_treino,
+            carga_horaria=record.carga_horaria,
+            descricao_treinamento=record.descricao_treinamento,
+            campos_extra=campos,
+            conteudo_programatico=template.conteudo_programatico,
+            assinaturas=template.assinaturas,
+            data_hora_impressao=data_hora_impressao
+        )
+
+        if employee is not None:
+            pasta = _pasta_funcionario(employee)
+        else:
+            from src.utils.folder_utils import sanitize_folder_name
+            pasta = sanitize_folder_name(record.funcionario_nome or "")
+        output_dir = get_certificados_dir() / pasta / template.nr_code
+        output_dir.mkdir(parents=True, exist_ok=True)
+        nome_seguro = (record.funcionario_nome or "").replace(" ", "_") or "sem_nome"
+        pdf_path = output_dir / f"{record.cert_number}_{record.nr_code}_{nome_seguro}.pdf"
+
+        # mesma prioridade da emissao: modelo PPTX da tecnica quando existir
+        from src.core import pptx_certificate_service as pptx_cert
+        if employee is not None and pptx_cert.get_pptx_template_path(record.nr_code):
+            pptx_cert.gerar_pdf_pptx(
+                record.nr_code, employee, data_treino, record.cert_number,
+                pdf_path, data_hora=data_hora_impressao
+            )
+        else:
+            generate_certificate_pdf(cert_data, template, pdf_path)
+
+        self.history.update_pdf_path(record.id, str(pdf_path))
+        return pdf_path
+
     def get_certificate_data_for_preview(
         self,
         nr_code: str,

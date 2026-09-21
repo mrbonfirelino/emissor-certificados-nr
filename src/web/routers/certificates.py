@@ -151,26 +151,87 @@ def register(app, deps: dict):
         if record is None:
             flash(request, erro="Certificado não encontrado.")
             return RedirectResponse("/historico", status_code=303)
+        tem_pdf = bool(record.pdf_path and Path(record.pdf_path).exists())
+        motivo_sem_pdf = None
+        if not tem_pdf:
+            if not (record.funcionario_cpf or "").strip():
+                motivo_sem_pdf = ("Funcionário sem CPF neste registro — cadastre o "
+                                  "CPF no funcionário e clique em “Gerar PDF agora”.")
+            else:
+                motivo_sem_pdf = ("O arquivo não está no servidor (ex.: importado de "
+                                  "outra máquina). Use “Gerar PDF agora” para recriá-lo.")
         return templates.TemplateResponse(
             request=request, name="certificado_detalhe.html",
-            context=ctx(request, cert=record,
-                        tem_pdf=bool(record.pdf_path and Path(record.pdf_path).exists())))
+            context=ctx(request, cert=record, tem_pdf=tem_pdf,
+                        motivo_sem_pdf=motivo_sem_pdf,
+                        pode_escrever=pode_escrever(user["papel"], "certificados")))
+
+    def _regenerar_ou_motivo(record):
+        """2.33.3 — tenta recriar o PDF ausente; devolve (path|None, motivo|None)."""
+        from src.core.certificate_service import CertificateService
+        try:
+            return CertificateService().regenerar_pdf(record), None
+        except ValueError as e:
+            return None, str(e)
+        except Exception:
+            from src.utils.error_log import log_error
+            log_error("portal-regenerar-pdf")
+            return None, "Não foi possível gerar o PDF (detalhes em error.log)."
 
     @app.get("/certificados/{numero}/pdf")
-    def pdf(numero: str):
+    def pdf(numero: str, request: Request,
+            user: dict = auth.require_permission("certificados")):
         record = HistoryRepository().get_by_number(numero)
-        if record is None or not record.pdf_path or not Path(record.pdf_path).exists():
+        if record is None:
             return Response(status_code=404)
+        if not (record.pdf_path and Path(record.pdf_path).exists()):
+            pdf_path, motivo = _regenerar_ou_motivo(record)
+            if pdf_path is None:
+                flash(request, erro=motivo)
+                return RedirectResponse(f"/certificados/{numero}", status_code=303)
+            users.audit("regenerar-pdf", user["username"], record.nr_code,
+                        f"{record.cert_number} — PDF recriado")
+            return FileResponse(str(pdf_path), media_type="application/pdf",
+                                filename=Path(str(pdf_path)).name)
         return FileResponse(record.pdf_path, media_type="application/pdf",
                             filename=Path(record.pdf_path).name)
 
     @app.get("/certificados/{numero}/ver")
-    def ver(numero: str, user: dict = auth.require_permission("certificados")):
+    def ver(numero: str, request: Request,
+            user: dict = auth.require_permission("certificados")):
         """Abre o PDF inline no navegador (sem download)."""
         record = HistoryRepository().get_by_number(numero)
-        if record is None or not record.pdf_path or not Path(record.pdf_path).exists():
+        if record is None:
             return Response(status_code=404)
+        if not (record.pdf_path and Path(record.pdf_path).exists()):
+            pdf_path, motivo = _regenerar_ou_motivo(record)
+            if pdf_path is None:
+                flash(request, erro=motivo)
+                return RedirectResponse(f"/certificados/{numero}", status_code=303)
+            users.audit("regenerar-pdf", user["username"], record.nr_code,
+                        f"{record.cert_number} — PDF recriado")
+            return FileResponse(str(pdf_path), media_type="application/pdf")
         return FileResponse(record.pdf_path, media_type="application/pdf")
+
+    @app.post("/certificados/{numero}/regenerar")
+    def regenerar(numero: str, request: Request,
+                  user: dict = auth.require_permission("certificados")):
+        """Gera o PDF na hora a partir dos dados do registro (2.33.3)."""
+        if not pode_escrever(user["papel"], "certificados"):
+            flash(request, erro="Seu papel é somente leitura neste módulo.")
+            return RedirectResponse(f"/certificados/{numero}", status_code=303)
+        record = HistoryRepository().get_by_number(numero)
+        if record is None:
+            flash(request, erro="Certificado não encontrado.")
+            return RedirectResponse("/historico", status_code=303)
+        pdf_path, motivo = _regenerar_ou_motivo(record)
+        if pdf_path is None:
+            flash(request, erro=motivo)
+        else:
+            users.audit("regenerar-pdf", user["username"], record.nr_code,
+                        f"{record.cert_number} — PDF recriado")
+            flash(request, msg=f"PDF do certificado {numero} gerado com sucesso.")
+        return RedirectResponse(f"/certificados/{numero}", status_code=303)
 
     # ---------------- prévia antes de emitir ----------------
     @app.post("/certificados/preview")

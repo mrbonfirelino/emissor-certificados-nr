@@ -22,7 +22,7 @@ from src.core.frota_repo import (
     FrotaRepository, TIPOS_VEICULO, SUBTIPOS_CAMINHAO, TIPOS_COMBUSTIVEL,
     TIPOS_LAUDO, CARROCERIAS, CHECKLIST_GRUPOS, CHECKLIST_DIAS,
     label_tipo, label_subtipo, label_combustivel,
-    label_laudo, veiculo_rotulo,
+    label_laudo, veiculo_rotulo, rotulo_revisao,
 )
 
 _PER_PAGE = 20
@@ -581,6 +581,7 @@ def register(app, deps):
         for a in itens:
             a["data_br"] = _br(a["data"])
             a["tem_nf"] = nf_map.get(a["id"], False)
+            a["revisao_rotulo"] = rotulo_revisao(a.get("revisao"))
         page_n, paginas = _paginacao(request, total, pagina, per_val)
         qs = f"busca={quote_plus((busca or '').strip())}" \
             if (busca or "").strip() else ""
@@ -704,6 +705,114 @@ def register(app, deps):
         flash(request, msg=f"Solicitação {serial} registrada.")
         return RedirectResponse("/frota/abastecimentos", status_code=303)
 
+    @app.get("/frota/abastecimentos/{abast_id}/editar")
+    def frota_abast_editar(abast_id: int, request: Request,
+                           user: dict = auth.require_permission("frota")):
+        red = _bloqueio(request, user, "/frota/abastecimentos")
+        if red:
+            return red
+        repo = _repo()
+        a = repo.get_abastecimento(abast_id)
+        if not a:
+            flash(request, erro="Abastecimento não encontrado.")
+            return RedirectResponse("/frota/abastecimentos", status_code=303)
+        return templates.TemplateResponse(
+            request=request, name="frota_abast_form.html",
+            context=ctx(request, erro="",
+                        abast=a,
+                        data_br=_br(a["data"]),
+                        veiculo_rotulo=veiculo_rotulo(a),
+                        funcionarios=_funcionarios_nomes(),
+                        fornecedores=sorted(repo.list_fornecedores(),
+                                            key=lambda f: f["nome"]),
+                        combustiveis=TIPOS_COMBUSTIVEL,
+                        pode_escrever=auth.pode_escrever(user["papel"],
+                                                         "frota")))
+
+    @app.post("/frota/abastecimentos/{abast_id}/editar")
+    def frota_abast_salvar(abast_id: int, request: Request,
+                           fornecedor_id: str = Form(""),
+                           combustivel: str = Form(""), data: str = Form(""),
+                           viagem_servico: str = Form(""), km: str = Form(""),
+                           condutor: str = Form(""),
+                           obs: str = Form(""), litros: str = Form(""),
+                           valor: str = Form(""),
+                           user: dict = auth.require_permission("frota")):
+        red = _bloqueio(request, user, "/frota/abastecimentos")
+        if red:
+            return red
+        repo = _repo()
+        a = repo.get_abastecimento(abast_id)
+        if not a:
+            flash(request, erro="Abastecimento não encontrado.")
+            return RedirectResponse("/frota/abastecimentos", status_code=303)
+        data_iso = _iso(data)
+
+        def _re_render(erro):
+            return templates.TemplateResponse(
+                request=request, name="frota_abast_form.html",
+                context=ctx(request, erro=erro,
+                            abast=a,
+                            data_br=data.strip() or _br(a["data"]),
+                            veiculo_rotulo=veiculo_rotulo(a),
+                            funcionarios=_funcionarios_nomes(),
+                            fornecedores=sorted(
+                                repo.list_fornecedores(),
+                                key=lambda f: f["nome"]),
+                            combustiveis=TIPOS_COMBUSTIVEL,
+                            pode_escrever=auth.pode_escrever(
+                                user["papel"], "frota")))
+
+        if data_iso is None:
+            return _re_render("Data inválida (dd/mm/aaaa).")
+        try:
+            v_info = repo.get_veiculo(a["veiculo_id"])
+            if v_info and v_info["tipo"] in _TIPOS_SEM_DIESEL and \
+                    combustivel in _COMB_BLOQUEADOS_LEVES:
+                return _re_render(
+                    f"{label_combustivel(combustivel)} não se aplica a "
+                    f"{label_tipo(v_info['tipo'])}.")
+            fid = int(fornecedor_id) if fornecedor_id else None
+            km_val = int(km) if km.strip() else None
+            litros_v = float(str(litros).replace(",", ".")) \
+                if str(litros).strip() else None
+            valor_v = float(str(valor).replace(",", ".")) \
+                if str(valor).strip() else None
+            rev = repo.update_abastecimento(
+                abast_id, fid, combustivel, data_iso, viagem_servico, km_val,
+                condutor, obs, litros=litros_v, valor=valor_v)
+        except (ValueError, TypeError) as e:
+            return _re_render(str(e))
+        # PDF regenerado com a marca de revisão (2.33.2)
+        try:
+            from src.core.pdf_abastecimento import gerar_pdf_abastecimento
+            from src.core.config import load_company_config
+            abast = repo.get_abastecimento(abast_id)
+            pdf = gerar_pdf_abastecimento({
+                "serial": abast["serial"],
+                "data_br": _br(abast["data"]),
+                "veiculo": abast,
+                "fornecedor": {"nome": abast.get("fornecedor"),
+                               "cnpj": abast.get("fornecedor_cnpj"),
+                               "endereco": abast.get("fornecedor_endereco")},
+                "combustivel": abast["combustivel"],
+                "condutor": abast["condutor"],
+                "viagem_servico": abast["viagem_servico"],
+                "km": abast["km"],
+                "obs": abast["obs"],
+                "revisao": rotulo_revisao(rev),
+                "config": load_company_config(),
+            })
+            repo.set_pdf_path(abast_id, str(pdf))
+        except Exception as e:
+            from src.utils.error_log import log_error
+            log_error("portal-frota-pdf-rev", e)
+        _audit(request, "frota-abastecimento-editar", user["username"],
+               a["serial"], f"revisao={rev}")
+        flash(request, msg=(f"Solicitação {a['serial']} atualizada "
+                            f"({rotulo_revisao(rev)})."))
+        return RedirectResponse("/frota/abastecimentos", status_code=303)
+
     @app.get("/frota/abastecimentos/exportar")
     def frota_abast_exportar(request: Request,
                              user: dict = auth.require_permission("frota")):
@@ -749,6 +858,7 @@ def register(app, deps):
             context=ctx(request, a=a, data_br=_br(a["data"]),
                         veiculo_rotulo=veiculo_rotulo(a),
                         combustivel_label=label_combustivel(a["combustivel"]),
+                        revisao_rotulo=rotulo_revisao(a.get("revisao")),
                         nfs=repo.list_nfs(abast_id),
                         assinado=repo.get_abast_signed(abast_id),
                         pode_escrever=auth.pode_escrever(user["papel"],
@@ -874,6 +984,7 @@ def register(app, deps):
             flash(request, erro="Veículo não encontrado.")
             return RedirectResponse("/frota", status_code=303)
         v["rotulo"] = veiculo_rotulo(v)
+        _status_veiculo(repo, v)  # 2.33.2: situação atual também na ficha
         docs = repo.list_docs(veiculo_id)
         laudos = repo.list_laudos(veiculo_id)
         movs = repo.list_movimentacoes(veiculo_id)

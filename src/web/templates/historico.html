@@ -49,8 +49,17 @@
         <td>{{ cert.carga_horaria }}h</td>
         <td>{% if cert.has_signed_doc %}<span class="badge b-verde">Sim</span>{% else %}<span class="badge b-cinza">—</span>{% endif %}</td>
         <td class="acoes">
+          {% if tem_pdf_map.get(cert.cert_number) %}
           <a class="btn" href="/historico/{{ cert.cert_number }}/ver" target="_blank">Ver</a>
           <a class="btn" href="/historico/{{ cert.cert_number }}/pdf">PDF</a>
+          {% else %}
+          <span class="badge b-amarelo" title="Arquivo não encontrado — pode ser recriado">Sem PDF</span>
+          {% if pode_escrever %}
+          <form method="post" action="/historico/{{ cert.cert_number }}/regenerar" style="display:inline;">
+            <button type="submit" class="btn cinza" title="Recriar o PDF a partir dos dados do registro">Gerar</button>
+          </form>
+          {% endif %}
+          {% endif %}
           {% if cert.has_signed_doc %}
           <a class="btn" href="/historico/{{ cert.cert_number }}/assinado">Assinado</a>
           {% endif %}

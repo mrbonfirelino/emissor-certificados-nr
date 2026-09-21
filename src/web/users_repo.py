@@ -16,9 +16,7 @@ from typing import Optional
 import argon2
 
 from src.utils.paths import get_db_path
-
-ROLES = ("admin", "emissor", "consulta")
-ROLE_LABELS = {"admin": "Administrador", "emissor": "Emissor", "consulta": "Consulta"}
+from src.web.permissions import ROLES, ROLE_LABELS, invalidar_cache_permissoes  # noqa: F401 (ROLE_LABELS re-export)
 
 _ph = argon2.PasswordHasher()
 
@@ -78,6 +76,23 @@ class UsersRepository:
                     alvo TEXT NOT NULL DEFAULT '',
                     detalhe TEXT NOT NULL DEFAULT '',
                     created_at TEXT NOT NULL
+                )
+            """)
+            # v1.46.0 (2.33.4): permissoes dinamicas
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS permissoes_papel (
+                    papel TEXT NOT NULL,
+                    modulo TEXT NOT NULL,
+                    permitido INTEGER NOT NULL DEFAULT 1,
+                    PRIMARY KEY (papel, modulo)
+                )
+            """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS permissoes_usuario (
+                    user_id INTEGER NOT NULL,
+                    modulo TEXT NOT NULL,
+                    permitido INTEGER NOT NULL DEFAULT 1,
+                    PRIMARY KEY (user_id, modulo)
                 )
             """)
 
@@ -201,6 +216,56 @@ class UsersRepository:
             return conn.execute(
                 "SELECT COUNT(*) FROM users WHERE papel = 'admin' AND ativo = 1"
             ).fetchone()[0]
+
+    # -- permissoes dinamicas (2.33.4) -------------------------------------
+    def permissoes_overrides(self) -> tuple:
+        """Retorna ({papel: {modulo: bool}}, {user_id: {modulo: bool}})."""
+        papel_ov, usuario_ov = {}, {}
+        with self._get_conn() as conn:
+            for r in conn.execute("SELECT papel, modulo, permitido FROM permissoes_papel"):
+                papel_ov.setdefault(r["papel"], {})[r["modulo"]] = bool(r["permitido"])
+            for r in conn.execute("SELECT user_id, modulo, permitido FROM permissoes_usuario"):
+                usuario_ov.setdefault(r["user_id"], {})[r["modulo"]] = bool(r["permitido"])
+        return papel_ov, usuario_ov
+
+    def set_permissao_papel(self, papel: str, modulo: str, permitido) -> None:
+        """permitido=True/False grava o ajuste; None remove (volta a matriz base)."""
+        if papel not in ROLES:
+            raise ValueError("Papel invalido.")
+        with self._get_conn() as conn:
+            if permitido is None:
+                conn.execute(
+                    "DELETE FROM permissoes_papel WHERE papel = ? AND modulo = ?",
+                    (papel, modulo))
+            else:
+                conn.execute("""
+                    INSERT INTO permissoes_papel (papel, modulo, permitido)
+                    VALUES (?, ?, ?)
+                    ON CONFLICT(papel, modulo) DO UPDATE SET permitido = excluded.permitido
+                """, (papel, modulo, 1 if permitido else 0))
+        invalidar_cache_permissoes()
+
+    def limpar_permissoes_papel(self) -> int:
+        """Restaura a matriz base (apaga todos os ajustes de papel)."""
+        with self._get_conn() as conn:
+            n = conn.execute("DELETE FROM permissoes_papel").rowcount
+        invalidar_cache_permissoes()
+        return n
+
+    def set_excecao_usuario(self, user_id: int, modulo: str, permitido) -> None:
+        """Excecao individual: True concede, False nega, None remove (segue papel)."""
+        with self._get_conn() as conn:
+            if permitido is None:
+                conn.execute(
+                    "DELETE FROM permissoes_usuario WHERE user_id = ? AND modulo = ?",
+                    (user_id, modulo))
+            else:
+                conn.execute("""
+                    INSERT INTO permissoes_usuario (user_id, modulo, permitido)
+                    VALUES (?, ?, ?)
+                    ON CONFLICT(user_id, modulo) DO UPDATE SET permitido = excluded.permitido
+                """, (user_id, modulo, 1 if permitido else 0))
+        invalidar_cache_permissoes()
 
     # -- bootstrap ---------------------------------------------------------
     def bootstrap_admin(self) -> Optional[str]:

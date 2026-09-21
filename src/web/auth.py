@@ -5,7 +5,7 @@ from typing import Optional
 
 from fastapi import Depends, HTTPException, Request
 
-from src.web.permissions import pode, pode_escrever  # noqa: F401 (pode_escrever re-export p/ routers)
+from src.web.permissions import pode, pode_escrever, pode_usuario  # noqa: F401 (re-exports p/ routers)
 
 # rate-limit simples em memoria: ip -> lista de tentativas com falha
 _falhas: dict = {}
@@ -56,7 +56,8 @@ def require_user(request: Request) -> dict:
 
 
 def require_permission(modulo: str):
-    """Dependencia FastAPI: exige login + papel com acesso ao modulo.
+    """Dependencia FastAPI: exige login + acesso ao modulo (2.33.4: papel +
+    excecao por usuario, avaliado a cada request — aplica sem re-login).
 
     Com troca de senha obrigatoria pendente, so libera /troca-senha.
     """
@@ -66,7 +67,7 @@ def require_permission(modulo: str):
             raise HTTPException(status_code=303, headers={"Location": "/login"})
         if user["must_change"]:
             raise HTTPException(status_code=303, headers={"Location": "/troca-senha"})
-        if not pode(user["papel"], modulo):
+        if not pode_usuario(user, modulo):
             raise HTTPException(status_code=303, headers={"Location": "/?erro=sem-permissao"})
         return user
     return Depends(_dep)

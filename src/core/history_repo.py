@@ -118,6 +118,13 @@ class HistoryRepository:
             ).fetchone()
             return self._row_to_record(row) if row else None
 
+    def update_pdf_path(self, cert_id: int, pdf_path: str) -> bool:
+        with self._get_conn() as conn:
+            cur = conn.execute(
+                "UPDATE certificates SET pdf_path = ? WHERE id = ?", (pdf_path, cert_id)
+            )
+            return cur.rowcount > 0
+
     def get_by_employee(self, employee_id: int) -> List[CertificateRecord]:
         with self._get_conn() as conn:
             rows = conn.execute(f"""

@@ -4,7 +4,7 @@
 {% macro br(d) %}{% if d %}{{ d[8:10] }}/{{ d[5:7] }}/{{ d[0:4] }}{% else %}—{% endif %}{% endmacro %}
 <div class="card">
   <a class="btn-voltar" href="/frota/abastecimentos">&larr; Voltar para Abastecimentos</a>
-  <h1>Notas fiscais — {{ a.serial }}</h1>
+  <h1>Notas fiscais — {{ a.serial }}{% if revisao_rotulo %} <span class="badge b-amarelo">{{ revisao_rotulo }}</span>{% endif %} <a class="btn cinza" style="font-size:13px;" href="/frota/abastecimentos/{{ a.id }}/editar">Editar dados</a></h1>
   <p class="sub">{{ veiculo_rotulo }} · {{ data_br }} · {{ combustivel_label }}
      {% if a.litros %} · {{ a.litros }} L{% endif %}{% if a.valor %} · {{ 'R$ %.2f' % a.valor }}{% endif %}</p>
 

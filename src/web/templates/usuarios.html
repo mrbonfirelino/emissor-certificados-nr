@@ -66,10 +66,67 @@
             <button class="verde">Salvar senha</button>
           </form>
         </details>
+        <details class="opcoes">
+          <summary class="btn cinza">Permissões</summary>
+          <form method="post" action="/usuarios/{{ u.id }}/permissoes" style="margin-top:8px; display:grid; gap:6px; max-width:320px;">
+            <p class="muted" style="margin:0 0 4px;">Exceção individual sobre o papel {{ papeis[u.papel] }}:</p>
+            {% for modulo, label in perm_modulos %}
+            {% set exc = perm_excecoes.get(u.id, {}).get(modulo, '') %}
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+              <span>{{ label }}</span>
+              <select name="exc_{{ modulo }}" style="width:auto;">
+                <option value="" {{ 'selected' if exc == '' else '' }}>Padrão do papel</option>
+                <option value="1" {{ 'selected' if exc == '1' else '' }}>Permitir</option>
+                <option value="0" {{ 'selected' if exc == '0' else '' }}>Negar</option>
+              </select>
+            </div>
+            {% endfor %}
+            <button class="verde" style="margin-top:6px;">Salvar exceções</button>
+          </form>
+        </details>
       </td>
     </tr>
     {% endfor %}
   </table>
+</div>
+
+<div class="card">
+  <details class="card" style="background:none; border:none; padding:0;" open>
+    <summary><b>Permissões por papel</b> — ajuste o acesso de cada papel por módulo (aplica na hora, sem re-login).</summary>
+    <form method="post" action="/usuarios/permissoes" style="margin-top:10px;">
+      <div style="max-width:640px; overflow-x:auto;">
+        <table>
+          <thead><tr><th>Módulo</th>
+            {% for pp in perm_papeis %}<th style="text-align:center;">{{ papeis[pp] }}</th>{% endfor %}
+          </tr></thead>
+          <tbody>
+          {% for modulo, label in perm_modulos %}
+          <tr>
+            <td>{{ label }}</td>
+            {% for pp in perm_papeis %}
+            <td style="text-align:center;">
+              {% if pp == 'admin' and modulo in ('usuarios', 'config') %}
+              <input type="checkbox" checked disabled title="Admin sempre mantém acesso">
+              {% else %}
+              <input type="checkbox" name="perm_{{ modulo }}__{{ pp }}" value="1"
+                     {{ 'checked' if perm_estado[(modulo, pp)] else '' }}>
+              {% endif %}
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="linha-botoes" style="margin-top:10px;">
+        <button type="submit" class="verde">Salvar permissões</button>
+      </div>
+    </form>
+    <form method="post" action="/usuarios/permissoes/padrao" style="margin-top:6px;"
+          onsubmit="return confirm('Restaurar a matriz de permissões ao padrão original?');">
+      <button type="submit" class="btn cinza">Restaurar padrão</button>
+    </form>
+  </details>
 </div>
 <script>
 function _alternarSenha(btn, id) {

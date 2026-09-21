@@ -17,7 +17,8 @@ from starlette.middleware.sessions import SessionMiddleware
 from src.core.version import APP_VERSION
 from src.utils.paths import get_data_dir
 from src.web import auth, jobs
-from src.web.permissions import ROLE_LABELS, pode, pode_escrever
+from src.web.permissions import ROLE_LABELS, pode, pode_escrever, pode_usuario
+from src.web.permissions import MODULOS_UI as _MODULOS_PERM_UI
 from src.web.users_repo import ROLES, UsersRepository
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
@@ -101,10 +102,14 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
         for titulo, modulos in _GRUPOS_NAV:
             itens = []
             for label, url, modulo in modulos:
-                if not pode(user["papel"], modulo):
-                    continue
-                if url == "/emissao-lote" and not pode_escrever(user["papel"], "certificados"):
-                    continue  # lote é operação: só admin/emissor veem no menu
+                if url == "/emissao-lote":
+                    # lote é operação: exceção de acesso não basta, exige papel
+                    # com escrita (admin/emissor)
+                    if not (pode_usuario(user, modulo)
+                            and pode_escrever(user["papel"], "certificados")):
+                        continue
+                elif not pode_usuario(user, modulo):
+                    continue  # 2.33.4: papel + exceção por usuário
                 ativo = (caminho == url) if url == "/" else caminho.startswith(url)
                 itens.append(item(label, url, ativo))
             if itens:
@@ -114,7 +119,7 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
                                    ("Backup", "/backup", "backup"),
                                    ("Auditoria", "/auditoria", "auditoria"),
                                    ("Configurações", "/configuracoes", "config")):
-            if pode(user["papel"], modulo):
+            if pode_usuario(user, modulo):
                 sistema.append(item(label, url, caminho.startswith(url)))
         if sistema:
             grupos.append({"titulo": "Sistema", "itens": sistema})
@@ -248,7 +253,7 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
         anivers_hoje = er.get_aniversariantes(agora.month, agora.day)
         anivers_mes = er.get_aniversariantes(agora.month)
         frota_stats = None
-        if pode(user["papel"], "frota"):
+        if pode_usuario(user, "frota"):
             try:
                 from src.core.frota_repo import FrotaRepository
                 fr = FrotaRepository()
@@ -286,9 +291,80 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
     # ---------------- usuarios (admin) ----------------
     @app.get("/usuarios")
     def usuarios(request: Request, user: dict = auth.require_permission("usuarios")):
+        papel_ov, usuario_ov = users.permissoes_overrides()
+        from src.web.permissions import PERMISSIONS
+        estado, override = {}, {}
+        for modulo, _label in _MODULOS_PERM_UI:
+            for papel in ROLES:
+                if modulo in (papel_ov.get(papel) or {}):
+                    estado[(modulo, papel)] = bool(papel_ov[papel][modulo])
+                    override[(modulo, papel)] = True
+                else:
+                    estado[(modulo, papel)] = papel in PERMISSIONS.get(modulo, set())
+                    override[(modulo, papel)] = False
+        excecoes = {u["id"]: (usuario_ov.get(u["id"]) or {})
+                    for u in users.list_users()}
         return templates.TemplateResponse(
             request=request, name="usuarios.html",
-            context=_ctx(request, usuarios=users.list_users(), papeis=ROLE_LABELS))
+            context=_ctx(request, usuarios=users.list_users(), papeis=ROLE_LABELS,
+                         perm_modulos=_MODULOS_PERM_UI, perm_papeis=ROLES,
+                         perm_estado=estado, perm_override=override,
+                         perm_excecoes=excecoes))
+
+    @app.post("/usuarios/permissoes")
+    async def permissoes_salvar(request: Request,
+                                user: dict = auth.require_permission("usuarios")):
+        """Salva a matriz módulo × papel (checkbox marcado = permitir)."""
+        form = await request.form()
+        from src.web.permissions import _MODULOS_ADMIN_FIXOS
+        n = 0
+        for modulo, _label in _MODULOS_PERM_UI:
+            for papel in ROLES:
+                if papel == "admin" and modulo in _MODULOS_ADMIN_FIXOS:
+                    continue  # fixo: admin não perde Usuários/Configurações
+                marcado = form.get(f"perm_{modulo}__{papel}") == "1"
+                users.set_permissao_papel(papel, modulo, marcado)
+                n += 1
+        users.audit("permissoes-papel", user["username"], "matriz",
+                    f"{n} celulas gravadas")
+        _flash(request, msg="Permissões por papel atualizadas (aplicadas na hora).")
+        return RedirectResponse("/usuarios", status_code=303)
+
+    @app.post("/usuarios/permissoes/padrao")
+    def permissoes_padrao(request: Request,
+                          user: dict = auth.require_permission("usuarios")):
+        """Restaura a matriz base (apaga os ajustes de papel)."""
+        n = users.limpar_permissoes_papel()
+        users.audit("permissoes-papel-padrao", user["username"], "matriz",
+                    f"{n} ajustes removidos")
+        _flash(request, msg="Matriz restaurada ao padrão.")
+        return RedirectResponse("/usuarios", status_code=303)
+
+    @app.post("/usuarios/{user_id}/permissoes")
+    async def permissoes_usuario_salvar(request: Request, user_id: int,
+                                        user: dict = auth.require_permission("usuarios")):
+        """Exceções de acesso por usuário: permitir/negar/padrão por módulo."""
+        alvo = users.get_by_id(user_id)
+        if alvo is None:
+            _flash(request, erro="Usuário não encontrado.")
+            return RedirectResponse("/usuarios", status_code=303)
+        form = await request.form()
+        n = 0
+        for modulo, _label in _MODULOS_PERM_UI:
+            valor = form.get(f"exc_{modulo}") or ""
+            if valor == "1":
+                users.set_excecao_usuario(user_id, modulo, True)
+                n += 1
+            elif valor == "0":
+                users.set_excecao_usuario(user_id, modulo, False)
+                n += 1
+            else:
+                users.set_excecao_usuario(user_id, modulo, None)
+        users.audit("permissoes-usuario", user["username"], alvo["username"],
+                    f"{n} excecoes gravadas")
+        _flash(request, msg=f"Exceções de '{alvo['username']}' atualizadas "
+                            f"(aplicadas na hora).")
+        return RedirectResponse("/usuarios", status_code=303)
 
     @app.post("/usuarios/criar")
     def usuarios_criar(request: Request, username: str = Form(""), nome: str = Form(""),

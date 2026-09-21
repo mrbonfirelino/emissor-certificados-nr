@@ -3,11 +3,17 @@
 {% block conteudo %}
 {% macro br(d) %}{% if d %}{{ d[8:10] }}/{{ d[5:7] }}/{{ d[0:4] }}{% else %}—{% endif %}{% endmacro %}
 <div class="card">
-  <a class="btn-voltar" href="/frota">&larr; Voltar para Frota</a>
+  <a class="btn-voltar" href="/frota">&larr; Voltar para Gestão de Frota</a>
   <h1>{{ rotulo }} {% if v.placa %}<span class="muted" style="font-size:0.6em;">{{ v.placa }}</span>{% endif %}</h1>
   <p class="sub">{{ tipo_label }}{% if sub_label %} — {{ sub_label }}{% endif %} ·
      {{ 'Próprio' if v.proprio else 'Alugado — ' ~ (v.contratante or '?') }}
      {% if v.empresa_nome %} · {{ v.empresa_nome }}{% endif %}</p>
+  <p class="sub" style="margin-top:6px;">
+    <span class="badge {{ v.status_classe or 'b-cinza' }}">{{ v.status_label or '—' }}</span>
+    {% if v.motorista_atual %} · Motorista: <b>{{ v.motorista_atual }}</b>{% endif %}
+    {% if v.destino_atual %} · Destino: {{ v.destino_atual }}{% endif %}
+    {% if not v.proprio and v.fim_contrato_aluguel %} · contrato até {{ br(v.fim_contrato_aluguel) }}{% endif %}
+  </p>
 
   <div style="display:flex; gap:18px; align-items:flex-start;">
     {% if v.foto %}
@@ -54,8 +60,20 @@
   </table>
 </div>
 
-<details class="card" open>
-  <summary>Documentos <span class="muted" style="font-size:0.7em;">(pasta virtual)</span></summary>
+<div class="dlg-botoes">
+  <button type="button" class="btn" data-abre-dlg="dlg-docs">📄 Documentos ({{ docs|length }})</button>
+  <button type="button" class="btn" data-abre-dlg="dlg-laudos">📋 Laudos e vencimentos ({{ laudos|length }})</button>
+  <button type="button" class="btn" data-abre-dlg="dlg-movs">🚗 Movimentações ({{ movs|length }})</button>
+  <button type="button" class="btn" data-abre-dlg="dlg-abasts">⛽ Abastecimentos ({{ abasts|length }})</button>
+  <button type="button" class="btn" data-abre-dlg="dlg-custo">💰 Custo e consumo</button>
+  <button type="button" class="btn" data-abre-dlg="dlg-checklists">✅ Checklist semanal ({{ checklists|length }})</button>
+  <button type="button" class="btn" data-abre-dlg="dlg-manut">🔧 Manutenções ({{ manutencoes|length }})</button>
+</div>
+
+<dialog id="dlg-docs" class="modal largo">
+  <div class="modal-topo">Documentos <span style="font-weight:400; font-size:12px;">(pasta virtual)</span>
+    <button type="button" class="modal-fechar" data-fecha-dlg aria-label="Fechar">×</button></div>
+  <div class="modal-corpo">
   <table>
     <thead><tr><th>Arquivo</th><th>Tag</th><th>Tamanho</th><th>Anexado em</th><th></th></tr></thead>
     <tbody>
@@ -94,10 +112,13 @@
     <button type="submit" class="verde">Anexar</button>
   </form>
   {% endif %}
-</details>
+  </div>
+</dialog>
 
-<details class="card">
-  <summary>Laudos e documentos com vencimento</summary>
+<dialog id="dlg-laudos" class="modal largo">
+  <div class="modal-topo">Laudos e documentos com vencimento
+    <button type="button" class="modal-fechar" data-fecha-dlg aria-label="Fechar">×</button></div>
+  <div class="modal-corpo">
   <table>
     <thead><tr><th>Tipo</th><th>Descrição</th><th>Arquivo</th><th>Emissão</th><th>Validade</th><th>Situação</th><th></th></tr></thead>
     <tbody>
@@ -155,10 +176,13 @@
     </form>
   </details>
   {% endif %}
-</details>
+  </div>
+</dialog>
 
-<details class="card">
-  <summary>Movimentações (saída / entrada)</summary>
+<dialog id="dlg-movs" class="modal largo">
+  <div class="modal-topo">Movimentações (saída / entrada)
+    <button type="button" class="modal-fechar" data-fecha-dlg aria-label="Fechar">×</button></div>
+  <div class="modal-corpo">
   <table>
     <thead><tr><th>Saída</th><th>KM ini.</th><th>Motorista</th><th>Destino</th><th>Entrada</th><th>KM fin.</th><th>KM rodado</th><th></th></tr></thead>
     <tbody>
@@ -237,10 +261,13 @@
     </form>
   </details>
   {% endif %}
-</details>
+  </div>
+</dialog>
 
-<details class="card">
-  <summary>Abastecimentos</summary>
+<dialog id="dlg-abasts" class="modal largo">
+  <div class="modal-topo">Abastecimentos
+    <button type="button" class="modal-fechar" data-fecha-dlg aria-label="Fechar">×</button></div>
+  <div class="modal-corpo">
   <table>
     <thead><tr><th>Serial</th><th>Data</th><th>Combustível</th><th>KM</th><th>Litros</th><th>Valor</th><th>Condutor</th><th>Fornecedor</th><th></th></tr></thead>
     <tbody>
@@ -268,10 +295,13 @@
     </tbody>
   </table>
   <p class="muted">Litros e valor são opcionais — podem ser completados depois na tela de NFs.</p>
-</details>
+  </div>
+</dialog>
 
-<details class="card">
-  <summary>Custo e consumo</summary>
+<dialog id="dlg-custo" class="modal">
+  <div class="modal-topo">Custo e consumo
+    <button type="button" class="modal-fechar" data-fecha-dlg aria-label="Fechar">×</button></div>
+  <div class="modal-corpo">
   {% if resumo.litros or resumo.valor %}
   <table style="max-width:640px;">
     <tbody>
@@ -284,12 +314,15 @@
   {% else %}
   <p class="muted">Sem abastecimentos com litros/valor informados ainda.</p>
   {% endif %}
-</details>
+  </div>
+</dialog>
 
-<details class="card">
-  <summary>Checklist semanal</summary>
+<dialog id="dlg-checklists" class="modal largo">
+  <div class="modal-topo">Checklist semanal
+    <button type="button" class="modal-fechar" data-fecha-dlg aria-label="Fechar">×</button></div>
+  <div class="modal-corpo">
   {% if pode_escrever %}
-  <p class="linha-botoes"><a class="btn verde" href="/frota/{{ v.id }}/checklist/novo">+ Novo checklist semanal</a><form method="get" action="/frota/{{ v.id }}/checklist/branco" style="display:inline;"><button type="submit" class="btn">Gerar em branco (preenchimento manual)</button></form></p></p>
+  <p class="linha-botoes"><a class="btn verde" href="/frota/{{ v.id }}/checklist/novo">+ Novo checklist semanal</a><form method="get" action="/frota/{{ v.id }}/checklist/branco" style="display:inline;"><button type="submit" class="btn">Gerar em branco (preenchimento manual)</button></form></p>
   {% endif %}
   <table>
     <thead><tr><th>Serial</th><th>Período</th><th>KM rodado</th><th>Motorista</th><th>Operável?</th><th></th></tr></thead>
@@ -338,10 +371,13 @@
     {% endfor %}
     </tbody>
   </table>
-</details>
+  </div>
+</dialog>
 
-<details class="card">
-  <summary>Manutenções preventivas (por KM)</summary>
+<dialog id="dlg-manut" class="modal largo">
+  <div class="modal-topo">Manutenções preventivas (por KM)
+    <button type="button" class="modal-fechar" data-fecha-dlg aria-label="Fechar">×</button></div>
+  <div class="modal-corpo">
   <table>
     <thead><tr><th>Item</th><th>Intervalo</th><th>Última (KM)</th><th>Feito em</th><th>Situação</th><th></th></tr></thead>
     <tbody>
@@ -394,6 +430,6 @@
     </form>
   </details>
   {% endif %}
-</details>
+  </div>
+</dialog>
 {% endblock %}
-

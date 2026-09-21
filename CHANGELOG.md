@@ -1,3 +1,37 @@
+## [1.46.0] - 2026-09-18
+
+### Adicionado
+- **Permissões por módulo definidas pelo administrador** (Usuários →
+  "Permissões por papel"): o admin marca o que cada papel (Emissor/Consulta)
+  pode acessar, módulo por módulo, e também pode dar **exceções por usuário**
+  (Permitir/Negar mesmo com o papel bloqueado). As mudanças valem na hora,
+  sem re-login. Admin sempre mantém Usuários e Configurações.
+- **PDF de certificados gerado na hora**: certificados importados (ou com o
+  arquivo sumido) voltam a funcionar — o portal recria o PDF com o MESMO
+  número (CERT-XXXXXX) ao abrir "Ver"/"PDF", e a lista de histórico mostra
+  badge "Sem PDF" com botão **Gerar**. Impedimentos são explicados
+  (funcionário sem CPF, modelo da NR ausente, empresa não configurada).
+- **Ficha do veículo modernizada**: as 6 seções viraram janelas (dialogs)
+  abertas por botões na barra da ficha — Documentos, Laudos, Movimentações,
+  Abastecimentos, Custo, Checklist e Manutenções — e o cabeçalho agora mostra
+  a **situação atual** (Disponível/Em Viagem/Em Manutenção/Indisponível),
+  motorista e destino atual.
+- **Edição de abastecimento com revisão**: botão "Editar" corrige dados e
+  gera novo PDF carimbado **REV_A, REV_B…** ("documento revisado; substitui
+  a versão anterior").
+- Opção **"Outros / Ferramentas"** no abastecimento (motosserras, roçadeiras
+  etc.) — o título do campo virou "Combustível / Despesa".
+
+### Corrigido
+- **Lista de veículos: coluna "Posse" estava sempre vazia** (erro de digitação
+  no template).
+- Interface geral com realce ao passar o mouse (linhas das tabelas, botões,
+  links, summary) e contorno azul nos campos com foco.
+- Botões/rótulos do Frota padronizados: H1 "Gestão de Frota", "Empresas
+  (Posse)", "Fornecedores (Postos)"; importar Excel agora abre ao clicar no
+  botão "Importar Excel"; botão **NF** disponível em todas as linhas dos
+  abastecimentos.
+
 ## [1.45.3] - 2026-09-18
 
 ### Adicionado

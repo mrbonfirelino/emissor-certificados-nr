@@ -488,6 +488,43 @@ Requisitos: Microsoft PowerPoint instalado na máquina (conversão via COM).
 |------|-----------|------------|--------|
 | Aprovação sem nome | Alterar o template da Solicitação de Abastecimento: não especificar o nome do aprovador, deixando apenas um campo para assinatura e, embaixo, escrito "Aprovado" | Alta | Concluído (v1.45.0 — nome do aprovador removido do PDF, formulário e validação) |
 
+### 2.33 Permissões, Frota, Certificados e Interface (CONCLUÍDA — v1.46.0, implementado em 18/09/2026)
+
+#### 2.33.1 Acessos e Permissões
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Permissões por módulo | Mudar a forma de acesso com base em permissões de acesso para cada módulo, definidas pelo administrador (papel + exceção por usuário; aplicam sem re-login) | Alta | Concluído (v1.46.0) |
+
+#### 2.33.2 Gestão de Frota — Interface e Ajustes
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| H1 do card | Na aba "Gestão de Frota", alterar o H1 no card para mostrar "Gestão de Frota" ao invés de só "Frota" | Media | Concluído (v1.46.0) |
+| Importar veículos | Ajustar para que o "Escolher arquivos" só apareça se o usuário clicar no botão "Importar" | Media | Concluído (v1.46.0) |
+| Botão "Fornecedores (Postos)" | Renomear o botão "Fornecedores" para "Fornecedores (Postos)" | Media | Concluído (v1.46.0) |
+| Botão "Empresas (Posse)" | Renomear "Empresas de veículos" para "Empresas (Posse)" | Media | Concluído (v1.46.0) |
+| Campo "Posse" na lista | O campo "Posse" na lista de veículos não mostra nada — ajustar para aparecer "Próprio" ou "Alugado" | Alta | Concluído (v1.46.0 — bug de digitação `possse`→`posse`) |
+| Ver NF nos abastecimentos | Faltou um botão para ver a NF no menu "Frota/Abastecimentos" | Alta | Concluído (v1.46.0 — botão NF em todas as linhas) |
+| Edição de abastecimento | Permitir que o usuário altere os dados do abastecimento caso precise ajustar ou corrigir erro; adicionar histórico de revisão do documento no sistema e texto no cantinho do PDF com o código da revisão (ex: REV_A) | Alta | Concluído (v1.46.0 — botão Editar + revisão incremental REV_A/REV_B…; PDF regenerado e carimbado) |
+| Outros/Ferramentas (abastecimento) | Adicionar opção "Outros/Ferramentas" nos abastecimentos (ex: motosserras, roçadeiras etc.); deixar essa parte mais genérica, com o usuário informando observações na hora | Alta | Concluído (v1.46.0 — título "Combustível / Despesa") |
+| Reformular menu do veículo | Deixar o menu do veículo mais moderno e reduzir o número de dropdownlists; substituir algumas por botões que abrem um popup/dialog (ex: clicar em "Laudos e Documentos com Vencimento" abre um dialog e o usuário faz tudo por lá) | Media | Concluído (v1.46.0 — 7 dialogs: Documentos, Laudos, Movimentações, Abastecimentos, Custo, Checklist, Manutenções) |
+| Situação atual do veículo | Na ficha do veículo, incluir onde o veículo está, quem está dirigindo atualmente e se está disponível — puxando os dados com base nas movimentações (saída/entrada) | Alta | Concluído (v1.46.0 — badge de situação + motorista/destino no cabeçalho) |
+
+#### 2.33.3 Certificados — Visualização de PDFs Importados
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| PDF de certificados importados | Na aba Certificados, há erros ao visualizar PDFs de certificados importados (tenta abrir um link mas falha porque o PDF não foi gerado) | Alta | Concluído (v1.46.0 — rota tenta regenerar antes de responder) |
+| Gerar PDF na hora | Verificar se o PDF existe; se não existir, gerar na hora — informando o usuário e com tela de carregamento | Alta | Concluído (v1.46.0 — mesmo número CERT-, sem duplicar registro; botão Gerar na listagem e no detalhe) |
+| Aviso de impedimento | Avisar o usuário quando não for possível visualizar devido a algum impeditivo (ex: usuário sem CPF cadastrado) | Alta | Concluído (v1.46.0 — motivo claro: sem CPF, modelo ausente, empresa não configurada) |
+
+#### 2.33.4 Melhorias Gerais de Interface
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Realce no hover | Melhorias gerais na interface para ficar mais bonita — ex: realce nos botões e itens das listas ao passar com o mouse em cima | Media | Concluído (v1.46.0 — hover em linhas, botões, links, summaries; foco visível em inputs) |
+
 
 ---
 

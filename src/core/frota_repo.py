@@ -38,6 +38,7 @@ TIPOS_COMBUSTIVEL = [
     ("arla", "Arla"),
     ("gnv", "GNV"),
     ("arla_diesel", "ARLA + DIESEL"),
+    ("outros", "Outros / Ferramentas"),
 ]
 
 TIPOS_LAUDO = [
@@ -108,6 +109,18 @@ def label_subtipo(sub):
 
 def label_combustivel(c):
     return _label(TIPOS_COMBUSTIVEL, c)
+
+
+def rotulo_revisao(rev) -> str:
+    """0 -> '', 1 -> 'REV_A', 2 -> 'REV_B' ... 27 -> 'REV_AA'."""
+    if not rev:
+        return ""
+    r = int(rev)
+    letras = ""
+    while r > 0:
+        r, resto = divmod(r - 1, 26)
+        letras = chr(65 + resto) + letras
+    return f"REV_{letras}"
 
 
 def label_laudo(t):
@@ -312,6 +325,7 @@ class FrotaRepository:
         abast = {r[1] for r in conn.execute(
             "PRAGMA table_info(frota_abastecimentos)").fetchall()}
         for col, ddl in (("litros", "REAL"), ("valor", "REAL"),
+                         ("revisao", "INTEGER DEFAULT 0"),
                          ("assinado_dados", "BLOB"), ("assinado_tipo", "TEXT"),
                          ("assinado_filename", "TEXT"),
                          ("assinado_em", "TEXT")):
@@ -988,6 +1002,43 @@ class FrotaRepository:
                 "UPDATE frota_abastecimentos SET litros=?, valor=? WHERE id=?",
                 (litros, valor, abast_id))
             return cur.rowcount > 0
+
+    def update_abastecimento(self, abast_id: int, fornecedor_id: Optional[int],
+                             combustivel: str, data_abast: str,
+                             viagem_servico: str, km: Optional[int],
+                             condutor: str, obs: str = "",
+                             litros: Optional[float] = None,
+                             valor: Optional[float] = None) -> int:
+        """Edita a solicitação (2.33.2) e incrementa a revisão.
+        Devolve a revisão resultante (0 = original, 1 = REV_A, ...)."""
+        if combustivel not in dict(TIPOS_COMBUSTIVEL):
+            raise ValueError("Tipo de combustível inválido.")
+        if not data_abast:
+            raise ValueError("Informe a data da solicitação.")
+        if not (condutor or "").strip():
+            raise ValueError("Informe o nome do condutor.")
+        litros = float(litros) if litros not in (None, "") else None
+        valor = float(valor) if valor not in (None, "") else None
+        if litros is not None and litros <= 0:
+            litros = None
+        if valor is not None and valor <= 0:
+            valor = None
+        with self._get_conn() as conn:
+            cur = conn.execute(
+                "UPDATE frota_abastecimentos SET fornecedor_id=?,"
+                " combustivel=?, data=?, viagem_servico=?, km=?, condutor=?,"
+                " obs=?, litros=?, valor=?, revisao=COALESCE(revisao,0)+1"
+                " WHERE id=?",
+                (fornecedor_id, combustivel, data_abast,
+                 (viagem_servico or "").strip() or None, km,
+                 condutor.strip(), (obs or "").strip() or None,
+                 litros, valor, abast_id))
+            if cur.rowcount == 0:
+                raise ValueError("Solicitação não encontrada.")
+            rev = conn.execute(
+                "SELECT COALESCE(revisao, 0) FROM frota_abastecimentos"
+                " WHERE id=?", (abast_id,)).fetchone()[0]
+        return rev
 
     # ---------- notas fiscais de abastecimento (2.29.6) ----------
 

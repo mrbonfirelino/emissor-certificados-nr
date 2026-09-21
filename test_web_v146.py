@@ -89,13 +89,14 @@ def main():
     # ---------- 1. versão no header ----------
     r = client.get("/login")
     check("login 200", r.status_code == 200)
-    check("login mostra versão v1.45.3", 'class="versao">v1.45.3<' in r.text)
+    check("login mostra versão no header",
+          re.search(r'class="versao">v\d+\.\d+\.\d+<', r.text) is not None)
 
     _login_admin(client, tmp)
     r = client.get("/")
     check("dashboard 200", r.status_code == 200)
     check("dashboard mostra versão no header",
-          'class="versao">v1.45.3<' in r.text)
+          re.search(r'class="versao">v\d+\.\d+\.\d+<', r.text) is not None)
 
     base_html = _tpl("base.html")
 

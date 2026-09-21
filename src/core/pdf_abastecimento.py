@@ -100,6 +100,13 @@ def gerar_pdf_abastecimento(dados: dict) -> Path:
                            style_sub))
     story.append(Spacer(1, 6 * mm))
     story.append(Paragraph(f"<b>{serial}</b>", style_ser))
+    revisao = (dados.get("revisao") or "").strip()
+    if revisao:
+        story.append(Spacer(1, 2 * mm))
+        story.append(Paragraph(
+            f"<b>{revisao}</b> — documento revisado; substitui a versão"
+            " anterior.",
+            style_sub))
     story.append(Spacer(1, 8 * mm))
 
     def _celula(rotulo, valor):
@@ -121,7 +128,7 @@ def gerar_pdf_abastecimento(dados: dict) -> Path:
         forn_txt += f" · CNPJ {forn['cnpj']}"
 
     pares = [
-        ("Serial", serial),
+        ("Serial", serial + (f"  ·  {revisao}" if revisao else "")),
         ("Data da solicitação", dados.get("data_br") or "—"),
         ("Veículo", rotulo_veic),
         ("Combustível", label_combustivel(dados.get("combustivel", ""))),
@@ -193,5 +200,15 @@ def gerar_pdf_abastecimento(dados: dict) -> Path:
         leftMargin=20 * mm, rightMargin=20 * mm,
         topMargin=15 * mm, bottomMargin=15 * mm,
         title=f"Solicitação de Abastecimento {serial}")
-    doc.build(story)
+
+    # revisão no cantinho do rodapé (2.33.2): REV_A, REV_B...
+    def _rodape_rev(canv, _doc):
+        if revisao:
+            canv.saveState()
+            canv.setFont("Helvetica-Bold", 8)
+            canv.setFillColor(HexColor("#B71C1C"))
+            canv.drawRightString(A4[0] - 12 * mm, 8 * mm, revisao)
+            canv.restoreState()
+
+    doc.build(story, onFirstPage=_rodape_rev, onLaterPages=_rodape_rev)
     return destino

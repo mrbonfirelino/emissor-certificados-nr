@@ -15,7 +15,17 @@
     {% if tem_pdf %}
     <a class="btn" href="/certificados/{{ cert.cert_number }}/ver" target="_blank">Ver no navegador</a>
     <a class="btn verde" href="/certificados/{{ cert.cert_number }}/pdf">Baixar PDF</a>
-    {% else %}<span class="muted">PDF não encontrado no servidor.</span>{% endif %}
+    {% else %}
+    <div>
+      <span class="badge b-amarelo">PDF não encontrado</span>
+      <p class="muted" style="max-width:640px;">{{ motivo_sem_pdf }}</p>
+      {% if pode_escrever %}
+      <form method="post" action="/certificados/{{ cert.cert_number }}/regenerar">
+        <button type="submit" class="verde">Gerar PDF agora</button>
+      </form>
+      {% endif %}
+    </div>
+    {% endif %}
     <a class="btn cinza" href="/historico">Histórico</a>
   </div>
 </div>

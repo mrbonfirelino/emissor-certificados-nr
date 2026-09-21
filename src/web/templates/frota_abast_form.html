@@ -1,15 +1,27 @@
 {% extends "base.html" %}
-{% block titulo %}Nova solicitação de abastecimento — NormaTech{% endblock %}
+{% set ed = abast|default(None) %}
+{% set cond_outro = (ed and ed.condutor) and (ed.condutor not in funcionarios) %}
+{% block titulo %}{% if ed %}Editar {{ ed.serial }}{% else %}Nova solicitação de abastecimento{% endif %} — NormaTech{% endblock %}
 {% block conteudo %}
 <div class="card" style="max-width:760px;">
   <a class="btn-voltar" href="/frota/abastecimentos">&larr; Voltar para Abastecimentos</a>
-  <h1>Nova solicitação de abastecimento</h1>
+  <h1>{% if ed %}Editar solicitação {{ ed.serial }}{% if ed.revisao %} <span class="badge b-amarelo">REV_{{ ed.revisao }}</span>{% endif %}{% else %}Nova solicitação de abastecimento{% endif %}</h1>
+  {% if ed %}
+  <p class="sub">Ao salvar, o PDF é regenerado com a marca de revisão (REV_A, REV_B...) e a alteração fica registrada na auditoria. O veículo não pode ser trocado em uma solicitação existente.</p>
+  {% else %}
   <p class="sub">O PDF é gerado automaticamente com logo da empresa, dados e campos de assinatura. Litros e valor são opcionais — podem ser completados depois junto da NF.</p>
+  {% endif %}
   {% if erro %}<p class="erro">{{ erro }}</p>{% endif %}
 
-  {% if veiculos %}
-  <form method="post" action="/frota/abastecimentos/criar">
+  {% if ed or veiculos %}
+  <form method="post" action="{% if ed %}/frota/abastecimentos/{{ ed.id }}/editar{% else %}/frota/abastecimentos/criar{% endif %}">
     <div class="form-grid">
+      {% if ed %}
+      <div class="campo">
+        <label>Veículo</label>
+        <input type="text" value="{{ veiculo_rotulo }}" disabled>
+      </div>
+      {% else %}
       <div class="campo">
         <label for="veiculo_id">Veículo *</label>
         <select id="veiculo_id" name="veiculo_id" required>
@@ -19,62 +31,67 @@
           {% endfor %}
         </select>
       </div>
+      {% endif %}
       <div class="campo">
-        <label for="combustivel">Combustível *</label>
+        <label for="combustivel">Combustível / Despesa *</label>
         <select id="combustivel" name="combustivel" required>
-          {% for cod, rot in combustiveis %}<option value="{{ cod }}">{{ rot }}</option>{% endfor %}
+          {% for cod, rot in combustiveis %}<option value="{{ cod }}" {{ 'selected' if ed and ed.combustivel == cod }}>{{ rot }}</option>{% endfor %}
         </select>
       </div>
       <div class="campo">
         <label for="data">Data da solicitação *</label>
-        <input type="text" id="data" name="data" class="js-data" value="{{ hoje }}" required placeholder="dd/mm/aaaa">
+        <input type="text" id="data" name="data" class="js-data" value="{{ data_br if ed else hoje }}" required placeholder="dd/mm/aaaa">
       </div>
       <div class="campo">
         <label for="fornecedor_id">Fornecedor (posto)</label>
         <select id="fornecedor_id" name="fornecedor_id">
           <option value="">— não informado —</option>
-          {% for f in fornecedores %}<option value="{{ f.id }}">{{ f.nome }}</option>{% endfor %}
+          {% for f in fornecedores %}<option value="{{ f.id }}" {{ 'selected' if ed and ed.fornecedor_id == f.id }}>{{ f.nome }}</option>{% endfor %}
         </select>
       </div>
       <div class="campo">
         <label for="km">KM do veículo</label>
-        <input type="number" id="km" name="km" min="0">
+        <input type="number" id="km" name="km" min="0" value="{{ ed.km if ed and ed.km is not none else '' }}">
       </div>
       <div class="campo">
         <label for="litros">Litros (opcional)</label>
-        <input type="text" id="litros" name="litros" class="js-dec" inputmode="decimal" placeholder="Ex: 42,7">
+        <input type="text" id="litros" name="litros" class="js-dec" inputmode="decimal" placeholder="Ex: 42,7" value="{{ ed.litros if ed and ed.litros is not none else '' }}">
       </div>
       <div class="campo">
         <label for="valor">Valor em R$ (opcional)</label>
-        <input type="text" id="valor" name="valor" class="js-dec" inputmode="decimal" placeholder="Ex: 289,50">
+        <input type="text" id="valor" name="valor" class="js-dec" inputmode="decimal" placeholder="Ex: 289,50" value="{{ ed.valor if ed and ed.valor is not none else '' }}">
       </div>
       <div class="campo">
         <label for="viagem_servico">Viagem / Serviço</label>
-        <input type="text" id="viagem_servico" name="viagem_servico" placeholder="Ex: Viagem Obra X / Serviço interno">
+        <input type="text" id="viagem_servico" name="viagem_servico" placeholder="Ex: Viagem Obra X / Serviço interno" value="{{ (ed.viagem_servico or '') if ed else '' }}">
       </div>
       <div class="campo">
         <label for="condutor">Condutor *</label>
         {% if funcionarios %}
-        <select onchange="if (this.value === '__outro__') { this.name=''; document.getElementById('cond-outro').name='condutor'; document.getElementById('cond-outro').style.display='inline-block'; } else { document.getElementById('cond-outro').name=''; document.getElementById('cond-outro').style.display='none'; this.name='condutor'; }" id="cond-sel" required>
-          <option value="" disabled selected>— selecione —</option>
-          {% for f in funcionarios %}<option value="{{ f }}">{{ f }}</option>{% endfor %}
-          <option value="__outro__">Outro...</option>
+        <select onchange="if (this.value === '__outro__') { this.name=''; document.getElementById('cond-outro').name='condutor'; document.getElementById('cond-outro').style.display='inline-block'; } else { document.getElementById('cond-outro').name=''; document.getElementById('cond-outro').style.display='none'; this.name='condutor'; }" id="cond-sel" required{% if not cond_outro %} name="condutor"{% endif %}>
+          <option value="" disabled {% if not ed %}selected{% endif %}>— selecione —</option>
+          {% for f in funcionarios %}<option value="{{ f }}" {{ 'selected' if ed and not cond_outro and ed.condutor == f }}>{{ f }}</option>{% endfor %}
+          <option value="__outro__" {{ 'selected' if cond_outro }}>Outro...</option>
         </select>
-        <input type="text" id="cond-outro" placeholder="Nome de quem abastece" style="display:none;">
+        <input type="text" id="cond-outro" placeholder="Nome de quem abastece" style="display:{% if cond_outro %}inline-block{% else %}none{% endif %};"{% if cond_outro %} name="condutor" value="{{ ed.condutor }}"{% endif %}>
         {% else %}
-        <input type="text" id="condutor" name="condutor" required placeholder="Nome de quem abastece">
+        <input type="text" id="condutor" name="condutor" required placeholder="Nome de quem abastece" value="{{ (ed.condutor or '') if ed else '' }}">
         {% endif %}
       </div>
     </div>
     <div class="campo">
       <label for="obs">Descrição / Observações</label>
-      <textarea id="obs" name="obs" rows="3" class="txt-largo"></textarea>
+      <textarea id="obs" name="obs" rows="3" class="txt-largo">{{ (ed.obs or '') if ed else '' }}</textarea>
     </div>
     <p class="linha-botoes">
-      <button type="submit" class="verde">Gerar solicitação (PDF)</button>
+      {% if ed %}<button type="submit" class="verde">Salvar e gerar novo PDF (revisão)</button>
+      <a class="btn cinza" href="/frota/abastecimentos/{{ ed.id }}/nfs">Cancelar</a>
+      {% else %}<button type="submit" class="verde">Gerar solicitação (PDF)</button>
       <a class="btn cinza" href="/frota/abastecimentos">Cancelar</a>
+      {% endif %}
     </p>
   </form>
+  {% if not ed %}
   <script>
   (function () {
     var sel = document.getElementById('veiculo_id');
@@ -97,6 +114,7 @@
     aplicar();
   })();
   </script>
+  {% endif %}
   {% else %}
   <p class="erro">Cadastre um veículo antes de solicitar abastecimento.</p>
   <p><a class="btn verde" href="/frota/novo">+ Novo veículo</a></p>
