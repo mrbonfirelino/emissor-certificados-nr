@@ -153,6 +153,60 @@ def gerar_pdf_abastecimento(dados: dict) -> Path:
     ]))
     story.append(t_dados)
 
+    # ---- Itens extras (2.35.2): tabela Descrição | Qtde | Valor ----
+    extras = [e for e in (dados.get("extras") or [])
+              if isinstance(e, dict) and
+              (str(e.get("desc") or "").strip() or e.get("valor") is not None)]
+    if extras:
+        style_extra_hd = _fonte("extrahd-bold", 8.5, textColor=CINZA,
+                                leading=11)
+        style_extra_val = _fonte("extraval", 9.5, leading=12)
+        style_extra_tot = _fonte("extratot-bold", 9.5, leading=12)
+
+        def _fmt(v):
+            try:
+                return ("R$ %.2f" % float(str(v).replace(",", ".")))
+            except (TypeError, ValueError):
+                return "—"
+
+        linhas_ex = [[Paragraph("DESCRIÇÃO", style_extra_hd),
+                      Paragraph("QTDE", style_extra_hd),
+                      Paragraph("VALOR", style_extra_hd)]]
+        for e in extras:
+            linhas_ex.append([
+                Paragraph(str(e.get("desc") or "—"), style_extra_val),
+                Paragraph(str(e.get("qtd") or "—"), style_extra_val),
+                Paragraph(_fmt(e.get("valor")), style_extra_val),
+            ])
+        total_geral = None
+        try:
+            total_geral = (float(dados.get("extras_total") or 0)
+                           + float(dados.get("valor") or 0))
+        except (TypeError, ValueError):
+            total_geral = None
+        if total_geral is not None and total_geral > 0:
+            linhas_ex.append([
+                Paragraph("TOTAL GERAL (combustível + itens)",
+                          style_extra_tot),
+                Paragraph("", style_extra_tot),
+                Paragraph("R$ %.2f" % total_geral, style_extra_tot),
+            ])
+        t_ex = Table(linhas_ex, colWidths=[106 * mm, 24 * mm, 40 * mm])
+        t_ex.setStyle(TableStyle([
+            ("GRID", (0, 0), (-1, -1), 0.6, BORDA),
+            ("BACKGROUND", (0, 0), (-1, 0), FUNDO),
+            ("BACKGROUND", (0, -1), (-1, -1), FUNDO),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("ALIGN", (1, 0), (2, -1), "CENTER"),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ]))
+        story.append(Spacer(1, 6 * mm))
+        story.append(Paragraph("ITENS EXTRAS", style_label))
+        story.append(Spacer(1, 1.5 * mm))
+        story.append(t_ex)
+
     obs = (dados.get("obs") or "").strip()
     if obs:
         story.append(Spacer(1, 6 * mm))

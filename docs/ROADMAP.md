@@ -562,6 +562,27 @@ c) Submeter-se aos exames médicos previstos nas Normas Regulamentadoras – NR 
 CLT – Artigo 462, § 1º - Em caso de dano causado pelo empregado, o desconto será licito, desde que esta possibilidade tenha sido acordada, ou na ocorrência de dolo do empregado.
 ```
 
+### 2.35 Frota - Custo, Consumo e Abastecimentos (CONCLUÍDA — v1.48.0; solicitado em 23/09/2026)
+
+#### 2.35.1 Custo e Consumo — Gráfico e Exportação
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Gráfico de custo e consumo | Adicionar gráfico de custo e consumo do veículo — quero algo bem visual para o usuário final | Alta | Concluído (v1.48.0) |
+| Exportação individual (Excel) | Opção individual na ficha de cada veículo para exportar os dados de custo e consumo para Excel | Alta | Concluído (v1.48.0) |
+| Exportação geral (Excel) | Opção que gera a exportação de custo e consumo para todos os veículos cadastrados | Alta | Concluído (v1.48.0) |
+
+#### 2.35.2 Abastecimentos — Itens Extras, Exclusão e Bloqueio
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Itens extras na solicitação | Opção para adicionar itens na solicitação de abastecimento — às vezes precisamos comprar outras coisas junto do combustível (ex: óleo 2 tempos, aditivo etc.) | Alta | Concluído (v1.48.0) |
+| Excluir/Bloquear solicitação | Opção para excluir ou bloquear uma solicitação de abastecimento, com justificativa (Não usada, Erro, Cancelado etc. + opção em que o usuário preenche manualmente o motivo/observação) | Alta | Concluído (v1.48.0) |
+| Regra de exclusão | Talvez o ideal seja apenas permitir excluir a solicitação se não houver nenhuma mais recente cadastrada; se houver outra mais recente, o sistema apenas deixa bloqueada | Alta | Concluído (v1.48.0) |
+| Custos ignorados | Os valores das solicitações bloqueadas/canceladas/excluídas não podem entrar para o cálculo de custo | Alta | Concluído (v1.48.0) |
+| Ordenação da lista | Escolher ordenação por Data (padrão, mais recentes) ou Serial na lista de abastecimentos | Média | Concluído (v1.48.0) |
+| Coluna Nota fiscal | Mostrar o número da NF cadastrada ou destaque "Sem NF" na lista | Média | Concluído (v1.48.0) |
+
 
 ---
 

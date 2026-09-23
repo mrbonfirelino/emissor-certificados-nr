@@ -83,6 +83,33 @@
       <label for="obs">Descrição / Observações</label>
       <textarea id="obs" name="obs" rows="3" class="txt-largo">{{ (ed.obs or '') if ed else '' }}</textarea>
     </div>
+    <div class="campo" style="margin-top:14px;">
+      <label>Itens extras (opcional)</label>
+      <p class="muted" style="margin:4px 0 8px;">Ex.: pedágio, lavagem, óleo — somam no custo total do veículo e aparecem no PDF.</p>
+      <table style="max-width:640px;">
+        <thead><tr><th style="width:52%;">Descrição</th><th style="width:14%;">Qtde</th><th style="width:24%;">Valor (R$)</th><th></th></tr></thead>
+        <tbody id="extras-body">
+          {% set extras_l = ed.extras_lista if ed and ed.extras_lista else [] %}
+          {% for ex in extras_l %}
+          <tr>
+            <td><input type="text" name="extra_desc_{{ loop.index0 }}" value="{{ ex.desc or '' }}" style="width:100%;"></td>
+            <td><input type="number" name="extra_qtd_{{ loop.index0 }}" min="0" step="1" value="{{ ex.qtd if ex.qtd is not none else '' }}" style="width:100%;"></td>
+            <td><input type="text" name="extra_val_{{ loop.index0 }}" class="js-dec" inputmode="decimal" value="{{ ('%.2f' % ex.valor)|replace('.', ',') if ex.valor is not none else '' }}" style="width:100%;"></td>
+            <td><button type="button" class="btn cinza" onclick="this.closest('tr').remove();">×</button></td>
+          </tr>
+          {% endfor %}
+          {% for i in range(extras_l|length, extras_l|length + 2) %}
+          <tr>
+            <td><input type="text" name="extra_desc_{{ i }}" style="width:100%;"></td>
+            <td><input type="number" name="extra_qtd_{{ i }}" min="0" step="1" style="width:100%;"></td>
+            <td><input type="text" name="extra_val_{{ i }}" class="js-dec" inputmode="decimal" style="width:100%;"></td>
+            <td><button type="button" class="btn cinza" onclick="this.closest('tr').remove();">×</button></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <button type="button" class="btn cinza" style="margin-top:8px;" onclick="addExtraLinha();">+ Adicionar item</button>
+    </div>
     <p class="linha-botoes">
       {% if ed %}<button type="submit" class="verde">Salvar e gerar novo PDF (revisão)</button>
       <a class="btn cinza" href="/frota/abastecimentos/{{ ed.id }}/nfs">Cancelar</a>
@@ -115,6 +142,24 @@
   })();
   </script>
   {% endif %}
+  <script>
+  function addExtraLinha() {
+    var tb = document.getElementById('extras-body');
+    if (!tb || tb.rows.length >= 20) return;
+    var n = tb.rows.length;
+    var tr = tb.insertRow(-1);
+    function cel(conteudo) {
+      var td = tr.insertCell(-1);
+      td.innerHTML = conteudo;
+      return td;
+    }
+    cel('<input type="text" name="extra_desc_' + n + '" style="width:100%;">');
+    cel('<input type="number" name="extra_qtd_' + n + '" min="0" step="1" style="width:100%;">');
+    cel('<input type="text" name="extra_val_' + n + '" class="js-dec" inputmode="decimal" style="width:100%;">');
+    cel('<button type="button" class="btn cinza" onclick="this.closest(\'tr\').remove();">×</button>');
+    if (window.normaTechMascaras) window.normaTechMascaras(tr);
+  }
+  </script>
   {% else %}
   <p class="erro">Cadastre um veículo antes de solicitar abastecimento.</p>
   <p><a class="btn verde" href="/frota/novo">+ Novo veículo</a></p>

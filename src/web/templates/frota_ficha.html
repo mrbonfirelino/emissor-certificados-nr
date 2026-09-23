@@ -273,7 +273,7 @@
     <tbody>
     {% for a in abasts %}
       <tr>
-        <td><a href="/frota/abastecimentos">{{ a.serial }}</a></td>
+        <td><a href="/frota/abastecimentos">{{ a.serial }}</a>{% if a.bloqueada %} <span class="badge b-vermelho" title="{{ a.motivo_status or 'Bloqueada' }}">BLOQUEADA</span>{% endif %}</td>
         <td>{{ br(a.data) }}</td>
         <td>{{ a.combustivel_label }}</td>
         <td>{{ a.km | milhar if a.km is not none else '—' }}</td>
@@ -302,8 +302,18 @@
   <div class="modal-topo">Custo e consumo
     <button type="button" class="modal-fechar" data-fecha-dlg aria-label="Fechar">×</button></div>
   <div class="modal-corpo">
+  <p class="linha-botoes">
+    <a class="btn cinza" href="/frota/{{ v.id }}/custo/exportar">Exportar Excel (custo/consumo)</a>
+  </p>
   {% if resumo.litros or resumo.valor %}
-  <table style="max-width:640px;">
+  <p class="muted" style="margin:4px 0;">
+    Combustível <b>R$ {{ '%.2f' % resumo.valor_combustivel }}</b> · Itens extras <b>R$ {{ '%.2f' % resumo.valor_extras }}</b>
+    — solicitações bloqueadas ficam fora dos totais.
+  </p>
+  {% if grafico_svg %}<div style="overflow-x:auto;">{{ grafico_svg | safe }}</div>
+  <p class="muted" style="margin:6px 0 0;">Últimos 12 meses — barras: custo (azul = combustível, laranja = extras) · linha: litros.</p>
+  {% endif %}
+  <table style="max-width:640px; margin-top:10px;">
     <tbody>
       <tr><th style="text-align:left; width:220px;">Total abastecido</th><td>{{ resumo.litros }} L · {{ 'R$ %.2f' % resumo.valor }}</td></tr>
       <tr><th style="text-align:left;">Média KM/L (real)</th><td>{{ '%.2f' % resumo.media_km_l if resumo.media_km_l else '—' }}</td></tr>

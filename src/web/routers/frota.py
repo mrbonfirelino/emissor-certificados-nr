@@ -11,6 +11,8 @@ from datetime import date, datetime
 from pathlib import Path
 from urllib.parse import quote_plus
 
+from markupsafe import Markup
+
 from fastapi import Request, Form, UploadFile, File
 from fastapi.responses import (
     RedirectResponse, Response, FileResponse,
@@ -33,6 +35,9 @@ _MIME = {"pdf": "application/pdf", "jpg": "image/jpeg", "jpeg": "image/jpeg",
 # 2.29.7: Arla/Diesel/Arla+Diesel não são combustíveis de carro de passeio
 _TIPOS_SEM_DIESEL = {"carro"}
 _COMB_BLOQUEADOS_LEVES = {"arla", "diesel", "arla_diesel"}
+
+# 2.35.2: motivos de bloqueio de solicitação de abastecimento
+_MOTIVOS_BLOQUEIO = ("Não usada", "Erro de lançamento", "Cancelado", "Outro")
 
 # tags para documentos do veículo (2.29.7)
 TAGS_DOC = [
@@ -102,6 +107,71 @@ def register(app, deps):
         total_paginas = max(1, (total + per - 1) // per)
         page = min(max(1, page), total_paginas)
         return page, total_paginas
+
+    def _ler_extras(fdata) -> list:
+        """Lê as linhas de itens extras do formulário (2.35.2):
+        extra_desc_N / extra_qtd_N / extra_val_N."""
+        extras = []
+        for i in range(20):
+            desc = str(fdata.get(f"extra_desc_{i}") or "").strip()
+            qtd = str(fdata.get(f"extra_qtd_{i}") or "").strip()
+            val = str(fdata.get(f"extra_val_{i}") or "").strip()
+            if desc or qtd or val:
+                extras.append({"desc": desc, "qtd": qtd, "valor": val})
+        return extras
+
+    def _svg_grafico_custo(serie: list, largura=660, altura=220):
+        """Gráfico SVG offline (2.35.1): barras empilhadas (combustível azul +
+        itens extras amarelo) e linha de litros (verde) dos últimos 12 meses."""
+        if not serie:
+            return ""
+        maxv = max(max((s["combustivel"] + s["extras"]) for s in serie), 0.01)
+        maxl = max(max(s["litros"] for s in serie), 0.01)
+        m_e, m_d, m_t, m_b = 46, 10, 14, 28
+        pw, ph = largura - m_e - m_d, altura - m_t - m_b
+        n = len(serie)
+        passo = pw / n
+        bw = min(34.0, passo * 0.55)
+        y_base = m_t + ph
+        partes = [f'<line x1="{m_e}" y1="{y_base}" x2="{m_e + pw}" '
+                  f'y2="{y_base}" stroke="#D6DEE8"/>']
+        for i, s in enumerate(serie):
+            xc = m_e + i * passo + passo / 2
+            h_c = s["combustivel"] / maxv * ph
+            h_x = s["extras"] / maxv * ph
+            x = m_e + i * passo + (passo - bw) / 2
+            if h_c > 0:
+                partes.append(f'<rect x="{x:.1f}" y="{y_base - h_c:.1f}" '
+                              f'width="{bw:.1f}" height="{h_c:.1f}" '
+                              f'fill="#2E6DA4"/>')
+            if h_x > 0:
+                partes.append(f'<rect x="{x:.1f}" y="{y_base - h_c - h_x:.1f}" '
+                              f'width="{bw:.1f}" height="{h_x:.1f}" '
+                              f'fill="#E6A23C"/>')
+            partes.append(f'<text x="{xc:.1f}" y="{altura - 10}" font-size="9" '
+                          f'fill="#5A6B7C" text-anchor="middle">'
+                          f'{s["rotulo"]}</text>')
+        pts = []
+        for i, s in enumerate(serie):
+            x = m_e + i * passo + passo / 2
+            y = y_base - (s["litros"] / maxl) * ph
+            pts.append((x, y))
+        if any(s["litros"] for s in serie):
+            partes.append('<polyline points="'
+                          + " ".join(f"{x:.1f},{y:.1f}" for x, y in pts)
+                          + '" fill="none" stroke="#256B28" stroke-width="2"/>')
+            for x, y in pts:
+                partes.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="2.5" '
+                              f'fill="#256B28"/>')
+        partes.append(f'<text x="{m_e - 6}" y="{m_t + 4}" font-size="9" '
+                      f'fill="#5A6B7C" text-anchor="end">'
+                      f'R$ {maxv:,.0f}</text>'.replace(",", "."))
+        partes.append(f'<text x="{m_e - 6}" y="{y_base}" font-size="9" '
+                      f'fill="#5A6B7C" text-anchor="end">0</text>')
+        return Markup(
+            f'<svg viewBox="0 0 {largura} {altura}" role="img" '
+            f'style="width:100%;height:auto;" '
+            f'xmlns="http://www.w3.org/2000/svg">{"".join(partes)}</svg>')
 
     def _funcionarios_nomes() -> list:
         try:
@@ -570,31 +640,48 @@ def register(app, deps):
 
     @app.get("/frota/abastecimentos")
     def frota_abast_lista(request: Request, busca: str = "", page: int = 1,
-                          per: int = 20,
+                          per: int = 20, ordem: str = "data",
+                          situacao: str = "todas",
                           user: dict = auth.require_permission("frota")):
         repo = _repo()
         per_val = per if per in _PER_OPCOES else 20
+        ordem_val = ordem if ordem in ("data", "serial") else "data"
+        sit_val = (situacao if situacao in ("todas", "ativas", "bloqueadas")
+                   else "todas")
         pagina = max(1, page)
         itens, total = repo.list_abastecimentos(
-            busca=busca, limit=per_val, offset=(pagina - 1) * per_val)
+            busca=busca, limit=per_val, offset=(pagina - 1) * per_val,
+            ordem=ordem_val, situacao=sit_val)
         nf_map = repo.tem_nf([a["id"] for a in itens])
         for a in itens:
             a["data_br"] = _br(a["data"])
-            a["tem_nf"] = nf_map.get(a["id"], False)
+            nf_num = nf_map.get(a["id"])
+            a["nf_numero"] = nf_num
+            a["tem_nf"] = bool(nf_num)
+            a["bloqueada"] = (a.get("status") == "bloqueada")
             a["revisao_rotulo"] = rotulo_revisao(a.get("revisao"))
+            a["pode_excluir"] = repo.pode_excluir_abastecimento(a["id"])
         page_n, paginas = _paginacao(request, total, pagina, per_val)
-        qs = f"busca={quote_plus((busca or '').strip())}" \
-            if (busca or "").strip() else ""
+        qs = []
+        if (busca or "").strip():
+            qs.append(f"busca={quote_plus(busca.strip())}")
         if per_val != 20:
-            qs = (qs + "&" if qs else "") + f"per={per_val}"
+            qs.append(f"per={per_val}")
+        if ordem_val != "data":
+            qs.append(f"ordem={ordem_val}")
+        if sit_val != "todas":
+            qs.append(f"situacao={sit_val}")
+        pg = ("/frota/abastecimentos?" + "&".join(qs)) if qs \
+            else "/frota/abastecimentos"
         return templates.TemplateResponse(
             request=request, name="frota_abastecimentos.html",
             context=ctx(request, itens=itens, total=total,
                         busca=(busca or "").strip(), page=page_n,
                         paginas=paginas,
                         per=per_val, per_opcoes=_PER_OPCOES,
-                        pg_base=("/frota/abastecimentos?" + qs) if qs
-                        else "/frota/abastecimentos",
+                        ordem=ordem_val, situacao=sit_val,
+                        motivos_bloqueio=_MOTIVOS_BLOQUEIO,
+                        pg_base=pg,
                         pode_escrever=auth.pode_escrever(user["papel"],
                                                          "frota")))
 
@@ -620,17 +707,18 @@ def register(app, deps):
                         hoje=date.today().strftime("%d/%m/%Y")))
 
     @app.post("/frota/abastecimentos/criar")
-    def frota_abast_criar(request: Request, veiculo_id: str = Form(""),
-                          fornecedor_id: str = Form(""),
-                          combustivel: str = Form(""), data: str = Form(""),
-                          viagem_servico: str = Form(""), km: str = Form(""),
-                          condutor: str = Form(""),
-                          obs: str = Form(""), litros: str = Form(""),
-                          valor: str = Form(""),
-                          user: dict = auth.require_permission("frota")):
+    async def frota_abast_criar(request: Request, veiculo_id: str = Form(""),
+                                fornecedor_id: str = Form(""),
+                                combustivel: str = Form(""), data: str = Form(""),
+                                viagem_servico: str = Form(""), km: str = Form(""),
+                                condutor: str = Form(""),
+                                obs: str = Form(""), litros: str = Form(""),
+                                valor: str = Form(""),
+                                user: dict = auth.require_permission("frota")):
         red = _bloqueio(request, user, "/frota/abastecimentos")
         if red:
             return red
+        extras = _ler_extras(await request.form())
         data_iso = _iso(data)
         repo = _repo()
 
@@ -671,7 +759,7 @@ def register(app, deps):
             km_val = int(km) if km.strip() else None
             abast_id, serial = repo.add_abastecimento(
                 vid, fid, combustivel, data_iso, viagem_servico, km_val,
-                condutor, obs, litros=_num(litros),
+                condutor, obs=obs, extras=extras, litros=_num(litros),
                 valor=_num(valor))
         except (ValueError, TypeError) as e:
             return _re_render(str(e))
@@ -693,6 +781,8 @@ def register(app, deps):
                 "viagem_servico": abast["viagem_servico"],
                 "km": abast["km"],
                 "obs": abast["obs"],
+                "extras": abast.get("extras_lista") or [],
+                "extras_total": abast.get("extras_total"),
                 "config": load_company_config(),
             })
             pdf_path = str(pdf)
@@ -730,17 +820,18 @@ def register(app, deps):
                                                          "frota")))
 
     @app.post("/frota/abastecimentos/{abast_id}/editar")
-    def frota_abast_salvar(abast_id: int, request: Request,
-                           fornecedor_id: str = Form(""),
-                           combustivel: str = Form(""), data: str = Form(""),
-                           viagem_servico: str = Form(""), km: str = Form(""),
-                           condutor: str = Form(""),
-                           obs: str = Form(""), litros: str = Form(""),
-                           valor: str = Form(""),
-                           user: dict = auth.require_permission("frota")):
+    async def frota_abast_salvar(abast_id: int, request: Request,
+                                 fornecedor_id: str = Form(""),
+                                 combustivel: str = Form(""), data: str = Form(""),
+                                 viagem_servico: str = Form(""), km: str = Form(""),
+                                 condutor: str = Form(""),
+                                 obs: str = Form(""), litros: str = Form(""),
+                                 valor: str = Form(""),
+                                 user: dict = auth.require_permission("frota")):
         red = _bloqueio(request, user, "/frota/abastecimentos")
         if red:
             return red
+        extras = _ler_extras(await request.form())
         repo = _repo()
         a = repo.get_abastecimento(abast_id)
         if not a:
@@ -780,7 +871,7 @@ def register(app, deps):
                 if str(valor).strip() else None
             rev = repo.update_abastecimento(
                 abast_id, fid, combustivel, data_iso, viagem_servico, km_val,
-                condutor, obs, litros=litros_v, valor=valor_v)
+                condutor, obs, litros=litros_v, valor=valor_v, extras=extras)
         except (ValueError, TypeError) as e:
             return _re_render(str(e))
         # PDF regenerado com a marca de revisão (2.33.2)
@@ -800,6 +891,8 @@ def register(app, deps):
                 "viagem_servico": abast["viagem_servico"],
                 "km": abast["km"],
                 "obs": abast["obs"],
+                "extras": abast.get("extras_lista") or [],
+                "extras_total": abast.get("extras_total"),
                 "revisao": rotulo_revisao(rev),
                 "config": load_company_config(),
             })
@@ -811,6 +904,81 @@ def register(app, deps):
                a["serial"], f"revisao={rev}")
         flash(request, msg=(f"Solicitação {a['serial']} atualizada "
                             f"({rotulo_revisao(rev)})."))
+        return RedirectResponse("/frota/abastecimentos", status_code=303)
+
+    # ---------- bloqueio / exclusão (2.35.2) ----------
+
+    @app.post("/frota/abastecimentos/{abast_id}/bloquear")
+    async def frota_abast_bloquear(abast_id: int, request: Request,
+                                   user: dict = auth.require_permission("frota")):
+        red = _bloqueio(request, user, "/frota/abastecimentos")
+        if red:
+            return red
+        repo = _repo()
+        a = repo.get_abastecimento(abast_id)
+        if not a:
+            flash(request, erro="Abastecimento não encontrado.")
+            return RedirectResponse("/frota/abastecimentos", status_code=303)
+        fdata = await request.form()
+        motivo_sel = str(fdata.get("motivo") or "").strip()
+        motivo_txt = str(fdata.get("motivo_txt") or "").strip()
+        if motivo_sel == "Outro" and motivo_txt:
+            motivo = motivo_txt
+        else:
+            motivo = motivo_sel if motivo_sel in _MOTIVOS_BLOQUEIO \
+                else "Outro"
+        if repo.bloquear_abastecimento(abast_id, motivo, user["username"]):
+            _audit(request, "frota-abastecimento-bloquear", user["username"],
+                   a["serial"], motivo)
+            flash(request, msg=(f"Solicitação {a['serial']} bloqueada "
+                                f"({motivo}) — saiu dos totais de custo."))
+        else:
+            flash(request, erro="Não foi possível bloquear a solicitação.")
+        return RedirectResponse("/frota/abastecimentos", status_code=303)
+
+    @app.post("/frota/abastecimentos/{abast_id}/desbloquear")
+    def frota_abast_desbloquear(abast_id: int, request: Request,
+                                user: dict = auth.require_permission("frota")):
+        red = _bloqueio(request, user, "/frota/abastecimentos")
+        if red:
+            return red
+        repo = _repo()
+        a = repo.get_abastecimento(abast_id)
+        if not a:
+            flash(request, erro="Abastecimento não encontrado.")
+            return RedirectResponse("/frota/abastecimentos", status_code=303)
+        repo.desbloquear_abastecimento(abast_id)
+        _audit(request, "frota-abastecimento-desbloquear", user["username"],
+               a["serial"], "")
+        flash(request, msg=f"Solicitação {a['serial']} reativada.")
+        return RedirectResponse("/frota/abastecimentos", status_code=303)
+
+    @app.post("/frota/abastecimentos/{abast_id}/excluir")
+    def frota_abast_excluir(abast_id: int, request: Request,
+                            user: dict = auth.require_permission("frota")):
+        red = _bloqueio(request, user, "/frota/abastecimentos")
+        if red:
+            return red
+        repo = _repo()
+        a = repo.get_abastecimento(abast_id)
+        if not a:
+            flash(request, erro="Abastecimento não encontrado.")
+            return RedirectResponse("/frota/abastecimentos", status_code=303)
+        if not repo.pode_excluir_abastecimento(abast_id):
+            flash(request, erro=("Somente a solicitação mais recente pode ser "
+                                 "excluída. Bloqueie esta para tirá-la dos custos."))
+            return RedirectResponse("/frota/abastecimentos", status_code=303)
+        if repo.delete_abastecimento(abast_id):
+            try:
+                if a.get("pdf_path"):
+                    Path(a["pdf_path"]).unlink(missing_ok=True)
+            except Exception:
+                pass
+            _audit(request, "frota-abastecimento-excluir", user["username"],
+                   a["serial"], "")
+            flash(request, msg=f"Solicitação {a['serial']} excluída.")
+        else:
+            flash(request, erro="Não foi possível excluir a solicitação.")
         return RedirectResponse("/frota/abastecimentos", status_code=303)
 
     @app.get("/frota/abastecimentos/exportar")
@@ -825,15 +993,24 @@ def register(app, deps):
         ws = wb.active
         ws.title = "Abastecimentos"
         ws.append(["Serial", "Data", "Veículo", "Combustível", "KM", "Litros",
-                   "Valor (R$)", "Fornecedor", "Condutor",
-                   "Viagem/Serviço", "NF anexada", "Observações"])
+                   "Valor (R$)", "Itens extras (R$)", "Total (R$)",
+                   "NF", "Situação", "Motivo", "Fornecedor", "Condutor",
+                   "Viagem/Serviço", "Observações"])
         for a in itens:
+            nf_num = nf_map.get(a["id"])
+            extras = float(a.get("extras_total") or 0)
+            valor = float(a.get("valor") or 0)
+            bloqueada = (a.get("status") == "bloqueada")
             ws.append([
                 a["serial"], _br(a["data"]), a["veiculo_rotulo"],
-                a["combustivel_label"], a["km"], a["litros"], a["valor"],
+                a["combustivel_label"], a["km"], a["litros"], valor,
+                extras if extras else None,
+                (valor + extras) if (valor or extras) else None,
+                nf_num or "Sem NF",
+                "Bloqueada" if bloqueada else "Ativa",
+                a.get("motivo_status") or "",
                 a.get("fornecedor") or "", a.get("condutor") or "",
-                a.get("viagem_servico") or "",
-                "Sim" if nf_map.get(a["id"]) else "Não", a.get("obs") or "",
+                a.get("viagem_servico") or "", a.get("obs") or "",
             ])
         buf = io.BytesIO()
         wb.save(buf)
@@ -844,6 +1021,112 @@ def register(app, deps):
                        ".spreadsheetml.sheet",
             headers={"Content-Disposition":
                      'attachment; filename="abastecimentos.xlsx"'})
+
+    # ---------- exportação de custos (2.35.1) ----------
+
+    _XLSX_MEDIA = ("application/vnd.openxmlformats-officedocument"
+                   ".spreadsheetml.sheet")
+
+    def _abast_sheet(ws, linhas, nf_map) -> None:
+        ws.append(["Serial", "Data", "Veículo", "Combustível", "KM", "Litros",
+                   "Combustível (R$)", "Extras (R$)", "Total (R$)",
+                   "NF", "Situação", "Motivo"])
+        for a in linhas:
+            nf_num = (nf_map or {}).get(a["id"])
+            extras = float(a.get("extras_total") or 0)
+            valor = float(a.get("valor") or 0)
+            bloqueada = (a.get("status") == "bloqueada")
+            ws.append([
+                a["serial"], _br(a["data"]),
+                a.get("veiculo_rotulo") or "", a.get("combustivel_label") or "",
+                a.get("km"), a.get("litros"), valor,
+                extras if extras else None,
+                (valor + extras) if (valor or extras) else None,
+                nf_num or "Sem NF",
+                "Bloqueada" if bloqueada else "Ativa",
+                a.get("motivo_status") or "",
+            ])
+
+    @app.get("/frota/custos/exportar")
+    def frota_custos_exportar(request: Request,
+                              user: dict = auth.require_permission("frota")):
+        """Excel geral de custos (2.35.1): resumo por veículo + todas as linhas."""
+        import io
+        import openpyxl
+        repo = _repo()
+        resumos = repo.resumo_custo_todos()
+        itens, _total = repo.list_abastecimentos(limit=5000, offset=0)
+        nf_map = repo.tem_nf([a["id"] for a in itens])
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Resumo por veiculo"
+        ws.append(["Veículo", "Abastecimentos (ativos)", "Litros",
+                   "Combustível (R$)", "Itens extras (R$)", "Total (R$)"])
+        for r in resumos:
+            combust = float(r["combustivel"] or 0)
+            extras = float(r["extras"] or 0)
+            ws.append([r["veiculo_rotulo"], int(r["qtd"] or 0),
+                       float(r["litros"] or 0), combust,
+                       extras if extras else None,
+                       (combust + extras) if (combust or extras) else None])
+        ws2 = wb.create_sheet("Abastecimentos")
+        _abast_sheet(ws2, itens, nf_map)
+        buf = io.BytesIO()
+        wb.save(buf)
+        wb.close()
+        _audit(request, "frota-custos-exportar", user["username"], "",
+               f"{len(resumos)} veiculo(s)")
+        return Response(
+            content=buf.getvalue(), media_type=_XLSX_MEDIA,
+            headers={"Content-Disposition":
+                     'attachment; filename="custos_frota.xlsx"'})
+
+    @app.get("/frota/{veiculo_id}/custo/exportar")
+    def frota_custo_veiculo_exportar(veiculo_id: int, request: Request,
+                                     user: dict = auth.require_permission("frota")):
+        """Excel de custo/consumo de um veículo (2.35.1)."""
+        import io
+        import openpyxl
+        repo = _repo()
+        v = repo.get_veiculo(veiculo_id)
+        if not v:
+            return Response(status_code=404)
+        resumo = repo.resumo_custo_veiculo(veiculo_id)
+        serie = repo.custo_serie_veiculo(veiculo_id)
+        abasts = repo.list_abast_por_veiculo(veiculo_id)
+        nf_map = repo.tem_nf([a["id"] for a in abasts])
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Resumo"
+        ws.append(["Custo e consumo", ""])
+        ws.append(["Veículo", v["veiculo_rotulo"] if v.get("veiculo_rotulo")
+                   else veiculo_rotulo(v)])
+        ws.append(["Total abastecido (L)", resumo["litros"]])
+        ws.append(["Custo combustível (R$)", resumo["valor_combustivel"]])
+        ws.append(["Custo itens extras (R$)", resumo["valor_extras"]])
+        ws.append(["Custo total (R$)", resumo["valor"]])
+        ws.append(["Média KM/L (real)", resumo["media_km_l"]])
+        ws.append(["KM/L esperado", resumo["km_l_esperado"]])
+        ws.append(["Custo por km (R$)", resumo["custo_km"]])
+        ws.append([])
+        ws.append(["Série mensal", "Combustível (R$)", "Extras (R$)",
+                   "Litros"])
+        for s in serie:
+            ws.append([s["rotulo"], s["combustivel"], s["extras"],
+                       s["litros"]])
+        ws2 = wb.create_sheet("Abastecimentos")
+        _abast_sheet(ws2, abasts, nf_map)
+        buf = io.BytesIO()
+        wb.save(buf)
+        wb.close()
+        _audit(request, "frota-custo-exportar", user["username"],
+               v["veiculo_rotulo"] if v.get("veiculo_rotulo")
+               else veiculo_rotulo(v), "")
+        nome = f"custo_{(v.get('placa') or veiculo_id)}.xlsx"
+        return Response(
+            content=buf.getvalue(), media_type=_XLSX_MEDIA,
+            headers={"Content-Disposition":
+                     f'attachment; filename="{nome}"'})
 
     @app.get("/frota/abastecimentos/{abast_id}/nfs")
     def frota_nfs_lista(abast_id: int, request: Request,
@@ -989,9 +1272,16 @@ def register(app, deps):
         laudos = repo.list_laudos(veiculo_id)
         movs = repo.list_movimentacoes(veiculo_id)
         abasts = repo.list_abast_por_veiculo(veiculo_id)
+        nf_map = repo.tem_nf([a["id"] for a in abasts])
+        for a in abasts:
+            nf_num = nf_map.get(a["id"])
+            a["nf_numero"] = nf_num
+            a["tem_nf"] = bool(nf_num)
+            a["bloqueada"] = (a.get("status") == "bloqueada")
         checklists = repo.list_checklists(veiculo_id)
         manutencoes = repo.list_manutencoes(veiculo_id)
         resumo = repo.resumo_custo_veiculo(veiculo_id)
+        serie = repo.custo_serie_veiculo(veiculo_id)
         return templates.TemplateResponse(
             request=request, name="frota_ficha.html",
             context=ctx(request, v=v, rotulo=v["rotulo"],
@@ -1000,6 +1290,7 @@ def register(app, deps):
                         docs=docs, laudos=laudos, movs=movs, abasts=abasts,
                         checklists=checklists, manutencoes=manutencoes,
                         resumo=resumo,
+                        grafico_svg=_svg_grafico_custo(serie),
                         tags_doc=TAGS_DOC,
                         funcionarios=_funcionarios_nomes(),
                         combustiveis=TIPOS_COMBUSTIVEL,

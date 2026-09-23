@@ -1,3 +1,28 @@
+## [1.48.0] - 2026-09-23
+
+### Adicionado
+- **Frota - Gráfico de custo e consumo (12 meses) na ficha do veículo**: SVG
+  offline com barras empilhadas (azul = combustível, laranja = itens extras)
+  e linha de litros; aparece no dialog Custo e consumo.
+- **Frota - Exportação de custos para Excel**: individual por veículo (na
+  ficha, com resumo + série mensal + abastecimentos) e geral (todos os
+  veículos, com abas Resumo por veículo e Abastecimentos).
+- **Abastecimentos - Itens extras por solicitação**: linhas de descrição/
+  qtde/valor no formulário (ex.: óleo 2 tempos, aditivo, pedágio), somam no
+  custo total com desglose (combustível x extras) em ficha/gráficos/resumos
+  e ganham seção própria no PDF com TOTAL GERAL.
+- **Abastecimentos - Bloquear/Excluir solicitação**: bloqueio com motivo
+  (Não usada, Erro de lançamento, Cancelado, Outro + texto livre); somente a
+  solicitação mais recente pode ser excluída (as antigas devem ser
+  bloqueadas); bloqueadas ficam fora de todos os cálculos de custo
+  (ficha, média, dashboard) e ganham badge BLOQUEADA + filtro por situação.
+- **Abastecimentos - Ordenação da lista**: por Data (padrão, mais recentes
+  primeiro) ou Serial; filtro por situação (Todas/Ativas/Bloqueadas).
+- **Abastecimentos - Coluna Nota fiscal**: mostra o número da NF anexada ou
+  badge "Sem NF".
+- **Exportação de abastecimentos atualizada**: novas colunas Itens extras
+  (R$), Total (R$), NF, Situação e Motivo.
+
 ## [1.47.0] - 2026-09-23
 
 ### Adicionado
