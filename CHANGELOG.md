@@ -1,3 +1,30 @@
+## [1.47.0] - 2026-09-23
+
+### Adicionado
+- **Ficha de EPI — Fabricante e Lote por item** (opcionais): novos campos no
+  formulário de abertura, exibidos na ficha e impressos como linha secundária
+  no PDF ("Fabricante: X · Lote: Y").
+- **Ficha de EPI — item descartável**: checkbox por linha; itens marcados
+  ganham badge "Descartável" na ficha e indicação no PDF.
+- **Ficha de EPI — badge "Devolução parcial"**: a lista e a ficha agora
+  distinguem devolução parcial (amarelo) de "Itens devolvidos" (azul) e
+  "Aberta" (verde), com filtro próprio na lista.
+- **Ficha de EPI — TERMO DE COMPROMISSO na 1ª folha do PDF**: texto integral
+  (Portaria 3.214/78, NR-01 item 1.8, NR-07, CLT Art. 462 §1º) com Local
+  (reusa "Local de treinamento" das Configurações) e CNPJ da empresa, e linha
+  de assinatura "li e estou ciente do termo acima".
+
+### Corrigido
+- **Usuários — badge de permissão**: o select de exceção por usuário voltava a
+  mostrar "Padrão do papel" depois de salvar Permitir/Negar (a alteração era
+  gravada, só a exibição errava). Agora o select reflete o estado salvo.
+- **Backup — ordenação**: a lista agora mostra sempre os backups mais
+  recentes primeiro (ordenada por data de modificação, independente do nome).
+- **PDF da Ficha de EPI — sobreposição**: os títulos das colunas ("C.A.",
+  "Descrição…", "Qtde"…) não são mais cobertos pelas faixas azuis
+  "ENTREGA/DEVOLUÇÃO DE EQUIPAMENTO" — folga dedicada entre as faixas e
+  cabeçalho de colunas com faixa própria também no bloco de devolução.
+
 ## [1.46.0] - 2026-09-18
 
 ### Adicionado

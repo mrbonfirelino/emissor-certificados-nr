@@ -302,7 +302,8 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
                 else:
                     estado[(modulo, papel)] = papel in PERMISSIONS.get(modulo, set())
                     override[(modulo, papel)] = False
-        excecoes = {u["id"]: (usuario_ov.get(u["id"]) or {})
+        excecoes = {u["id"]: {m: ("1" if v else "0")
+                              for m, v in (usuario_ov.get(u["id"]) or {}).items()}
                     for u in users.list_users()}
         return templates.TemplateResponse(
             request=request, name="usuarios.html",

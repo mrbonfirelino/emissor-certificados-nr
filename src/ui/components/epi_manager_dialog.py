@@ -86,14 +86,19 @@ def _merge_devolucoes(antigos, novos):
 
     merged = []
     for it in novos or []:
-        novo = {
+        # preserva chaves desconhecidas (fabricante/lote/descartavel e futuras)
+        # para nao perder dados de fichas criadas em versoes mais novas
+        novo = {k: v for k, v in it.items()
+                if k not in ("ca", "descricao", "quantidade", "data_entrega",
+                             "dev_quantidade", "dev_data")}
+        novo.update({
             "ca": it.get("ca", ""),
             "descricao": it.get("descricao", ""),
             "quantidade": it.get("quantidade", ""),
             "data_entrega": it.get("data_entrega", ""),
             "dev_quantidade": "",
             "dev_data": "",
-        }
+        })
         fila = pendentes.get(_chave(novo["ca"], novo["descricao"]))
         if fila:
             ant = fila.pop(0)

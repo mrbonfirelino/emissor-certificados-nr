@@ -79,6 +79,9 @@ class EpiRepository:
                 "data_entrega": str(it.get("data_entrega", "") or "").strip(),
                 "dev_quantidade": str(it.get("dev_quantidade", "") or "").strip(),
                 "dev_data": str(it.get("dev_data", "") or "").strip(),
+                "fabricante": str(it.get("fabricante", "") or "").strip(),
+                "lote": str(it.get("lote", "") or "").strip(),
+                "descartavel": bool(it.get("descartavel")),
             })
         return limpos
 

@@ -525,6 +525,43 @@ Requisitos: Microsoft PowerPoint instalado na máquina (conversão via COM).
 |------|-----------|------------|--------|
 | Realce no hover | Melhorias gerais na interface para ficar mais bonita — ex: realce nos botões e itens das listas ao passar com o mouse em cima | Media | Concluído (v1.46.0 — hover em linhas, botões, links, summaries; foco visível em inputs) |
 
+### 2.34 Portal, Backup e Ficha de EPI (CONCLUÍDA — v1.47.0)
+
+#### 2.34.1 Portal — Usuários e Backup
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Badge de permissão (Usuários) | No menu Usuários, após alterar a permissão de um usuário e salvar ainda aparece como "padrão do papel", apesar da alteração funcionar | Alta | Concluído (v1.47.0 — select reflete Permitir/Negar salvo) |
+| Ordenação dos backups | Na aba Backup, sempre organizar com base nos backups mais recentes | Media | Concluído (v1.47.0 — por data, mais recente primeiro) |
+
+#### 2.34.2 Ficha de EPI — Campos e Situação
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Fabricante e Lote | Adicionar campos "Fabricante" e "Lote" como opcionais na ficha | Alta | Concluído (v1.47.0 — por item, no form/ficha/PDF) |
+| Item descartável | Adicionar "Check" (checkbox) se o item for descartável | Media | Concluído (v1.47.0 — checkbox por item + badge/PDF) |
+| Badge "Devolução parcial" | O badge de situação no menu de fichas de EPI deveria mostrar "Devolução parcial" para quando houver devolução de parte dos itens | Alta | Concluído (v1.47.0 — badge amarelo + filtro) |
+
+#### 2.34.3 Ficha de EPI — PDF
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Correção do PDF | A geração do PDF da ficha de EPI ainda não ficou legal: sobreposição de textos na tabela etc. (faixas "ENTREGA/DEVOLUÇÃO DE EQUIPAMENTO" cobrindo os títulos das colunas) | Alta | Concluído (v1.47.0 — folga entre faixas e colunas + zebra na devolução) |
+| Termo de Compromisso | Adicionar o texto do "TERMO DE COMPROMISSO" na primeira folha de todas as fichas de EPIs, com um campo abaixo desse texto para o funcionário assinar atestando que leu todo o termo; incluir o local de treinamento (endereço da empresa) e o CNPJ da empresa nessa ficha | Alta | Concluído (v1.47.0 — termo integral + Local/CNPJ + assinatura) |
+
+Texto integral do Termo de Compromisso (typo "anterios" corrigido para "anterior"):
+
+```
+TERMO DE COMPROMISSO:
+Declaro que recebi orientação sobre o uso do EPI – Equipamento de Proteção Individual fornecida pela Empresa e que estou ciente da legislação discriminada, comprometendo-me a cumpri-la.
+Portaria Nº 3.214, 08/06/78 – Norma Regulamentadora Nº 01 – Disposições Gerais, Item 1.8 – CABE AO EMPREGADO:
+a) Cumprir as disposições legais e regulamentares sobre segurança e medicina do trabalho, inclusive as ordens de serviço expedidas pelo empregador;
+b) Usar o EPI fornecida pelo empregador;
+c) Submeter-se aos exames médicos previstos nas Normas Regulamentadoras – NR 07
+1.8.1 – Constitui ato faltoso a recusa injustificada do empregado (a) ao cumprimento do disposto no item anterior.
+CLT – Artigo 462, § 1º - Em caso de dano causado pelo empregado, o desconto será licito, desde que esta possibilidade tenha sido acordada, ou na ocorrência de dolo do empregado.
+```
+
 
 ---
 

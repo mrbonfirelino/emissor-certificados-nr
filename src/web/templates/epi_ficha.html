@@ -7,7 +7,7 @@
   <h1>Ficha de EPI {{ ficha.epi_number }}</h1>
   <p class="sub">{{ ficha.funcionario_nome }}{% if ficha.funcionario_cpf %} — {{ ficha.funcionario_cpf }}{% endif %}
      · Emissão: {{ ficha.data_emissao }}
-     · {% if ficha.status == 'fechado' %}<span class="badge b-cinza">Fechada</span>{% elif devolvidos %}<span class="badge b-azul">Itens devolvidos</span>{% else %}<span class="badge b-verde">Aberta</span>{% endif %}</p>
+      · {% if ficha.status == 'fechado' %}<span class="badge b-cinza">Fechada</span>{% elif devolvidos %}<span class="badge b-azul">Itens devolvidos</span>{% elif parcial %}<span class="badge b-amarelo">Devolução parcial</span>{% else %}<span class="badge b-verde">Aberta</span>{% endif %}</p>
 
   <p>
     {% if tem_pdf %}
@@ -21,11 +21,12 @@
   <h2>Itens</h2>
   {% if itens %}
   <table>
-    <tr><th>C.A.</th><th>Descrição</th><th>Qtde</th><th>Entrega</th><th>Situação</th></tr>
+    <tr><th>C.A.</th><th>Descrição</th><th>Fabricante / Lote</th><th>Qtde</th><th>Entrega</th><th>Situação</th></tr>
     {% for it in itens %}
     <tr>
       <td>{{ it.ca or '—' }}</td>
-      <td>{{ it.descricao }}</td>
+      <td>{{ it.descricao }}{% if it.descartavel %} <span class="badge b-amarelo" title="EPI de uso único">Descartável</span>{% endif %}</td>
+      <td class="muted">{% set _fl = [] %}{% if it.fabricante %}{% if _fl.append('Fabricante: ' ~ it.fabricante) %}{% endif %}{% endif %}{% if it.lote %}{% if _fl.append('Lote: ' ~ it.lote) %}{% endif %}{% endif %}{{ _fl | join(' · ') if _fl else '—' }}</td>
       <td>{{ it.quantidade }}</td>
       <td>{{ it.data }}</td>
       <td>

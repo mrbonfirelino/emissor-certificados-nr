@@ -18,7 +18,8 @@ from src.web import auth
 PER_PAGE = 20
 PER_OPCOES = (10, 20, 25, 50)
 STATUS_FILTROS = [("", "Todas"), ("aberto", "Abertas"),
-                  ("fechado", "Fechadas"), ("devolvidos", "Itens devolvidos")]
+                  ("fechado", "Fechadas"), ("devolvidos", "Itens devolvidos"),
+                  ("parcial", "Devolução parcial")]
 _MIME = {"pdf": "application/pdf", "jpg": "image/jpeg", "jpeg": "image/jpeg",
          "png": "image/png", "gif": "image/gif", "txt": "text/plain"}
 
@@ -58,15 +59,18 @@ def _estado(item: dict) -> str:
 
 
 def _estado_ficha(ficha: dict) -> str:
-    """'fechado' | 'devolvidos' | 'aberto' — p/ filtros e badges da lista.
+    """'fechado' | 'devolvidos' | 'parcial' | 'aberto' — p/ filtros e badges.
 
     'devolvidos' = ficha aberta em que TODOS os itens estão devolvidos (Total).
+    'parcial'    = ficha aberta com alguma devolução registrada, mas não total.
     """
     if (ficha.get("status") or "aberto") == "fechado":
         return "fechado"
     itens = ficha.get("items") or []
     if itens and all(_estado(it) == "Total" for it in itens):
         return "devolvidos"
+    if itens and any(_estado(it) != "" for it in itens):
+        return "parcial"
     return "aberto"
 
 
@@ -126,7 +130,8 @@ def register(app, deps):
             todas = [f for f in todas
                      if termo in (f.get("funcionario_nome") or "").lower()
                      or termo in (f.get("epi_number") or "").lower()]
-        status = status if status in ("aberto", "fechado", "devolvidos") else ""
+        status = status if status in ("aberto", "fechado", "devolvidos",
+                                      "parcial") else ""
         if status:
             todas = [f for f in todas if _estado_ficha(f) == status]
         per = per if per in PER_OPCOES else PER_PAGE
@@ -211,13 +216,17 @@ def register(app, deps):
             flash(request, erro="Selecione o funcionário.")
             return RedirectResponse("/epi/nova", status_code=303)
 
-        # itens: linhas item_{ca,desc,qtd,data}_{i} — ignora sem descrição
+        # itens: linhas item_{ca,desc,qtd,data,fab,lote}_{i} + item_desc_chk_{i}
+        # (checkbox de descartável) — ignora sem descrição
         itens = []
         for i in range(20):
             ca = (form.get(f"item_ca_{i}") or "").strip()
             desc = (form.get(f"item_desc_{i}") or "").strip()
             qtd = (form.get(f"item_qtd_{i}") or "").strip()
             dta = (form.get(f"item_data_{i}") or "").strip()
+            fab = (form.get(f"item_fab_{i}") or "").strip()
+            lote = (form.get(f"item_lote_{i}") or "").strip()
+            descart = bool(form.get(f"item_desc_chk_{i}"))
             if not desc and not ca:
                 continue
             try:
@@ -227,7 +236,9 @@ def register(app, deps):
                 return RedirectResponse("/epi/nova", status_code=303)
             itens.append({"ca": ca, "descricao": desc,
                           "quantidade": qtd or "1", "data_entrega": data_iso,
-                          "dev_quantidade": "", "dev_data": ""})
+                          "dev_quantidade": "", "dev_data": "",
+                          "fabricante": fab, "lote": lote,
+                          "descartavel": descart})
         if not itens:
             flash(request, erro="Informe pelo menos um item (C.A. ou descrição).")
             return RedirectResponse("/epi/nova", status_code=303)
@@ -283,6 +294,9 @@ def register(app, deps):
                           "descricao": it.get("descricao") or "—",
                           "quantidade": it.get("quantidade") or "—",
                           "data": _br(it.get("data_entrega")),
+                          "fabricante": (it.get("fabricante") or "").strip(),
+                          "lote": (it.get("lote") or "").strip(),
+                          "descartavel": bool(it.get("descartavel")),
                           "estado": est or "Pendente",
                           "classe": "b-verde" if est == "Total"
                           else ("b-amarelo" if est == "Parcial" else "b-cinza"),
@@ -290,12 +304,14 @@ def register(app, deps):
                                       f"{_br(it.get('dev_data'))}" if est else "")})
         anexos = repo.list_docs(epi_id)
         tem_pdf = bool(ficha.get("pdf_path")) and Path(ficha["pdf_path"]).exists()
+        estado_ficha = _estado_ficha(ficha)
         return templates.TemplateResponse(
             request=request, name="epi_ficha.html",
             context=ctx(request, ficha=ficha, itens=itens, anexos=anexos,
                         tem_pdf=tem_pdf, hoje_br=_hoje_br(),
                         aberto=(ficha.get("status") != "fechado"),
-                        devolvidos=(_estado_ficha(ficha) == "devolvidos"),
+                        devolvidos=(estado_ficha == "devolvidos"),
+                        parcial=(estado_ficha == "parcial"),
                         pode_escrever=auth.pode_escrever(user["papel"], "epi")))
 
     def _epi_pdf_response(epi_id: int, attachment: bool):

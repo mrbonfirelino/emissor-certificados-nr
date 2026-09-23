@@ -31,7 +31,8 @@ def register(app, deps):
     def backup_lista(request: Request, page: int = 1,
                      user: dict = auth.require_permission("backup")):
         from src.core.backup_manager import BackupManager
-        arquivos = BackupManager(start_jobs=False).list_backups()
+        arquivos = sorted(BackupManager(start_jobs=False).list_backups(),
+                          key=lambda p: Path(p).stat().st_mtime, reverse=True)
         itens = []
         for p in arquivos:
             path = Path(p)
@@ -45,7 +46,6 @@ def register(app, deps):
                 "tam_kb": max(1, tam // 1024),
                 "quando": _br_dt(path.stat().st_mtime) if tam else "—",
             })
-        itens.reverse()
         total = len(itens)
         paginas = max(1, (total + _PER_PAGE - 1) // _PER_PAGE)
         page = max(1, min(page, paginas))

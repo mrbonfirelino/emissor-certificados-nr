@@ -61,6 +61,7 @@
         <td>
           {% if f.estado_ficha == 'fechado' %}<span class="badge b-cinza">Fechada</span>
           {% elif f.estado_ficha == 'devolvidos' %}<span class="badge b-azul">Itens devolvidos</span>
+          {% elif f.estado_ficha == 'parcial' %}<span class="badge b-amarelo">Devolução parcial</span>
           {% else %}<span class="badge b-verde">Aberta</span>{% endif %}
         </td>
       </tr>
