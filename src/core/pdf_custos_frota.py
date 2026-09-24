@@ -15,6 +15,7 @@ from datetime import date, datetime
 from io import BytesIO
 
 from reportlab.lib.colors import HexColor
+from reportlab.lib.utils import ImageReader
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas as rl_canvas
@@ -54,6 +55,15 @@ def _num(v) -> str:
 
 def _brl(v) -> str:
     return "R$ " + _num(v)
+
+
+def _mil(v) -> str:
+    """Número com separador de milhar e vírgula decimal (ex.: 1.720,52)."""
+    try:
+        s = f"{float(v):,.2f}"
+        return s.replace(",", "X").replace(".", ",").replace("X", ".")
+    except (TypeError, ValueError):
+        return "0,00"
 
 
 def _posse(v: dict) -> str:
@@ -159,6 +169,7 @@ def _desenha_grafico(c: rl_canvas.Canvas, x0: float, y_base: float, larg: float,
     bw = min(30.0, passo * 0.62)
     for i, (rot, pilha) in enumerate(zip(rotulos, pilhas)):
         acum = 0.0
+        tot_mes = 0.0
         for val, cor in pilha:
             if val > 0:
                 hh = val / maxv * alt
@@ -166,9 +177,15 @@ def _desenha_grafico(c: rl_canvas.Canvas, x0: float, y_base: float, larg: float,
                 c.rect(x0 + i * passo + (passo - bw) / 2, y_base + acum,
                        bw, hh, stroke=0, fill=1)
                 acum += hh
+                tot_mes += val
+        xc = x0 + i * passo + passo / 2
         c.setFillColor(HexColor("#5A6B7C"))
         c.setFont("Helvetica", 6.5)
-        c.drawCentredString(x0 + i * passo + passo / 2, y_base - 9, rot)
+        c.drawCentredString(xc, y_base - 9, rot)
+        if tot_mes > 0:
+            c.setFillColor(TEXTO)
+            c.setFont("Helvetica-Bold", 6.5)
+            c.drawCentredString(xc, y_base - 16, _mil(tot_mes))
     c.setFillColor(HexColor("#5A6B7C"))
     c.setFont("Helvetica", 6.5)
     c.drawRightString(x0 - 4, y_base + alt - 2, _brl(maxv))
@@ -244,6 +261,40 @@ def _tabela(c: rl_canvas.Canvas, y: float, larguras: list, headers: list,
     return y
 
 
+def _tabela_paginada(c: rl_canvas.Canvas, cfg, y: float, larguras: list,
+                     headers: list, linhas: list, alinh=None,
+                     titulo: str = "") -> float:
+    """_tabela com quebra de página: repete cabeçalho (e título de seção)
+    em novas páginas, longe do rodapé. Devolve o Y final."""
+    if alinh is None:
+        alinh = ["E"] * len(larguras)
+    limite = 20 * mm
+    if titulo:
+        c.setFillColor(MUTED)
+        c.setFont("Helvetica-Bold", 9)
+        c.drawString(MARGEM, y - 4 * mm, titulo)
+        y -= 6 * mm
+    i = 0
+    while i < len(linhas):
+        if y - 7 * mm < limite:
+            _rodape(c)
+            c.showPage()
+            y = _cabecalho(c, cfg) - 6 * mm
+            if titulo:
+                c.setFillColor(MUTED)
+                c.setFont("Helvetica-Bold", 9)
+                c.drawString(MARGEM, y - 4 * mm, titulo)
+                y -= 6 * mm
+        cabem = int((y - 7 * mm - limite) // (6 * mm))
+        if cabem < 1:
+            cabem = 1
+        bloco = linhas[i:i + cabem]
+        y = _tabela(c, y, larguras, headers, bloco, alinh)
+        i += len(bloco)
+        y -= 1.5 * mm
+    return y
+
+
 def _pagina_resumo(c: rl_canvas.Canvas, repo: FrotaRepository, serie: list,
                    tot12: dict):
     cfg = _cfg_empresa()
@@ -300,13 +351,36 @@ def _pagina_resumo(c: rl_canvas.Canvas, repo: FrotaRepository, serie: list,
     if linhas:
         linhas.append(["TOTAL", f"{_num(tot_lit)} L", _brl(tot_comb),
                        _brl(tot_ext), _brl(tot_comb + tot_ext)])
-        _tabela(c, y, [92 * mm, 38 * mm, 44 * mm, 44 * mm, 46 * mm],
-                ["Veículo", "Litros", "Combustível", "Itens extras", "Total"],
-                linhas, alinh=["E", "D", "D", "D", "D"])
+        y = _tabela_paginada(
+            c, cfg, y, [92 * mm, 38 * mm, 44 * mm, 44 * mm, 46 * mm],
+            ["Veículo", "Litros", "Combustível", "Itens extras", "Total"],
+            linhas, alinh=["E", "D", "D", "D", "D"])
+        y -= 8 * mm
+
+    # valores mês a mês (item 2.38.2-10)
+    linhas_mes = []
+    m_comb = m_ext = m_lit = 0.0
+    for s in serie:
+        comb = sum(d["combustivel"] for d in (s.get("por_veiculo") or {}).values())
+        ext = sum(d["extras"] for d in (s.get("por_veiculo") or {}).values())
+        lit = sum(d["litros"] for d in (s.get("por_veiculo") or {}).values())
+        m_comb += comb
+        m_ext += ext
+        m_lit += lit
+        linhas_mes.append([s["rotulo"], f"{_num(lit)} L", _brl(comb),
+                           _brl(ext), _brl(comb + ext)])
+    if linhas_mes:
+        linhas_mes.append(["TOTAL", f"{_num(m_lit)} L", _brl(m_comb),
+                           _brl(m_ext), _brl(m_comb + m_ext)])
+        _tabela_paginada(
+            c, cfg, y, [34 * mm, 38 * mm, 50 * mm, 50 * mm, 46 * mm],
+            ["Mês", "Litros", "Combustível", "Itens extras", "Total"],
+            linhas_mes, alinh=["E", "D", "D", "D", "D"],
+            titulo="Valores por mês")
 
 
 def _pagina_veiculo(c: rl_canvas.Canvas, repo: FrotaRepository, v: dict,
-                    serie_v: list, comb_linhas: list):
+                    serie_v: list, comb_linhas: list, extras_dados=None):
     cfg = _cfg_empresa()
     y = _cabecalho(c, cfg)
 
@@ -378,14 +452,36 @@ def _pagina_veiculo(c: rl_canvas.Canvas, repo: FrotaRepository, v: dict,
                            _brl(it["combustivel"] + it["extras"])])
         linhas.append(["TOTAL", f"{_num(t_lit)} L", _brl(t_comb),
                        _brl(t_ext), _brl(t_comb + t_ext)])
-        c.setFillColor(MUTED)
-        c.setFont("Helvetica-Bold", 9)
-        c.drawString(MARGEM, y - 4 * mm, "Por tipo de combustível (histórico ativo)")
-        y -= 6 * mm
-        _tabela(c, y, [74 * mm, 38 * mm, 48 * mm, 48 * mm, 48 * mm],
-                ["Combustível", "Litros", "Valor", "Itens extras", "Total"],
-                linhas, alinh=["E", "D", "D", "D", "D"])
-        y -= (len(linhas) + 1) * 6 * mm + 2 * mm
+        y = _tabela_paginada(
+            c, cfg, y - 6 * mm, [74 * mm, 38 * mm, 48 * mm, 48 * mm, 48 * mm],
+            ["Combustível", "Litros", "Valor", "Itens extras", "Total"],
+            linhas, alinh=["E", "D", "D", "D", "D"],
+            titulo="Por tipo de combustível (histórico ativo)")
+        y -= 8 * mm
+
+    # itens extras individuais (2.38.2-6)
+    if extras_dados:
+        linhas_ex = []
+        for ex in extras_dados:
+            qtd = ex.get("qtd")
+            try:
+                qf = float(qtd)
+                qs = str(int(qf)) if qf == int(qf) else _num(qf)
+            except (TypeError, ValueError):
+                qs = "—"
+            linhas_ex.append([
+                f"{ex.get('data', '')[:10]}",
+                str(ex.get("desc") or ""),
+                f"{qs}x" if qtd else "—",
+                _brl(ex.get("valor")),
+                str(ex.get("serial") or ""),
+            ])
+        y = _tabela_paginada(
+            c, cfg, y, [22 * mm, 78 * mm, 18 * mm, 30 * mm, 42 * mm],
+            ["Data", "Descrição", "Qtde", "Valor", "Solicitação"],
+            linhas_ex, alinh=["E", "E", "D", "D", "E"],
+            titulo="Itens extras (histórico ativo)")
+        y -= 8 * mm
 
     # indicadores (histórico ativo)
     try:
@@ -426,8 +522,12 @@ def gerar_pdf_custos_frota(veiculo_id=None, repo: FrotaRepository = None) -> byt
                 continue
             comb_linhas = [it for it in repo.custo_por_combustivel()
                            if it["vid"] == vid]
+            try:
+                extras_dados = repo.list_extras_veiculo(vid)
+            except Exception:
+                extras_dados = []
             _pagina_veiculo(c, repo, v, repo.custo_serie_veiculo(vid),
-                            comb_linhas)
+                            comb_linhas, extras_dados)
             _rodape(c)
             c.showPage()
     else:
@@ -436,8 +536,12 @@ def gerar_pdf_custos_frota(veiculo_id=None, repo: FrotaRepository = None) -> byt
             raise ValueError("Veículo não encontrado.")
         comb_linhas = [it for it in repo.custo_por_combustivel()
                        if it["vid"] == veiculo_id]
+        try:
+            extras_dados = repo.list_extras_veiculo(veiculo_id)
+        except Exception:
+            extras_dados = []
         _pagina_veiculo(c, repo, v, repo.custo_serie_veiculo(veiculo_id),
-                        comb_linhas)
+                        comb_linhas, extras_dados)
         _rodape(c)
         c.showPage()
 

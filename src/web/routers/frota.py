@@ -284,7 +284,9 @@ def register(app, deps):
 
     def _svg_custos_comb(itens: list, largura=860, altura=300):
         """Gráfico POR VEÍCULO segmentado por tipo de combustível + extras
-        (2.37.2). Cada veículo com dados é uma coluna empilhada."""
+        (2.37.2/2.38.2): BARRAS HORIZONTAIS — nome do veículo à esquerda,
+        legível mesmo com nomes longos; extras garantidos mesmo quando o
+        valor do combustível é 0 (ex.: Galão de ferramentas)."""
         por_veic = {}
         ordem = []
         for it in itens:
@@ -297,10 +299,10 @@ def register(app, deps):
                  if any((x["combustivel"] + x["extras"]) > 0
                         for x in por_veic[vid]["itens"])]
         if not ordem:
-            return ""
+            return "", ""
 
         def _fmt(v):
-            return f"{float(v):.2f}".replace(".", ",")
+            return f"{float(v):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
         def _esc(t):
             return (str(t).replace("&", "&amp;").replace("<", "&lt;")
@@ -309,23 +311,36 @@ def register(app, deps):
         def _cor(comb):
             return _COMB_CORES.get(comb, "#78909C")
 
+        def _rotulo(t, mx=24):
+            t = str(t)
+            return t if len(t) <= mx else t[:mx - 1] + "…"
+
         maxv = max(
             sum(x["combustivel"] + x["extras"] for x in por_veic[vid]["itens"])
             for vid in ordem) or 0.01
-        m_e, m_d, m_t, m_b = 52, 10, 14, 46
-        pw, ph = largura - m_e - m_d, altura - m_t - m_b
-        n = len(ordem)
-        passo = pw / n
-        bw = min(46.0, passo * 0.6)
-        y_base = m_t + ph
-        partes = [f'<line x1="{m_e}" y1="{y_base}" x2="{m_e + pw}" '
-                  f'y2="{y_base}" stroke="#D6DEE8"/>']
+        m_e, m_d, m_t, m_b = 160, 70, 18, 10
+        alt_linha = 30
+        altura = m_t + m_b + alt_linha * len(ordem)
+        pw = largura - m_e - m_d
         usados = []
+        partes = []
+        for grade in range(4):
+            gx = m_e + pw * grade / 3
+            gv = maxv * grade / 3
+            partes.append(f'<line x1="{gx:.1f}" y1="{m_t}" x2="{gx:.1f}" '
+                          f'y2="{altura - m_b}" stroke="#E7EDF4"/>')
+            partes.append(f'<text x="{gx:.1f}" y="{m_t - 6}" font-size="9" '
+                          f'fill="#5A6B7C" text-anchor="middle">'
+                          f'R$ {_fmt(gv)}</text>')
         for i, vid in enumerate(ordem):
             info = por_veic[vid]
+            y = m_t + i * alt_linha
+            alt_barra = 16
+            yc = y + (alt_linha - alt_barra) / 2
+            total = sum(x["combustivel"] + x["extras"]
+                        for x in info["itens"])
             detalhes = []
             acum = 0.0
-            x = m_e + i * passo + (passo - bw) / 2
             g = [f'<g class="g-mes" data-mes="{_esc(info["rotulo"])}">']
             for it in info["itens"]:
                 v_comb = it["combustivel"]
@@ -336,37 +351,37 @@ def register(app, deps):
                         f'R$ {_fmt(v_comb)} · Litros {_fmt(it["litros"])}')
                     if it["comb"] not in usados:
                         usados.append(it["comb"])
-                    h = v_comb / maxv * ph
-                    g.append(f'<rect x="{x:.1f}" y="{y_base - acum - h:.1f}" '
-                             f'width="{bw:.1f}" height="{h:.1f}" '
+                    w = v_comb / maxv * pw
+                    g.append(f'<rect x="{m_e + acum:.1f}" y="{yc:.1f}" '
+                             f'width="{max(w, 1):.1f}" height="{alt_barra}" '
                              f'fill="{_cor(it["comb"])}"/>')
-                    acum += h
+                    acum += w
                 if v_ext > 0:
                     detalhes.append(f'Itens extras: R$ {_fmt(v_ext)}')
                     if "extras" not in usados:
                         usados.append("extras")
-                    h = v_ext / maxv * ph
-                    g.append(f'<rect x="{x:.1f}" y="{y_base - acum - h:.1f}" '
-                             f'width="{bw:.1f}" height="{h:.1f}" '
+                    w = v_ext / maxv * pw
+                    g.append(f'<rect x="{m_e + acum:.1f}" y="{yc:.1f}" '
+                             f'width="{max(w, 1):.1f}" height="{alt_barra}" '
                              f'fill="#E6A23C" opacity=".85"/>')
-                    acum += h
+                    acum += w
             g.append(f'<title>{_esc(info["rotulo"])} — ' +
                      ("; ".join(detalhes) if detalhes else "Sem custos") +
-                     '</title>')
+                     f' · Total R$ {_fmt(total)}</title>')
             g.append(f'<rect class="captura" data-mes="{_esc(info["rotulo"])}" '
-                     f'data-det="{"||".join(detalhes) if detalhes else "Sem custos."}" '
-                     f'x="{m_e + i * passo:.1f}" y="{m_t}" '
-                     f'width="{passo:.1f}" height="{ph:.1f}" fill="transparent"/>')
-            g.append(f'<text x="{m_e + i * passo + passo / 2:.1f}" '
-                     f'y="{altura - 30}" font-size="9" fill="#5A6B7C" '
-                     f'text-anchor="middle">{_esc(info["rotulo"])}</text>')
+                     f'data-det="{"||".join(detalhes) if detalhes else "Sem custos."}||Total: R$ {_fmt(total)}" '
+                     f'x="{m_e}" y="{y}" width="{pw}" height="{alt_linha}" '
+                     f'fill="transparent"/>')
             g.append('</g>')
             partes.append("".join(g))
-        partes.append(f'<text x="{m_e - 6}" y="{m_t + 4}" font-size="9" '
-                      f'fill="#5A6B7C" text-anchor="end">'
-                      f'R$ {maxv:,.0f}</text>'.replace(",", "."))
-        partes.append(f'<text x="{m_e - 6}" y="{y_base}" font-size="9" '
-                      f'fill="#5A6B7C" text-anchor="end">0</text>')
+            partes.append(
+                f'<text x="{m_e - 8}" y="{y + alt_linha / 2 + 3:.1f}" '
+                f'font-size="10" fill="#22303F" text-anchor="end">'
+                f'{_esc(_rotulo(info["rotulo"]))}</text>')
+            partes.append(
+                f'<text x="{m_e + acum + 5:.1f}" '
+                f'y="{y + alt_linha / 2 + 3:.1f}" font-size="9" '
+                f'fill="#43505D">R$ {_fmt(total)}</text>')
         rot_leg = [("extras", "Itens extras")] + \
                   [(c, label_combustivel(c)) for c in usados if c != "extras"]
         leg = "".join(
@@ -1550,7 +1565,9 @@ def register(app, deps):
         p = Path(a["pdf_path"])
         if not p.exists():
             return Response(status_code=404)
-        return FileResponse(p, media_type="application/pdf")
+        # 2.38.1: nunca servir PDF de cache — edição regenera o mesmo arquivo
+        return FileResponse(p, media_type="application/pdf",
+                            headers={"Cache-Control": "no-store, must-revalidate"})
 
     @app.get("/frota/abastecimentos/{abast_id}/pdf/download")
     def frota_abast_pdf_download(abast_id: int):
@@ -1561,7 +1578,8 @@ def register(app, deps):
         if not p.exists():
             return Response(status_code=404)
         return FileResponse(p, media_type="application/pdf",
-                            filename=f"{a['serial']}.pdf")
+                            filename=f"{a['serial']}.pdf",
+                            headers={"Cache-Control": "no-store, must-revalidate"})
 
 
 # ================= ficha do veiculo =================

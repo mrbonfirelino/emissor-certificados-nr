@@ -284,8 +284,8 @@
         <td class="acoes">
           {% if pode_escrever %}<a class="btn cinza" href="/frota/abastecimentos/{{ a.id }}/nfs">NF / valores</a>{% endif %}
           {% if a.pdf_path %}
-          <a class="btn" href="/frota/abastecimentos/{{ a.id }}/pdf" target="_blank">Ver</a>
-          <a class="btn cinza" href="/frota/abastecimentos/{{ a.id }}/pdf/download">Baixar</a>
+          <a class="btn" href="/frota/abastecimentos/{{ a.id }}/pdf?v={{ a.revisao or 0 }}" target="_blank">Ver</a>
+          <a class="btn azul-claro" href="/frota/abastecimentos/{{ a.id }}/pdf/download?v={{ a.revisao or 0 }}">Baixar</a>
           {% endif %}
         </td>
       </tr>

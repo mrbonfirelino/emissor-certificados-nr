@@ -1,3 +1,18 @@
+## [1.51.0] - 2026-09-24
+
+### Corrigido
+- Abastecimentos: ordenação da lista agora ignora datas gravadas fora do padrão ISO (datas quebradas vão para o fim, recentes primeiro).
+- "Ver"/"Baixar" do PDF de abastecimento não servem mais cópia em cache do navegador (Cache-Control no-store + ?v=revisão).
+- Custos da frota: veículo sem abastecimento volta a aparecer com 0 (não mais "1" fantasma).
+- PDF de custos: foto do veículo agora é renderizada (ImageReader faltava no import); tabelas paginadas não colidem mais com o rodapé; relatório pode passar de uma página.
+- Gráfico "Custos por veículo × tipo de combustível" redesenhado em barras horizontais (nomes dos veículos legíveis) e com os itens extras destacados.
+
+### Adicionado
+- Separador de milhar em KM e valores (210884 -> 210.884; R$ 1.720,52) nas listas, custos e PDFs.
+- Relatório de custos individual com seção própria de "Itens extras" (descrição, quantidade, valor e solicitação de origem) e valor gasto por mês abaixo do gráfico.
+- Relatório de custos da frota com tabela "Valores por mês" (por veículo) e paginação multi-página.
+- Novas cores de botões na lista de abastecimentos: Bloquear (vermelho), Editar (verde), NF (amarelo claro), Baixar (azul claro).
+
 ## [1.50.0] — 2026-09-24
 
 ### Adicionado

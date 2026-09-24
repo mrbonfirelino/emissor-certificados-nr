@@ -989,8 +989,12 @@ class FrotaRepository:
         elif situacao == "bloqueadas":
             where = (where + " AND a.status = 'bloqueada'") if where \
                 else "WHERE a.status = 'bloqueada'"
+        # 2.38.1: ordena só datas ISO (aaaa-mm-dd); datas quebradas vão
+        # para o fim — evita AB recente cair por último na lista.
         order = ("a.serial DESC" if ordem == "serial"
-                 else "a.data DESC, a.id DESC")
+                 else "(CASE WHEN length(a.data)=10"
+                      " AND substr(a.data,5,1)='-'"
+                      " THEN a.data ELSE '' END) DESC, a.id DESC")
         with self._get_conn() as conn:
             rows = conn.execute(
                 "SELECT a.*, v.modelo, v.marca, v.placa,"
@@ -1663,7 +1667,8 @@ class FrotaRepository:
                 "   THEN COALESCE(a.extras_total,0) END),0) AS extras,"
                 " COALESCE(SUM(CASE WHEN a.status IS NULL"
                 "   THEN COALESCE(a.litros,0) END),0) AS litros,"
-                " SUM(CASE WHEN a.status IS NULL THEN 1 ELSE 0 END) AS qtd"
+                 " SUM(CASE WHEN a.id IS NOT NULL AND a.status IS NULL"
+                 " THEN 1 ELSE 0 END) AS qtd"
                 " FROM frota_veiculos v"
                 " LEFT JOIN frota_abastecimentos a ON a.veiculo_id = v.id"
                 " GROUP BY v.id ORDER BY v.id").fetchall()
@@ -1674,6 +1679,34 @@ class FrotaRepository:
                 {"marca": d["marca"], "modelo": d["modelo"],
                  "placa": d["placa"]})
             out.append(d)
+        return out
+
+    def list_extras_veiculo(self, veiculo_id: int) -> List[dict]:
+        """Itens extras individuais (2.38.2) das solicitações ATIVAS do
+        veículo, com o serial de origem. Bloqueadas ficam fora."""
+        with self._get_conn() as conn:
+            rows = conn.execute(
+                "SELECT serial, data, extras, extras_total"
+                " FROM frota_abastecimentos"
+                " WHERE veiculo_id=? AND status IS NULL"
+                " ORDER BY data DESC, id DESC",
+                (veiculo_id,)).fetchall()
+        out = []
+        for r in rows:
+            try:
+                lista = json.loads(r["extras"] or "[]")
+            except (TypeError, ValueError):
+                lista = []
+            for ex in lista:
+                desc = str(ex.get("desc") or "").strip()
+                if not desc:
+                    continue
+                out.append({
+                    "serial": r["serial"], "data": r["data"],
+                    "desc": desc,
+                    "qtd": ex.get("qtd"),
+                    "valor": ex.get("valor"),
+                })
         return out
 
     def custo_mes(self) -> float:

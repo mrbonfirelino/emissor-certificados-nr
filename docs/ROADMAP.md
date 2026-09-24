@@ -618,6 +618,29 @@ CLT – Artigo 462, § 1º - Em caso de dano causado pelo empregado, o desconto 
 |------|-----------|------------|--------|
 | Consumo com 2 casas decimais | Fazer um ajuste em todos os campos em que aparece o consumo de combustível para mostrar apenas 2 casas decimais, sempre separadas com vírgula (padrão brasileiro, ex: 12,50 KM/L) — melhora a leitura e evita excesso de informações | Alta | Concluído (v1.50.0) |
 
+### 2.38 Frota — Correções de Abastecimento e Custos — CONCLUÍDA — v1.51.0
+
+#### 2.38.1 Correções no Menu de Solicitação de Abastecimento
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Ordenação da lista | Por algum motivo o abastecimento AB-2026-00033 fica sempre por último na lista, mesmo filtrando pelos mais recentes — sendo que ele é mais recente que outros itens. Corrigir a ordenação | Alta | Concluído (v1.51.0) |
+| "Ver" abre PDF antigo | Ao clicar em "Ver" o sistema abre um PDF antigo, mesmo que tenha sido feita alguma alteração nos valores ou consumo de combustível — só foi possível visualizar a versão mais nova clicando em "Baixar". O ideal é gerar o documento novamente caso seja detectada qualquer alteração ou revisão mais nova | Alta | Concluído (v1.51.0) |
+| Cores dos botões | Deixar o botão "Bloquear" em vermelho, "Editar" em verde, "NF" em amarelo claro e "Baixar" em azul claro | Media | Concluído (v1.51.0) |
+| Separador de milhar em "KM" e "Valor" | Nos campos "KM" e "Valor", incluir um ponto a cada 3 dígitos para facilitar a leitura (ex: custo 1720,52 vira 1.720,52; KM 210884 vira 210.884) | Media | Concluído (v1.51.0) |
+
+#### 2.38.2 Custo e Consumo da Frota (/frota/custos)
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Resumo por veículo | Veículos que não tiveram nenhum abastecimento registrado aparecem com "1" abastecimento ativo — deveriam aparecer com 0 | Alta | Concluído (v1.51.0) |
+| Área de custos extras (relatório individual) | No "Relatório de custos" individual, deixar uma área específica para apresentar os custos extras (listando cada um e o código do abastecimento em que foram adicionados) | Alta | Concluído (v1.51.0) |
+| Custos extras no gráfico | Os custos extras também precisam aparecer no gráfico — atualmente só aparece o custo em litros e o valor está errado/diferente da tabela (verificado que isso só acontece no "veículo" Galão de ferramentas) | Alta | Concluído (v1.51.0) |
+| Abastecimentos bloqueados fora dos cálculos | Caso um abastecimento esteja registrado como bloqueado, ele não pode ser considerado no gráfico nem na tabela de custos | Alta | Concluído (v1.51.0) |
+| Valor gasto por mês (relatório individual) | Abaixo de cada data do gráfico (relatório individual), mostrar o valor gasto naquele mês (ex: 08/26 - 2.394; 09/26 - 1.283) | Media | Concluído (v1.51.0) |
+| Relatório de custos da frota | No "Relatório de custos" da frota: não colocar o nome dos veículos no gráfico; o relatório pode passar de uma página para caber todo o conteúdo; certificar que o conteúdo não está batendo na "marca d'água" do PDF; colocar o valor gasto em cada mês | Alta | Concluído (v1.51.0) |
+| Gráfico "Custos por veículo × tipo de combustível" legível | Ajustar para não aparecer o nome do veículo OU usar barras laterais (horizontais) — atualmente fica impossível ler os nomes dos veículos sobrepostos no eixo (ver imagem anexada) | Alta | Concluído (v1.51.0) |
+
 
 ---
 

@@ -133,24 +133,29 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
             return v
 
     templates.env.filters["milhar"] = _milhar
+    templates.env.globals["milhar"] = _milhar
 
     def _dec(v, casas: int = 2):
-        """Número com vírgula decimal (2.37.3): 40.5 -> '40,50'; vazio -> '—'."""
+        """Número com vírgula decimal e milhar (2.37.3/2.38.1):
+        1720.52 -> '1.720,52'; vazio -> '—'."""
         if v in (None, ""):
             return "—"
         try:
-            return f"{float(v):.{casas}f}".replace(".", ",")
+            txt = f"{float(v):.{casas}f}"
+            inteiro, _, frac = txt.partition(".")
+            return _milhar(inteiro) + ("," + frac if frac else "")
         except (TypeError, ValueError):
             return v
 
     templates.env.filters["dec"] = _dec
 
     def _brl(v):
-        """Moeda com vírgula (2.37.3): 409.5 -> 'R$ 409,50'; vazio -> '—'."""
+        """Moeda com vírgula e milhar (2.37.3/2.38.1): 409.5 -> 'R$ 409,50';
+        1720.52 -> 'R$ 1.720,52'; vazio -> '—'."""
         if v in (None, ""):
             return "—"
         try:
-            return "R$ " + f"{float(v):.2f}".replace(".", ",")
+            return "R$ " + _dec(v)
         except (TypeError, ValueError):
             return v
 

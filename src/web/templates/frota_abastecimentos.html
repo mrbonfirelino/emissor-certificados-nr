@@ -48,23 +48,23 @@
         <td>{{ a.data_br }}</td>
         <td>{{ a.veiculo_rotulo }}</td>
         <td>{{ a.combustivel_label }}</td>
-        <td>{{ a.km if a.km is not none else '—' }}</td>
+        <td>{{ milhar(a.km) if a.km is not none else '—' }}</td>
         <td>{{ dec(a.litros) }}</td>
         <td>{{ brl(a.valor) }}</td>
         <td>{% if a.tem_nf %}<b class="numero">{{ a.nf_numero }}</b>{% else %}<span class="badge b-cinza">Sem NF</span>{% endif %}</td>
         <td>{{ a.condutor }}</td>
         <td>{{ a.fornecedor or '—' }}</td>
         <td class="acoes">
-          <a class="btn cinza" href="/frota/abastecimentos/{{ a.id }}/nfs">NF</a>
-          {% if pode_escrever %}<a class="btn cinza" href="/frota/abastecimentos/{{ a.id }}/editar">Editar</a>{% endif %}
+          <a class="btn amarelo-claro" href="/frota/abastecimentos/{{ a.id }}/nfs">NF</a>
+          {% if pode_escrever %}<a class="btn verde" href="/frota/abastecimentos/{{ a.id }}/editar">Editar</a>{% endif %}
           {% if a.pdf_path %}
-          <a class="btn" href="/frota/abastecimentos/{{ a.id }}/pdf" target="_blank">Ver</a>
-          <a class="btn cinza" href="/frota/abastecimentos/{{ a.id }}/pdf/download">Baixar</a>
+          <a class="btn" href="/frota/abastecimentos/{{ a.id }}/pdf?v={{ a.revisao or 0 }}" target="_blank">Ver</a>
+          <a class="btn azul-claro" href="/frota/abastecimentos/{{ a.id }}/pdf/download?v={{ a.revisao or 0 }}">Baixar</a>
           {% endif %}
           {% if pode_escrever %}
           {% if not a.bloqueada %}
           <details class="anexo-pop">
-            <summary class="btn cinza">Bloquear</summary>
+            <summary class="btn vermelho">Bloquear</summary>
             <div class="anexo-box">
               <form method="post" action="/frota/abastecimentos/{{ a.id }}/bloquear">
                 <label class="muted" for="motivo-{{ a.id }}">Motivo (sai dos custos)</label>
