@@ -100,13 +100,6 @@ def gerar_pdf_abastecimento(dados: dict) -> Path:
                            style_sub))
     story.append(Spacer(1, 6 * mm))
     story.append(Paragraph(f"<b>{serial}</b>", style_ser))
-    revisao = (dados.get("revisao") or "").strip()
-    if revisao:
-        story.append(Spacer(1, 2 * mm))
-        story.append(Paragraph(
-            f"<b>{revisao}</b> — documento revisado; substitui a versão"
-            " anterior.",
-            style_sub))
     story.append(Spacer(1, 8 * mm))
 
     def _celula(rotulo, valor):
@@ -128,7 +121,7 @@ def gerar_pdf_abastecimento(dados: dict) -> Path:
         forn_txt += f" · CNPJ {forn['cnpj']}"
 
     pares = [
-        ("Serial", serial + (f"  ·  {revisao}" if revisao else "")),
+        ("Serial", serial),
         ("Data da solicitação", dados.get("data_br") or "—"),
         ("Veículo", rotulo_veic),
         ("Combustível", label_combustivel(dados.get("combustivel", ""))),
@@ -153,51 +146,28 @@ def gerar_pdf_abastecimento(dados: dict) -> Path:
     ]))
     story.append(t_dados)
 
-    # ---- Itens extras (2.35.2): tabela Descrição | Qtde | Valor ----
+    # ---- Itens extras (2.35.2 / 2.37.1): SEM valores no documento —
+    # apenas Descrição | Qtde (custo fica só no sistema) ----
     extras = [e for e in (dados.get("extras") or [])
-              if isinstance(e, dict) and
-              (str(e.get("desc") or "").strip() or e.get("valor") is not None)]
+              if isinstance(e, dict) and str(e.get("desc") or "").strip()]
     if extras:
         style_extra_hd = _fonte("extrahd-bold", 8.5, textColor=CINZA,
                                 leading=11)
         style_extra_val = _fonte("extraval", 9.5, leading=12)
-        style_extra_tot = _fonte("extratot-bold", 9.5, leading=12)
-
-        def _fmt(v):
-            try:
-                return ("R$ %.2f" % float(str(v).replace(",", ".")))
-            except (TypeError, ValueError):
-                return "—"
 
         linhas_ex = [[Paragraph("DESCRIÇÃO", style_extra_hd),
-                      Paragraph("QTDE", style_extra_hd),
-                      Paragraph("VALOR", style_extra_hd)]]
+                      Paragraph("QTDE", style_extra_hd)]]
         for e in extras:
             linhas_ex.append([
                 Paragraph(str(e.get("desc") or "—"), style_extra_val),
                 Paragraph(str(e.get("qtd") or "—"), style_extra_val),
-                Paragraph(_fmt(e.get("valor")), style_extra_val),
             ])
-        total_geral = None
-        try:
-            total_geral = (float(dados.get("extras_total") or 0)
-                           + float(dados.get("valor") or 0))
-        except (TypeError, ValueError):
-            total_geral = None
-        if total_geral is not None and total_geral > 0:
-            linhas_ex.append([
-                Paragraph("TOTAL GERAL (combustível + itens)",
-                          style_extra_tot),
-                Paragraph("", style_extra_tot),
-                Paragraph("R$ %.2f" % total_geral, style_extra_tot),
-            ])
-        t_ex = Table(linhas_ex, colWidths=[106 * mm, 24 * mm, 40 * mm])
+        t_ex = Table(linhas_ex, colWidths=[130 * mm, 40 * mm])
         t_ex.setStyle(TableStyle([
             ("GRID", (0, 0), (-1, -1), 0.6, BORDA),
             ("BACKGROUND", (0, 0), (-1, 0), FUNDO),
-            ("BACKGROUND", (0, -1), (-1, -1), FUNDO),
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("ALIGN", (1, 0), (2, -1), "CENTER"),
+            ("ALIGN", (1, 0), (1, -1), "CENTER"),
             ("TOPPADDING", (0, 0), (-1, -1), 4),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
             ("LEFTPADDING", (0, 0), (-1, -1), 8),
@@ -255,14 +225,6 @@ def gerar_pdf_abastecimento(dados: dict) -> Path:
         topMargin=15 * mm, bottomMargin=15 * mm,
         title=f"Solicitação de Abastecimento {serial}")
 
-    # revisão no cantinho do rodapé (2.33.2): REV_A, REV_B...
-    def _rodape_rev(canv, _doc):
-        if revisao:
-            canv.saveState()
-            canv.setFont("Helvetica-Bold", 8)
-            canv.setFillColor(HexColor("#B71C1C"))
-            canv.drawRightString(A4[0] - 12 * mm, 8 * mm, revisao)
-            canv.restoreState()
-
-    doc.build(story, onFirstPage=_rodape_rev, onLaterPages=_rodape_rev)
+    # 2.37.1: revisão fica só no sistema — documento sem marcação de REV
+    doc.build(story)
     return destino

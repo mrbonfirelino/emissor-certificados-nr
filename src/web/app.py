@@ -134,6 +134,30 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
 
     templates.env.filters["milhar"] = _milhar
 
+    def _dec(v, casas: int = 2):
+        """Número com vírgula decimal (2.37.3): 40.5 -> '40,50'; vazio -> '—'."""
+        if v in (None, ""):
+            return "—"
+        try:
+            return f"{float(v):.{casas}f}".replace(".", ",")
+        except (TypeError, ValueError):
+            return v
+
+    templates.env.filters["dec"] = _dec
+
+    def _brl(v):
+        """Moeda com vírgula (2.37.3): 409.5 -> 'R$ 409,50'; vazio -> '—'."""
+        if v in (None, ""):
+            return "—"
+        try:
+            return "R$ " + f"{float(v):.2f}".replace(".", ",")
+        except (TypeError, ValueError):
+            return v
+
+    templates.env.filters["brl"] = _brl
+    templates.env.globals["dec"] = _dec
+    templates.env.globals["brl"] = _brl
+
     def _ctx(request: Request, **extra) -> dict:
         user = auth.current_user(request)
         sessao = request.session.pop("flash", None) or {}

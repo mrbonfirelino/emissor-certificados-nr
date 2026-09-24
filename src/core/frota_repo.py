@@ -359,6 +359,7 @@ class FrotaRepository:
                          ("assinado_filename", "TEXT"),
                          ("assinado_em", "TEXT"),
                          ("extras", "TEXT"), ("extras_total", "REAL"),
+                         ("tmp_fornecedor", "TEXT"), ("tmp_cnpj", "TEXT"),
                          ("status", "TEXT"), ("motivo_status", "TEXT"),
                          ("status_em", "TEXT"), ("status_por", "TEXT")):
             if col not in abast:
@@ -919,10 +920,12 @@ class FrotaRepository:
                           pdf_path: Optional[str] = None,
                           litros: Optional[float] = None,
                           valor: Optional[float] = None,
-                          extras: Optional[List[dict]] = None):
+                          extras: Optional[List[dict]] = None,
+                          tmp_fornecedor: str = "", tmp_cnpj: str = ""):
         """Insere e devolve (id, serial). Serial AB-{ano}-{id:05d}: o
         sequencial (id) nunca reinicia; o ano vem da data da solicitacao.
-        extras = itens adicionais (2.35.2): [{'desc','qtd','valor'}]."""
+        extras = itens adicionais (2.35.2): [{'desc','qtd','valor'}].
+        tmp_fornecedor/tmp_cnpj = posto temporário sem cadastro (2.37.1)."""
         if combustivel not in dict(TIPOS_COMBUSTIVEL):
             raise ValueError("Tipo de combustível inválido.")
         if not data_abast:
@@ -938,18 +941,22 @@ class FrotaRepository:
         if valor is not None and valor <= 0:
             valor = None
         extras_json, extras_total = _extras_pack(extras)
+        tmp_forn = (tmp_fornecedor or "").strip() or None
+        tmp_cnpj_v = (tmp_cnpj or "").strip() or None
+        if tmp_forn:
+            fornecedor_id = None
         with self._get_conn() as conn:
             cur = conn.execute(
                 "INSERT INTO frota_abastecimentos (serial, veiculo_id,"
                 " fornecedor_id, combustivel, data, viagem_servico, km,"
                 " condutor, superior, obs, pdf_path, litros, valor,"
-                " extras, extras_total)"
-                " VALUES ('',?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                " extras, extras_total, tmp_fornecedor, tmp_cnpj)"
+                " VALUES ('',?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (veiculo_id, fornecedor_id, combustivel, data_abast,
                  (viagem_servico or "").strip() or None, km,
                  condutor.strip(), superior.strip(),
                  (obs or "").strip() or None, pdf_path, litros, valor,
-                 extras_json, extras_total or None))
+                 extras_json, extras_total or None, tmp_forn, tmp_cnpj_v))
             novo_id = cur.lastrowid
             try:
                 ano = date.fromisoformat(data_abast).year
@@ -973,6 +980,7 @@ class FrotaRepository:
                      "lower(coalesce(v.modelo,''))||' '||"
                      "lower(coalesce(v.placa,''))||' '||"
                      "lower(coalesce(f.nome,''))||' '||"
+                     "lower(coalesce(a.tmp_fornecedor,''))||' '||"
                      "lower(coalesce(a.condutor,'')) LIKE ?")
             params.append(q)
         if situacao == "ativas":
@@ -985,7 +993,8 @@ class FrotaRepository:
                  else "a.data DESC, a.id DESC")
         with self._get_conn() as conn:
             rows = conn.execute(
-                "SELECT a.*, v.modelo, v.marca, v.placa, f.nome AS fornecedor"
+                "SELECT a.*, v.modelo, v.marca, v.placa,"
+                " COALESCE(f.nome, a.tmp_fornecedor) AS fornecedor"
                 " FROM frota_abastecimentos a"
                 " JOIN frota_veiculos v ON a.veiculo_id = v.id"
                 " LEFT JOIN frota_fornecedores f ON a.fornecedor_id = f.id"
@@ -1028,7 +1037,8 @@ class FrotaRepository:
             row = conn.execute(
                 "SELECT a.*, v.modelo, v.marca, v.placa, v.tipo AS veic_tipo,"
                 " v.proprio, v.contratante,"
-                " f.nome AS fornecedor, f.cnpj AS fornecedor_cnpj,"
+                " COALESCE(f.nome, a.tmp_fornecedor) AS fornecedor,"
+                " COALESCE(f.cnpj, a.tmp_cnpj) AS fornecedor_cnpj,"
                 " f.endereco AS fornecedor_endereco"
                 " FROM frota_abastecimentos a"
                 " JOIN frota_veiculos v ON a.veiculo_id = v.id"
@@ -1045,7 +1055,7 @@ class FrotaRepository:
         with self._get_conn() as conn:
             rows = conn.execute(
                 "SELECT a.*, v.modelo, v.marca, v.placa,"
-                " f.nome AS fornecedor"
+                " COALESCE(f.nome, a.tmp_fornecedor) AS fornecedor"
                 " FROM frota_abastecimentos a"
                 " JOIN frota_veiculos v ON a.veiculo_id = v.id"
                 " LEFT JOIN frota_fornecedores f ON a.fornecedor_id = f.id"
@@ -1083,10 +1093,13 @@ class FrotaRepository:
                              condutor: str, obs: str = "",
                              litros: Optional[float] = None,
                              valor: Optional[float] = None,
-                             extras: Optional[List[dict]] = None) -> int:
+                             extras: Optional[List[dict]] = None,
+                             tmp_fornecedor: str = "",
+                             tmp_cnpj: str = "") -> int:
         """Edita a solicitação (2.33.2) e incrementa a revisão.
         Devolve a revisão resultante (0 = original, 1 = REV_A, ...).
-        extras = itens adicionais (2.35.2); regravá-los também conta revisão."""
+        extras = itens adicionais (2.35.2); regravá-los também conta revisão.
+        tmp_fornecedor/tmp_cnpj = posto temporário sem cadastro (2.37.1)."""
         if combustivel not in dict(TIPOS_COMBUSTIVEL):
             raise ValueError("Tipo de combustível inválido.")
         if not data_abast:
@@ -1100,17 +1113,23 @@ class FrotaRepository:
         if valor is not None and valor <= 0:
             valor = None
         extras_json, extras_total = _extras_pack(extras)
+        tmp_forn = (tmp_fornecedor or "").strip() or None
+        tmp_cnpj_v = (tmp_cnpj or "").strip() or None
+        if tmp_forn:
+            fornecedor_id = None
         with self._get_conn() as conn:
             cur = conn.execute(
                 "UPDATE frota_abastecimentos SET fornecedor_id=?,"
                 " combustivel=?, data=?, viagem_servico=?, km=?, condutor=?,"
                 " obs=?, litros=?, valor=?, extras=?, extras_total=?,"
+                " tmp_fornecedor=?, tmp_cnpj=?,"
                 " revisao=COALESCE(revisao,0)+1"
                 " WHERE id=?",
                 (fornecedor_id, combustivel, data_abast,
                  (viagem_servico or "").strip() or None, km,
                  condutor.strip(), (obs or "").strip() or None,
-                 litros, valor, extras_json, extras_total or None, abast_id))
+                 litros, valor, extras_json, extras_total or None,
+                 tmp_forn, tmp_cnpj_v, abast_id))
             if cur.rowcount == 0:
                 raise ValueError("Solicitação não encontrada.")
             rev = conn.execute(
@@ -1561,6 +1580,76 @@ class FrotaRepository:
                 "litros": round(float(r.get("litros") or 0), 2),
             })
         return serie
+
+    def custo_serie_todos(self, meses: int = 12) -> List[dict]:
+        """Série mensal (2.37.2) dos últimos `meses` meses com detalhe POR
+        VEÍCULO: cada item é {mes, rotulo, por_veiculo: {vid: {rotulo,
+        combustivel, extras, litros}}}. Ignora bloqueadas. Sempre devolve
+        `meses` itens (meses sem dados têm por_veiculo vazio)."""
+        with self._get_conn() as conn:
+            rows = conn.execute(
+                "SELECT a.veiculo_id AS vid, v.modelo, v.marca, v.placa,"
+                " substr(a.data,1,7) AS mes,"
+                " SUM(COALESCE(a.valor,0)) AS combustivel,"
+                " SUM(COALESCE(a.extras_total,0)) AS extras,"
+                " SUM(COALESCE(a.litros,0)) AS litros"
+                " FROM frota_abastecimentos a"
+                " JOIN frota_veiculos v ON v.id = a.veiculo_id"
+                " WHERE a.status IS NULL"
+                " GROUP BY a.veiculo_id, substr(a.data,1,7)").fetchall()
+        rotulos = {}
+        por_mes = {}
+        for r in rows:
+            d = dict(r)
+            if d["vid"] not in rotulos:
+                rotulos[d["vid"]] = veiculo_rotulo(
+                    {"marca": d["marca"], "modelo": d["modelo"],
+                     "placa": d["placa"]})
+            por_mes.setdefault(d["mes"], {})[d["vid"]] = {
+                "rotulo": rotulos[d["vid"]],
+                "combustivel": round(float(d["combustivel"] or 0), 2),
+                "extras": round(float(d["extras"] or 0), 2),
+                "litros": round(float(d["litros"] or 0), 2),
+            }
+        serie = []
+        base = date.today()
+        for i in range(meses - 1, -1, -1):
+            y = base.year
+            m = base.month - i
+            while m <= 0:
+                m += 12
+                y -= 1
+            chave = f"{y:04d}-{m:02d}"
+            serie.append({
+                "mes": chave,
+                "rotulo": f"{m:02d}/{str(y)[2:]}",
+                "por_veiculo": por_mes.get(chave, {}),
+            })
+        return serie
+
+    def custo_por_combustivel(self) -> List[dict]:
+        """Total por veículo × tipo de combustível (2.37.2), incluindo extras,
+        ignorando bloqueadas. Ordenado por veículo e maior custo."""
+        with self._get_conn() as conn:
+            rows = conn.execute(
+                "SELECT a.veiculo_id AS vid, a.combustivel AS comb,"
+                " v.modelo, v.marca, v.placa,"
+                " SUM(COALESCE(a.valor,0)) AS combustivel,"
+                " SUM(COALESCE(a.extras_total,0)) AS extras,"
+                " SUM(COALESCE(a.litros,0)) AS litros"
+                " FROM frota_abastecimentos a"
+                " JOIN frota_veiculos v ON v.id = a.veiculo_id"
+                " WHERE a.status IS NULL"
+                " GROUP BY a.veiculo_id, a.combustivel"
+                " ORDER BY v.id, combustivel DESC").fetchall()
+        out = []
+        for r in rows:
+            d = dict(r)
+            d["veiculo_rotulo"] = veiculo_rotulo(
+                {"marca": d["marca"], "modelo": d["modelo"],
+                 "placa": d["placa"]})
+            out.append(d)
+        return out
 
     def resumo_custo_todos(self) -> List[dict]:
         """Resumo de custo por veículo (2.35.1) para o export geral.

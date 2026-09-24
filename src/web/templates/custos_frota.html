@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block titulo %}Custos — Frota — NormaTech{% endblock %}
+{% block conteudo %}
+<div class="card">
+  <h1>Custos e consumo — Frota</h1>
+  <p class="sub">Últimos 12 meses · solicitações bloqueadas ficam fora dos totais.</p>
+
+  <div class="linha-botoes" style="margin-top:0;">
+    <a class="btn verde" href="/frota/custos/pdf" target="_blank">Exportar PDF (diretoria)</a>
+    <a class="btn cinza" href="/frota/custos/exportar">Exportar Excel (geral)</a>
+    <a class="btn cinza" href="/frota">Voltar</a>
+  </div>
+
+  <h2 style="margin-top:22px;">Custos por mês — todos os veículos</h2>
+  <div id="graf-meses">{{ grafico_meses }}</div>
+  {% if grafico_meses %}
+  <div class="legenda-graf" id="leg-meses">{{ legenda_meses | safe }}</div>
+  <button type="button" class="btn" data-png="graf-meses" data-nome="custos_frota_por_mes" style="margin-top:10px;">Baixar gráfico (PNG)</button>
+  {% else %}
+  <p class="muted">Sem abastecimentos ativos nos últimos 12 meses.</p>
+  {% endif %}
+
+  <h2 style="margin-top:26px;">Custos por veículo × tipo de combustível</h2>
+  <div id="graf-comb">{{ grafico_comb }}</div>
+  {% if grafico_comb %}
+  <div class="legenda-graf" id="leg-comb">{{ legenda_comb | safe }}</div>
+  <button type="button" class="btn" data-png="graf-comb" data-nome="custos_frota_por_veiculo" style="margin-top:10px;">Baixar gráfico (PNG)</button>
+  {% else %}
+  <p class="muted">Sem custos para graficar.</p>
+  {% endif %}
+
+  <h2 style="margin-top:26px;">Resumo por veículo</h2>
+  {% if resumos %}
+  <table>
+    <thead><tr><th>Veículo</th><th>Abast. ativos</th><th>Litros</th><th>Combustível</th><th>Itens extras</th><th>Total</th><th></th></tr></thead>
+    <tbody>
+    {% for r in resumos %}
+      <tr>
+        <td>{{ r.veiculo_rotulo }}{% if r.placa %} <span class="muted">({{ r.placa }})</span>{% endif %}</td>
+        <td>{{ r.qtd }}</td>
+        <td>{{ r.litros | dec }} L</td>
+        <td>{{ r.combustivel | brl }}</td>
+        <td>{{ r.extras | brl }}</td>
+        <td><b>{{ (r.combustivel + r.extras) | brl }}</b></td>
+        <td class="acoes">
+          <a class="btn cinza" href="/frota/{{ r.id }}/custo/exportar">Excel individual</a>
+          <a class="btn cinza" href="/frota/{{ r.id }}/custos/pdf" target="_blank">PDF</a>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">Nenhum abastecimento ativo.</p>
+  {% endif %}
+</div>
+<div id="graf-tip" class="graf-tip"></div>
+<script>
+(function () {
+  var tip = document.getElementById("graf-tip");
+  document.querySelectorAll("#graf-meses .g-mes, #graf-comb .g-mes").forEach(function (g) {
+    var cap = g.querySelector(".captura") || g;
+    g.addEventListener("mousemove", function (ev) {
+      var det = cap.getAttribute("data-det") || "";
+      var mes = cap.getAttribute("data-mes") || "";
+      var linhas = det ? det.split("||") : ["Sem custos."];
+      tip.innerHTML = "<b>" + mes + "</b><br>" + linhas.join("<br>");
+      tip.style.display = "block";
+      var x = ev.clientX + 14, y = ev.clientY + 12;
+      if (x + tip.offsetWidth > window.innerWidth - 8) {
+        x = ev.clientX - tip.offsetWidth - 10;
+      }
+      if (y + tip.offsetHeight > window.innerHeight - 8) {
+        y = ev.clientY - tip.offsetHeight - 10;
+      }
+      tip.style.left = x + "px";
+      tip.style.top = y + "px";
+    });
+    g.addEventListener("mouseleave", function () { tip.style.display = "none"; });
+  });
+
+  function _baixar(blob, nome) {
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = nome;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+  }
+
+  document.querySelectorAll("button[data-png]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var cont = document.getElementById(btn.dataset.png);
+      var svg = cont && cont.querySelector("svg");
+      if (!svg) { return; }
+      var nome = btn.dataset.nome || "grafico";
+      var xml = new XMLSerializer().serializeToString(svg);
+      if (!xml.match(/^\s*<\?xml/)) {
+        xml = '<?xml version="1.0" encoding="UTF-8"?>' + xml;
+      }
+      try {
+        var img = new Image();
+        var url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(xml);
+        img.onload = function () {
+          try {
+            var vb = (svg.getAttribute("viewBox") || "0 0 860 300").split(/\s+/);
+            var w = parseInt(vb[2]) || 860, h = parseInt(vb[3]) || 300;
+            var cv = document.createElement("canvas");
+            cv.width = w * 2; cv.height = h * 2;
+            var cx = cv.getContext("2d");
+            cx.fillStyle = "#FFFFFF";
+            cx.fillRect(0, 0, cv.width, cv.height);
+            cx.drawImage(img, 0, 0, cv.width, cv.height);
+            if (cv.toBlob) {
+              cv.toBlob(function (blob) {
+                if (blob) { _baixar(blob, nome + ".png"); }
+                else { _baixar(new Blob([xml], { type: "image/svg+xml" }), nome + ".svg"); }
+              }, "image/png");
+            } else {
+              _baixar(new Blob([xml], { type: "image/svg+xml" }), nome + ".svg");
+            }
+          } catch (e) {
+            _baixar(new Blob([xml], { type: "image/svg+xml" }), nome + ".svg");
+          }
+        };
+        img.onerror = function () {
+          _baixar(new Blob([xml], { type: "image/svg+xml" }), nome + ".svg");
+        };
+        img.src = url;
+      } catch (e) {
+        _baixar(new Blob([xml], { type: "image/svg+xml" }), nome + ".svg");
+      }
+    });
+  });
+})();
+</script>
+{% endblock %}

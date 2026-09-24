@@ -144,7 +144,7 @@ def main():
         follow_redirects=False)
     check("N12 abast com litros/valor -> 303", r.status_code == 303)
     r = client.get("/frota/abastecimentos")
-    check("N13 lista mostra litros e R$", "R$ 289.50" in r.text
+    check("N13 lista mostra litros e R$", "R$ 289,50" in r.text
           and "40" in r.text)
     check("N14 botao Exportar Excel", "/frota/abastecimentos/exportar" in r.text)
 
@@ -154,7 +154,7 @@ def main():
 
     r = client.get(f"/frota/{vid}")
     check("N16 ficha: bloco custo com total", "Custo e consumo" in r.text
-          and "R$ 289.50" in r.text)
+          and "R$ 289,50" in r.text)
 
     resumo = repo.resumo_custo_veiculo(vid)
     check("N17 repo resumo litros/valor", resumo["litros"] == 40

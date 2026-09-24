@@ -6,7 +6,7 @@
   <a class="btn-voltar" href="/frota/abastecimentos">&larr; Voltar para Abastecimentos</a>
   <h1>Notas fiscais — {{ a.serial }}{% if revisao_rotulo %} <span class="badge b-amarelo">{{ revisao_rotulo }}</span>{% endif %} <a class="btn cinza" style="font-size:13px;" href="/frota/abastecimentos/{{ a.id }}/editar">Editar dados</a></h1>
   <p class="sub">{{ veiculo_rotulo }} · {{ data_br }} · {{ combustivel_label }}
-     {% if a.litros %} · {{ a.litros }} L{% endif %}{% if a.valor %} · {{ 'R$ %.2f' % a.valor }}{% endif %}</p>
+     {% if a.litros %} · {{ dec(a.litros) }} L{% endif %}{% if a.valor %} · {{ brl(a.valor) }}{% endif %}</p>
 
   {% if pode_escrever %}
   <form method="post" action="/frota/abastecimentos/{{ a.id }}/valores" class="filtros" style="margin-bottom:16px; border:1px solid var(--borda); border-radius:8px; padding:10px;">
@@ -51,7 +51,7 @@
       <tr>
         <td>{{ n.numero or '—' }}</td>
         <td>{{ br(n.data) }}</td>
-        <td>{{ 'R$ %.2f' % n.valor if n.valor is not none else '—' }}</td>
+        <td>{{ brl(n.valor) }}</td>
         <td><a href="/frota/nfs/{{ n.id }}/download">{{ n.filename }}</a></td>
         <td>{{ (n.created_at or '')[:10] }}</td>
         <td class="acoes">

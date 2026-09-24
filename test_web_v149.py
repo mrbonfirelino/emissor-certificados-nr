@@ -149,8 +149,8 @@ def main():
           abs(resumo["valor_combustivel"] - 409.50) < 0.01)
 
     r = client.get(f"/frota/{vid}")
-    check("V49-15 ficha com desglose combustivel", "R$ 409.50" in r.text)
-    check("V49-16 ficha com desglose extras", "R$ 30.50" in r.text)
+    check("V49-15 ficha com desglose combustivel", "R$ 409,50" in r.text)
+    check("V49-16 ficha com desglose extras", "R$ 30,50" in r.text)
     check("V49-17 gráfico SVG presente", "<svg" in r.text and "polyline" in r.text)
 
     r = client.get("/frota/abastecimentos/1/pdf")
@@ -163,7 +163,8 @@ def main():
     check("V49-18 PDF A1 gerado", ok)
     check("V49-19 PDF com seção ITENS EXTRAS", "ITENS EXTRAS" in texto
           and "Pedágio" in texto)
-    check("V49-20 PDF com TOTAL GERAL", "TOTAL GERAL" in texto)
+    check("V49-20 PDF sem valores/TOTAL GERAL (2.37.1)",
+          "TOTAL GERAL" not in texto)
 
     r = client.get("/frota/abastecimentos/1/editar")
     check("V49-21 edição pré-preenche extras", 'value="Pedágio"' in r.text

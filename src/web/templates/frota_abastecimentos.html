@@ -49,8 +49,8 @@
         <td>{{ a.veiculo_rotulo }}</td>
         <td>{{ a.combustivel_label }}</td>
         <td>{{ a.km if a.km is not none else '—' }}</td>
-        <td>{{ a.litros if a.litros is not none else '—' }}</td>
-        <td>{{ 'R$ %.2f' % a.valor if a.valor is not none else '—' }}</td>
+        <td>{{ dec(a.litros) }}</td>
+        <td>{{ brl(a.valor) }}</td>
         <td>{% if a.tem_nf %}<b class="numero">{{ a.nf_numero }}</b>{% else %}<span class="badge b-cinza">Sem NF</span>{% endif %}</td>
         <td>{{ a.condutor }}</td>
         <td>{{ a.fornecedor or '—' }}</td>

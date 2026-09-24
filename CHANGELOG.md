@@ -1,3 +1,14 @@
+## [1.50.0] — 2026-09-24
+
+### Adicionado
+- Abastecimento: postos temporários (nome + CNPJ na própria solicitação, sem cadastro) e CNPJ validado no formato.
+- Página "Custos e consumo — Frota": gráficos interativos dos últimos 12 meses (por mês empilhado por veículo e por veículo segmentado por tipo de combustível + extras), com tooltip, download em PNG e links de exportação.
+- Relatório de custos em PDF para diretoria (estilo institucional): página resumo da frota + uma página por veículo com foto, totais, mini gráfico 12 meses e divisão por tipo de combustível — individual ou geral, aberto direto no navegador.
+- Formatação global com vírgula decimal (litros, KM/L e valores em R$) na interface e colunas numéricas no Excel.
+
+### Alterado
+- Solicitação de abastecimento (PDF) não exibe mais valores nem marcas de revisão (REV_x fica apenas no sistema).
+
 ## [1.49.0] — 2026-09-24
 
 ### Adicionado

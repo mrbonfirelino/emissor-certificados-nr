@@ -115,13 +115,13 @@ def main():
 
     # ---------- 2.36.3 linha Itens extras na tabela ----------
     check("V50-06 linha 'Itens extras' com valor (30,50) na tabela",
-          re.search(r"Itens extras</th><td>R\$ 30\.50</td>", r.text) is not None)
+          re.search(r"Itens extras</th><td>R\$ 30,50</td>", r.text) is not None)
     check("V50-07 'Itens extras' vem depois de 'Custo por km' na tabela",
           r.text.index("Custo por km") < r.text.index("Itens extras</th>")
           if "Custo por km" in r.text else
           r.text.index("Média KM/L") < r.text.index("Itens extras</th>"))
     check("V50-08 desglose no topo mantido (30,50)",
-          "R$ 30.50" in r.text)
+          "R$ 30,50" in r.text)
 
     # ---------- 2.36.2 gráfico interativo ----------
     check("V50-09 SVG presente com grupos g-mes", 'class="g-mes"' in r.text)

@@ -592,6 +592,32 @@ CLT – Artigo 462, § 1º - Em caso de dano causado pelo empregado, o desconto 
 | Campo "Itens extras" | Adicionar um campo "Itens extras" abaixo da linha "Custo por KM" | Alta | Concluído (v1.49.0) |
 | Exportar gráfico | Permitir ao usuário exportar/baixar o gráfico (talvez como imagem) | Media | Concluído (v1.49.0) |
 
+### 2.37 Frota — CONCLUÍDA — v1.50.0
+
+#### 2.37.1 Solicitação de Abastecimento — Documento e Postos Temporários
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Sem valores no documento | Não mostrar valores no documento de solicitação (não mostrar custo de combustível nem custo dos itens extras; caso tenha item extra, apenas mencionar a quantidade e detalhes) | Alta | Concluído (v1.50.0) |
+| Sem revisão no PDF | Não mostrar qual a revisão do documento de solicitação de abastecimento no PDF gerado — esse dado de revisão deve ficar apenas dentro do sistema para controle interno; ajustar o template conforme necessário | Alta | Concluído (v1.50.0) |
+| Postos temporários | Checkbox para postos "temporários": permitir que o usuário adicione apenas o nome e CNPJ do posto, sem precisar fazer nenhum cadastro — serve para postos na beira da estrada (praticidade, ex: abastecimento em viagem) | Alta | Concluído (v1.50.0) |
+
+#### 2.37.2 Gráfico de Custos Geral (Todos os Veículos)
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Gráfico de custos de todos os veículos | Permitir o usuário gerar um gráfico de custos de todos os veículos, separando com base nos veículos e tipo de combustível — incluir também os custos dos itens extras | Alta | Concluído (v1.50.0) |
+| Exportação única e individual | Opção de exportar em Imagem/PDF/Excel único (para todos os veículos) ou individual para cada veículo cadastrado | Alta | Concluído (v1.50.0) |
+| Foto no PDF individual | Nos PDFs individuais, incluir a foto do veículo (tamanho pequeno) | Media | Concluído (v1.50.0) |
+| PDF bonito/arrumado (diretoria) | O PDF a ser gerado precisa ser bonito/arrumado, pois poderá ser apresentado para a diretoria da empresa | Alta | Concluído (v1.50.0) |
+| Uma página por veículo | Se o PDF incluir vários veículos, separar uma página para cada veículo, com dados essenciais (nome, placa, foto pequena, gráfico de custos individual) | Alta | Concluído (v1.50.0) |
+
+#### 2.37.3 Formatação Global de Consumo
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Consumo com 2 casas decimais | Fazer um ajuste em todos os campos em que aparece o consumo de combustível para mostrar apenas 2 casas decimais, sempre separadas com vírgula (padrão brasileiro, ex: 12,50 KM/L) — melhora a leitura e evita excesso de informações | Alta | Concluído (v1.50.0) |
+
 
 ---
 

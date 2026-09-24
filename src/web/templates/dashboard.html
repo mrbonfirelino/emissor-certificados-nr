@@ -18,7 +18,7 @@
   {% if frota_stats %}
   <a class="stat-card" href="/frota"><span class="num">{{ frota_stats.veiculos }}</span><span class="rot">Veículos na frota</span></a>
   <a class="stat-card" href="/frota"><span class="num">{{ frota_stats.movs_abertas }}</span><span class="rot">Saídas em aberto</span></a>
-  <a class="stat-card" href="/frota/abastecimentos"><span class="num">{{ 'R$ %.2f' % frota_stats.custo_mes }}</span><span class="rot">Custo de abastecimento (mês)</span></a>
+  <a class="stat-card" href="/frota/abastecimentos"><span class="num">{{ brl(frota_stats.custo_mes) }}</span><span class="rot">Custo de abastecimento (mês)</span></a>
   {% endif %}
 </div>
 

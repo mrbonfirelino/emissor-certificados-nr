@@ -193,6 +193,192 @@ def register(app, deps):
             f'style="width:100%;height:auto;" '
             f'xmlns="http://www.w3.org/2000/svg">{"".join(partes)}</svg>')
 
+    # paleta p/ gráficos multi-veículo (2.37.2)
+    _PALETA = ("#2E6DA4", "#E6A23C", "#256B28", "#B03A5B", "#6A5ACD",
+               "#00838F", "#8D6E63", "#546E7A", "#C0CA33", "#AD1457",
+               "#00897B", "#7B1FA2")
+    _COMB_CORES = {"gasolina": "#2E6DA4", "diesel": "#37474F",
+                   "alcool": "#256B28", "gnv": "#E6A23C", "arla": "#7E57C2",
+                   "arla_diesel": "#6D4C41", "outros": "#78909C"}
+
+    def _svg_custos_todos(serie: list, largura=860, altura=300):
+        """Gráfico mensal empilhado POR VEÍCULO (2.37.2): cada mês tem um
+        segmento por veículo (comb+extras somados); tooltip lista o detalhe."""
+        veic_ids, veic_rot = [], {}
+        for s in serie:
+            for vid, d in (s.get("por_veiculo") or {}).items():
+                if vid not in veic_rot:
+                    veic_ids.append(vid)
+                    veic_rot[vid] = d["rotulo"]
+        if not veic_ids:
+            return ""
+
+        def _fmt(v):
+            return f"{float(v):.2f}".replace(".", ",")
+
+        def _esc(t):
+            return (str(t).replace("&", "&amp;").replace("<", "&lt;")
+                    .replace(">", "&gt;").replace('"', "&quot;"))
+
+        maxv = 0.01
+        for s in serie:
+            tot = sum(d["combustivel"] + d["extras"]
+                      for d in (s.get("por_veiculo") or {}).values())
+            maxv = max(maxv, tot)
+        m_e, m_d, m_t, m_b = 52, 10, 14, 28
+        pw, ph = largura - m_e - m_d, altura - m_t - m_b
+        n = len(serie)
+        passo = pw / n
+        bw = min(38.0, passo * 0.6)
+        y_base = m_t + ph
+        partes = [f'<line x1="{m_e}" y1="{y_base}" x2="{m_e + pw}" '
+                  f'y2="{y_base}" stroke="#D6DEE8"/>']
+        for i, s in enumerate(serie):
+            detalhes = []
+            acum = 0.0
+            x = m_e + i * passo + (passo - bw) / 2
+            g = [f'<g class="g-mes" data-mes="{_esc(s["rotulo"])}">']
+            for vid in veic_ids:
+                d = (s.get("por_veiculo") or {}).get(vid)
+                if not d:
+                    continue
+                tot_v = d["combustivel"] + d["extras"]
+                if tot_v <= 0:
+                    continue
+                detalhes.append(
+                    f'{_esc(d["rotulo"])}: R$ {_fmt(tot_v)} '
+                    f'(comb R$ {_fmt(d["combustivel"])} · extras R$ {_fmt(d["extras"])})')
+                h = tot_v / maxv * ph
+                g.append(f'<rect x="{x:.1f}" y="{y_base - acum - h:.1f}" '
+                         f'width="{bw:.1f}" height="{h:.1f}" '
+                         f'fill="{_PALETA[veic_ids.index(vid) % len(_PALETA)]}"/>')
+                acum += h
+            g.append(f'<title>{_esc(s["rotulo"])} — ' +
+                     ("; ".join(detalhes) if detalhes else "Sem custos") +
+                     '</title>')
+            g.append(f'<rect class="captura" data-mes="{_esc(s["rotulo"])}" '
+                     f'data-det="{"||".join(detalhes) if detalhes else "Sem custos."}" '
+                     f'x="{m_e + i * passo:.1f}" y="{m_t}" '
+                     f'width="{passo:.1f}" height="{ph:.1f}" fill="transparent"/>')
+            g.append(f'<text x="{m_e + i * passo + passo / 2:.1f}" '
+                     f'y="{altura - 10}" font-size="9" fill="#5A6B7C" '
+                     f'text-anchor="middle">{_esc(s["rotulo"])}</text>')
+            g.append('</g>')
+            partes.append("".join(g))
+        partes.append(f'<text x="{m_e - 6}" y="{m_t + 4}" font-size="9" '
+                      f'fill="#5A6B7C" text-anchor="end">'
+                      f'R$ {maxv:,.0f}</text>'.replace(",", "."))
+        partes.append(f'<text x="{m_e - 6}" y="{y_base}" font-size="9" '
+                      f'fill="#5A6B7C" text-anchor="end">0</text>')
+        # legenda (fora do svg, o template monta)
+        leg = "".join(
+            f'<span class="leg-item"><span class="leg-cor" '
+            f'style="background:{_PALETA[i % len(_PALETA)]}"></span>'
+            f'{_esc(veic_rot[vid])}</span>'
+            for i, vid in enumerate(veic_ids))
+        return Markup(
+            f'<svg viewBox="0 0 {largura} {altura}" width="{largura}" '
+            f'height="{altura}" role="img" '
+            f'style="width:100%;height:auto;" '
+            f'xmlns="http://www.w3.org/2000/svg">{"".join(partes)}</svg>'), leg
+
+    def _svg_custos_comb(itens: list, largura=860, altura=300):
+        """Gráfico POR VEÍCULO segmentado por tipo de combustível + extras
+        (2.37.2). Cada veículo com dados é uma coluna empilhada."""
+        por_veic = {}
+        ordem = []
+        for it in itens:
+            vid = it["vid"]
+            if vid not in por_veic:
+                por_veic[vid] = {"rotulo": it["veiculo_rotulo"], "itens": []}
+                ordem.append(vid)
+            por_veic[vid]["itens"].append(it)
+        ordem = [vid for vid in ordem
+                 if any((x["combustivel"] + x["extras"]) > 0
+                        for x in por_veic[vid]["itens"])]
+        if not ordem:
+            return ""
+
+        def _fmt(v):
+            return f"{float(v):.2f}".replace(".", ",")
+
+        def _esc(t):
+            return (str(t).replace("&", "&amp;").replace("<", "&lt;")
+                    .replace(">", "&gt;").replace('"', "&quot;"))
+
+        def _cor(comb):
+            return _COMB_CORES.get(comb, "#78909C")
+
+        maxv = max(
+            sum(x["combustivel"] + x["extras"] for x in por_veic[vid]["itens"])
+            for vid in ordem) or 0.01
+        m_e, m_d, m_t, m_b = 52, 10, 14, 46
+        pw, ph = largura - m_e - m_d, altura - m_t - m_b
+        n = len(ordem)
+        passo = pw / n
+        bw = min(46.0, passo * 0.6)
+        y_base = m_t + ph
+        partes = [f'<line x1="{m_e}" y1="{y_base}" x2="{m_e + pw}" '
+                  f'y2="{y_base}" stroke="#D6DEE8"/>']
+        usados = []
+        for i, vid in enumerate(ordem):
+            info = por_veic[vid]
+            detalhes = []
+            acum = 0.0
+            x = m_e + i * passo + (passo - bw) / 2
+            g = [f'<g class="g-mes" data-mes="{_esc(info["rotulo"])}">']
+            for it in info["itens"]:
+                v_comb = it["combustivel"]
+                v_ext = it["extras"]
+                if v_comb > 0:
+                    detalhes.append(
+                        f'{_esc(label_combustivel(it["comb"]))}: '
+                        f'R$ {_fmt(v_comb)} · Litros {_fmt(it["litros"])}')
+                    if it["comb"] not in usados:
+                        usados.append(it["comb"])
+                    h = v_comb / maxv * ph
+                    g.append(f'<rect x="{x:.1f}" y="{y_base - acum - h:.1f}" '
+                             f'width="{bw:.1f}" height="{h:.1f}" '
+                             f'fill="{_cor(it["comb"])}"/>')
+                    acum += h
+                if v_ext > 0:
+                    detalhes.append(f'Itens extras: R$ {_fmt(v_ext)}')
+                    if "extras" not in usados:
+                        usados.append("extras")
+                    h = v_ext / maxv * ph
+                    g.append(f'<rect x="{x:.1f}" y="{y_base - acum - h:.1f}" '
+                             f'width="{bw:.1f}" height="{h:.1f}" '
+                             f'fill="#E6A23C" opacity=".85"/>')
+                    acum += h
+            g.append(f'<title>{_esc(info["rotulo"])} — ' +
+                     ("; ".join(detalhes) if detalhes else "Sem custos") +
+                     '</title>')
+            g.append(f'<rect class="captura" data-mes="{_esc(info["rotulo"])}" '
+                     f'data-det="{"||".join(detalhes) if detalhes else "Sem custos."}" '
+                     f'x="{m_e + i * passo:.1f}" y="{m_t}" '
+                     f'width="{passo:.1f}" height="{ph:.1f}" fill="transparent"/>')
+            g.append(f'<text x="{m_e + i * passo + passo / 2:.1f}" '
+                     f'y="{altura - 30}" font-size="9" fill="#5A6B7C" '
+                     f'text-anchor="middle">{_esc(info["rotulo"])}</text>')
+            g.append('</g>')
+            partes.append("".join(g))
+        partes.append(f'<text x="{m_e - 6}" y="{m_t + 4}" font-size="9" '
+                      f'fill="#5A6B7C" text-anchor="end">'
+                      f'R$ {maxv:,.0f}</text>'.replace(",", "."))
+        partes.append(f'<text x="{m_e - 6}" y="{y_base}" font-size="9" '
+                      f'fill="#5A6B7C" text-anchor="end">0</text>')
+        rot_leg = [("extras", "Itens extras")] + \
+                  [(c, label_combustivel(c)) for c in usados if c != "extras"]
+        leg = "".join(
+            f'<span class="leg-item"><span class="leg-cor" '
+            f'style="background:{("#E6A23C" if c == "extras" else _cor(c))}">'
+            f'</span>{_esc(rot)}</span>' for c, rot in rot_leg)
+        return Markup(
+            f'<svg viewBox="0 0 {largura} {altura}" width="{largura}" '
+            f'height="{altura}" role="img" '
+            f'style="width:100%;height:auto;" '
+            f'xmlns="http://www.w3.org/2000/svg">{"".join(partes)}</svg>'), leg
+
     def _funcionarios_nomes() -> list:
         try:
             from src.core.employee_repo import EmployeeRepository
@@ -734,6 +920,9 @@ def register(app, deps):
                                 condutor: str = Form(""),
                                 obs: str = Form(""), litros: str = Form(""),
                                 valor: str = Form(""),
+                                usar_tmp: str = Form(""),
+                                tmp_fornecedor: str = Form(""),
+                                tmp_cnpj: str = Form(""),
                                 user: dict = auth.require_permission("frota")):
         red = _bloqueio(request, user, "/frota/abastecimentos")
         if red:
@@ -777,10 +966,22 @@ def register(app, deps):
                     f"{label_tipo(v_info['tipo'])}.")
             fid = int(fornecedor_id) if fornecedor_id else None
             km_val = int(km) if km.strip() else None
+            tmp_f = tmp_c = ""
+            if usar_tmp == "1":
+                tmp_f = (tmp_fornecedor or "").strip()
+                tmp_c = (tmp_cnpj or "").strip()
+                if not tmp_f:
+                    return _re_render(
+                        "Informe o nome do posto temporário (ou desmarque "
+                        "a opção).")
+                err_cnpj = _cnpj_invalido(tmp_c) if tmp_c else None
+                if err_cnpj:
+                    return _re_render(f"Posto temporário: {err_cnpj}")
+                fid = None
             abast_id, serial = repo.add_abastecimento(
                 vid, fid, combustivel, data_iso, viagem_servico, km_val,
                 condutor, obs=obs, extras=extras, litros=_num(litros),
-                valor=_num(valor))
+                valor=_num(valor), tmp_fornecedor=tmp_f, tmp_cnpj=tmp_c)
         except (ValueError, TypeError) as e:
             return _re_render(str(e))
         # PDF
@@ -847,6 +1048,9 @@ def register(app, deps):
                                  condutor: str = Form(""),
                                  obs: str = Form(""), litros: str = Form(""),
                                  valor: str = Form(""),
+                                 usar_tmp: str = Form(""),
+                                 tmp_fornecedor: str = Form(""),
+                                 tmp_cnpj: str = Form(""),
                                  user: dict = auth.require_permission("frota")):
         red = _bloqueio(request, user, "/frota/abastecimentos")
         if red:
@@ -885,13 +1089,26 @@ def register(app, deps):
                     f"{label_tipo(v_info['tipo'])}.")
             fid = int(fornecedor_id) if fornecedor_id else None
             km_val = int(km) if km.strip() else None
+            tmp_f = tmp_c = ""
+            if usar_tmp == "1":
+                tmp_f = (tmp_fornecedor or "").strip()
+                tmp_c = (tmp_cnpj or "").strip()
+                if not tmp_f:
+                    return _re_render(
+                        "Informe o nome do posto temporário (ou desmarque "
+                        "a opção).")
+                err_cnpj = _cnpj_invalido(tmp_c) if tmp_c else None
+                if err_cnpj:
+                    return _re_render(f"Posto temporário: {err_cnpj}")
+                fid = None
             litros_v = float(str(litros).replace(",", ".")) \
                 if str(litros).strip() else None
             valor_v = float(str(valor).replace(",", ".")) \
                 if str(valor).strip() else None
             rev = repo.update_abastecimento(
                 abast_id, fid, combustivel, data_iso, viagem_servico, km_val,
-                condutor, obs, litros=litros_v, valor=valor_v, extras=extras)
+                condutor, obs, litros=litros_v, valor=valor_v, extras=extras,
+                tmp_fornecedor=tmp_f, tmp_cnpj=tmp_c)
         except (ValueError, TypeError) as e:
             return _re_render(str(e))
         # PDF regenerado com a marca de revisão (2.33.2)
@@ -1032,6 +1249,9 @@ def register(app, deps):
                 a.get("fornecedor") or "", a.get("condutor") or "",
                 a.get("viagem_servico") or "", a.get("obs") or "",
             ])
+        for row in ws.iter_rows(min_row=2, min_col=6, max_col=9):
+            for cell in row:
+                cell.number_format = "0.00"
         buf = io.BytesIO()
         wb.save(buf)
         wb.close()
@@ -1066,6 +1286,66 @@ def register(app, deps):
                 "Bloqueada" if bloqueada else "Ativa",
                 a.get("motivo_status") or "",
             ])
+        for row in ws.iter_rows(min_row=2, min_col=6, max_col=9):
+            for cell in row:
+                cell.number_format = "0.00"
+
+    @app.get("/frota/custos")
+    def frota_custos(request: Request,
+                     user: dict = auth.require_permission("frota")):
+        """Gráficos de custos gerais (2.37.2): 12 meses por veículo e
+        por veículo × combustível (incl. extras), com exportações."""
+        repo = _repo()
+        serie = repo.custo_serie_todos()
+        resumos = [r for r in repo.resumo_custo_todos() if r["qtd"]]
+        comb = repo.custo_por_combustivel()
+        g_meses, leg_meses = _svg_custos_todos(serie)
+        g_comb, leg_comb = _svg_custos_comb(comb)
+        return templates.TemplateResponse(
+            request=request, name="custos_frota.html",
+            context=ctx(request, grafico_meses=g_meses, legenda_meses=leg_meses,
+                        grafico_comb=g_comb, legenda_comb=leg_comb,
+                        resumos=resumos,
+                        pode_escrever=pode_escrever(user["papel"], "frota")))
+
+    @app.get("/frota/custos/pdf")
+    def frota_custos_pdf(request: Request,
+                         user: dict = auth.require_permission("frota")):
+        """RELATÓRIO DE CUSTOS — FROTA em PDF (2.37.2), direto no navegador."""
+        from src.core.pdf_custos_frota import gerar_pdf_custos_frota
+        try:
+            data = gerar_pdf_custos_frota()
+        except Exception:
+            from src.utils.error_log import log_error
+            log_error("portal-frota-custos-pdf")
+            flash(request, erro="Não foi possível gerar o relatório de custos.")
+            return RedirectResponse("/frota/custos", status_code=303)
+        _audit(request, "frota-custos-pdf", user["username"], "geral")
+        return Response(content=data, media_type="application/pdf",
+                        headers={"Content-Disposition":
+                                 'inline; filename="custos_frota.pdf"'})
+
+    @app.get("/frota/{veiculo_id}/custos/pdf")
+    def frota_custo_veiculo_pdf(veiculo_id: int, request: Request,
+                                user: dict = auth.require_permission("frota")):
+        """PDF individual de custos do veículo (2.37.2), direto no navegador."""
+        from src.core.pdf_custos_frota import gerar_pdf_custos_frota
+        v = _repo().get_veiculo(veiculo_id)
+        if not v:
+            return Response(status_code=404)
+        try:
+            data = gerar_pdf_custos_frota(veiculo_id=veiculo_id)
+        except Exception:
+            from src.utils.error_log import log_error
+            log_error("portal-frota-custos-pdf")
+            flash(request, erro="Não foi possível gerar o relatório de custos.")
+            return RedirectResponse(f"/frota/{veiculo_id}", status_code=303)
+        _audit(request, "frota-custos-pdf", user["username"],
+               v.get("placa") or str(veiculo_id))
+        nome = (v.get("placa") or str(veiculo_id)).replace(" ", "_")
+        return Response(content=data, media_type="application/pdf",
+                        headers={"Content-Disposition":
+                                 f'inline; filename="custos_{nome}.pdf"'})
 
     @app.get("/frota/custos/exportar")
     def frota_custos_exportar(request: Request,
@@ -1091,6 +1371,9 @@ def register(app, deps):
                        (combust + extras) if (combust or extras) else None])
         ws2 = wb.create_sheet("Abastecimentos")
         _abast_sheet(ws2, itens, nf_map)
+        for row in ws.iter_rows(min_row=2, min_col=3, max_col=6):
+            for cell in row:
+                cell.number_format = "0.00"
         buf = io.BytesIO()
         wb.save(buf)
         wb.close()
@@ -1134,6 +1417,11 @@ def register(app, deps):
         for s in serie:
             ws.append([s["rotulo"], s["combustivel"], s["extras"],
                        s["litros"]])
+        for rr in range(3, 10):
+            ws.cell(row=rr, column=2).number_format = "0.00"
+        for rr in range(11, 11 + len(serie)):
+            for cc in (2, 3, 4):
+                ws.cell(row=rr, column=cc).number_format = "0.00"
         ws2 = wb.create_sheet("Abastecimentos")
         _abast_sheet(ws2, abasts, nf_map)
         buf = io.BytesIO()

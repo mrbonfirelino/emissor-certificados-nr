@@ -7,9 +7,9 @@
   <a class="btn-voltar" href="/frota/abastecimentos">&larr; Voltar para Abastecimentos</a>
   <h1>{% if ed %}Editar solicitação {{ ed.serial }}{% if ed.revisao %} <span class="badge b-amarelo">REV_{{ ed.revisao }}</span>{% endif %}{% else %}Nova solicitação de abastecimento{% endif %}</h1>
   {% if ed %}
-  <p class="sub">Ao salvar, o PDF é regenerado com a marca de revisão (REV_A, REV_B...) e a alteração fica registrada na auditoria. O veículo não pode ser trocado em uma solicitação existente.</p>
+  <p class="sub">Ao salvar, o PDF é regenerado sem marcas de revisão (a revisão REV_x fica só no sistema) e a alteração fica registrada na auditoria. O veículo não pode ser trocado em uma solicitação existente.</p>
   {% else %}
-  <p class="sub">O PDF é gerado automaticamente com logo da empresa, dados e campos de assinatura. Litros e valor são opcionais — podem ser completados depois junto da NF.</p>
+  <p class="sub">O PDF é gerado automaticamente com logo da empresa, dados e campos de assinatura — sem valores (2.37.1). Litros e valor são opcionais — podem ser completados depois junto da NF.</p>
   {% endif %}
   {% if erro %}<p class="erro">{{ erro }}</p>{% endif %}
 
@@ -48,6 +48,15 @@
           <option value="">— não informado —</option>
           {% for f in fornecedores %}<option value="{{ f.id }}" {{ 'selected' if ed and ed.fornecedor_id == f.id }}>{{ f.nome }}</option>{% endfor %}
         </select>
+        <label style="display:block;margin-top:6px;font-weight:600;">
+          <input type="checkbox" id="usar_tmp" name="usar_tmp" value="1" {% if ed and ed.tmp_fornecedor %}checked{% endif %}>
+          Posto temporário (sem cadastro — ex.: posto na beira da estrada)
+        </label>
+      </div>
+      <div class="campo" id="tmp-campos" style="display:none;">
+        <label for="tmp_fornecedor">Nome do posto temporário *</label>
+        <input type="text" id="tmp_fornecedor" name="tmp_fornecedor" placeholder="Ex.: Posto KM 220" value="{{ (ed.tmp_fornecedor or '') if ed else '' }}">
+        <input type="text" id="tmp_cnpj" name="tmp_cnpj" class="js-cnpj" maxlength="18" inputmode="numeric" autocomplete="off" placeholder="CNPJ (opcional) 00.000.000/0000-00" value="{{ (ed.tmp_cnpj or '') if ed else '' }}" style="margin-top:6px;">
       </div>
       <div class="campo">
         <label for="km">KM do veículo</label>
@@ -85,7 +94,7 @@
     </div>
     <div class="campo" style="margin-top:14px;">
       <label>Itens extras (opcional)</label>
-      <p class="muted" style="margin:4px 0 8px;">Ex.: pedágio, lavagem, óleo — somam no custo total do veículo e aparecem no PDF.</p>
+      <p class="muted" style="margin:4px 0 8px;">Ex.: pedágio, lavagem, óleo — o valor entra no custo do sistema; no PDF aparecem apenas descrição e quantidade (sem valores).</p>
       <table style="max-width:640px;">
         <thead><tr><th style="width:52%;">Descrição</th><th style="width:14%;">Qtde</th><th style="width:24%;">Valor (R$)</th><th></th></tr></thead>
         <tbody id="extras-body">
@@ -111,7 +120,7 @@
       <button type="button" class="btn cinza" style="margin-top:8px;" onclick="addExtraLinha();">+ Adicionar item</button>
     </div>
     <p class="linha-botoes">
-      {% if ed %}<button type="submit" class="verde">Salvar e gerar novo PDF (revisão)</button>
+      {% if ed %}<button type="submit" class="verde">Salvar e regenerar PDF</button>
       <a class="btn cinza" href="/frota/abastecimentos/{{ ed.id }}/nfs">Cancelar</a>
       {% else %}<button type="submit" class="verde">Gerar solicitação (PDF)</button>
       <a class="btn cinza" href="/frota/abastecimentos">Cancelar</a>
@@ -159,6 +168,14 @@
     cel('<button type="button" class="btn cinza" onclick="this.closest(\'tr\').remove();">×</button>');
     if (window.normaTechMascaras) window.normaTechMascaras(tr);
   }
+  (function () {
+    var chk = document.getElementById('usar_tmp');
+    var div = document.getElementById('tmp-campos');
+    if (!chk || !div) return;
+    function aplicar() { div.style.display = chk.checked ? '' : 'none'; }
+    chk.addEventListener('change', aplicar);
+    aplicar();
+  })();
   </script>
   {% else %}
   <p class="erro">Cadastre um veículo antes de solicitar abastecimento.</p>

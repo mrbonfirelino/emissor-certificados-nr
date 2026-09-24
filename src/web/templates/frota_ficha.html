@@ -277,8 +277,8 @@
         <td>{{ br(a.data) }}</td>
         <td>{{ a.combustivel_label }}</td>
         <td>{{ a.km | milhar if a.km is not none else '—' }}</td>
-        <td>{{ a.litros if a.litros is not none else '—' }}</td>
-        <td>{{ 'R$ %.2f' % a.valor if a.valor is not none else '—' }}</td>
+        <td>{{ dec(a.litros) }}</td>
+        <td>{{ brl(a.valor) }}</td>
         <td>{{ a.condutor }}</td>
         <td>{{ a.fornecedor or '—' }}</td>
         <td class="acoes">
@@ -310,7 +310,7 @@
   </p>
   {% if resumo.litros or resumo.valor %}
   <p class="muted" style="margin:4px 0;">
-    Combustível <b>R$ {{ '%.2f' % resumo.valor_combustivel }}</b> · Itens extras <b>R$ {{ '%.2f' % resumo.valor_extras }}</b>
+    Combustível <b>{{ brl(resumo.valor_combustivel) }}</b> · Itens extras <b>{{ brl(resumo.valor_extras) }}</b>
     — solicitações bloqueadas ficam fora dos totais.
   </p>
   {% if grafico_svg %}<div id="graf-custo" style="overflow-x:auto;">{{ grafico_svg | safe }}</div>
@@ -319,11 +319,11 @@
   {% endif %}
   <table style="max-width:640px; margin-top:10px;">
     <tbody>
-      <tr><th style="text-align:left; width:220px;">Total abastecido</th><td>{{ resumo.litros }} L · {{ 'R$ %.2f' % resumo.valor }}</td></tr>
-      <tr><th style="text-align:left;">Média KM/L (real)</th><td>{{ '%.2f' % resumo.media_km_l if resumo.media_km_l else '—' }}</td></tr>
+      <tr><th style="text-align:left; width:220px;">Total abastecido</th><td>{{ dec(resumo.litros) }} L · {{ brl(resumo.valor) }}</td></tr>
+      <tr><th style="text-align:left;">Média KM/L (real)</th><td>{{ dec(resumo.media_km_l) }}</td></tr>
       {% if v.km_l_esperado %}<tr><th style="text-align:left;">KM/L esperado</th><td>{{ v.km_l_esperado }}</td></tr>{% endif %}
-      {% if resumo.custo_km %}<tr><th style="text-align:left;">Custo por km</th><td>R$ {{ '%.2f' % resumo.custo_km }}</td></tr>{% endif %}
-      <tr><th style="text-align:left;">Itens extras</th><td>R$ {{ '%.2f' % resumo.valor_extras }}</td></tr>
+      {% if resumo.custo_km %}<tr><th style="text-align:left;">Custo por km</th><td>{{ brl(resumo.custo_km) }}</td></tr>{% endif %}
+      <tr><th style="text-align:left;">Itens extras</th><td>{{ brl(resumo.valor_extras) }}</td></tr>
     </tbody>
   </table>
   {% else %}
