@@ -298,20 +298,24 @@
   </div>
 </dialog>
 
-<dialog id="dlg-custo" class="modal">
+<dialog id="dlg-custo" class="modal largo">
   <div class="modal-topo">Custo e consumo
     <button type="button" class="modal-fechar" data-fecha-dlg aria-label="Fechar">×</button></div>
   <div class="modal-corpo">
   <p class="linha-botoes">
     <a class="btn cinza" href="/frota/{{ v.id }}/custo/exportar">Exportar Excel (custo/consumo)</a>
+    {% if grafico_svg %}
+    <button type="button" class="btn" id="btn-graf-png">Baixar gráfico (PNG)</button>
+    {% endif %}
   </p>
   {% if resumo.litros or resumo.valor %}
   <p class="muted" style="margin:4px 0;">
     Combustível <b>R$ {{ '%.2f' % resumo.valor_combustivel }}</b> · Itens extras <b>R$ {{ '%.2f' % resumo.valor_extras }}</b>
     — solicitações bloqueadas ficam fora dos totais.
   </p>
-  {% if grafico_svg %}<div style="overflow-x:auto;">{{ grafico_svg | safe }}</div>
-  <p class="muted" style="margin:6px 0 0;">Últimos 12 meses — barras: custo (azul = combustível, laranja = extras) · linha: litros.</p>
+  {% if grafico_svg %}<div id="graf-custo" style="overflow-x:auto;">{{ grafico_svg | safe }}</div>
+  <div id="graf-tip" class="graf-tip"></div>
+  <p class="muted" style="margin:6px 0 0;">Últimos 12 meses — barras: custo (azul = combustível, laranja = extras) · linha: litros. Passe o mouse sobre o mês para ver o detalhe.</p>
   {% endif %}
   <table style="max-width:640px; margin-top:10px;">
     <tbody>
@@ -319,6 +323,7 @@
       <tr><th style="text-align:left;">Média KM/L (real)</th><td>{{ '%.2f' % resumo.media_km_l if resumo.media_km_l else '—' }}</td></tr>
       {% if v.km_l_esperado %}<tr><th style="text-align:left;">KM/L esperado</th><td>{{ v.km_l_esperado }}</td></tr>{% endif %}
       {% if resumo.custo_km %}<tr><th style="text-align:left;">Custo por km</th><td>R$ {{ '%.2f' % resumo.custo_km }}</td></tr>{% endif %}
+      <tr><th style="text-align:left;">Itens extras</th><td>R$ {{ '%.2f' % resumo.valor_extras }}</td></tr>
     </tbody>
   </table>
   {% else %}
@@ -442,4 +447,66 @@
   {% endif %}
   </div>
 </dialog>
+<script>
+(function () {
+  var tip = document.getElementById('graf-tip');
+  var wrap = document.getElementById('graf-custo');
+  if (tip && wrap) {
+    var svg = wrap.querySelector('svg');
+    if (svg) {
+      svg.querySelectorAll('.g-mes').forEach(function (g) {
+        g.addEventListener('mousemove', function (ev) {
+          tip.innerHTML = '<b>' + g.dataset.mes + '</b><br>' +
+            'Combustível: R$ ' + g.dataset.comb + '<br>' +
+            'Itens extras: R$ ' + g.dataset.ext + '<br>' +
+            'Litros: ' + g.dataset.litros;
+          tip.style.display = 'block';
+          tip.style.left = Math.min(ev.clientX + 14,
+            window.innerWidth - tip.offsetWidth - 8) + 'px';
+          tip.style.top = (ev.clientY + 14) + 'px';
+        });
+        g.addEventListener('mouseleave', function () {
+          tip.style.display = 'none';
+        });
+      });
+    }
+  }
+  var btn = document.getElementById('btn-graf-png');
+  if (btn) btn.addEventListener('click', function () {
+    var alvo = document.querySelector('#graf-custo svg');
+    if (!alvo) return;
+    var nome = 'custo_{{ v.placa or v.id }}';
+    var xml = new XMLSerializer().serializeToString(alvo);
+    var blob = new Blob([xml], { type: 'image/svg+xml;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var img = new Image();
+    img.onload = function () {
+      try {
+        var c = document.createElement('canvas');
+        c.width = 1440; c.height = 520;
+        var ctx = c.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, c.width, c.height);
+        ctx.drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        c.toBlob(function (b) {
+          if (!b) { baixar(blob, nome + '.svg'); return; }
+          baixar(b, nome + '.png');
+        }, 'image/png');
+      } catch (e) { baixar(blob, nome + '.svg'); }
+    };
+    img.onerror = function () { baixar(blob, nome + '.svg'); };
+    img.src = url;
+  });
+  function baixar(blob, nomeArq) {
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = nomeArq;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 3000);
+  }
+})();
+</script>
 {% endblock %}

@@ -583,6 +583,15 @@ CLT – Artigo 462, § 1º - Em caso de dano causado pelo empregado, o desconto 
 | Ordenação da lista | Escolher ordenação por Data (padrão, mais recentes) ou Serial na lista de abastecimentos | Média | Concluído (v1.48.0) |
 | Coluna Nota fiscal | Mostrar o número da NF cadastrada ou destaque "Sem NF" na lista | Média | Concluído (v1.48.0) |
 
+### 2.36 Frota — Custo e Consumo: Refinamentos (CONCLUÍDA — v1.49.0)
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Dialog do "Custo e consumo" | Na ficha do veículo, ajustar o tamanho do dialog do "Custo e consumo" para ficar maior e permitir um gráfico maior (mais visibilidade) | Media | Concluído (v1.49.0) |
+| Gráfico interativo | Ver se é possível deixar o gráfico mais interativo: ao passar o mouse em cima de uma barra, mostrar o custo de combustível e itens extras de forma separada e dar um "highlight" à barra | Media | Concluído (v1.49.0) |
+| Campo "Itens extras" | Adicionar um campo "Itens extras" abaixo da linha "Custo por KM" | Alta | Concluído (v1.49.0) |
+| Exportar gráfico | Permitir ao usuário exportar/baixar o gráfico (talvez como imagem) | Media | Concluído (v1.49.0) |
+
 
 ---
 

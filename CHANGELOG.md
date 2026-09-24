@@ -1,3 +1,11 @@
+## [1.49.0] — 2026-09-24
+
+### Adicionado
+- **Frota**: dialog "Custo e consumo" da ficha do veículo ampliado (modal largo) para dar mais visibilidade ao gráfico.
+- **Frota**: gráfico de 12 meses interativo — tooltip flutuante com combustível, itens extras e litros separados por mês + highlight da barra sob o mouse.
+- **Frota**: linha "Itens extras" na tabela de resumo (abaixo de "Custo por km").
+- **Frota**: botão "Baixar gráfico (PNG)" — exporta o gráfico como imagem direto do navegador (com fallback .svg), 100% offline.
+
 ## [1.48.0] - 2026-09-23
 
 ### Adicionado

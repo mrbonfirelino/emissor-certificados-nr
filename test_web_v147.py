@@ -231,11 +231,11 @@ def main():
           in _tpl("frota_ficha.html"))
 
     ficha = _tpl("frota_ficha.html")
-    check("ficha template: 7 dialogs (6 largos + custo simples)",
+    check("ficha template: 7 dialogs largos (custo virou largo na v1.49.0)",
           len(re.findall(r'<dialog id="dlg-[a-z]+" class="modal largo">',
-                         ficha)) == 6
+                         ficha)) == 7
           and len(re.findall(r'<dialog id="dlg-[a-z]+" class="modal">',
-                             ficha)) == 1)
+                             ficha)) == 0)
     check("ficha template: sem details.card de seções antigas",
           'details class="card"' not in ficha)
 

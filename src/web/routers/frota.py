@@ -120,11 +120,17 @@ def register(app, deps):
                 extras.append({"desc": desc, "qtd": qtd, "valor": val})
         return extras
 
-    def _svg_grafico_custo(serie: list, largura=660, altura=220):
-        """Gráfico SVG offline (2.35.1): barras empilhadas (combustível azul +
-        itens extras amarelo) e linha de litros (verde) dos últimos 12 meses."""
+    def _svg_grafico_custo(serie: list, largura=720, altura=260):
+        """Gráfico SVG offline (2.35.1 / 2.36): barras empilhadas (combustível
+        azul + itens extras amarelo) e linha de litros (verde) dos últimos 12
+        meses. Cada mês é um <g class="g-mes"> com os valores em data-*
+        (tooltip interativo) e <title> nativo."""
         if not serie:
             return ""
+
+        def _fmt(v):
+            return f"{float(v):.2f}".replace(".", ",")
+
         maxv = max(max((s["combustivel"] + s["extras"]) for s in serie), 0.01)
         maxl = max(max(s["litros"] for s in serie), 0.01)
         m_e, m_d, m_t, m_b = 46, 10, 14, 28
@@ -140,17 +146,30 @@ def register(app, deps):
             h_c = s["combustivel"] / maxv * ph
             h_x = s["extras"] / maxv * ph
             x = m_e + i * passo + (passo - bw) / 2
+            g = [f'<g class="g-mes" data-mes="{s["rotulo"]}" '
+                 f'data-comb="{_fmt(s["combustivel"])}" '
+                 f'data-ext="{_fmt(s["extras"])}" '
+                 f'data-litros="{_fmt(s["litros"])}">']
+            g.append(f'<title>{s["rotulo"]}: Combustível R$ {_fmt(s["combustivel"])}'
+                     f' · Extras R$ {_fmt(s["extras"])}'
+                     f' · Litros {_fmt(s["litros"])}</title>')
             if h_c > 0:
-                partes.append(f'<rect x="{x:.1f}" y="{y_base - h_c:.1f}" '
-                              f'width="{bw:.1f}" height="{h_c:.1f}" '
-                              f'fill="#2E6DA4"/>')
+                g.append(f'<rect class="b-comb" x="{x:.1f}" y="{y_base - h_c:.1f}" '
+                         f'width="{bw:.1f}" height="{h_c:.1f}" '
+                         f'fill="#2E6DA4"/>')
             if h_x > 0:
-                partes.append(f'<rect x="{x:.1f}" y="{y_base - h_c - h_x:.1f}" '
-                              f'width="{bw:.1f}" height="{h_x:.1f}" '
-                              f'fill="#E6A23C"/>')
-            partes.append(f'<text x="{xc:.1f}" y="{altura - 10}" font-size="9" '
-                          f'fill="#5A6B7C" text-anchor="middle">'
-                          f'{s["rotulo"]}</text>')
+                g.append(f'<rect class="b-ext" x="{x:.1f}" '
+                         f'y="{y_base - h_c - h_x:.1f}" '
+                         f'width="{bw:.1f}" height="{h_x:.1f}" '
+                         f'fill="#E6A23C"/>')
+            g.append(f'<rect class="captura" x="{m_e + i * passo:.1f}" y="{m_t}" '
+                     f'width="{passo:.1f}" height="{ph:.1f}" '
+                     f'fill="transparent"/>')
+            g.append(f'<text x="{xc:.1f}" y="{altura - 10}" font-size="9" '
+                     f'fill="#5A6B7C" text-anchor="middle">'
+                     f'{s["rotulo"]}</text>')
+            g.append('</g>')
+            partes.append("".join(g))
         pts = []
         for i, s in enumerate(serie):
             x = m_e + i * passo + passo / 2
@@ -169,7 +188,8 @@ def register(app, deps):
         partes.append(f'<text x="{m_e - 6}" y="{y_base}" font-size="9" '
                       f'fill="#5A6B7C" text-anchor="end">0</text>')
         return Markup(
-            f'<svg viewBox="0 0 {largura} {altura}" role="img" '
+            f'<svg viewBox="0 0 {largura} {altura}" width="{largura}" '
+            f'height="{altura}" role="img" '
             f'style="width:100%;height:auto;" '
             f'xmlns="http://www.w3.org/2000/svg">{"".join(partes)}</svg>')
 
