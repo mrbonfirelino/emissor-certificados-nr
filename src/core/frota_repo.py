@@ -7,6 +7,7 @@ frota_movimentacoes (saida/entrada) e frota_abastecimentos.
 """
 
 import json
+import re
 import sqlite3
 from pathlib import Path
 from datetime import date, datetime, timedelta
@@ -374,6 +375,55 @@ class FrotaRepository:
                          ("assinado_filename", "TEXT"), ("assinado_em", "TEXT")):
             if col not in chk_t:
                 conn.execute(f"ALTER TABLE frota_checklists ADD COLUMN {col} {ddl}")
+        # v1.53.0: backfill — extras com JSON gravado mas extras_total NULL
+        # (registros criados antes da v1.48 não entravam nos relatórios de custo)
+        for r in conn.execute(
+            "SELECT id, extras FROM frota_abastecimentos"
+            " WHERE extras IS NOT NULL AND TRIM(extras) NOT IN ('', '[]')"
+            " AND extras_total IS NULL").fetchall():
+            try:
+                itens = json.loads(r["extras"])
+            except Exception:
+                continue
+            if not isinstance(itens, list):
+                continue
+            tot = 0.0
+            for e in itens:
+                if not isinstance(e, dict):
+                    continue
+                try:
+                    v = float(str(e.get("valor", "")).replace(",", ".") or 0)
+                except ValueError:
+                    v = 0.0
+                try:
+                    q = float(str(e.get("qtd", "")).replace(",", ".") or 1)
+                except ValueError:
+                    q = 1.0
+                if v > 0:
+                    tot += v * (q if q > 0 else 1)
+            if tot > 0:
+                conn.execute(
+                    "UPDATE frota_abastecimentos SET extras_total=? WHERE id=?",
+                    (round(tot, 2), r["id"]))
+        # v1.53.0: normalizar datas não-ISO (ex. dd/mm/aaaa gravadas fora do
+        # sistema) — sem isso o registro sumia das séries/relatórios de custo
+        for r in conn.execute(
+            "SELECT id, data FROM frota_abastecimentos"
+            " WHERE data IS NOT NULL").fetchall():
+            d = (r["data"] or "").strip()
+            m = re.match(r"^(\d{2})/(\d{2})/(\d{4})$", d)
+            if m:
+                iso = f"{m.group(3)}-{m.group(2)}-{m.group(1)}"
+            elif re.match(r"^\d{4}-\d{2}-\d{2}$", d):
+                continue
+            else:
+                try:
+                    iso = date.fromisoformat(d).isoformat()
+                except ValueError:
+                    continue
+            conn.execute(
+                "UPDATE frota_abastecimentos SET data=? WHERE id=?",
+                (iso, r["id"]))
 
     # ---------- veiculos ----------
 

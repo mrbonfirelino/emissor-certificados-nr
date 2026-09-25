@@ -43,12 +43,14 @@ def get_abastecimentos_dir() -> Path:
     return pasta
 
 
-def gerar_pdf_abastecimento(dados: dict) -> Path:
+def gerar_pdf_abastecimento(dados: dict, watermark: str = "") -> Path:
     """Gera o PDF e devolve o caminho.
 
     dados: serial, data_br, veiculo (dict do repo), fornecedor (dict|None),
     condutor (str), viagem_servico, km, obs,
     config (load_company_config()).
+    watermark: texto grande atravessando a página (ex.: 'CANCELADO') para
+    solicitações bloqueadas/canceladas (roadmap 2.40.2).
     """
     serial = dados["serial"]
 
@@ -226,5 +228,24 @@ def gerar_pdf_abastecimento(dados: dict) -> Path:
         title=f"Solicitação de Abastecimento {serial}")
 
     # 2.37.1: revisão fica só no sistema — documento sem marcação de REV
-    doc.build(story)
+    if watermark:
+        marca = str(watermark).upper()
+
+        def _desenha_marca(canvas, _doc):
+            canvas.saveState()
+            try:
+                canvas.setFillColor(HexColor("#C0392B"))
+                canvas.setFillAlpha(0.16)
+                canvas.setFont("Helvetica-Bold", 96)
+                canvas.translate(A4[0] / 2, A4[1] / 2)
+                canvas.rotate(45)
+                canvas.drawCentredString(0, -34, marca)
+                canvas.setFont("Helvetica-Bold", 20)
+                canvas.drawCentredString(0, -140, marca)
+            finally:
+                canvas.restoreState()
+
+        doc.build(story, onFirstPage=_desenha_marca, onLaterPages=_desenha_marca)
+    else:
+        doc.build(story)
     return destino

@@ -1,3 +1,14 @@
+## [1.53.0] - 2026-09-25
+
+### Corrigido
+- Itens extras de abastecimentos antigos ficavam fora dos relatórios de custos: backfill recalcula o total a partir do JSON gravado (2.40.1).
+- Abastecimentos com data em formato inválido sumiam dos gráficos/relatórios: datas legadas são normalizadas para ISO na inicialização (2.40.1).
+
+### Adicionado
+- Marca d'água "CANCELADO" no PDF de solicitação de abastecimento bloqueada — regenerada na hora ao visualizar/baixar e removida ao desbloquear (2.40.2).
+- Lista de abastecimentos com menu único "Opções" (⋯) reunindo NF, Editar, Ver, Baixar, Bloquear/Desbloquear e Excluir (2.40.3).
+- Protótipo standalone com 2 cópias da solicitação por folha A4 (script na raiz — não integrado ao sistema) (2.40.4).
+
 ## [1.52.0] - 2026-09-25
 
 ### Adicionado

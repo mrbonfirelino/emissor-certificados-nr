@@ -667,6 +667,33 @@ CLT – Artigo 462, § 1º - Em caso de dano causado pelo empregado, o desconto 
 |------|-----------|------------|--------|
 | Geração por período | O ideal seria ter uma opção para gerar todo esse relatório com base em alguns períodos, como últimos 30 dias, 3 meses, 6 meses e 1 ano | Alta | Concluído (v1.52.0) |
 
+### 2.40 Frota — Correções de Cálculo, Watermark de Cancelamento e UI de Abastecimentos (CONCLUÍDA — v1.53.0)
+
+#### 2.40.1 Correções nos Cálculos dos Relatórios de Custos
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Itens extras fora do cálculo dos relatórios de custos | Os valores dos itens extras não estão entrando no cálculo dos relatórios de custos (nem no individual nem no geral). Foi percebido porque o sistema que está rodando na rede tem a compra de um óleo de 37 reais e ela não aparece no gráfico | Alta | Concluído (v1.53.0) |
+| Valores de abastecimento sendo ignorados | O sistema também está ignorando os valores de um abastecimento, mesmo com os valores salvos | Alta | Concluído (v1.53.0) |
+
+#### 2.40.2 Watermark "CANCELADO" em Solicitação de Abastecimento Cancelada
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Marca d'água "CANCELADO" | Caso uma solicitação de abastecimento esteja cancelada e o usuário tente emitir um PDF ou visualizar, adicionar uma marcação bem grande (watermark) dizendo "CANCELADO" — isso vai evitar problemas internos | Alta | Concluído (v1.53.0) |
+
+#### 2.40.3 Botão "Opções" na Lista de Abastecimentos (/frota/abastecimentos)
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Substituir botões por menu de opções | Na página "/frota/abastecimentos", trocar o amontoado de botões (NF, Editar, Ver, Baixar, Bloquear, Excluir) por um único botão (pode ser com ícone de 3 pontinhos) que, ao ser clicado, mostra os botões referentes ao abastecimento (NF, Editar, Ver, Baixar, Bloquear, Excluir). Colocar um texto "Opções" na coluna onde vai ficar esse botão. Dessa forma a interface vai parecer menos "poluída" para o usuário | Media | Concluído (v1.53.0) |
+
+#### 2.40.4 Protótipo de PDF — 2 Cópias por Folha A4 (somente teste, NÃO integrar ao sistema)
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Protótipo de PDF com 2 cópias na folha | Fazer um protótipo de PDF de solicitação de abastecimento em que caibam 2 cópias na mesma folha A4 (pode fazer as cópias na horizontal). NÃO COLOCAR ESSE MODELO NO SISTEMA AINDA — ele vai ser apenas um teste e vai servir para que a pessoa que emite esses documentos tenha uma cópia física. Quando gerar o PDF, indicar a pasta em que foi salvo. Inserir alguns valores e itens extras aleatórios só para ter certeza de como ficaria com dados reais | Alta | Concluído (v1.53.0) |
+
 
 ---
 

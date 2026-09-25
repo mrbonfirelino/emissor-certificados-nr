@@ -40,7 +40,7 @@
   </form>
 
   <table>
-    <thead><tr><th>Serial</th><th>Data</th><th>Veículo</th><th>Combustível</th><th>KM</th><th>Litros</th><th>Valor</th><th>Nota fiscal</th><th>Condutor</th><th>Fornecedor</th><th></th></tr></thead>
+    <thead><tr><th>Serial</th><th>Data</th><th>Veículo</th><th>Combustível</th><th>KM</th><th>Litros</th><th>Valor</th><th>Nota fiscal</th><th>Condutor</th><th>Fornecedor</th><th>Opções</th></tr></thead>
     <tbody>
     {% for a in itens %}
       <tr>
@@ -55,41 +55,39 @@
         <td>{{ a.condutor }}</td>
         <td>{{ a.fornecedor or '—' }}</td>
         <td class="acoes">
-          <a class="btn amarelo-claro" href="/frota/abastecimentos/{{ a.id }}/nfs">NF</a>
-          {% if pode_escrever %}<a class="btn verde" href="/frota/abastecimentos/{{ a.id }}/editar">Editar</a>{% endif %}
-          {% if a.pdf_path %}
-          <a class="btn" href="/frota/abastecimentos/{{ a.id }}/pdf?v={{ a.revisao or 0 }}" target="_blank">Ver</a>
-          <a class="btn azul-claro" href="/frota/abastecimentos/{{ a.id }}/pdf/download?v={{ a.revisao or 0 }}">Baixar</a>
-          {% endif %}
-          {% if pode_escrever %}
-          {% if not a.bloqueada %}
           <details class="anexo-pop">
-            <summary class="btn vermelho">Bloquear</summary>
-            <div class="anexo-box">
-              <form method="post" action="/frota/abastecimentos/{{ a.id }}/bloquear">
-                <label class="muted" for="motivo-{{ a.id }}">Motivo (sai dos custos)</label>
-                <select id="motivo-{{ a.id }}" name="motivo" onchange="var t=document.getElementById('motivo-txt-{{ a.id }}'); t.style.display=(this.value==='Outro')?'inline-block':'none';">
+            <summary class="btn cinza" title="Opções">⋯ Opções</summary>
+            <div class="anexo-box" style="width:250px;">
+              <a class="btn amarelo-claro" style="display:block; text-align:center; margin-bottom:6px;" href="/frota/abastecimentos/{{ a.id }}/nfs">NF / valores</a>
+              {% if pode_escrever %}<a class="btn verde" style="display:block; text-align:center; margin-bottom:6px;" href="/frota/abastecimentos/{{ a.id }}/editar">Editar</a>{% endif %}
+              {% if a.pdf_path %}
+              <a class="btn" style="display:block; text-align:center; margin-bottom:6px;" href="/frota/abastecimentos/{{ a.id }}/pdf?v={{ a.revisao or 0 }}" target="_blank">Ver PDF</a>
+              <a class="btn azul-claro" style="display:block; text-align:center; margin-bottom:6px;" href="/frota/abastecimentos/{{ a.id }}/pdf/download?v={{ a.revisao or 0 }}">Baixar PDF</a>
+              {% endif %}
+              {% if pode_escrever %}
+              {% if not a.bloqueada %}
+              <form method="post" action="/frota/abastecimentos/{{ a.id }}/bloquear" style="margin-bottom:6px; padding-top:6px; border-top:1px solid var(--borda);">
+                <label class="muted" for="motivo-{{ a.id }}">Bloquear — motivo (sai dos custos)</label>
+                <select id="motivo-{{ a.id }}" name="motivo" style="width:100%;" onchange="var t=document.getElementById('motivo-txt-{{ a.id }}'); t.style.display=(this.value==='Outro')?'inline-block':'none';">
                   {% for m in motivos_bloqueio %}<option value="{{ m }}">{{ m }}</option>{% endfor %}
                 </select>
                 <input type="text" id="motivo-txt-{{ a.id }}" name="motivo_txt" placeholder="Descreva o motivo" style="display:none; width:100%; margin-top:6px;">
-                <div class="linha-botoes" style="margin-top:10px;">
-                  <button type="submit" class="vermelho">Bloquear</button>
-                </div>
+                <button type="submit" class="vermelho" style="margin-top:6px; width:100%;">Bloquear</button>
               </form>
+              {% else %}
+              <form method="post" action="/frota/abastecimentos/{{ a.id }}/desbloquear" style="margin-bottom:6px; padding-top:6px; border-top:1px solid var(--borda);">
+                <button type="submit" class="verde" style="width:100%;">Desbloquear</button>
+              </form>
+              {% endif %}
+              {% if a.pode_excluir %}
+              <form method="post" action="/frota/abastecimentos/{{ a.id }}/excluir"
+                    onsubmit="return confirm('Excluir definitivamente {{ a.serial }} (e suas NFs anexadas)?');">
+                <button type="submit" class="vermelho" style="width:100%;">Excluir</button>
+              </form>
+              {% endif %}
+              {% endif %}
             </div>
           </details>
-          {% else %}
-          <form method="post" action="/frota/abastecimentos/{{ a.id }}/desbloquear" style="display:inline;">
-            <button type="submit" class="verde">Desbloquear</button>
-          </form>
-          {% endif %}
-          {% if a.pode_excluir %}
-          <form method="post" action="/frota/abastecimentos/{{ a.id }}/excluir" style="display:inline;"
-                onsubmit="return confirm('Excluir definitivamente {{ a.serial }} (e suas NFs anexadas)?');">
-            <button type="submit" class="vermelho">Excluir</button>
-          </form>
-          {% endif %}
-          {% endif %}
         </td>
       </tr>
     {% else %}

@@ -151,12 +151,12 @@ def main():
     check("V52-10 lista usa ?v=revisao nos links Ver/Baixar",
           "/pdf?v=1" in r.text and "/pdf/download?v=1" in r.text)
 
-    # ---------- 2.38.1 cores dos botões ----------
+    # ---------- 2.38.1 cores dos botões (v1.53.0: dentro do menu Opções) --
     check("V52-11 NF amarelo-claro", "amarelo-claro" in r.text)
     check("V52-12 Editar verde", 'class="btn verde"' in r.text)
     check("V52-13 Baixar azul-claro", "azul-claro" in r.text)
-    check("V52-14 Bloquear summary vermelho", 'summary class="btn vermelho"'
-          in r.text or 'class="btn vermelho"' in r.text)
+    check("V52-14 menu Opções (v1.53.0: ações no anexo-pop)",
+          "\u22ef Op\u00e7\u00f5es" in r.text)
 
     # ---------- 2.38.1 milhar em KM e Valor ----------
     check("V52-15 KM com milhar (210.884 / 10.050)",
@@ -172,17 +172,20 @@ def main():
     check("V52-18 ordem padrão data DESC (A2 antes de A1 antes de A3)",
           0 < i2 < i1 < i3)
 
-    # corrompe a data de A1 para formato não-ISO (dado legado)
+    # corrompe a data de A1 para formato não-ISO (dado legado) —
+    # v1.53.0: o backfill do _migrar normaliza de volta p/ ISO e o
+    # registro volta à posição de data (não fica mais no fim da lista)
     conn = sqlite3.connect(tmp / "certificados.db")
     conn.execute("UPDATE frota_abastecimentos SET data='05/09/2026'"
                  " WHERE id=1")
     conn.commit()
     conn.close()
     r = client.get("/frota/abastecimentos")
+    i2 = r.text.find("AB-2026-00002")
     i1 = r.text.find("AB-2026-00001")
     i3 = r.text.find("AB-2026-00003")
-    check("V52-19 data não-ISO vai para o fim da lista",
-          0 < i3 < i1)
+    check("V52-19 data não-ISO normalizada pelo backfill (v1.53.0)",
+          0 < i2 < i1 < i3)
 
     # restaura A1 (ISO) para os cálculos seguintes
     conn = sqlite3.connect(tmp / "certificados.db")

@@ -1178,7 +1178,7 @@ def register(app, deps):
                 "extras_total": abast.get("extras_total"),
                 "revisao": rotulo_revisao(rev),
                 "config": load_company_config(),
-            })
+            }, watermark="CANCELADO" if abast.get("status") == "bloqueada" else "")
             repo.set_pdf_path(abast_id, str(pdf))
         except Exception as e:
             from src.utils.error_log import log_error
@@ -1231,6 +1231,7 @@ def register(app, deps):
             flash(request, erro="Abastecimento não encontrado.")
             return RedirectResponse("/frota/abastecimentos", status_code=303)
         repo.desbloquear_abastecimento(abast_id)
+        _regenerar_pdf(repo, repo.get_abastecimento(abast_id))
         _audit(request, "frota-abastecimento-desbloquear", user["username"],
                a["serial"], "")
         flash(request, msg=f"Solicitação {a['serial']} reativada.")
@@ -1619,11 +1620,43 @@ def register(app, deps):
         flash(request, msg="Valores atualizados.")
         return RedirectResponse(url, status_code=303)
 
+    def _regenerar_pdf(repo, a, marca: str = ""):
+        """2.40.2: regenera o PDF em disco. Solicitação bloqueada recebe
+        marca d'água CANCELADO; desbloqueada volta ao documento limpo."""
+        if not a or not a.get("pdf_path"):
+            return
+        try:
+            from src.core.pdf_abastecimento import gerar_pdf_abastecimento
+            from src.core.config import load_company_config
+            pdf = gerar_pdf_abastecimento({
+                "serial": a["serial"],
+                "data_br": _br(a["data"]),
+                "veiculo": a,
+                "fornecedor": {"nome": a.get("fornecedor"),
+                               "cnpj": a.get("fornecedor_cnpj"),
+                               "endereco": a.get("fornecedor_endereco")},
+                "combustivel": a["combustivel"],
+                "condutor": a["condutor"],
+                "viagem_servico": a["viagem_servico"],
+                "km": a["km"],
+                "obs": a["obs"],
+                "extras": a.get("extras_lista") or [],
+                "extras_total": a.get("extras_total"),
+                "config": load_company_config(),
+            }, watermark=marca)
+            repo.set_pdf_path(a["id"], str(pdf))
+        except Exception as e:
+            from src.utils.error_log import log_error
+            log_error("portal-frota-pdf-marca", e)
+
     @app.get("/frota/abastecimentos/{abast_id}/pdf")
     def frota_abast_pdf(abast_id: int):
-        a = _repo().get_abastecimento(abast_id)
+        repo = _repo()
+        a = repo.get_abastecimento(abast_id)
         if not a or not a.get("pdf_path"):
             return Response(status_code=404)
+        if a.get("status") == "bloqueada":
+            _regenerar_pdf(repo, a, "CANCELADO")
         p = Path(a["pdf_path"])
         if not p.exists():
             return Response(status_code=404)
@@ -1633,9 +1666,12 @@ def register(app, deps):
 
     @app.get("/frota/abastecimentos/{abast_id}/pdf/download")
     def frota_abast_pdf_download(abast_id: int):
-        a = _repo().get_abastecimento(abast_id)
+        repo = _repo()
+        a = repo.get_abastecimento(abast_id)
         if not a or not a.get("pdf_path"):
             return Response(status_code=404)
+        if a.get("status") == "bloqueada":
+            _regenerar_pdf(repo, a, "CANCELADO")
         p = Path(a["pdf_path"])
         if not p.exists():
             return Response(status_code=404)
