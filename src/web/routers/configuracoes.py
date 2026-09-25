@@ -60,7 +60,8 @@ def register(app, deps):
                              rede_docs_caminho: str = Form(""),
                              tarefa_ativa: str = Form(""),
                              tarefa_hora: str = Form("12:00"),
-                             pdf_data_hora: str = Form(""),
+                              pdf_data_hora: str = Form(""),
+                              abast_duas_vias: str = Form(""),
                              user: dict = auth.require_permission("config")):
         from src.core.app_settings import load_app_settings, save_app_settings
         from src.utils.validators import (formatar_cnpj, validar_cnpj,
@@ -133,6 +134,7 @@ def register(app, deps):
         settings["tarefa_agendada_ativo"] = tarefa_on
         settings["tarefa_agendada_hora"] = tarefa_hora
         settings["pdf_data_hora_emissao"] = bool(pdf_data_hora)
+        settings["abast_pdf_duas_vias"] = bool(abast_duas_vias)
         save_app_settings(settings)
 
         try:

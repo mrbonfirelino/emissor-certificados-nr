@@ -39,6 +39,18 @@ _COMB_BLOQUEADOS_LEVES = {"arla", "diesel", "arla_diesel"}
 # 2.35.2: motivos de bloqueio de solicitação de abastecimento
 _MOTIVOS_BLOQUEIO = ("Não usada", "Erro de lançamento", "Cancelado", "Outro")
 
+
+def _gerar_pdf_abast(dados: dict, marca: str = ""):
+    """v1.54.0: gera o PDF da solicitação em 1 ou 2 vias conforme a
+    configuração persistida (Configurações > Abastecimentos)."""
+    from src.core.app_settings import get_setting
+    if get_setting("abast_pdf_duas_vias", False):
+        from src.core.pdf_abastecimento_2vias import \
+            gerar_pdf_abastecimento_2vias
+        return gerar_pdf_abastecimento_2vias(dados, watermark=marca)
+    from src.core.pdf_abastecimento import gerar_pdf_abastecimento
+    return gerar_pdf_abastecimento(dados, watermark=marca)
+
 # tags para documentos do veículo (2.29.7)
 TAGS_DOC = [
     ("manutencao", "Manutenção (Nota Fiscal)"),
@@ -1033,10 +1045,9 @@ def register(app, deps):
         # PDF
         pdf_path = None
         try:
-            from src.core.pdf_abastecimento import gerar_pdf_abastecimento
             from src.core.config import load_company_config
             abast = repo.get_abastecimento(abast_id)
-            pdf = gerar_pdf_abastecimento({
+            pdf = _gerar_pdf_abast({
                 "serial": serial,
                 "data_br": _br(abast["data"]),
                 "veiculo": abast,
@@ -1159,10 +1170,9 @@ def register(app, deps):
             return _re_render(str(e))
         # PDF regenerado com a marca de revisão (2.33.2)
         try:
-            from src.core.pdf_abastecimento import gerar_pdf_abastecimento
             from src.core.config import load_company_config
             abast = repo.get_abastecimento(abast_id)
-            pdf = gerar_pdf_abastecimento({
+            pdf = _gerar_pdf_abast({
                 "serial": abast["serial"],
                 "data_br": _br(abast["data"]),
                 "veiculo": abast,
@@ -1178,7 +1188,7 @@ def register(app, deps):
                 "extras_total": abast.get("extras_total"),
                 "revisao": rotulo_revisao(rev),
                 "config": load_company_config(),
-            }, watermark="CANCELADO" if abast.get("status") == "bloqueada" else "")
+            }, marca="CANCELADO" if abast.get("status") == "bloqueada" else "")
             repo.set_pdf_path(abast_id, str(pdf))
         except Exception as e:
             from src.utils.error_log import log_error
@@ -1626,9 +1636,8 @@ def register(app, deps):
         if not a or not a.get("pdf_path"):
             return
         try:
-            from src.core.pdf_abastecimento import gerar_pdf_abastecimento
             from src.core.config import load_company_config
-            pdf = gerar_pdf_abastecimento({
+            pdf = _gerar_pdf_abast({
                 "serial": a["serial"],
                 "data_br": _br(a["data"]),
                 "veiculo": a,
@@ -1643,7 +1652,7 @@ def register(app, deps):
                 "extras": a.get("extras_lista") or [],
                 "extras_total": a.get("extras_total"),
                 "config": load_company_config(),
-            }, watermark=marca)
+            }, marca=marca)
             repo.set_pdf_path(a["id"], str(pdf))
         except Exception as e:
             from src.utils.error_log import log_error

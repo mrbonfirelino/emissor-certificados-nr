@@ -18,7 +18,7 @@
   {% if frota_stats %}
   <a class="stat-card" href="/frota"><span class="num">{{ frota_stats.veiculos }}</span><span class="rot">Veículos na frota</span></a>
   <a class="stat-card" href="/frota"><span class="num">{{ frota_stats.movs_abertas }}</span><span class="rot">Saídas em aberto</span></a>
-  <a class="stat-card" href="/frota/abastecimentos"><span class="num">{{ brl(frota_stats.custo_mes) }}</span><span class="rot">Custo de abastecimento (mês)</span></a>
+  <a class="stat-card" href="/frota/abastecimentos"><span class="num num-brl" data-valor="{{ frota_stats.custo_mes or 0 }}">{{ brl(frota_stats.custo_mes) }}</span><span class="rot">Custo de abastecimento (mês)</span></a>
   {% endif %}
 </div>
 
@@ -101,9 +101,9 @@
   setInterval(tick, 1000);
 })();
 
-// contagem animada nos cards (só números inteiros)
+// contagem animada nos cards (só números inteiros) — 500ms (v1.54.0)
 (function () {
-  var els = document.querySelectorAll(".num");
+  var els = document.querySelectorAll(".num:not(.num-brl)");
   els.forEach(function (el) {
     var alvo = (el.textContent || "").trim();
     if (!/^\d+$/.test(alvo) || alvo === "0") return;
@@ -112,13 +112,37 @@
     var t0 = null;
     function passo(ts) {
       if (!t0) t0 = ts;
-      var p = Math.min(1, (ts - t0) / 2000);
+      var p = Math.min(1, (ts - t0) / 500);
       var e = 1 - Math.pow(1 - p, 3); // ease-out
       el.textContent = String(Math.round(n * e));
       if (p < 1) requestAnimationFrame(passo);
       else el.textContent = alvo;
     }
     el.textContent = "0";
+    requestAnimationFrame(passo);
+  });
+})();
+
+// animação do custo (R$) em centavos — 500ms (v1.54.0)
+(function () {
+  document.querySelectorAll(".num-brl").forEach(function (el) {
+    var bruto = parseFloat(el.dataset.valor);
+    if (!isFinite(bruto) || bruto <= 0) return;
+    var centavos = Math.round(bruto * 100);
+    function fmt(cv) {
+      return "R$ " + (cv / 100).toLocaleString("pt-BR",
+        { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    var t0 = null;
+    function passo(ts) {
+      if (!t0) t0 = ts;
+      var p = Math.min(1, (ts - t0) / 500);
+      var e = 1 - Math.pow(1 - p, 3); // ease-out
+      el.textContent = fmt(Math.round(centavos * e));
+      if (p < 1) requestAnimationFrame(passo);
+      else el.textContent = fmt(centavos);
+    }
+    el.textContent = fmt(0);
     requestAnimationFrame(passo);
   });
 })();

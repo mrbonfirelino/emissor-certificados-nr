@@ -25,6 +25,7 @@ DEFAULTS: Dict[str, Any] = {
     "tarefa_agendada_ativo": False,
     "tarefa_agendada_hora": "12:00",
     "pdf_data_hora_emissao": False,
+    "abast_pdf_duas_vias": False,
 }
 
 

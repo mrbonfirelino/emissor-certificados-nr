@@ -94,6 +94,14 @@
   </details>
 
   <details class="opcoes">
+    <summary>Abastecimentos (Frota)</summary>
+    <div class="campo"><label><input type="checkbox" name="abast_duas_vias" value="1" style="width:auto"
+      {% if (form.abast_duas_vias if form else s.get('abast_pdf_duas_vias', false)) %}checked{% endif %}>
+      Gerar o PDF da Solicitação de Abastecimento em 2 vias por folha A4
+      (uma via para o sistema e uma via física — layout paisagem)</label></div>
+  </details>
+
+  <details class="opcoes">
     <summary>Diagnóstico — Log de Erros</summary>
     <p class="muted">Últimos erros capturados (data/error.log).</p>
     <pre class="log-box">{{ log_tail or 'Nenhum erro registrado.' }}</pre>

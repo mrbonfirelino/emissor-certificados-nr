@@ -697,6 +697,17 @@ CLT – Artigo 462, § 1º - Em caso de dano causado pelo empregado, o desconto 
 
 ---
 
+### 2.41 Ajustes de UX e Configuração (CONCLUÍDA — v1.54.0)
+
+| Item | Descrição | Prioridade | Status |
+|------|-----------|------------|--------|
+| Config 2 vias | Switch persistente em Configurações para gerar o PDF de abastecimento em 2 vias ou 1 via (salvo no app_settings.json, não reseta) | Alta | Concluído (v1.54.0) |
+| Geração 2 vias integrada | Novo gerador pdf_abastecimento_2vias baseado no protótipo aprovado, com watermark CANCELADO compatível | Alta | Concluído (v1.54.0) |
+| Animação do custo no Dashboard | Card de custo anima em R$ (pt-BR) e duração global reduzida para 500 ms | Média | Concluído (v1.54.0) |
+| Cores dos botões da Frota | Gráfico de custos (azul), Empresas/Fornecedores (azul claro), Exportar Excel (verde), Exportar custos (amarelo claro), Importar (cinza) | Média | Concluído (v1.54.0) |
+
+---
+
 ## Cronograma Estimado
 
 ### Sprint 1 (1-2 semanas)

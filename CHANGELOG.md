@@ -1,3 +1,13 @@
+## [1.54.0] - 2026-09-25
+
+### Adicionado
+- Configuração persistente para gerar o PDF da Solicitação de Abastecimento em 2 vias por folha A4 (Configurações > Abastecimentos (Frota)); gravada no app_settings.json, sobrevive a reinícios do navegador/servidor.
+- Geração integrada do documento em 2 vias (layout paisagem do protótipo aprovado), com marca d'água CANCELADO compatível.
+
+### Alterado
+- Dashboard: card de custo de abastecimento agora também tem animação de contagem e todas as animações foram reduzidas para 500 ms.
+- Página da Frota: cores distintas nos botões (Gráfico de custos, Empresas/Fornecedores, Exportar Excel, Exportar custos, Importar Excel).
+
 ## [1.53.0] - 2026-09-25
 
 ### Corrigido
