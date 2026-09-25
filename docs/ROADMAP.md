@@ -641,6 +641,32 @@ CLT – Artigo 462, § 1º - Em caso de dano causado pelo empregado, o desconto 
 | Relatório de custos da frota | No "Relatório de custos" da frota: não colocar o nome dos veículos no gráfico; o relatório pode passar de uma página para caber todo o conteúdo; certificar que o conteúdo não está batendo na "marca d'água" do PDF; colocar o valor gasto em cada mês | Alta | Concluído (v1.51.0) |
 | Gráfico "Custos por veículo × tipo de combustível" legível | Ajustar para não aparecer o nome do veículo OU usar barras laterais (horizontais) — atualmente fica impossível ler os nomes dos veículos sobrepostos no eixo (ver imagem anexada) | Alta | Concluído (v1.51.0) |
 
+### 2.39 Frota — Aprimoramentos do Custo e Consumo (CONCLUÍDA — v1.52.0 — solicitado em 23/09/2026)
+
+#### 2.39.1 KM/L no Resumo por Veículo com Tooltip de Nota
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Campo KM/L no "Resumo por veículo" | Em "/frota/custos", na lista "Resumo por veículo", adicionar um campo para indicar o KM/L do veículo | Alta | Concluído (v1.52.0) |
+| Tooltip disclaimer (Pesados) | Quando o mouse ficar por mais de 1 segundo em cima do valor de KM/L, aparecer um texto (tooltip) de disclaimer. Texto para caminhões, Muncks, retroescavadeira e empilhadeira: "Nota sobre Consumo (Pesados): Os índices de KM/L de caminhões e equipamentos operacionais são médias referenciais. Os valores reais apresentam oscilações frequentes devido ao peso e volume da carga, topografia das rotas e acionamento de implementos hidráulicos (como a tomada de força do caminhão munck, que consome combustível por hora de operação mesmo com o veículo parado)." | Alta | Concluído (v1.52.0) |
+| Tooltip disclaimer (Leves) | Texto para os outros veículos (incluindo carro, pick-up e van): "Nota sobre Consumo (Leves): O consumo estimado (KM/L) da frota leve serve como base comparativa. Variações ocorrem rotineiramente em função do perfil de condução do motorista, fluxo de trânsito urbano (para e anda), peso/carga, uso contínuo de ar-condicionado e cronograma de manutenção preventiva (pressão dos pneus e alinhamento)." | Alta | Concluído (v1.52.0) |
+| Disclaimers nos PDFs | Adicionar esses textos de disclaimer nos relatórios gerados em PDF também | Alta | Concluído (v1.52.0) |
+| Campo KM/L Padrão | Adicionar também um campo para mostrar a KM/L Padrão do veículo (dados da ficha) | Media | Concluído (v1.52.0) |
+
+#### 2.39.2 Layout, Scroll e Ordenação da Página
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Scroll na tabela "Resumo por veículo" | Adicionar barra de Scroll Horizontal e Vertical na tabela "Resumo por veículo" e limitar a altura da tabela para caber 10 itens | Media | Concluído (v1.52.0) |
+| Scroll no gráfico | Se possível, adicionar Scroll Vertical no gráfico "Custos por veículo × tipo de combustível" | Media | Concluído (v1.52.0) |
+| Ordenação por maior consumo | Organizar o gráfico e a tabela "Resumo por veículo" para que os veículos com maior consumo sempre fiquem no topo. O foco dessas modificações é não deixar a página muito longa para o usuário | Media | Concluído (v1.52.0) |
+
+#### 2.39.3 Períodos do Relatório
+
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Geração por período | O ideal seria ter uma opção para gerar todo esse relatório com base em alguns períodos, como últimos 30 dias, 3 meses, 6 meses e 1 ano | Alta | Concluído (v1.52.0) |
+
 
 ---
 

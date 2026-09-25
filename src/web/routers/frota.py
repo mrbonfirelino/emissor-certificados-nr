@@ -201,6 +201,37 @@ def register(app, deps):
                    "alcool": "#256B28", "gnv": "#E6A23C", "arla": "#7E57C2",
                    "arla_diesel": "#6D4C41", "outros": "#78909C"}
 
+    # períodos do relatório de custos (2.39.3): (codigo, rotulo, dias)
+    _PERIODOS_CUSTOS = (
+        ("30d", "Últimos 30 dias", 30),
+        ("3m", "3 meses", 90),
+        ("6m", "6 meses", 180),
+        ("12m", "12 meses (padrão)", None),
+    )
+    _MESES_POR_PERIODO = {"30d": 1, "3m": 3, "6m": 6, "12m": 12}
+    _PESADOS = {"caminhao", "empilhadeira", "retroescavadeira", "outros"}
+    _DISC_PESADOS = (
+        "Nota sobre Consumo (Pesados): Os índices de KM/L de caminhões e "
+        "equipamentos operacionais são médias referenciais. Os valores reais "
+        "apresentam oscilações frequentes devido ao peso e volume da carga, "
+        "topografia das rotas e acionamento de implementos hidráulicos (como "
+        "a tomada de força do caminhão munck, que consome combustível por "
+        "hora de operação mesmo com o veículo parado).")
+    _DISC_LEVES = (
+        "Nota sobre Consumo (Leves): O consumo estimado (KM/L) da frota "
+        "leve serve como base comparativa. Variações ocorrem rotineiramente "
+        "em função do perfil de condução do motorista, fluxo de trânsito "
+        "urbano (para e anda), peso/carga, uso contínuo de ar-condicionado "
+        "e cronograma de manutenção preventiva (pressão dos pneus e "
+        "alinhamento).")
+
+    def _periodo_info(periodo: str):
+        """(dias, meses, rotulo) do período selecionado (2.39.3)."""
+        for cod, rot, dias in _PERIODOS_CUSTOS:
+            if periodo == cod:
+                return dias, _MESES_POR_PERIODO[cod], rot
+        return None, _MESES_POR_PERIODO["12m"], "12 meses"
+
     def _svg_custos_todos(serie: list, largura=860, altura=300):
         """Gráfico mensal empilhado POR VEÍCULO (2.37.2): cada mês tem um
         segmento por veículo (comb+extras somados); tooltip lista o detalhe."""
@@ -211,7 +242,7 @@ def register(app, deps):
                     veic_ids.append(vid)
                     veic_rot[vid] = d["rotulo"]
         if not veic_ids:
-            return ""
+            return Markup(""), ""
 
         def _fmt(v):
             return f"{float(v):.2f}".replace(".", ",")
@@ -1306,30 +1337,42 @@ def register(app, deps):
                 cell.number_format = "0.00"
 
     @app.get("/frota/custos")
-    def frota_custos(request: Request,
+    def frota_custos(request: Request, periodo: str = "12m",
                      user: dict = auth.require_permission("frota")):
-        """Gráficos de custos gerais (2.37.2): 12 meses por veículo e
-        por veículo × combustível (incl. extras), com exportações."""
+        """Gráficos de custos gerais (2.37.2): por mês e por veículo ×
+        combustível (incl. extras), com exportações.
+        2.39: período selecionável, KM/L + KM/L padrão, tooltip de nota
+        (pesados/leves), scroll e ordenação por maior consumo."""
         repo = _repo()
-        serie = repo.custo_serie_todos()
-        resumos = [r for r in repo.resumo_custo_todos() if r["qtd"]]
-        comb = repo.custo_por_combustivel()
+        dias, meses, rotulo = _periodo_info(periodo)
+        serie = repo.custo_serie_todos(meses=meses, dias=dias)
+        resumos = []
+        for r in repo.resumo_custo_todos(dias=dias):
+            if not r["qtd"]:
+                continue
+            tipo = (r.get("tipo") or "outros")
+            r["disclaimer"] = (_DISC_PESADOS if tipo in _PESADOS
+                               else _DISC_LEVES)
+            resumos.append(r)
+        comb = repo.custo_por_combustivel(dias=dias)
         g_meses, leg_meses = _svg_custos_todos(serie)
         g_comb, leg_comb = _svg_custos_comb(comb)
         return templates.TemplateResponse(
             request=request, name="custos_frota.html",
             context=ctx(request, grafico_meses=g_meses, legenda_meses=leg_meses,
                         grafico_comb=g_comb, legenda_comb=leg_comb,
-                        resumos=resumos,
+                        resumos=resumos, periodo=periodo,
+                        periodo_rotulo=rotulo, periodos=_PERIODOS_CUSTOS,
                         pode_escrever=pode_escrever(user["papel"], "frota")))
 
     @app.get("/frota/custos/pdf")
-    def frota_custos_pdf(request: Request,
+    def frota_custos_pdf(request: Request, periodo: str = "12m",
                          user: dict = auth.require_permission("frota")):
         """RELATÓRIO DE CUSTOS — FROTA em PDF (2.37.2), direto no navegador."""
         from src.core.pdf_custos_frota import gerar_pdf_custos_frota
+        dias, _meses, _rot = _periodo_info(periodo)
         try:
-            data = gerar_pdf_custos_frota()
+            data = gerar_pdf_custos_frota(dias=dias)
         except Exception:
             from src.utils.error_log import log_error
             log_error("portal-frota-custos-pdf")
@@ -1342,14 +1385,16 @@ def register(app, deps):
 
     @app.get("/frota/{veiculo_id}/custos/pdf")
     def frota_custo_veiculo_pdf(veiculo_id: int, request: Request,
+                                periodo: str = "12m",
                                 user: dict = auth.require_permission("frota")):
         """PDF individual de custos do veículo (2.37.2), direto no navegador."""
         from src.core.pdf_custos_frota import gerar_pdf_custos_frota
         v = _repo().get_veiculo(veiculo_id)
         if not v:
             return Response(status_code=404)
+        dias, _meses, _rot = _periodo_info(periodo)
         try:
-            data = gerar_pdf_custos_frota(veiculo_id=veiculo_id)
+            data = gerar_pdf_custos_frota(veiculo_id=veiculo_id, dias=dias)
         except Exception:
             from src.utils.error_log import log_error
             log_error("portal-frota-custos-pdf")
@@ -1363,36 +1408,44 @@ def register(app, deps):
                                  f'inline; filename="custos_{nome}.pdf"'})
 
     @app.get("/frota/custos/exportar")
-    def frota_custos_exportar(request: Request,
+    def frota_custos_exportar(request: Request, periodo: str = "12m",
                               user: dict = auth.require_permission("frota")):
-        """Excel geral de custos (2.35.1): resumo por veículo + todas as linhas."""
+        """Excel geral de custos (2.35.1): resumo por veículo + todas as linhas.
+        2.39.3: respeita o período selecionado."""
         import io
         import openpyxl
         repo = _repo()
-        resumos = repo.resumo_custo_todos()
+        dias, _meses, _rot = _periodo_info(periodo)
+        corte = FrotaRepository._data_corte(dias)
+        resumos = repo.resumo_custo_todos(dias=dias)
         itens, _total = repo.list_abastecimentos(limit=5000, offset=0)
+        if corte:
+            itens = [a for a in itens if (a.get("data") or "") >= corte]
         nf_map = repo.tem_nf([a["id"] for a in itens])
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "Resumo por veiculo"
         ws.append(["Veículo", "Abastecimentos (ativos)", "Litros",
+                   "KM/L (real)", "KM/L padrão",
                    "Combustível (R$)", "Itens extras (R$)", "Total (R$)"])
         for r in resumos:
             combust = float(r["combustivel"] or 0)
             extras = float(r["extras"] or 0)
             ws.append([r["veiculo_rotulo"], int(r["qtd"] or 0),
-                       float(r["litros"] or 0), combust,
+                       float(r["litros"] or 0),
+                       r.get("media_km_l"), r.get("km_l_esperado"),
+                       combust,
                        extras if extras else None,
                        (combust + extras) if (combust or extras) else None])
         ws2 = wb.create_sheet("Abastecimentos")
         _abast_sheet(ws2, itens, nf_map)
-        for row in ws.iter_rows(min_row=2, min_col=3, max_col=6):
+        for row in ws.iter_rows(min_row=2, min_col=3, max_col=8):
             for cell in row:
                 cell.number_format = "0.00"
         buf = io.BytesIO()
         wb.save(buf)
         wb.close()
-        _audit(request, "frota-custos-exportar", user["username"], "",
+        _audit(request, "frota-custos-exportar", user["username"], periodo,
                f"{len(resumos)} veiculo(s)")
         return Response(
             content=buf.getvalue(), media_type=_XLSX_MEDIA,
@@ -1401,17 +1454,23 @@ def register(app, deps):
 
     @app.get("/frota/{veiculo_id}/custo/exportar")
     def frota_custo_veiculo_exportar(veiculo_id: int, request: Request,
+                                     periodo: str = "12m",
                                      user: dict = auth.require_permission("frota")):
-        """Excel de custo/consumo de um veículo (2.35.1)."""
+        """Excel de custo/consumo de um veículo (2.35.1).
+        2.39.3: série mensal e linhas respeitam o período selecionado."""
         import io
         import openpyxl
         repo = _repo()
         v = repo.get_veiculo(veiculo_id)
         if not v:
             return Response(status_code=404)
+        dias, meses, _rot = _periodo_info(periodo)
+        corte = FrotaRepository._data_corte(dias)
         resumo = repo.resumo_custo_veiculo(veiculo_id)
-        serie = repo.custo_serie_veiculo(veiculo_id)
+        serie = repo.custo_serie_veiculo(veiculo_id, meses=meses)
         abasts = repo.list_abast_por_veiculo(veiculo_id)
+        if corte:
+            abasts = [a for a in abasts if (a.get("data") or "") >= corte]
         nf_map = repo.tem_nf([a["id"] for a in abasts])
         wb = openpyxl.Workbook()
         ws = wb.active
@@ -1427,6 +1486,9 @@ def register(app, deps):
         ws.append(["KM/L esperado", resumo["km_l_esperado"]])
         ws.append(["Custo por km (R$)", resumo["custo_km"]])
         ws.append([])
+        tipo = (v.get("tipo") or "outros")
+        ws.append(["Nota sobre Consumo", _DISC_PESADOS
+                   if tipo in _PESADOS else _DISC_LEVES])
         ws.append(["Série mensal", "Combustível (R$)", "Extras (R$)",
                    "Litros"])
         for s in serie:

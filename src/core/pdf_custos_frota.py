@@ -88,6 +88,22 @@ def _logo_path():
         return None
 
 
+# Disclaimers de consumo (2.39.1) — textos oficiais do roadmap
+DISC_PESADOS = (
+    "Nota sobre Consumo (Pesados): Os índices de KM/L de caminhões e "
+    "equipamentos operacionais são médias referenciais. Os valores reais "
+    "apresentam oscilações frequentes devido ao peso e volume da carga, "
+    "topografia das rotas e acionamento de implementos hidráulicos (como a "
+    "tomada de força do caminhão munck, que consome combustível por hora de "
+    "operação mesmo com o veículo parado).")
+DISC_LEVES = (
+    "Nota sobre Consumo (Leves): O consumo estimado (KM/L) da frota leve "
+    "serve como base comparativa. Variações ocorrem rotineiramente em função "
+    "do perfil de condução do motorista, fluxo de trânsito urbano (para e "
+    "anda), peso/carga, uso contínuo de ar-condicionado e cronograma de "
+    "manutenção preventiva (pressão dos pneus e alinhamento).")
+
+
 def _serie_totais(serie: list) -> dict:
     """Agrega {vid: {rotulo, comb, ext, litros}} de uma série por veículo."""
     tot = {}
@@ -296,12 +312,13 @@ def _tabela_paginada(c: rl_canvas.Canvas, cfg, y: float, larguras: list,
 
 
 def _pagina_resumo(c: rl_canvas.Canvas, repo: FrotaRepository, serie: list,
-                   tot12: dict):
+                   tot12: dict, rotulo_periodo: str = "últimos 12 meses",
+                   nota: str = ""):
     cfg = _cfg_empresa()
     y = _cabecalho(c, cfg)
     mes_ini, mes_fim = serie[0]["rotulo"], serie[-1]["rotulo"]
     y = _titulo(c, y, "RELATÓRIO DE CUSTOS — FROTA",
-                f"Período do gráfico: {mes_ini} a {mes_fim} (últimos 12 meses)"
+                f"Período do gráfico: {mes_ini} a {mes_fim} ({rotulo_periodo})"
                 " · solicitações bloqueadas ficam fora dos totais")
 
     # gráfico geral empilhado por veículo
@@ -372,15 +389,37 @@ def _pagina_resumo(c: rl_canvas.Canvas, repo: FrotaRepository, serie: list,
     if linhas_mes:
         linhas_mes.append(["TOTAL", f"{_num(m_lit)} L", _brl(m_comb),
                            _brl(m_ext), _brl(m_comb + m_ext)])
-        _tabela_paginada(
+        y = _tabela_paginada(
             c, cfg, y, [34 * mm, 38 * mm, 50 * mm, 50 * mm, 46 * mm],
             ["Mês", "Litros", "Combustível", "Itens extras", "Total"],
             linhas_mes, alinh=["E", "D", "D", "D", "D"],
             titulo="Valores por mês")
+    if nota:
+        c.setFillColor(MUTED)
+        c.setFont("Helvetica-Oblique", 7)
+        for i, linha in enumerate(_wrap_texto(nota, 160)):
+            c.drawString(MARGEM, y - 6 * mm - i * 3.2 * mm, linha)
+
+
+def _wrap_texto(texto: str, largura: int) -> list:
+    """Quebra o texto em linhas de ~`largura` caracteres (disclaimers)."""
+    palavras = str(texto or "").split()
+    linhas, atual = [], ""
+    for p in palavras:
+        if atual and len(atual) + 1 + len(p) > largura:
+            linhas.append(atual)
+            atual = p
+        else:
+            atual = f"{atual} {p}".strip()
+    if atual:
+        linhas.append(atual)
+    return linhas
 
 
 def _pagina_veiculo(c: rl_canvas.Canvas, repo: FrotaRepository, v: dict,
-                    serie_v: list, comb_linhas: list, extras_dados=None):
+                    serie_v: list, comb_linhas: list, extras_dados=None,
+                    rotulo_periodo: str = "últimos 12 meses",
+                    nota: str = ""):
     cfg = _cfg_empresa()
     y = _cabecalho(c, cfg)
 
@@ -415,7 +454,7 @@ def _pagina_veiculo(c: rl_canvas.Canvas, repo: FrotaRepository, v: dict,
 
     c.setFillColor(TEXTO)
     c.setFont("Helvetica-Bold", 9.5)
-    c.drawString(MARGEM, y - 4 * mm, f"Últimos 12 meses ({mes_ini} a {mes_fim}):")
+    c.drawString(MARGEM, y - 4 * mm, f"{rotulo_periodo} ({mes_ini} a {mes_fim}):")
     c.setFont("Helvetica", 9)
     c.drawString(MARGEM + 62 * mm, y - 4 * mm,
                  f"Combustível {_brl(comb12)}  ·  Itens extras {_brl(ext12)}"
@@ -499,49 +538,76 @@ def _pagina_veiculo(c: rl_canvas.Canvas, repo: FrotaRepository, v: dict,
         c.setFillColor(MUTED)
         c.setFont("Helvetica", 8)
         c.drawString(MARGEM, y - 4 * mm, " · ".join(ind) + " (histórico ativo)")
+    if nota:
+        c.setFillColor(MUTED)
+        c.setFont("Helvetica-Oblique", 7)
+        for i, linha in enumerate(_wrap_texto(nota, 150)):
+            c.drawString(MARGEM, y - 11 * mm - i * 3.2 * mm, linha)
 
 
-def gerar_pdf_custos_frota(veiculo_id=None, repo: FrotaRepository = None) -> bytes:
+def gerar_pdf_custos_frota(veiculo_id=None, repo: FrotaRepository = None,
+                           dias=None) -> bytes:
     """Gera o RELATÓRIO DE CUSTOS — FROTA e devolve os bytes do PDF.
     veiculo_id=None → resumo geral + 1 página por veículo (com dados).
-    veiculo_id informado → somente a página desse veículo."""
+    veiculo_id informado → somente a página desse veículo.
+    2.39.3: `dias` restringe o período (None = 12 meses).
+    2.39.1: disclaimers de consumo (pesados/leves) nos relatórios."""
     repo = repo or FrotaRepository()
+    meses = {30: 1, 90: 3, 180: 6}.get(dias, 12)
+    rotulo_periodo = ({30: "últimos 30 dias", 90: "últimos 3 meses",
+                       180: "últimos 6 meses"}.get(dias, "últimos 12 meses"))
+    pesados = {"caminhao", "empilhadeira", "retroescavadeira", "outros"}
     buf = BytesIO()
     c = rl_canvas.Canvas(buf, pagesize=(PAGE_W, PAGE_H))
     c.setTitle("Relatório de Custos — Frota")
 
     if veiculo_id is None:
-        serie = repo.custo_serie_todos()
+        serie = repo.custo_serie_todos(meses=meses, dias=dias)
         tot12 = _serie_totais(serie)
-        _pagina_resumo(c, repo, serie, tot12)
+        nota_resumo = ("Nota sobre Consumo: os índices de KM/L de caminhões "
+                       "e equipamentos operacionais são médias referenciais "
+                       "(peso da carga, topografia e implementos hidráulicos "
+                       "alteram o consumo); na frota leve, o consumo varia "
+                       "com o perfil de condução, trânsito, ar-condicionado "
+                       "e manutenção.")
+        _pagina_resumo(c, repo, serie, tot12,
+                       rotulo_periodo=rotulo_periodo, nota=nota_resumo)
         _rodape(c)
         c.showPage()
         for vid in sorted(tot12.keys()):
             v = repo.get_veiculo(vid)
             if not v:
                 continue
-            comb_linhas = [it for it in repo.custo_por_combustivel()
+            comb_linhas = [it for it in repo.custo_por_combustivel(dias=dias)
                            if it["vid"] == vid]
             try:
                 extras_dados = repo.list_extras_veiculo(vid)
             except Exception:
                 extras_dados = []
-            _pagina_veiculo(c, repo, v, repo.custo_serie_veiculo(vid),
-                            comb_linhas, extras_dados)
+            nota_v = (DISC_PESADOS if (v.get("tipo") or "outros") in pesados
+                      else DISC_LEVES)
+            _pagina_veiculo(c, repo, v,
+                            repo.custo_serie_veiculo(vid, meses=meses),
+                            comb_linhas, extras_dados,
+                            rotulo_periodo=rotulo_periodo, nota=nota_v)
             _rodape(c)
             c.showPage()
     else:
         v = repo.get_veiculo(veiculo_id)
         if not v:
             raise ValueError("Veículo não encontrado.")
-        comb_linhas = [it for it in repo.custo_por_combustivel()
+        comb_linhas = [it for it in repo.custo_por_combustivel(dias=dias)
                        if it["vid"] == veiculo_id]
         try:
             extras_dados = repo.list_extras_veiculo(veiculo_id)
         except Exception:
             extras_dados = []
-        _pagina_veiculo(c, repo, v, repo.custo_serie_veiculo(veiculo_id),
-                        comb_linhas, extras_dados)
+        nota_v = (DISC_PESADOS if (v.get("tipo") or "outros") in pesados
+                  else DISC_LEVES)
+        _pagina_veiculo(c, repo, v,
+                        repo.custo_serie_veiculo(veiculo_id, meses=meses),
+                        comb_linhas, extras_dados,
+                        rotulo_periodo=rotulo_periodo, nota=nota_v)
         _rodape(c)
         c.showPage()
 

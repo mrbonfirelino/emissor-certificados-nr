@@ -3,11 +3,18 @@
 {% block conteudo %}
 <div class="card">
   <h1>Custos e consumo — Frota</h1>
-  <p class="sub">Últimos 12 meses · solicitações bloqueadas ficam fora dos totais.</p>
+  <p class="sub">Período: {{ periodo_rotulo }} · solicitações bloqueadas ficam fora dos totais.</p>
 
   <div class="linha-botoes" style="margin-top:0;">
-    <a class="btn verde" href="/frota/custos/pdf" target="_blank">Exportar PDF (diretoria)</a>
-    <a class="btn cinza" href="/frota/custos/exportar">Exportar Excel (geral)</a>
+    <label style="display:inline-flex; align-items:center; gap:6px;">Período
+      <select id="sel-periodo" onchange="window.location='/frota/custos?periodo='+this.value;">
+        {% for cod, rot, _d in periodos %}
+        <option value="{{ cod }}" {{ 'selected' if cod == periodo }}>{{ rot }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <a class="btn verde" href="/frota/custos/pdf?periodo={{ periodo }}" target="_blank">Exportar PDF (diretoria)</a>
+    <a class="btn cinza" href="/frota/custos/exportar?periodo={{ periodo }}">Exportar Excel (geral)</a>
     <a class="btn cinza" href="/frota">Voltar</a>
   </div>
 
@@ -17,11 +24,11 @@
   <div class="legenda-graf" id="leg-meses">{{ legenda_meses | safe }}</div>
   <button type="button" class="btn" data-png="graf-meses" data-nome="custos_frota_por_mes" style="margin-top:10px;">Baixar gráfico (PNG)</button>
   {% else %}
-  <p class="muted">Sem abastecimentos ativos nos últimos 12 meses.</p>
+  <p class="muted">Sem abastecimentos ativos no período selecionado.</p>
   {% endif %}
 
   <h2 style="margin-top:26px;">Custos por veículo × tipo de combustível</h2>
-  <div id="graf-comb">{{ grafico_comb }}</div>
+  <div id="graf-comb" style="max-height:430px; overflow-y:auto;">{{ grafico_comb }}</div>
   {% if grafico_comb %}
   <div class="legenda-graf" id="leg-comb">{{ legenda_comb | safe }}</div>
   <button type="button" class="btn" data-png="graf-comb" data-nome="custos_frota_por_veiculo" style="margin-top:10px;">Baixar gráfico (PNG)</button>
@@ -31,30 +38,34 @@
 
   <h2 style="margin-top:26px;">Resumo por veículo</h2>
   {% if resumos %}
+  <div style="max-height:520px; overflow:auto;">
   <table>
-    <thead><tr><th>Veículo</th><th>Abast. ativos</th><th>Litros</th><th>Combustível</th><th>Itens extras</th><th>Total</th><th></th></tr></thead>
+    <thead><tr><th>Veículo</th><th>Abast. ativos</th><th>Litros</th><th>KM/L (real)</th><th>KM/L padrão</th><th>Combustível</th><th>Itens extras</th><th>Total</th><th></th></tr></thead>
     <tbody>
     {% for r in resumos %}
       <tr>
         <td>{{ r.veiculo_rotulo }}{% if r.placa %} <span class="muted">({{ r.placa }})</span>{% endif %}</td>
         <td>{{ r.qtd }}</td>
         <td>{{ r.litros | dec }} L</td>
+        <td class="kml-real" data-disc="{{ r.disclaimer }}">{{ dec(r.media_km_l) }}{% if r.media_km_l %} <span class="muted">ⓘ</span>{% endif %}</td>
+        <td>{{ dec(r.km_l_esperado) }}</td>
         <td>{{ r.combustivel | brl }}</td>
         <td>{{ r.extras | brl }}</td>
         <td><b>{{ (r.combustivel + r.extras) | brl }}</b></td>
         <td class="acoes">
-          <a class="btn cinza" href="/frota/{{ r.id }}/custo/exportar">Excel individual</a>
-          <a class="btn cinza" href="/frota/{{ r.id }}/custos/pdf" target="_blank">PDF</a>
+          <a class="btn cinza" href="/frota/{{ r.id }}/custo/exportar?periodo={{ periodo }}">Excel individual</a>
+          <a class="btn cinza" href="/frota/{{ r.id }}/custos/pdf?periodo={{ periodo }}" target="_blank">PDF</a>
         </td>
       </tr>
     {% endfor %}
     </tbody>
   </table>
+  </div>
   {% else %}
   <p class="muted">Nenhum abastecimento ativo.</p>
   {% endif %}
 </div>
-<div id="graf-tip" class="graf-tip"></div>
+<div id="graf-tip" class="graf-tip" style="max-width:420px; white-space:normal;"></div>
 <script>
 (function () {
   var tip = document.getElementById("graf-tip");
@@ -77,6 +88,39 @@
       tip.style.top = y + "px";
     });
     g.addEventListener("mouseleave", function () { tip.style.display = "none"; });
+  });
+
+  var timerKml = null;
+  document.querySelectorAll(".kml-real").forEach(function (td) {
+    td.style.cursor = "help";
+    td.addEventListener("mouseenter", function (ev) {
+      var disc = td.getAttribute("data-disc") || "";
+      if (!disc) { return; }
+      timerKml = setTimeout(function () {
+        tip.innerHTML = disc;
+        tip.style.display = "block";
+        var x = ev.clientX + 14, y = ev.clientY + 12;
+        if (x + tip.offsetWidth > window.innerWidth - 8) {
+          x = window.innerWidth - tip.offsetWidth - 12;
+        }
+        if (y + tip.offsetHeight > window.innerHeight - 8) {
+          y = window.innerHeight - tip.offsetHeight - 12;
+        }
+        tip.style.left = x + "px";
+        tip.style.top = y + "px";
+      }, 1000);
+    });
+    td.addEventListener("mousemove", function (ev) {
+      if (tip.style.display === "block") {
+        tip.style.left = Math.min(ev.clientX + 14,
+          window.innerWidth - tip.offsetWidth - 8) + "px";
+        tip.style.top = (ev.clientY + 12) + "px";
+      }
+    });
+    td.addEventListener("mouseleave", function () {
+      if (timerKml) { clearTimeout(timerKml); timerKml = null; }
+      tip.style.display = "none";
+    });
   });
 
   function _baixar(blob, nome) {

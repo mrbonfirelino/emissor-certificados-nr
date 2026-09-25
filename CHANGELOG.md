@@ -1,3 +1,15 @@
+## [1.52.0] - 2026-09-25
+
+### Adicionado
+- Custo e consumo da frota (2.39): colunas KM/L (real) e KM/L padrão na tabela Resumo por veículo, com tooltip de nota sobre consumo (pesados/leves) ao manter o mouse;
+- Período do relatório de custos: seletor (últimos 30 dias / 3 meses / 6 meses / 12 meses) que afeta a página, os PDFs (geral e individual) e as exportações Excel;
+- Disclaimers de consumo impressos nos PDFs de custos (nota resumida na página geral e nota completa por tipo nos relatórios individuais);
+- Ordenação do Resumo por maior gasto total no período (R$) e do gráfico por veículo.
+
+### Corrigido
+- Página de custos não abre mais quando a frota não tem nenhum abastecimento no período;
+- Tabela Resumo e gráfico por veículo com rolagem (tabela ~10 linhas, gráfico com altura limitada).
+
 ## [1.51.0] - 2026-09-24
 
 ### Corrigido

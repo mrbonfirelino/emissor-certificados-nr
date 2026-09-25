@@ -9,7 +9,7 @@ frota_movimentacoes (saida/entrada) e frota_abastecimentos.
 import json
 import sqlite3
 from pathlib import Path
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Optional, List, Dict, Any
 
 from src.utils.paths import get_db_path
@@ -1585,13 +1585,25 @@ class FrotaRepository:
             })
         return serie
 
-    def custo_serie_todos(self, meses: int = 12) -> List[dict]:
+    @staticmethod
+    def _data_corte(dias):
+        """Data ISO de corte para período (2.39.3): hoje - dias."""
+        if not dias or dias <= 0:
+            return None
+        return (date.today() - timedelta(days=int(dias))).isoformat()
+
+    def custo_serie_todos(self, meses: int = 12,
+                          dias: Optional[int] = None) -> List[dict]:
         """Série mensal (2.37.2) dos últimos `meses` meses com detalhe POR
         VEÍCULO: cada item é {mes, rotulo, por_veiculo: {vid: {rotulo,
         combustivel, extras, litros}}}. Ignora bloqueadas. Sempre devolve
-        `meses` itens (meses sem dados têm por_veiculo vazio)."""
+        `meses` itens (meses sem dados têm por_veiculo vazio).
+        2.39.3: `dias` filtra por data real no SQL (período do relatório)."""
+        corte = self._data_corte(dias)
+        if dias:
+            meses = {30: 1, 90: 3, 180: 6}.get(dias, meses)
         with self._get_conn() as conn:
-            rows = conn.execute(
+            sql = (
                 "SELECT a.veiculo_id AS vid, v.modelo, v.marca, v.placa,"
                 " substr(a.data,1,7) AS mes,"
                 " SUM(COALESCE(a.valor,0)) AS combustivel,"
@@ -1599,8 +1611,13 @@ class FrotaRepository:
                 " SUM(COALESCE(a.litros,0)) AS litros"
                 " FROM frota_abastecimentos a"
                 " JOIN frota_veiculos v ON v.id = a.veiculo_id"
-                " WHERE a.status IS NULL"
-                " GROUP BY a.veiculo_id, substr(a.data,1,7)").fetchall()
+                " WHERE a.status IS NULL")
+            params = []
+            if corte:
+                sql += " AND a.data >= ?"
+                params.append(corte)
+            sql += " GROUP BY a.veiculo_id, substr(a.data,1,7)"
+            rows = conn.execute(sql, params).fetchall()
         rotulos = {}
         por_mes = {}
         for r in rows:
@@ -1631,11 +1648,13 @@ class FrotaRepository:
             })
         return serie
 
-    def custo_por_combustivel(self) -> List[dict]:
+    def custo_por_combustivel(self, dias: Optional[int] = None) -> List[dict]:
         """Total por veículo × tipo de combustível (2.37.2), incluindo extras,
-        ignorando bloqueadas. Ordenado por veículo e maior custo."""
+        ignorando bloqueadas. 2.39.2/2.39.3: `dias` filtra por data; ordenado
+        por TOTAL gasto (combustível+extras) DESC, depois veículo."""
+        corte = self._data_corte(dias)
         with self._get_conn() as conn:
-            rows = conn.execute(
+            sql = (
                 "SELECT a.veiculo_id AS vid, a.combustivel AS comb,"
                 " v.modelo, v.marca, v.placa,"
                 " SUM(COALESCE(a.valor,0)) AS combustivel,"
@@ -1643,9 +1662,16 @@ class FrotaRepository:
                 " SUM(COALESCE(a.litros,0)) AS litros"
                 " FROM frota_abastecimentos a"
                 " JOIN frota_veiculos v ON v.id = a.veiculo_id"
-                " WHERE a.status IS NULL"
-                " GROUP BY a.veiculo_id, a.combustivel"
-                " ORDER BY v.id, combustivel DESC").fetchall()
+                " WHERE a.status IS NULL")
+            params = []
+            if corte:
+                sql += " AND a.data >= ?"
+                params.append(corte)
+            sql += (" GROUP BY a.veiculo_id, a.combustivel"
+                    " ORDER BY (SUM(COALESCE(a.valor,0))"
+                    " + SUM(COALESCE(a.extras_total,0))) DESC,"
+                    " a.veiculo_id, combustivel DESC")
+            rows = conn.execute(sql, params).fetchall()
         out = []
         for r in rows:
             d = dict(r)
@@ -1655,30 +1681,66 @@ class FrotaRepository:
             out.append(d)
         return out
 
-    def resumo_custo_todos(self) -> List[dict]:
+    def resumo_custo_todos(self, dias: Optional[int] = None) -> List[dict]:
         """Resumo de custo por veículo (2.35.1) para o export geral.
-        Ignora bloqueadas; separa combustível x itens extras."""
+        Ignora bloqueadas; separa combustível x itens extras.
+        2.39: `dias` filtra por data; inclui tipo/subtipo, km_l_esperado e
+        media_km_l (pares consecutivos de KM dentro do período); ordenado
+        por TOTAL gasto (combustível+extras) DESC."""
+        corte = self._data_corte(dias)
         with self._get_conn() as conn:
+            cond = "a.status IS NULL"
+            params = []
+            if corte:
+                cond += " AND a.data >= ?"
+                params.append(corte)
             rows = conn.execute(
-                "SELECT v.id, v.modelo, v.marca, v.placa,"
-                " COALESCE(SUM(CASE WHEN a.status IS NULL"
+                "SELECT v.id, v.modelo, v.marca, v.placa, v.tipo, v.subtipo,"
+                " v.km_l_esperado,"
+                " COALESCE(SUM(CASE WHEN " + cond +
                 "   THEN COALESCE(a.valor,0) END),0) AS combustivel,"
-                " COALESCE(SUM(CASE WHEN a.status IS NULL"
+                " COALESCE(SUM(CASE WHEN " + cond +
                 "   THEN COALESCE(a.extras_total,0) END),0) AS extras,"
-                " COALESCE(SUM(CASE WHEN a.status IS NULL"
+                " COALESCE(SUM(CASE WHEN " + cond +
                 "   THEN COALESCE(a.litros,0) END),0) AS litros,"
-                 " SUM(CASE WHEN a.id IS NOT NULL AND a.status IS NULL"
-                 " THEN 1 ELSE 0 END) AS qtd"
+                " SUM(CASE WHEN a.id IS NOT NULL AND " + cond +
+                " THEN 1 ELSE 0 END) AS qtd"
                 " FROM frota_veiculos v"
                 " LEFT JOIN frota_abastecimentos a ON a.veiculo_id = v.id"
-                " GROUP BY v.id ORDER BY v.id").fetchall()
+                " GROUP BY v.id", params * 4).fetchall()
+            # KM/L por veículo no mesmo período (pares consecutivos de KM)
+            km_rows = conn.execute(
+                "SELECT a.veiculo_id AS vid, a.km, a.litros"
+                " FROM frota_abastecimentos a"
+                " WHERE " + cond + " AND a.km IS NOT NULL"
+                " AND a.litros IS NOT NULL ORDER BY a.veiculo_id, a.km",
+                params).fetchall()
+        medias = {}
+        for r in km_rows:
+            pts = medias.setdefault(r["vid"], [])
+            pts.append((r["km"], float(r["litros"])))
         out = []
         for r in rows:
             d = dict(r)
             d["veiculo_rotulo"] = veiculo_rotulo(
                 {"marca": d["marca"], "modelo": d["modelo"],
                  "placa": d["placa"]})
+            media = None
+            pts = medias.get(d["id"]) or []
+            km_diff = 0.0
+            litros_usados = 0.0
+            for (km1, l1), (km2, _l2) in zip(pts, pts[1:]):
+                delta = float(km2) - float(km1)
+                if delta > 0:
+                    km_diff += delta
+                    litros_usados += l1
+            if km_diff > 0 and litros_usados > 0:
+                media = round(km_diff / litros_usados, 2)
+            d["media_km_l"] = media
+            d["total"] = round(float(d["combustivel"] or 0)
+                               + float(d["extras"] or 0), 2)
             out.append(d)
+        out.sort(key=lambda x: (-(x["total"]), x["id"]))
         return out
 
     def list_extras_veiculo(self, veiculo_id: int) -> List[dict]:
