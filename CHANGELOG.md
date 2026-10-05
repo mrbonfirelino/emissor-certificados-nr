@@ -1,5 +1,14 @@
 ## [1.61.0] - 2026-10-05
 
+## [1.62.4] - 2026-10-05
+
+### Corrigido
+- Notificacoes do navegador: /api/vencimentos/resumo falhava com AttributeError (sqlite3.Row nao tem .get); campos notif/setor_usuario agora lidos com fallback seguro.
+
+### Adicionado
+- Testes de Validacao/test_web_v162.py cobrindo o endpoint de resumo de vencimentos (45 testes na su?te).
+
+
 ## [1.62.3] - 2026-10-05
 
 ### Corrigido

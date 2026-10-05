@@ -1,4 +1,4 @@
-"""Vencimentos no portal (Fase 3) — leitura, mesmos filtros do desktop.
+﻿"""Vencimentos no portal (Fase 3) — leitura, mesmos filtros do desktop.
 
 Certs + ASOs + Integrações com a mesma lógica de filtro do desktop
 (src/core/filtros_vencimentos). Consulta e emissor veem; é read-only.
@@ -123,8 +123,9 @@ def register(app, deps: dict):
             u = users.get_by_id(user["id"]) or {}
         except Exception:
             u = {}
-        resumo["notif"] = bool(u.get("pref_notif", 1))
-        resumo["setor_usuario"] = u.get("setor", "") or ""
+        chaves = set(u.keys()) if hasattr(u, "keys") else set()
+        resumo["notif"] = bool(u["pref_notif"]) if "pref_notif" in chaves else True
+        resumo["setor_usuario"] = (u["setor"] or "") if "setor" in chaves else ""
         return JSONResponse(resumo)
     templates = deps["templates"]
 
