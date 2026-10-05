@@ -12,6 +12,7 @@
   {% else %}
 
   <form method="get" action="/crachas/novo" class="filtros" style="margin-bottom:12px">
+        <div class="campo"><label for="f-per">Ver por página</label><select id="f-per" name="per" onchange="this.form.submit()" style="max-width:90px;"><option value="10" {{ 'selected' if per == 10 else '' }}>10</option><option value="20" {{ 'selected' if per == 20 else '' }}>20</option><option value="25" {{ 'selected' if per == 25 else '' }}>25</option><option value="50" {{ 'selected' if per == 50 else '' }}>50</option></select></div>
     <input type="search" name="busca" value="{{ busca }}" placeholder="Buscar por nome ou CPF...">
     <button class="btn" type="submit">Buscar</button>
     {% if busca %}<a class="btn cinza" href="/crachas/novo">Limpar</a>{% endif %}

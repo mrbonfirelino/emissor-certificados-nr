@@ -71,6 +71,7 @@ def register(app, deps: dict):
     def cartoes_lista(request: Request,
                       busca: str = "",
                       page: int = 1,
+                      per: int = 10,
                       user: dict = auth.require_permission("cartoes")):
         from urllib.parse import quote_plus
         base = get_cartoes_dir()
@@ -88,18 +89,20 @@ def register(app, deps: dict):
         pdfs.sort(key=lambda x: x["nome"], reverse=True)
         pdfs.sort(key=lambda x: x["pasta"].lower())
         q = (busca or "").strip().lower()
+        per = per if per in (10, 20, 25, 50) else 10
         if q:
             pdfs = [p for p in pdfs
                     if q in p["nome"].lower() or q in p["pasta"].lower()]
         total = len(pdfs)
-        paginas = max(1, (total + _PER_PAGE - 1) // _PER_PAGE)
+        paginas = max(1, (total + per - 1) // per)
         page = max(1, min(page, paginas))
-        fatia = pdfs[(page - 1) * _PER_PAGE: page * _PER_PAGE]
+        fatia = pdfs[(page - 1) * per: page * per]
         pg_base = ("/cartoes?busca=" + quote_plus(q)) if q else "/cartoes"
+        pg_base += ("&" if "?" in pg_base else "?") + "per=" + str(per)
         return templates.TemplateResponse(
             request=request, name="cartoes.html",
             context=ctx(request, pdfs=fatia, total=total, busca=q,
-                        page=page, paginas=paginas, pg_base=pg_base,
+                        page=page, paginas=paginas, pg_base=pg_base, per=per,
                         pode_escrever=auth.pode_escrever(user["papel"], "cartoes")))
 
     # ---------------- PDF por caminho relativo ----------------
@@ -126,6 +129,7 @@ def register(app, deps: dict):
     def cartoes_novo_form(request: Request, sel: str = "",
                           busca: str = "",
                           page: int = 1,
+                      per: int = 10,
                           user: dict = auth.require_permission("cartoes")):
         if not auth.pode_escrever(user["papel"], "cartoes"):
             return templates.TemplateResponse(
@@ -138,6 +142,7 @@ def register(app, deps: dict):
         funcionarios = sorted(er.get_all(limit=1000000), key=lambda e: e.nome.lower())
         pre_sel = {s.strip() for s in (sel or "").split(",") if s.strip().isdigit()}
         q = (busca or "").strip().lower()
+        per = per if per in (10, 20, 25, 50) else 10
         linhas = [{"id": e.id, "nome": e.nome, "cpf": e.cpf or "—",
                    "telefone": bool(getattr(e, "telefone", None)),
                    "foto": bool(getattr(e, "foto", None)),
@@ -145,9 +150,9 @@ def register(app, deps: dict):
                   for e in funcionarios
                   if not q or q in e.nome.lower() or q in (e.cpf or "").lower()]
         total = len(linhas)
-        paginas = max(1, (total + _PER_PAGE - 1) // _PER_PAGE)
+        paginas = max(1, (total + per - 1) // per)
         page = max(1, min(page, paginas))
-        linhas = linhas[(page - 1) * _PER_PAGE: page * _PER_PAGE]
+        linhas = linhas[(page - 1) * per: page * per]
         tpls = [{"code": t.get("card_code"),
                  "nome": t.get("card_code"),
                  "tipo": _tipo_label(t),
@@ -162,13 +167,14 @@ def register(app, deps: dict):
             params.append("busca=" + quote_plus(q))
         if pre_sel:
             params.append("sel=" + ",".join(sorted(pre_sel, key=int)))
+        params.append("per=" + str(per))
         pg_base = "/cartoes/novo" + ("?" + "&".join(params) if params else "")
         sel_str = ",".join(sorted(pre_sel, key=int))
         return templates.TemplateResponse(
             request=request, name="cartoes_novo.html",
             context=ctx(request, linhas=linhas, tpls=tpls, busca=q,
                         total=total, page=page, paginas=paginas,
-                        pg_base=pg_base, sel_str=sel_str))
+                        pg_base=pg_base, sel_str=sel_str, per=per))
 
     @app.post("/cartoes/emitir")
     async def cartoes_emitir(request: Request,

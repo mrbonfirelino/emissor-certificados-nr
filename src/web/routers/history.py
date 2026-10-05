@@ -29,7 +29,7 @@ def register(app, deps: dict):
     # ---------------- lista com filtros ----------------
     @app.get("/historico")
     def historico(request: Request, busca: str = "", nr: str = "",
-                  de: str = "", ate: str = "", assinado: str = "", page: int = 1,
+                  de: str = "", ate: str = "", assinado: str = "", page: int = 1, per: int = 10,
                   user: dict = auth.require_permission("historico")):
         hr = HistoryRepository()
         busca = (busca or "").strip()
@@ -37,6 +37,7 @@ def register(app, deps: dict):
         de = (de or "").strip()
         ate = (ate or "").strip()
         assinado = assinado if assinado in ("sim", "nao") else ""
+        per = per if per in (10, 20, 25, 50) else 10
         de_iso = (validar_data(de).isoformat() if de else None)
         ate_iso = (validar_data(ate).isoformat() if ate else None)
         nr_sel = nr or None
@@ -45,11 +46,11 @@ def register(app, deps: dict):
         total = hr.count_query(query=busca, nr_code=nr_sel, data_de=de_iso,
                                data_ate=ate_iso, assinado=assinado_sel)
         page = max(1, page)
-        paginas = max(1, (total + PER_PAGE - 1) // PER_PAGE)
+        paginas = max(1, (total + per - 1) // per)
         page = min(page, paginas)
         itens = hr.query(query=busca, nr_code=nr_sel, data_de=de_iso,
                          data_ate=ate_iso, assinado=assinado_sel,
-                         limit=PER_PAGE, offset=(page - 1) * PER_PAGE)
+                         limit=per, offset=(page - 1) * per)
         tem_pdf_map = {r.cert_number: bool(r.pdf_path and Path(r.pdf_path).exists())
                        for r in itens}
 
@@ -57,13 +58,14 @@ def register(app, deps: dict):
               f"de={de}" if de else "", f"ate={ate}" if ate else "",
               f"assinado={assinado}" if assinado else ""]
         qs = "&".join(q for q in qs if q)
+        qs = (qs + "&per=" + str(per)) if qs else ("per=" + str(per))
 
         return templates.TemplateResponse(
             request=request, name="historico.html",
             context=ctx(request, itens=itens, total=total, page=page,
                         paginas=paginas, pg_base=("/historico?" + qs) if qs else "/historico",
                         busca=busca, nr=nr, de=de, ate=ate,
-                        assinado=assinado, nrs=hr.distinct_nrs(), qs=qs,
+                        assinado=assinado, nrs=hr.distinct_nrs(), qs=qs, per=per,
                         tem_pdf_map=tem_pdf_map,
                         pode_escrever=pode_escrever(user["papel"], "historico")))
 

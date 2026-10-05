@@ -44,6 +44,7 @@ def register(app, deps):
     def crachas_lista(request: Request,
                       busca: str = "",
                       page: int = 1,
+                      per: int = 10,
                       user: dict = auth.require_permission("crachas")):
         from urllib.parse import quote_plus
         from src.core.cracha_repo import CrachaRepository
@@ -52,6 +53,7 @@ def register(app, deps):
         todos.sort(key=lambda c: (c.get("created_at") or "", c.get("id") or 0),
                    reverse=True)
         q = (busca or "").strip().lower()
+        per = per if per in (10, 20, 25, 50) else 10
         if q:
             def _casado(c):
                 nrs_txt = " ".join(str(n.get("nr", "")) for n in (c.get("nrs") or []))
@@ -60,9 +62,9 @@ def register(app, deps):
                         or q in nrs_txt.lower())
             todos = [c for c in todos if _casado(c)]
         total = len(todos)
-        paginas = max(1, (total + _PER_PAGE - 1) // _PER_PAGE)
+        paginas = max(1, (total + per - 1) // per)
         page = max(1, min(page, paginas))
-        fatia = todos[(page - 1) * _PER_PAGE: page * _PER_PAGE]
+        fatia = todos[(page - 1) * per: page * per]
         linhas = [{"id": c.get("id"), "numero": c.get("cracha_number"),
                    "funcionario": c.get("employee_nome") or "—",
                    "data": _br(c.get("data_emissao")),
@@ -71,16 +73,18 @@ def register(app, deps):
                    and Path(c["pdf_path"]).exists()}
                   for c in fatia]
         pg_base = ("/crachas?busca=" + quote_plus(q)) if q else "/crachas"
+        pg_base += ("&" if "?" in pg_base else "?") + "per=" + str(per)
         return templates.TemplateResponse(
             request=request, name="crachas.html",
             context=ctx(request, linhas=linhas, total=total, busca=q,
-                        page=page, paginas=paginas, pg_base=pg_base,
+                        page=page, paginas=paginas, pg_base=pg_base, per=per,
                         pode_escrever=auth.pode_escrever(user["papel"], "crachas")))
 
     @app.get("/crachas/novo")
     def crachas_novo_form(request: Request,
                           busca: str = "",
                           page: int = 1,
+                      per: int = 10,
                           user: dict = auth.require_permission("crachas")):
         if not auth.pode_escrever(user["papel"], "crachas"):
             return templates.TemplateResponse(
@@ -95,6 +99,7 @@ def register(app, deps):
         funcionarios = sorted(er.get_all(limit=1000000), key=lambda e: e.nome.lower())
         certs_by_emp, asos = _expiration_maps()
         q = (busca or "").strip().lower()
+        per = per if per in (10, 20, 25, 50) else 10
         elegiveis, bloqueados = [], []
         for emp in funcionarios:
             if q and q not in emp.nome.lower() and q not in (emp.cpf or "").lower():
@@ -112,20 +117,21 @@ def register(app, deps):
             else:
                 elegiveis.append(item)
         total = len(elegiveis)
-        paginas = max(1, (total + _PER_PAGE - 1) // _PER_PAGE)
+        paginas = max(1, (total + per - 1) // per)
         page = max(1, min(page, paginas))
-        elegiveis = elegiveis[(page - 1) * _PER_PAGE: page * _PER_PAGE]
+        elegiveis = elegiveis[(page - 1) * per: page * per]
         tpls = [{"code": t.get("card_code"),
                  "nome": f"{t.get('card_code')}"
                          f" ({t.get('card_width_mm')}x{t.get('card_height_mm')}mm)"}
                 for t in _templates_cracha()]
         pg_base = "/crachas/novo" + (f"?busca={quote_plus(q)}" if q else "")
+        pg_base += ("&" if "?" in pg_base else "?") + "per=" + str(per)
         return templates.TemplateResponse(
             request=request, name="crachas_novo.html",
             context=ctx(request, elegiveis=elegiveis, bloqueados=bloqueados,
                         tpls=tpls, hoje=_hoje_br(), busca=q,
                         total=total, page=page, paginas=paginas,
-                        pg_base=pg_base))
+                        pg_base=pg_base, per=per))
 
     @app.post("/crachas/emitir")
     async def crachas_emitir(request: Request,

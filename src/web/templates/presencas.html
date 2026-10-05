@@ -12,6 +12,7 @@
   {% endif %}
 
   <form method="get" action="/presencas" class="filtros" style="margin-bottom:12px;">
+        <div class="campo"><label for="f-per">Ver por página</label><select id="f-per" name="per" onchange="this.form.submit()" style="max-width:90px;"><option value="10" {{ 'selected' if per == 10 else '' }}>10</option><option value="20" {{ 'selected' if per == 20 else '' }}>20</option><option value="25" {{ 'selected' if per == 25 else '' }}>25</option><option value="50" {{ 'selected' if per == 50 else '' }}>50</option></select></div>
     <div class="campo">
       <label for="busca">Buscar</label>
       <input type="text" id="busca" name="busca" value="{{ busca }}" placeholder="Serial, NR ou assunto...">

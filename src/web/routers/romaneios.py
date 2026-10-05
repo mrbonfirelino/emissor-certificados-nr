@@ -58,24 +58,25 @@ def register(app, deps) -> None:
 
     # ------------------------------------------------------------- listagem
     @rotas.get("/romaneios")
-    def lista(request: Request, busca: str = "", page: int = 1,
+    def lista(request: Request, busca: str = "", page: int = 1, per: int = 10,
               user: dict = auth.require_permission("romaneios")):
         from src.web.permissions import pode_escrever
         repo = _repo()
         busca = (busca or "").strip()
+        per = per if per in (10, 20, 25, 50) else 10
         if busca:
             total = repo.count_search(busca)
-            linhas = repo.search(busca, limit=PER_PAGE,
-                                 offset=(page - 1) * PER_PAGE)
+            linhas = repo.search(busca, limit=per,
+                                 offset=(page - 1) * per)
         else:
             total = repo.count_all()
-            linhas = repo.get_all(limit=PER_PAGE, offset=(page - 1) * PER_PAGE)
-        paginas = max(1, (total + PER_PAGE - 1) // PER_PAGE)
+            linhas = repo.get_all(limit=per, offset=(page - 1) * per)
+        paginas = max(1, (total + per - 1) // per)
         return templates.TemplateResponse(
             request, "romaneios.html",
-            context=ctx(request, linhas=linhas, busca=busca, page=page,
+            context=ctx(request, linhas=linhas, busca=busca, page=page, per=per,
                         total_paginas=paginas, total=total,
-                        pg_base="/romaneios?busca=" + busca,
+                        pg_base=("/romaneios?busca=" + busca) + "&per=" + str(per),
                         pode_escrever=pode_escrever(user["papel"], "romaneios")))
 
     # ---------------------------------------------------------- novo/cadastro

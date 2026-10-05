@@ -71,19 +71,20 @@ def register(app, deps) -> None:
         return user and pode_escrever(user["papel"], "aso")
 
     @rotas.get("/aso")
-    def lista(request: Request, busca: str = "", page: int = 1,
+    def lista(request: Request, busca: str = "", page: int = 1, per: int = 10,
               user: dict = auth.require_permission("aso")):
         from src.web.permissions import pode_escrever
         aso_repo, _ = _repos()
         busca = (busca or "").strip()
+        per = per if per in (10, 20, 25, 50) else 10
         if busca:
             total = aso_repo.count_search(busca)
-            itens = aso_repo.search(busca, limit=PER_PAGE,
-                                    offset=(max(page, 1) - 1) * PER_PAGE)
+            itens = aso_repo.search(busca, limit=per,
+                                    offset=(max(page, 1) - 1) * per)
         else:
             total = aso_repo.count_all()
-            itens = aso_repo.get_all(limit=PER_PAGE,
-                                     offset=(max(page, 1) - 1) * PER_PAGE)
+            itens = aso_repo.get_all(limit=per,
+                                     offset=(max(page, 1) - 1) * per)
         linhas = []
         for a in itens:
             valido, status, cls = _status_e_classe(a["data_exame"],
@@ -95,11 +96,11 @@ def register(app, deps) -> None:
                 "valido": valido.strftime("%d/%m/%Y") if valido else "—",
                 "status": status, "classe": cls, "anexado": bool(a.get("has_doc")),
             })
-        total_paginas = max(1, -(-total // PER_PAGE))
+        total_paginas = max(1, -(-total // per))
         return templates.TemplateResponse(request=request, name="aso.html",
-            context=ctx(request, linhas=linhas, busca=busca, page=max(page, 1),
+            context=ctx(request, linhas=linhas, busca=busca, page=max(page, 1), per=per,
                         total_paginas=total_paginas, total=total,
-                        pg_base=("/aso?busca=" + busca) if busca else "/aso",
+                        pg_base=(("/aso?busca=" + busca) if busca else "/aso") + "&per=" + str(per),
                         pode_escrever=pode_escrever(user["papel"], "aso")))
 
     @rotas.get("/aso/novo")

@@ -58,22 +58,24 @@ def register(app, deps):
 
     @router.get("/presencas")
     def lista(request: Request, user=auth.require_permission("presencas"),
-              busca: str = "", page: int = 1):
+              busca: str = "", page: int = 1, per: int = 10):
         repo = PresencaRepository()
         busca = (busca or "").strip()
+        per = per if per in (10, 20, 25, 50) else 10
         _, total = repo.list(busca=busca, limit=1, offset=0)
-        paginas = max(1, (total + _PER_PAGE - 1) // _PER_PAGE)
+        paginas = max(1, (total + per - 1) // per)
         page = max(1, min(page, paginas))
-        itens, _t = repo.list(busca=busca, limit=_PER_PAGE, offset=(page - 1) * _PER_PAGE)
+        itens, _t = repo.list(busca=busca, limit=per, offset=(page - 1) * per)
         for it in itens:
             it["data_br"] = _br(it["data_ref"])
             it["status_label"] = _STATUS_LABEL.get(it["status"], it["status"])
             it["status_classe"] = _STATUS_CLASSE.get(it["status"], "b-cinza")
         contagem = repo.count_por_status()
         pg_base = "/presencas?busca=" + quote_plus(busca) if busca else "/presencas"
+        pg_base += ("&" if "?" in pg_base else "?") + "per=" + str(per)
         return templates.TemplateResponse(request, "presencas.html", ctx(
             request, user=user,
-            itens=itens, total=total, page=page, paginas=paginas, pg_base=pg_base,
+            itens=itens, total=total, page=page, paginas=paginas, pg_base=pg_base, per=per,
             busca=busca, pode_escrever=auth.pode_escrever(user["papel"], "presencas"),
             pend=contagem.get("pendente", 0), parcial=contagem.get("parcial", 0),
             assinadas=contagem.get("assinada", 0),

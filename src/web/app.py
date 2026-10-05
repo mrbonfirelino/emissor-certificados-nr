@@ -322,8 +322,17 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
             _prefs = users.get_cards_prefs(user["id"])
         except Exception:
             _prefs = None
+        cert30 = 0
+        try:
+            for _c in hr.get_certificates_with_expiration():
+                _d = _c["dias_para_vencer"]
+                if 0 <= _d <= 30:
+                    cert30 += 1
+        except Exception:
+            pass
         cards = {
             "historico": True, "funcionarios": True, "nrs": True,
+            "cert30": True,
             "venc30": bool(setor_usuario == "seguranca" and venc_resumo),
             "veiculos": bool(frota_stats), "saidas": bool(frota_stats),
             "custo": bool(frota_stats),
@@ -335,6 +344,7 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
             ("historico", "Certificados emitidos"),
             ("funcionarios", "Funcion\u00e1rios cadastrados"),
             ("nrs", "NRs dispon\u00edveis"),
+            ("cert30", "Certificados vencem em 30 dias"),
         ]
         if setor_usuario == "seguranca":
             cards_opcoes.append(("venc30", "Vencem em 30 dias (vencimentos)"))
@@ -360,14 +370,14 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
                 venc_resumo=venc_resumo,
                 setor_usuario=setor_usuario,
                 cards=cards,
-                cards_opcoes=cards_opcoes))
+                cards_opcoes=cards_opcoes, cert30=cert30))
 
     @app.post("/perfil/cards")
     def perfil_cards(request: Request, card: list = Form([]),
                      user: dict = auth.require_permission("dashboard")):
         """Salva quais cards do dashboard o usuario quer ver (v1.63.1)."""
         import json as _json
-        chaves = ("historico", "funcionarios", "nrs", "venc30",
+        chaves = ("historico", "funcionarios", "nrs", "cert30", "venc30",
                   "veiculos", "saidas", "custo")
         prefs = {k: (k in card) for k in chaves}
         users.set_cards_prefs(user["id"], _json.dumps(prefs))

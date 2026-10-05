@@ -83,8 +83,8 @@ def main():
         src_t = (tpl / t).read_text(encoding="utf-8")
         check(f"V63-1 {t}: ternario corrigido",
               "this.checked ? 'block' : 'none'" in src_t)
-        check(f"V63-2 {t}: campo-inicio visivel por padrao",
-              'id="campo-inicio" style="display:block;"' in src_t)
+        check(f"V63-2 {t}: campo-inicio oculto por padrao (checkbox desligado)",
+              'id="campo-inicio" style="display:none;"' in src_t)
 
     # 932: remover_motw
     from src.utils.com_pdf_errors import remover_motw  # noqa

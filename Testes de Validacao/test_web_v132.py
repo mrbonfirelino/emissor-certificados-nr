@@ -224,13 +224,13 @@ def main():
     check("V21 busca crachas filtra", "Ana V132" in r.text and "Bruno V132" not in r.text)
     r = client.get("/crachas", params={"busca": "NR-10"})
     check("V22 busca crachas por NR", "Bruno V132" in r.text and "Ana V132" not in r.text)
-    r = client.get("/crachas")
+    r = client.get("/crachas", params={"per": 20})
     check("V23 paginacao crachas (27 -> 2 paginas)",
           "Página 1 de 2" in r.text and "page=2" in r.text)
-    r = client.get("/crachas", params={"page": 2})
+    r = client.get("/crachas", params={"page": 2, "per": 20})
     check("V24 pagina 2 acessível (Bruno nela)",
           "Página 2 de 2" in r.text and "Bruno V132" in r.text)
-    r = client.get("/crachas", params={"page": 5})
+    r = client.get("/crachas", params={"page": 5, "per": 20})
     check("V25 page fora da faixa satura", "Página 2 de 2" in r.text)
 
     # ── CARTÕES: busca + paginação ───────────────────────────────
@@ -247,12 +247,12 @@ def main():
     r = client.get("/cartoes")
     check("V26 cartoes lista 200 (pagina 1)", r.status_code == 200
           and "loteA.pdf" in r.text and "23 PDF(s)" in r.text)
-    r = client.get("/cartoes", params={"page": 2})
+    r = client.get("/cartoes", params={"page": 2, "per": 20})
     check("V26b cartoes pagina 2 (loteB nela)", "loteB.pdf" in r.text)
     r = client.get("/cartoes", params={"busca": "Func B"})
     check("V27 busca cartoes filtra pasta",
           "loteB.pdf" in r.text and "loteA.pdf" not in r.text)
-    r = client.get("/cartoes")
+    r = client.get("/cartoes", params={"per": 20})
     check("V28 paginacao cartoes (23 -> 2 paginas)",
           "Página 1 de 2" in r.text)
 

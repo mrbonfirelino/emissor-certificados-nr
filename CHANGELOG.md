@@ -1,3 +1,13 @@
+## [1.64.0] - 2026-10-05
+
+### Adicionado
+- Painel: novo card opcional 'Certificados vencem em 30 dias' (contagem apenas de certificados, sem misturar ASOs), com toggle em Meu perfil > Cards do painel.
+- 'Ver por página' (10/20/25/50) nas listas de Histórico, ASOs, Crachás (lista e novo), Cartões (lista e novo), Romaneios e Listas de Presença.
+
+### Alterado
+- Checkbox 'Treinamento de vários dias' agora começa DESMARCADO (emissão individual e em lote).
+- Emissão em lote: 'Ver por página' da lista de funcionários agora inicia em 10.
+
 ## [1.63.3] - 2026-10-05
 
 ### Corrigido

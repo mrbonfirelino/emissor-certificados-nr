@@ -39,9 +39,9 @@
         <label for="data">Data de emissão (fim) *</label>
         <input type="text" id="data" name="data" class="js-data" value="{{ hoje_br }}" required>
         <label style="font-weight:normal;">
-          <input type="checkbox" id="mesmo-dia" checked onchange="document.getElementById('campo-inicio').style.display=this.checked ? 'block' : 'none'"> Treinamento de vários dias
+          <input type="checkbox" id="mesmo-dia" onchange="document.getElementById('campo-inicio').style.display=this.checked ? 'block' : 'none'"> Treinamento de vários dias
         </label>
-        <div id="campo-inicio" style="display:block;">
+        <div id="campo-inicio" style="display:none;">
           <label for="data_inicio">Início do treinamento</label>
           <input type="text" id="data_inicio" name="data_inicio" class="js-data" placeholder="dd/mm/aaaa">
         </div>
@@ -173,7 +173,7 @@
   var sel = document.getElementById('f-per');
   var info = document.getElementById('f-info');
   var pager = document.getElementById('f-pager');
-  var filtro = '', porPagina = 20, pagina = 1;
+  var filtro = '', porPagina = 10, pagina = 1;
 
   function visiveis() {
     return linhas.filter(function (tr) {

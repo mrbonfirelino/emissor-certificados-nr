@@ -26,6 +26,7 @@
   {% if cards.historico %}<a class="stat-card" href="/historico"><span class="num">{{ stats.total }}</span><span class="rot">Certificados emitidos</span></a>{% endif %}
   {% if cards.funcionarios %}<a class="stat-card" href="/funcionarios"><span class="num">{{ total_funcionarios }}</span><span class="rot">Funcionários cadastrados</span></a>{% endif %}
   {% if cards.nrs %}<a class="stat-card" href="/certificados"><span class="num">{{ total_nrs }}</span><span class="rot">NRs disponíveis</span></a>{% endif %}
+{% if cards.cert30 %}<a class="stat-card" href="/vencimentos"><span class="num">{{ cert30 }}</span><span class="rot">Certificados vencem em 30 dias</span></a>{% endif %}
   {% if cards.venc30 and setor_usuario == 'seguranca' and venc_resumo %}
   <a class="stat-card" href="/vencimentos" style="background:#fdecea;border:1px solid #f5c6cb;"><span class="num" style="color:#8a1f1f;">{{ venc_resumo.status.vencido + venc_resumo.status.urgente + venc_resumo.status.critico + venc_resumo.status.atencao }}</span><span class="rot">Vencem em 30 dias (vencimentos)</span></a>
   {% endif %}
