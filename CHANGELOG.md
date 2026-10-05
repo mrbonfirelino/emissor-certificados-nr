@@ -1,3 +1,15 @@
+## [1.63.1] - 2026-10-05
+
+### Adicionado
+- Certificados: botão "Gerar exemplo" gera um PDF de demonstração (dados inventados) sem gravar no histórico.
+- Dashboard: cards modulares — o usuário escolhe quais cards ver ("Escolher cards do painel"), preferência salva por usuário.
+- Portal: log no console do servidor mostrando qual usuário acessou cada página.
+
+### Alterado
+- Emissão em lote: carga, validade, descrição e campos extras ficam em menu recolhível (dados do lote mais limpos).
+- Login: botão de mostrar senha com melhor contraste.
+- Edi??o de funcion?rio: foto atual exibida no topo direito, com botão de upload estilizado.
+
 ## [1.63.0] - 2026-10-05
 
 ### Corrigido

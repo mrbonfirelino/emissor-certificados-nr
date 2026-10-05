@@ -875,8 +875,8 @@ CLT – Artigo 462, § 1º - Em caso de dano causado pelo empregado, o desconto 
 ### Certificados
 | Item | Descricao | Prioridade | Status |
 |------|-----------|------------|--------|
-| Botao mostrar senha | Adicionar botao para o usuario visualizar a senha digitada no login | Media | Concluido (v1.54.1) |
-| Dados opcionais ocultos | No menu Emissao em lote, dados opcionais do certificado devem ficar em um menu show/hide oculto/minimizado por padrao | Media | Pendente |
+| Botao mostrar senha | Melhorar contraste do botao de mostrar/esconder senha no login | Media | Concluido (v1.63.1) |
+| Dados opcionais ocultos | Na pagina "/emissao-lote", dados opcionais da emissao em menu show/hide | Media | Concluido (v1.63.1) |
 | Multi-day training dates | Alguns treinamentos duram mais de um dia: a primeira data do certificado deve ser a data de inicio do curso e a data acima do campo "participante" deve ser a data de emissao. Por padrao, treinamento no mesmo dia, mas adicionar botao/opcao para alterar as datas | Alta | Concluido (v1.61.0) |
 | Carga horaria minima | Alterar a carga horaria minima de todas as NRs para 1 hora | Alta | Concluido (v1.61.0) |
 | Editor de templates (admin) | Menu para o admin alterar dados dos templates pelo site (ex: carga horaria de uma NR), com botao/opcao de reset para voltar ao original do programa | Alta | Concluido (v1.61.0)
@@ -893,7 +893,7 @@ CLT – Artigo 462, § 1º - Em caso de dano causado pelo empregado, o desconto 
 ### Emissao em Lote (/emissao-lote)
 | Item | Descricao | Prioridade | Status |
 |------|-----------|------------|--------|
-| Layout horizontal | Organizar campos de forma mais horizontal, permitindo ver a lista assim que abre a pagina | Media | Concluido (v1.54.1) |
+| Layout horizontal | Deixar o layout da emissao em lote mais horizontal | Media | Concluido (v1.54.1) |
 
 ### Frota (/frota/custos)
 | Item | Descricao | Prioridade | Status |
@@ -904,7 +904,7 @@ CLT – Artigo 462, § 1º - Em caso de dano causado pelo empregado, o desconto 
 | Item | Descricao | Prioridade | Status |
 |------|-----------|------------|--------|
 | Foto atual | Mostrar a foto atual do funcionario (se existir) no menu de edicao | Media | Concluido (v1.54.1) |
-| Botao de foto novo | Substituir o botao de adicionar foto por um modelo mais bonito; posicionar foto e botao na parte superior direita | Media | Pendente |
+| Botao de foto novo | Botao de foto novo (mais bonito) no topo direito do menu de edicao | Media | Concluido (v1.63.1) |
 
 ### Romaneios (NOVA PAGINA)
 | Item | Descricao | Prioridade | Status |
@@ -921,14 +921,14 @@ CLT – Artigo 462, § 1º - Em caso de dano causado pelo empregado, o desconto 
 ### Correcoes e Ajustes de UI (out/2026)
 | Item | Descricao | Prioridade | Status |
 |------|-----------|------------|--------|
-| Usuario no log/CMD | Colocar o nome do usuario no registro/CMD (se possivel), ex: "usuario_X acessou /Frota" | Media | Pendente |
-| Botao mostrar senha | O botao de ver/esconder senha no login esta com cor muito clara, dificil de enxergar - aumentar contraste | Media | Pendente |
+| Usuario no log/CMD | Colocar o nome do usuario no registro/CMD (se possivel), ex: "usuario_X acessou /Frota" | Media | Concluido (v1.63.1) |
+| Botao mostrar senha | O botao de ver/esconder senha no login esta com cor muito clara, dificil de enxergar - aumentar contraste | Media | Concluido (v1.63.1) |
 | Card de vencimentos | Remover o card enorme de vencimentos (que ficou junto dos aniversariantes). Colocar apenas um card no "stat-cards" com o numero de certificados que vencem em 30 dias, com cor forte e bom contraste; visivel somente para "Seguranca" | Alta | Concluido (v1.63.0) |
-| Stat-cards modulares (futuro) | Deixar o "stat-cards" modular: usuario escolhe quais cards ver na tela principal, baseado nas permissoes/setor do usuario | Media | Pendente |
+| Stat-cards modulares (futuro) | Usuario escolhe quais cards ver no dashboard; preferencia salva por usuario | Media | Concluido (v1.63.1) |
 | Permissoes por setor (/usuarios) | Na pagina "/usuarios", organizar os itens/checklist de "Permissoes por setor" em lista organizada; hoje esta embaralhado e com espaco enorme entre o botao e a descricao | Alta | Concluido (v1.63.0) |
-| Gerar exemplo (/certificados) | Adicionar botao "Gerar exemplo" que gera PDF com dados inventados para visualizar o certificado; nao salva no sistema; usuario escolhe o template com base na NR | Media | Pendente |
+| Gerar exemplo (/certificados) | Botao que gera um certificado de exemplo (dados inventados) sem salvar | Media | Concluido (v1.63.1) |
 | Botao varios dias invertido | Os botoes de "Treinamento de varios dias" estao invertidos: o campo so aparece quando o botao esta desmarcado - corrigir logica | Alta | Concluido (v1.63.0) |
-| Opcionais recolhidos (/emissao-lote) | Na pagina "/emissao-lote", deixar os itens opcionais do certificado dentro de um menu recolhido | Media | Pendente |
+| Opcionais recolhidos (/emissao-lote) | Na pagina "/emissao-lote", deixar os itens opcionais do certificado dentro de um menu recolhido | Media | Concluido (v1.63.1) |
 | PDF lista de presenca (novo erro) | Corrigir erro ao gerar PDF da lista de presenca: "O Office recusou a exportacao para PDF. Causas comuns: arquivo aberto em outro programa, arquivo bloqueado (modo protegido) ou PDF de destino sem permissao de escrita" | Alta | Concluido (v1.63.0) |
 | Voltar a usar templates PPTX | O sistema parou de usar os templates PPTX para emitir certificados. Usar os templates PPTX (NRs 6, 12, 18, 35) de "C:\Users\altec\Documents\EMISSOR DE CERTIFICADOS NR\templates\certificados_pptx"; NRs sem arquivo PPTX usam o template atual | Alta | Concluido (v1.63.0) |
 | Romaneios vazio | A pagina de Romaneios esta vazia - implementar a pagina/conteudo conforme especificacao da secao de Romaneios acima | Alta | Concluido (v1.63.0) |

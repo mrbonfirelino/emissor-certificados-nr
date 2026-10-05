@@ -62,6 +62,18 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
     segredo = _carregar_ou_criar_secret(secret_file or (get_data_dir() / "web_secret.key"))
     app.add_middleware(SessionMiddleware, secret_key=segredo, max_age=12 * 3600, same_site="lax")
 
+    @app.middleware("http")
+    async def _log_acesso(request: Request, call_next):
+        """Log no console: usuario_X acessou /caminho (v1.63.1)."""
+        response = await call_next(request)
+        try:
+            _u = auth.current_user(request)
+            if _u:
+                print(f"[portal] {_u.get('username', '?')} acessou {request.url.path}")
+        except Exception:
+            pass
+        return response
+
     users = UsersRepository(db_path=db_path)
     templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
     senha_bootstrap = users.bootstrap_admin()
@@ -305,6 +317,32 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
                                "custo_mes": fr.custo_mes()}
             except Exception:
                 frota_stats = None
+        # cards modulares (v1.63.1): usuario escolhe quais cards ver
+        try:
+            _prefs = users.get_cards_prefs(user["id"])
+        except Exception:
+            _prefs = None
+        cards = {
+            "historico": True, "funcionarios": True, "nrs": True,
+            "venc30": bool(setor_usuario == "seguranca" and venc_resumo),
+            "veiculos": bool(frota_stats), "saidas": bool(frota_stats),
+            "custo": bool(frota_stats),
+        }
+        if _prefs:
+            for _k in cards:
+                cards[_k] = cards[_k] and bool(_prefs.get(_k, True))
+        cards_opcoes = [
+            ("historico", "Certificados emitidos"),
+            ("funcionarios", "Funcion\u00e1rios cadastrados"),
+            ("nrs", "NRs dispon\u00edveis"),
+        ]
+        if setor_usuario == "seguranca":
+            cards_opcoes.append(("venc30", "Vencem em 30 dias (vencimentos)"))
+        cards_opcoes += [
+            ("veiculos", "Ve\u00edculos na frota"),
+            ("saidas", "Sa\u00eddas em aberto"),
+            ("custo", "Custo de abastecimento (m\u00eas)"),
+        ]
         return templates.TemplateResponse(
             request=request, name="dashboard.html",
             context=_ctx(
@@ -320,7 +358,25 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
                 frota_stats=frota_stats,
                 pode_lote=pode_escrever(user["papel"], "certificados"),
                 venc_resumo=venc_resumo,
-                setor_usuario=setor_usuario))
+                setor_usuario=setor_usuario,
+                cards=cards,
+                cards_opcoes=cards_opcoes))
+
+    @app.post("/perfil/cards")
+    def perfil_cards(request: Request, card: list = Form([]),
+                     user: dict = auth.require_permission("dashboard")):
+        """Salva quais cards do dashboard o usuario quer ver (v1.63.1)."""
+        import json as _json
+        chaves = ("historico", "funcionarios", "nrs", "venc30",
+                  "veiculos", "saidas", "custo")
+        prefs = {k: (k in card) for k in chaves}
+        users.set_cards_prefs(user["id"], _json.dumps(prefs))
+        try:
+            users.audit("cards-dashboard", user["username"], "dashboard")
+        except Exception:
+            pass
+        _flash(request, msg="Cards do painel atualizados.")
+        return RedirectResponse("/", 303)
 
     # ---------------- jobs de fundo (progresso, 2.32.1) ----------------
     @app.get("/jobs/{jid}")

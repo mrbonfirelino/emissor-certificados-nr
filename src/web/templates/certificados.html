@@ -57,6 +57,7 @@
     <div class="linha-botoes">
       <button type="submit" class="verde">Emitir certificado</button>
       <button type="submit" class="cinza" formaction="/certificados/preview" formtarget="_blank">Visualizar prévia</button>
+      <a class="btn cinza" href="/certificados/exemplo?nr={{ nr_sel if nr_sel else (templates_nr.keys() | first if templates_nr else '') }}" target="_blank">Gerar exemplo</a>
     </div>
   </form>
   {% elif not pode_escrever %}

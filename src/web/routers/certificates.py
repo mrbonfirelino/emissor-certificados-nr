@@ -160,6 +160,37 @@ def register(app, deps: dict):
             if numero else RedirectResponse("/historico", status_code=303)
 
     # ---------------- detalhe + pdf ----------------
+    @app.get("/certificados/exemplo")
+    def certificado_exemplo(request: Request, nr: str = "",
+                            user: dict = auth.require_permission("certificados")):
+        """Gera um PDF de exemplo (dados inventados) sem gravar no historico."""
+        from types import SimpleNamespace
+        from src.core.certificate_service import CertificateService
+        from src.utils.paths import get_data_dir
+        tmpl = load_all_templates().get(nr)
+        if not tmpl:
+            return RedirectResponse("/certificados", 303)
+        hoje = date.today()
+        emp_fake = SimpleNamespace(id=0, nome="EXEMPLO - Fulano de Tal",
+                                   cpf="000.000.000-00")
+        out = get_data_dir() / "_previews" / "web_exemplo.pdf"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            pdf = CertificateService().generate_preview_pdf(
+                nr_code=nr, employee=emp_fake, data_treinamento=hoje,
+                carga_horaria=tmpl.carga_horaria_minima,
+                descricao_treinamento=tmpl.descricao_padrao,
+                campos_extra={}, output_path=out)
+        except Exception:
+            pdf = None
+        if not pdf or not Path(pdf).exists():
+            flash(request, erro="N\u00e3o foi poss\u00edvel gerar o exemplo "
+                                "(verifique os dados da empresa em Configura\u00e7\u00f5es).")
+            return RedirectResponse("/certificados", 303)
+        return FileResponse(str(pdf), media_type="application/pdf",
+                            headers={"Content-Disposition":
+                                     "inline; filename=exemplo.pdf"})
+
     @app.get("/certificados/{numero}")
     def detalhe(numero: str, request: Request,
                 user: dict = auth.require_permission("certificados")):

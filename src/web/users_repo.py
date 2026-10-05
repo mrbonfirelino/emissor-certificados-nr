@@ -98,6 +98,8 @@ class UsersRepository:
                 conn.execute("ALTER TABLE users ADD COLUMN foto BLOB")
             if "foto_tipo" not in _cols:
                 conn.execute("ALTER TABLE users ADD COLUMN foto_tipo TEXT")
+            if "cards_prefs" not in _cols:
+                conn.execute("ALTER TABLE users ADD COLUMN cards_prefs TEXT NOT NULL DEFAULT ''")
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS setores_modulos (
                     setor TEXT NOT NULL,
@@ -301,6 +303,26 @@ class UsersRepository:
         with self._get_conn() as conn:
             conn.execute("UPDATE users SET pref_notif=? WHERE id=?",
                          (1 if valor else 0, user_id))
+
+    # -- cards do dashboard (v1.63.1) ------------------------------------
+    def set_cards_prefs(self, user_id: int, prefs_json: str):
+        with self._get_conn() as conn:
+            conn.execute("UPDATE users SET cards_prefs=? WHERE id=?",
+                         (prefs_json or "", user_id))
+
+    def get_cards_prefs(self, user_id: int):
+        """None = nunca configurado (mostra tudo)."""
+        import json as _json
+        with self._get_conn() as conn:
+            row = conn.execute("SELECT cards_prefs FROM users WHERE id=?",
+                               (user_id,)).fetchone()
+        if not row or not row[0]:
+            return None
+        try:
+            data = _json.loads(row[0])
+            return data if isinstance(data, dict) else None
+        except Exception:
+            return None
 
     # -- foto do usuario (v1.62.0) --------------------------------------
     def set_foto(self, user_id: int, data: bytes, tipo: str):

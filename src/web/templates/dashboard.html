@@ -11,17 +11,28 @@
   </div>
 </div>
 
+<details class="opcoes" style="margin-bottom:12px;">
+  <summary>Escolher cards do painel</summary>
+  <form method="post" action="/perfil/cards" style="display:flex; flex-wrap:wrap; gap:10px 18px; align-items:center;">
+    {% for chave, rotulo in cards_opcoes %}
+    <label style="font-weight:normal;"><input type="checkbox" name="card" value="{{ chave }}" {{ 'checked' if cards[chave] else '' }}> {{ rotulo }}</label>
+    {% endfor %}
+    <button type="submit" class="verde">Salvar</button>
+  </form>
+  <p class="muted">Desmarque o que não quer ver no painel.</p>
+</details>
+
 <div class="stat-cards">
-  <a class="stat-card" href="/historico"><span class="num">{{ stats.total }}</span><span class="rot">Certificados emitidos</span></a>
-  <a class="stat-card" href="/funcionarios"><span class="num">{{ total_funcionarios }}</span><span class="rot">Funcionários cadastrados</span></a>
-  <a class="stat-card" href="/certificados"><span class="num">{{ total_nrs }}</span><span class="rot">NRs disponíveis</span></a>
-  {% if setor_usuario == 'seguranca' and venc_resumo %}
+  {% if cards.historico %}<a class="stat-card" href="/historico"><span class="num">{{ stats.total }}</span><span class="rot">Certificados emitidos</span></a>{% endif %}
+  {% if cards.funcionarios %}<a class="stat-card" href="/funcionarios"><span class="num">{{ total_funcionarios }}</span><span class="rot">Funcionários cadastrados</span></a>{% endif %}
+  {% if cards.nrs %}<a class="stat-card" href="/certificados"><span class="num">{{ total_nrs }}</span><span class="rot">NRs disponíveis</span></a>{% endif %}
+  {% if cards.venc30 and setor_usuario == 'seguranca' and venc_resumo %}
   <a class="stat-card" href="/vencimentos" style="background:#fdecea;border:1px solid #f5c6cb;"><span class="num" style="color:#8a1f1f;">{{ venc_resumo.status.vencido + venc_resumo.status.urgente + venc_resumo.status.critico + venc_resumo.status.atencao }}</span><span class="rot">Vencem em 30 dias (vencimentos)</span></a>
   {% endif %}
   {% if frota_stats %}
-  <a class="stat-card" href="/frota"><span class="num">{{ frota_stats.veiculos }}</span><span class="rot">Veículos na frota</span></a>
-  <a class="stat-card" href="/frota"><span class="num">{{ frota_stats.movs_abertas }}</span><span class="rot">Saídas em aberto</span></a>
-  <a class="stat-card" href="/frota/abastecimentos"><span class="num num-brl" data-valor="{{ frota_stats.custo_mes or 0 }}">{{ brl(frota_stats.custo_mes) }}</span><span class="rot">Custo de abastecimento (mês)</span></a>
+  {% if cards.veiculos %}<a class="stat-card" href="/frota"><span class="num">{{ frota_stats.veiculos }}</span><span class="rot">Veículos na frota</span></a>{% endif %}
+  {% if cards.saidas %}<a class="stat-card" href="/frota"><span class="num">{{ frota_stats.movs_abertas }}</span><span class="rot">Saídas em aberto</span></a>{% endif %}
+  {% if cards.custo %}<a class="stat-card" href="/frota/abastecimentos"><span class="num num-brl" data-valor="{{ frota_stats.custo_mes or 0 }}">{{ brl(frota_stats.custo_mes) }}</span><span class="rot">Custo de abastecimento (mês)</span></a>{% endif %}
   {% endif %}
 </div>
 

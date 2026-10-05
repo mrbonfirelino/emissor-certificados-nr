@@ -46,6 +46,10 @@
           <input type="text" id="data_inicio" name="data_inicio" class="js-data" placeholder="dd/mm/aaaa">
         </div>
       </div>
+    </div>
+    <details class="opcoes" style="margin-top:10px;">
+      <summary>Carga horária, validade, descrição e campos extras</summary>
+      <div class="form-grid lote-grid">
       <div class="campo">
         <label for="carga">Carga horária (h) *</label>
         <input type="number" id="carga" name="carga" min="1" value="{{ tmpl.carga_horaria_minima }}" required>
@@ -73,7 +77,8 @@
         {% endif %}
       </div>
       {% endfor %}
-    </div>
+      </div>
+    </details>
 
     <h2 style="font-size:16px; margin:16px 0 6px;">Funcionários</h2>
     <p class="muted" style="margin-bottom:8px;">Marque quem receberá o treinamento. Ajuste data/carga/validade individuais se precisar (vazio = usa o do lote).</p>

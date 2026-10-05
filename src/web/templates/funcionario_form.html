@@ -2,8 +2,19 @@
 {% block titulo %}{{ 'Editar' if emp else 'Novo' }} funcionário — NormaTech{% endblock %}
 {% block conteudo %}
 <div class="card">
-  <h1>{{ 'Editar funcionário' if emp else 'Novo funcionário' }}</h1>
-  <p class="sub">Campos opcionais podem ficar vazios. Datas no formato dd/mm/aaaa.</p>
+  <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px;">
+    <div>
+      <h1>{{ 'Editar funcionário' if emp else 'Novo funcionário' }}</h1>
+      <p class="sub">Campos opcionais podem ficar vazios. Datas no formato dd/mm/aaaa.</p>
+    </div>
+    {% if emp and emp.foto %}
+    <div style="text-align:center; flex-shrink:0;">
+      <img src="/funcionarios/{{ emp.id }}/foto" alt="Foto atual de {{ emp.nome }}"
+           style="width:90px; height:120px; object-fit:cover; border-radius:8px; border:1px solid #ccc; box-shadow:0 1px 4px rgba(0,0,0,0.15); background:#f5f5f5;">
+      <div class="muted" style="font-size:12px; margin-top:4px;">Foto atual</div>
+    </div>
+    {% endif %}
+  </div>
 
   {% if pode_escrever %}
   <form method="post" enctype="multipart/form-data">
@@ -51,14 +62,8 @@
       </div>
       <div class="campo largo">
         <label for="foto">Foto 3x4 {{ '(deixe vazio para manter a atual)' if emp and emp.foto else '(opcional)' }}</label>
-        <input type="file" id="foto" name="foto" accept="image/*">
-        {% if emp and emp.foto %}
-        <div style="margin-top:6px; display:flex; align-items:center; gap:10px;">
-          <img src="/funcionarios/{{ emp.id }}/foto" alt="Foto atual de {{ emp.nome }}"
-               style="width:72px; height:96px; object-fit:cover; border-radius:6px; border:1px solid #ccc; background:#f5f5f5;">
-          <span class="muted" style="font-size:12px;">Foto atual</span>
-        </div>
-        {% endif %}
+        <input type="file" id="foto" name="foto" accept="image/*"
+               style="padding:8px 12px; border:1px solid #ccc; border-radius:8px; background:#fff; cursor:pointer; max-width:100%;">
       </div>
     </div>
     <div class="linha-botoes">
