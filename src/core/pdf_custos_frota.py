@@ -1,4 +1,4 @@
-"""Relatório de custos de frota em PDF (2.37.2) — para diretoria.
+﻿"""Relatório de custos de frota em PDF (2.37.2) — para diretoria.
 
 Modo 'todos': página de resumo (gráfico geral dos últimos 12 meses empilhado
 por veículo + tabela por veículo com desglose combustível/extras) e uma

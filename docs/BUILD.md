@@ -249,3 +249,20 @@ Para entregar a um usuário final (modo onedir):
    atualiza os arquivos com `robocopy /MIR /XD data` (dados intocados) e
    esvazia a pasta `Atualizacao` ao terminar
 3. Esquemas de banco evoluem sozinhos na 1ª abertura (migrações aditivas)
+
+## Validacao obrigatoria antes do build (Testes de Validacao)
+
+Toda build/pacote de atualizacao DEVE rodar antes a suíte de testes da
+pasta `Testes de Validacao/`. Sem isso, nao gere o pacote.
+
+```powershell
+& .\.venv\Scripts\python.exe "Testes de Validacao\RODAR_TODOS.py"
+```
+
+- Roda todos os `test_*.py` a partir da raiz do projeto e resume
+  PASS/FAIL por arquivo (exit code 0 = tudo verde).
+- Filtro opcional: `RODAR_TODOS.py v16` roda so os que batem no nome.
+- Novos recursos SEMPRE ganham um `test_web_vXXX.py` nesta pasta.
+- Se algum teste falhar: teste desatualizado -> atualize o teste;
+  regressao real -> corrija o codigo antes de buildar.
+

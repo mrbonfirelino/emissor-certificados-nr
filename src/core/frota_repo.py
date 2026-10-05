@@ -1,4 +1,4 @@
-"""Repositorio da Gestao de Frota (ROADMAP 2.29).
+﻿"""Repositorio da Gestao de Frota (ROADMAP 2.29).
 
 Tabelas: frota_veiculos, frota_veic_empresas, frota_fornecedores,
 frota_veic_docs (pasta virtual, espelho de employee_docs),
@@ -1651,11 +1651,19 @@ class FrotaRepository:
         2.39.3: `dias` filtra por data real no SQL (período do relatório)."""
         corte = self._data_corte(dias)
         if dias:
-            meses = {30: 1, 90: 3, 180: 6}.get(dias, meses)
+            # 30 dias podem abranger 2 meses calendarios; 90->4; 180->7
+            meses = {30: 2, 90: 4, 180: 7}.get(dias, meses)
+        mes_expr = ("CASE WHEN substr(a.data,5,1)='-' THEN "
+                    "substr(a.data,1,7) ELSE substr(a.data,7,4)"
+                    "||'-'||substr(a.data,4,2) END")
+        data_expr = ("CASE WHEN substr(a.data,5,1)='-' THEN "
+                     "substr(a.data,1,10) ELSE substr(a.data,7,4)"
+                     "||'-'||substr(a.data,4,2)||'-'||"
+                     "substr(a.data,1,2) END")
         with self._get_conn() as conn:
             sql = (
                 "SELECT a.veiculo_id AS vid, v.modelo, v.marca, v.placa,"
-                " substr(a.data,1,7) AS mes,"
+                f" {mes_expr} AS mes,"
                 " SUM(COALESCE(a.valor,0)) AS combustivel,"
                 " SUM(COALESCE(a.extras_total,0)) AS extras,"
                 " SUM(COALESCE(a.litros,0)) AS litros"
@@ -1664,9 +1672,9 @@ class FrotaRepository:
                 " WHERE a.status IS NULL")
             params = []
             if corte:
-                sql += " AND a.data >= ?"
+                sql += f" AND {data_expr} >= ?"
                 params.append(corte)
-            sql += " GROUP BY a.veiculo_id, substr(a.data,1,7)"
+            sql += f" GROUP BY a.veiculo_id, {mes_expr}"
             rows = conn.execute(sql, params).fetchall()
         rotulos = {}
         por_mes = {}

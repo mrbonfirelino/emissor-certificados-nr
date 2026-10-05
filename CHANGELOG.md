@@ -1,5 +1,13 @@
 ## [1.61.0] - 2026-10-05
 
+## [1.62.3] - 2026-10-05
+
+### Corrigido
+- Frota: relatorio geral de custos nao mostrava as paginas por veiculo (e as notas de consumo Pesados/Leves): a serie mensal agrupava datas dd/mm/aaaa como se fossem ISO (substr) e o periodo de 30 dias so gerava o bucket do mes corrente; datas agora normalizadas no SQL e buckets de periodo ajustados (30->2 meses, 90->4, 180->7).
+- Listas de presenca: area de impressao calculada so pelas colunas referenciadas no registry cortava a paginacao (Pag i de N) e a coluna ASSINATURA do PDF; agora usa o range real da planilha.
+- Usuarios: pagina /usuarios quebrava com TypeError (_SETORES_FLAT chamada como funcao).
+
+
 ## [1.62.2] - 2026-10-05
 
 ### Corrigido

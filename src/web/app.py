@@ -442,7 +442,7 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
                          perm_estado=estado, perm_override=override,
                          perm_excecoes=excecoes,
                          perm_setores=_perm_setores_ctx(),
-                         perm_setores_flat=_SETORES_FLAT()))
+                         perm_setores_flat=_SETORES_FLAT))
 
     @app.post("/usuarios/permissoes")
     async def permissoes_salvar(request: Request,

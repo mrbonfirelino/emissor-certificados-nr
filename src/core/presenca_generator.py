@@ -1,4 +1,4 @@
-"""
+﻿"""
 Gerador de Lista de Presenca (v1.41.0).
 
 - Templates reais (XLSX com a logo embutida) em templates/listas_presenca/,
@@ -334,7 +334,11 @@ def _preencher_modelo(caminho_xlsx: Path, cfg: dict, data_br: str, carga: float,
     ultima_linha = max(inicio + max(vagas, len(participantes), 1),
                        ultima_linha_cfg)
     _substituir_tokens(ws, serial, pagina, total)
-    _paginacao_openpyxl(ws, max(colunas_usadas), ultima_linha)
+    # area de impressao: maior entre as colunas marcadas no registry e o
+    # range real da planilha (o modelo pode ter cabecalho/assinatura em
+    # colunas alem das referenciadas; sem isso o PDF sai cortado)
+    _paginacao_openpyxl(ws, max(max(colunas_usadas), ws.max_column),
+                        max(ultima_linha, ws.max_row))
 
     wb.save(str(clone))
     return clone
