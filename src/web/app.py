@@ -92,8 +92,8 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
         ("Controle", [
             ("Importa\u00e7\u00f5es", "/importacoes", "importacoes"),
             ("Romaneios", "/romaneios", "romaneios"),
-        ],
-        ("Administração", [("Templates NR", "/admin/templates", "config")])),
+        ]),
+        ("Administração", [("Templates NR", "/admin/templates", "config")]),
     ]
 
     def _nav(user: dict, caminho: str = "") -> list:

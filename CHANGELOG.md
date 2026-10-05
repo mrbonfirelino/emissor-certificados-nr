@@ -1,5 +1,11 @@
 ## [1.61.0] - 2026-10-05
 
+## [1.62.2] - 2026-10-05
+
+### Corrigido
+- ValueError 'too many values to unpack' ao abrir qualquer pagina logado: o grupo Administracao do menu foi inserido dentro da tupla do grupo Controle (v1.61.0); reestruturado como grupo proprio.
+
+
 ## [1.62.1] - 2026-10-05
 
 ### Corrigido
