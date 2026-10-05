@@ -918,6 +918,21 @@ CLT – Artigo 462, § 1º - Em caso de dano causado pelo empregado, o desconto 
 | Itens por tipo | Itens com base em tipos: Equipamentos, Parafusos, Componentes e Outros; permitir adicionar novo "Bloco" de "Outros" com descricao na hora | Alta | Concluido (v1.57.0) |
 | Campos dos itens | Todos os itens com: Codigo, Unidade, QTD total, Dimensoes aproximadas, Peso (KG), Tipo e Observacoes | Alta | Concluido (v1.57.0) |
 
+### Correcoes e Ajustes de UI (out/2026)
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Usuario no log/CMD | Colocar o nome do usuario no registro/CMD (se possivel), ex: "usuario_X acessou /Frota" | Media | Pendente |
+| Botao mostrar senha | O botao de ver/esconder senha no login esta com cor muito clara, dificil de enxergar - aumentar contraste | Media | Pendente |
+| Card de vencimentos | Remover o card enorme de vencimentos (que ficou junto dos aniversariantes). Colocar apenas um card no "stat-cards" com o numero de certificados que vencem em 30 dias, com cor forte e bom contraste; visivel somente para "Seguranca" | Alta | Concluido (v1.63.0) |
+| Stat-cards modulares (futuro) | Deixar o "stat-cards" modular: usuario escolhe quais cards ver na tela principal, baseado nas permissoes/setor do usuario | Media | Pendente |
+| Permissoes por setor (/usuarios) | Na pagina "/usuarios", organizar os itens/checklist de "Permissoes por setor" em lista organizada; hoje esta embaralhado e com espaco enorme entre o botao e a descricao | Alta | Concluido (v1.63.0) |
+| Gerar exemplo (/certificados) | Adicionar botao "Gerar exemplo" que gera PDF com dados inventados para visualizar o certificado; nao salva no sistema; usuario escolhe o template com base na NR | Media | Pendente |
+| Botao varios dias invertido | Os botoes de "Treinamento de varios dias" estao invertidos: o campo so aparece quando o botao esta desmarcado - corrigir logica | Alta | Concluido (v1.63.0) |
+| Opcionais recolhidos (/emissao-lote) | Na pagina "/emissao-lote", deixar os itens opcionais do certificado dentro de um menu recolhido | Media | Pendente |
+| PDF lista de presenca (novo erro) | Corrigir erro ao gerar PDF da lista de presenca: "O Office recusou a exportacao para PDF. Causas comuns: arquivo aberto em outro programa, arquivo bloqueado (modo protegido) ou PDF de destino sem permissao de escrita" | Alta | Concluido (v1.63.0) |
+| Voltar a usar templates PPTX | O sistema parou de usar os templates PPTX para emitir certificados. Usar os templates PPTX (NRs 6, 12, 18, 35) de "C:\Users\altec\Documents\EMISSOR DE CERTIFICADOS NR\templates\certificados_pptx"; NRs sem arquivo PPTX usam o template atual | Alta | Concluido (v1.63.0) |
+| Romaneios vazio | A pagina de Romaneios esta vazia - implementar a pagina/conteudo conforme especificacao da secao de Romaneios acima | Alta | Concluido (v1.63.0) |
+
 ---
 
 ## Referencias

@@ -154,17 +154,24 @@
   <p class="sub">Define, por setor, quais módulos o grupo acessa. Sem regra marcada, vale o acesso do papel do usuário. Admin nunca é restringido.</p>
   {% for s in perm_setores %}
   <details class="opcoes" {% if loop.first %}open{% endif %}>
-    <summary class="btn cinza">{{ s.label }}</summary>
+    <summary><b>{{ s.label }}</b>{% if s.regras %} &mdash; {{ s.regras | length }} regra(s){% endif %}</summary>
     <form method="post" action="/usuarios/permissoes-setor" style="margin-top:8px;">
       <input type="hidden" name="setor" value="{{ s.setor }}">
-      <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:6px 16px; max-width:900px;">
-        {% for modulo, label in perm_modulos %}
-        <label style="display:flex; gap:6px; align-items:center;">
-          <input type="checkbox" name="setor_{{ modulo }}" value="1"
-                 {{ 'checked' if s.regras.get(modulo) else '' }}>
-          <span>{{ label }}</span>
-        </label>
-        {% endfor %}
+      <div style="max-width:640px; overflow-x:auto;">
+        <table>
+          <thead><tr><th>Módulo</th><th style="text-align:center;">Acesso</th></tr></thead>
+          <tbody>
+          {% for modulo, label in perm_modulos %}
+          <tr>
+            <td>{{ label }}</td>
+            <td style="text-align:center;">
+              <input type="checkbox" name="setor_{{ modulo }}" value="1"
+                     {{ 'checked' if s.regras.get(modulo) else '' }}>
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
       </div>
       <div class="linha-botoes" style="margin-top:8px;">
         <button type="submit" class="verde">Salvar {{ s.label }}</button>

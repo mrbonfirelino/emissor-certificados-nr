@@ -289,6 +289,11 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
             venc_resumo = resumo_vencimentos()
         except Exception:
             venc_resumo = None
+        try:
+            _u_db = users.get_by_id(user["id"])
+            setor_usuario = (dict(_u_db).get("setor") if _u_db else "") or ""
+        except Exception:
+            setor_usuario = ""
         frota_stats = None
         if pode_usuario(user, "frota"):
             try:
@@ -314,7 +319,8 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
                 anivers_mes=anivers_mes,
                 frota_stats=frota_stats,
                 pode_lote=pode_escrever(user["papel"], "certificados"),
-                venc_resumo=venc_resumo))
+                venc_resumo=venc_resumo,
+                setor_usuario=setor_usuario))
 
     # ---------------- jobs de fundo (progresso, 2.32.1) ----------------
     @app.get("/jobs/{jid}")

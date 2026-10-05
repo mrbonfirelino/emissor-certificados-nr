@@ -94,10 +94,16 @@ class CertificateService:
         # tem prioridade; sem PowerPoint/COM o fluxo JSON/ReportLab continua
         from src.core import pptx_certificate_service as pptx_cert
         if pptx_cert.get_pptx_template_path(nr_code):
-            pptx_cert.gerar_pdf_pptx(
-                nr_code, employee, data_treinamento, cert_number, pdf_path,
-                data_hora=data_hora_impressao, data_inicio=data_inicio
-            )
+            try:
+                pptx_cert.gerar_pdf_pptx(
+                    nr_code, employee, data_treinamento, cert_number, pdf_path,
+                    data_hora=data_hora_impressao, data_inicio=data_inicio
+                )
+            except Exception as e:  # noqa: BLE001
+                from src.utils.error_log import log_error
+
+                log_error("pptx-fallback", e)
+                generate_certificate_pdf(cert_data, template, pdf_path)
         else:
             generate_certificate_pdf(cert_data, template, pdf_path)
 
@@ -255,10 +261,16 @@ class CertificateService:
         # mesma prioridade da emissao: modelo PPTX da tecnica quando existir
         from src.core import pptx_certificate_service as pptx_cert
         if employee is not None and pptx_cert.get_pptx_template_path(record.nr_code):
-            pptx_cert.gerar_pdf_pptx(
-                record.nr_code, employee, data_treino, record.cert_number,
-                pdf_path, data_hora=data_hora_impressao
-            )
+            try:
+                pptx_cert.gerar_pdf_pptx(
+                    record.nr_code, employee, data_treino, record.cert_number,
+                    pdf_path, data_hora=data_hora_impressao
+                )
+            except Exception as e:  # noqa: BLE001
+                from src.utils.error_log import log_error
+
+                log_error("pptx-fallback", e)
+                generate_certificate_pdf(cert_data, template, pdf_path)
         else:
             generate_certificate_pdf(cert_data, template, pdf_path)
 

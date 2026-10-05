@@ -1,26 +1,26 @@
-{% extends "base.html" %}
-{% block content %}
+﻿{% extends "base.html" %}
+{% block conteudo %}
 <h1>{{ r.serial }}</h1>
-<p class="sub">OS {{ r.os or '—' }} · {{ r.cliente or 'Cliente não informado' }}</p>
+<p class="sub">OS {{ r.os or 'â€”' }} Â· {{ r.cliente or 'Cliente nÃ£o informado' }}</p>
 
 {% if r.bloqueado %}
 <p class="tarja-bloqueado" style="background:#fdecea;border:1px solid #f5c6cb;color:#8a1f1f;padding:10px 14px;border-radius:6px;font-weight:700;">
-  🚫 BLOQUEADO — somente leitura. Bloqueado por {{ r.bloqueado_por or '—' }} em {{ r.bloqueado_em or '—' }}.
+  ðŸš« BLOQUEADO â€” somente leitura. Bloqueado por {{ r.bloqueado_por or 'â€”' }} em {{ r.bloqueado_em or 'â€”' }}.
 </p>
 {% endif %}
 
 <div class="ficha-grid" style="display:flex;gap:24px;flex-wrap:wrap;">
   <table style="max-width:640px;flex:1;">
     <tr><th>Serial</th><td class="numero">{{ r.serial }}</td></tr>
-    <tr><th>OS</th><td>{{ r.os or '—' }}</td></tr>
-    <tr><th>Cliente</th><td>{{ r.cliente or '—' }}</td></tr>
-    <tr><th>Nº ordem de compra</th><td>{{ r.ordem_compra or '—' }}</td></tr>
-    <tr><th>Resp. elaboração</th><td>{{ r.responsavel or '—' }}</td></tr>
-    <tr><th>Data de elaboração</th><td>{{ elaboracao_br }}</td></tr>
-    <tr><th>Emitido por</th><td>{{ r.emitido_por or '—' }}</td></tr>
-    <tr><th>Transportadora (CNPJ/CPF)</th><td>{{ r.transportadora or '—' }}{% if r.transportadora_doc %} — {{ r.transportadora_doc }}{% endif %}</td></tr>
-    <tr><th>Veículo (modelo / placa)</th><td>{{ r.veiculo or '—' }}{% if r.placa %} / {{ r.placa }}{% endif %}</td></tr>
-    <tr><th>Motorista</th><td>{{ r.motorista or '—' }}</td></tr>
+    <tr><th>OS</th><td>{{ r.os or 'â€”' }}</td></tr>
+    <tr><th>Cliente</th><td>{{ r.cliente or 'â€”' }}</td></tr>
+    <tr><th>NÂº ordem de compra</th><td>{{ r.ordem_compra or 'â€”' }}</td></tr>
+    <tr><th>Resp. elaboraÃ§Ã£o</th><td>{{ r.responsavel or 'â€”' }}</td></tr>
+    <tr><th>Data de elaboraÃ§Ã£o</th><td>{{ elaboracao_br }}</td></tr>
+    <tr><th>Emitido por</th><td>{{ r.emitido_por or 'â€”' }}</td></tr>
+    <tr><th>Transportadora (CNPJ/CPF)</th><td>{{ r.transportadora or 'â€”' }}{% if r.transportadora_doc %} â€” {{ r.transportadora_doc }}{% endif %}</td></tr>
+    <tr><th>VeÃ­culo (modelo / placa)</th><td>{{ r.veiculo or 'â€”' }}{% if r.placa %} / {{ r.placa }}{% endif %}</td></tr>
+    <tr><th>Motorista</th><td>{{ r.motorista or 'â€”' }}</td></tr>
     <tr><th>Data do embarque</th><td>{{ embarque_br }}</td></tr>
     <tr><th>Status</th>
       <td>{% if r.bloqueado %}<span class="badge b-vermelho">BLOQUEADO</span>{% else %}<span class="badge b-verde">ATIVO</span>{% endif %}</td>
@@ -34,13 +34,13 @@
   {% if itens_b %}
   <h3 class="bloco-titulo">{% if b == 1 %}EQUIPAMENTOS E COMPONENTES{% elif b == 2 %}PARAFUSOS E COMPONENTES{% elif b == 3 %}COMPONENTES{% else %}{{ itens_b[0].bloco_titulo or 'OUTROS' }}{% endif %}</h3>
   <table>
-    <thead><tr><th>Código</th><th>Descrição</th><th>Un.</th><th>Qtd</th><th>Dimensões</th><th>Peso (kg)</th><th>Tipo</th><th>Obs.</th></tr></thead>
+    <thead><tr><th>CÃ³digo</th><th>DescriÃ§Ã£o</th><th>Un.</th><th>Qtd</th><th>DimensÃµes</th><th>Peso (kg)</th><th>Tipo</th><th>Obs.</th></tr></thead>
     <tbody>
       {% for it in itens_b %}
       <tr>
-        <td>{{ it.codigo or '—' }}</td><td>{{ it.descricao or '—' }}</td><td>{{ it.unidade or '—' }}</td>
-        <td>{{ it.qtd or '—' }}</td><td>{{ it.dimensoes or '—' }}</td><td>{{ it.peso or '—' }}</td>
-        <td>{{ it.tipo or '—' }}</td><td>{{ it.observacoes or '—' }}</td>
+        <td>{{ it.codigo or 'â€”' }}</td><td>{{ it.descricao or 'â€”' }}</td><td>{{ it.unidade or 'â€”' }}</td>
+        <td>{{ it.qtd or 'â€”' }}</td><td>{{ it.dimensoes or 'â€”' }}</td><td>{{ it.peso or 'â€”' }}</td>
+        <td>{{ it.tipo or 'â€”' }}</td><td>{{ it.observacoes or 'â€”' }}</td>
       </tr>
       {% endfor %}
     </tbody>
@@ -135,11 +135,11 @@ function limpar(qual) {
       <button type="submit" class="btn verde">Desbloquear</button>
     </form>
     {% else %}
-    <form method="post" action="/romaneios/{{ r.id }}/bloquear" onsubmit="return confirm('Bloquear este romaneio? O registro e o documento permanecem, mas ele ficará somente leitura.');">
+    <form method="post" action="/romaneios/{{ r.id }}/bloquear" onsubmit="return confirm('Bloquear este romaneio? O registro e o documento permanecem, mas ele ficarÃ¡ somente leitura.');">
       <button type="submit" class="btn vermelho">Bloquear</button>
     </form>
     {% endif %}
   {% endif %}
-  <a class="btn" href="/romaneios">« Voltar</a>
+  <a class="btn" href="/romaneios">Â« Voltar</a>
 </div>
 {% endblock %}

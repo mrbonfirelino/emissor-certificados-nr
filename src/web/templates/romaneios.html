@@ -1,5 +1,5 @@
-{% extends "base.html" %}
-{% block content %}
+﻿{% extends "base.html" %}
+{% block conteudo %}
 <h1>Romaneios</h1>
 <p class="sub">{{ total }} romaneio(s) cadastrado(s).</p>
 
@@ -25,20 +25,27 @@
     {% for r in linhas %}
     <tr>
       <td><a href="/romaneios/{{ r.id }}" class="numero">{{ r.serial }}</a></td>
-      <td>{{ r.os or '—' }}</td>
-      <td>{{ r.cliente or '—' }}</td>
-      <td>{{ r.transportadora or '—' }}</td>
-      <td>{{ r.motorista or '—' }}</td>
-      <td>{{ r.embarque_br if r.embarque_br else '—' }}</td>
+      <td>{{ r.os or 'â€”' }}</td>
+      <td>{{ r.cliente or 'â€”' }}</td>
+      <td>{{ r.transportadora or 'â€”' }}</td>
+      <td>{{ r.motorista or 'â€”' }}</td>
+      <td>{{ r.embarque_br if r.embarque_br else 'â€”' }}</td>
       <td>
         {% if r.bloqueado %}<span class="badge b-vermelho" title="Bloqueado por {{ r.bloqueado_por }} em {{ r.bloqueado_em }}">BLOQUEADO</span>
         {% else %}<span class="badge b-verde">ATIVO</span>{% endif %}
       </td>
-      <td>{% if r.pdf_path %}<a href="/romaneios/{{ r.id }}/pdf" target="_blank">Ver</a>{% else %}<span class="b-cinza">—</span>{% endif %}</td>
+      <td>{% if r.pdf_path %}<a href="/romaneios/{{ r.id }}/pdf" target="_blank">Ver</a>{% else %}<span class="b-cinza">â€”</span>{% endif %}</td>
     </tr>
     {% endfor %}
     {% if not linhas %}
-    <tr><td colspan="8" class="vazio">Nenhum romaneio encontrado.</td></tr>
+    <tr><td colspan="8" class="vazio">
+      Nenhum romaneio encontrado.
+      {% if pode_escrever %}
+      <br>Comece emitindo o primeiro: <a class="btn verde" href="/romaneios/novo">+ Novo Romaneio</a>
+      {% else %}
+      <br>Solicite a um usu&aacute;rio com permiss&atilde;o de escrita que emita o primeiro romaneio.
+      {% endif %}
+    </td></tr>
     {% endif %}
   </tbody>
 </table>

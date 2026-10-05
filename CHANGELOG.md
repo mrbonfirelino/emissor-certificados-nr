@@ -1,3 +1,13 @@
+## [1.63.0] - 2026-10-05
+
+### Corrigido
+- Certificados/Emissão em lote: checkbox "Treinamento de vários dias" estava invertido (campo de data de início aparecia quando desmarcado).
+- Romaneios: página renderizava em branco no portal (bloco Jinja `content` vs `conteudo`); agora com estado vazio explicativo.
+- Listas de presenca/Romaneios/PPTX: remoção do Mark-of-the-Web antes de abrir arquivos via Office COM (falha no servidor por Modo Protegido), Workbooks.Open sem UpdateLinks e retry de erros transitorios; novos scripts deploy/web/ATUALIZAR_PORTAL.bat (Unblock-File) e deploy/web/DESATIVAR_MODO_PROTEGIDO.bat.
+- Certificados PPTX: falha do PowerPoint agora é registrada em log (pptx-fallback) e cai no template ReportLab sem interromper a emissão.
+- Dashboard: card grande de Vencimentos removido; stat-card "Vencem em 30 dias (vencimentos)" visível somente ao setor Segurança.
+- Usuários: card "Permissões por setor" reorganizado em lista compacta (um bloco por setor, tabela de módulos).
+
 ## [1.61.0] - 2026-10-05
 
 ## [1.62.4] - 2026-10-05

@@ -150,6 +150,9 @@ def xlsx_para_pdf(xlsx_path: Path) -> Optional[Path]:
 
     def _uma_tentativa():
         import comtypes.client
+        from src.utils.com_pdf_errors import remover_motw
+
+        remover_motw(xlsx_path)
         excel = comtypes.client.CreateObject("Excel.Application")
         excel.Visible = False
         excel.DisplayAlerts = False

@@ -539,10 +539,18 @@ def _pptx_to_pdf_batch(pairs: List[Tuple[Path, Path]]):
             ) from e
 
         try:
+            app.DisplayAlerts = False  # ppAlertsNone
+        except Exception:
+            pass
+
+        try:
             from src.utils.com_pdf_errors import com_retry, traduz_erro_com
 
             for src, dst in pairs:
                 def _um_arquivo(_src=src, _dst=dst):
+                    from src.utils.com_pdf_errors import remover_motw
+
+                    remover_motw(_src)
                     pres = app.Presentations.Open(str(Path(_src).resolve()), True, False, False)
                     try:
                         pres.SaveAs(str(Path(_dst).resolve()), PP_SAVE_AS_PDF)

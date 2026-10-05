@@ -86,3 +86,25 @@ def garantir_pasta(destino: Path) -> None:
     destino = Path(destino)
     if not destino.parent.exists():
         destino.parent.mkdir(parents=True, exist_ok=True)
+
+
+def remover_motw(path) -> None:
+    """
+    Remove o Mark-of-the-Web (Zone.Identifier) de um arquivo, se existir.
+
+    Arquivos extraidos de zip/baixados da internet ganham o ADS
+    ':Zone.Identifier', que faz o Office abrir em Modo Protegido e o COM
+    recusar a exportacao para PDF (erro -2147352567). Chamar antes de
+    Workbooks.Open / Presentations.Open.
+    """
+    try:
+        import ctypes
+
+        alvo = str(Path(path)) + ":Zone.Identifier"
+        if ctypes.windll.kernel32.DeleteFileW(alvo):
+            return
+        # 2 = ERROR_FILE_NOT_FOUND: nao ha MOTW, tudo bem.
+        if ctypes.windll.kernel32.GetLastError() == 2:
+            return
+    except Exception:
+        pass

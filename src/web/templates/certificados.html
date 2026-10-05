@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% block titulo %}Emitir certificado — NormaTech{% endblock %}
 {% block conteudo %}
 <div class="card">
@@ -33,9 +33,9 @@
         <label for="data">Data de emissão (fim do treinamento) *</label>
         <input type="text" id="data" name="data" class="js-data" placeholder="dd/mm/aaaa" value="{{ hoje_br }}">
         <label style="font-weight:normal; margin-top:4px;">
-          <input type="checkbox" id="mesmo-dia" checked onchange="document.getElementById('campo-inicio').style.display=this.checked ? 'none' : 'block'"> Treinamento de vários dias
+          <input type="checkbox" id="mesmo-dia" checked onchange="document.getElementById('campo-inicio').style.display=this.checked ? 'block' : 'none'"> Treinamento de vários dias
         </label>
-        <div id="campo-inicio" style="display:none;">
+        <div id="campo-inicio" style="display:block;">
           <label for="data_inicio">Data de início do treinamento</label>
           <input type="text" id="data_inicio" name="data_inicio" class="js-data" placeholder="dd/mm/aaaa">
         </div>

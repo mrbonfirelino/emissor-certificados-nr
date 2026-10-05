@@ -178,6 +178,9 @@ def gerar_pdf_pptx(
     if not tpl:
         raise ValueError(f"Modelo PPTX {nr_code} nao encontrado em templates/certificados_pptx/")
 
+    from src.utils.com_pdf_errors import remover_motw
+
+    remover_motw(tpl)
     prs = Presentation(str(tpl))
     values = valores_certificado(employee, data_treinamento, data_inicio)
     for slide in prs.slides:

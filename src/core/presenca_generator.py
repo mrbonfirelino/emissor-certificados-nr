@@ -160,6 +160,10 @@ def _excel_app():
         ) from e
     excel.Visible = False
     excel.DisplayAlerts = False
+    try:
+        excel.AutomationSecurity = 3  # msoAutomationSecurityForceDisable
+    except Exception:
+        pass
     return excel
 
 
@@ -186,7 +190,9 @@ def _excel_to_pdf(xlsx_path: Path, pdf_path: Path):
     Exporta o xlsx para PDF via Excel COM com ate 3 tentativas (erros
     transitorios de COM) e mensagem amigavel em caso de falha.
     """
-    from src.utils.com_pdf_errors import com_retry
+    from src.utils.com_pdf_errors import com_retry, remover_motw
+
+    remover_motw(xlsx_path)
 
     def _uma_tentativa():
         excel = _excel_app()
