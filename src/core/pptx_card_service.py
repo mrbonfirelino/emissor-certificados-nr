@@ -558,7 +558,8 @@ def _pptx_to_pdf_batch(pairs: List[Tuple[Path, Path]]):
                         pres.Close()
 
                 try:
-                    com_retry(_um_arquivo)
+                    com_retry(_um_arquivo,
+                      contexto=f"pptx-card src={src} dst={dst}")
                 except RuntimeError as e:
                     raise RuntimeError(f"{src.name}: {e}") from e
         finally:

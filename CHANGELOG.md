@@ -1,3 +1,10 @@
+## [1.63.2] - 2026-10-05
+
+### Alterado
+- Diagnostico de erros COM: o erro original (hresult + detalhes e os caminhos do
+  arquivo de entrada/PDF) agora e registrado em data/error.log antes da mensagem
+  amigavel - cobre listas de presenca, romaneios e cartoes PPTX.
+
 ## [1.63.1] - 2026-10-05
 
 ### Adicionado

@@ -209,7 +209,8 @@ def _excel_to_pdf(xlsx_path: Path, pdf_path: Path):
             pdf_path.unlink()
         except Exception:
             pass
-    com_retry(_uma_tentativa)
+    com_retry(_uma_tentativa,
+              contexto=f"lista-presenca xlsx={xlsx_path} pdf={pdf_path}")
     if not pdf_path.exists():
         raise RuntimeError("Excel nao gerou o PDF da lista")
 

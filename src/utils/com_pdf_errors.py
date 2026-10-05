@@ -62,7 +62,7 @@ def traduz_erro_com(e: Exception, app: str = "Office") -> str:
 
 
 def com_retry(fn: Callable[[], T], tentativas: int = 3,
-              delay: float = 1.5) -> T:
+              delay: float = 1.5, contexto: str = "") -> T:
     """
     Executa `fn` com ate `tentativas` tentativas. Repete apenas em erros
     transitorios de COM (CoInitialize/Excecao generica); propaga o ultimo
@@ -79,7 +79,24 @@ def com_retry(fn: Callable[[], T], tentativas: int = 3,
             if not transitivo or i == tentativas - 1:
                 break
             time.sleep(delay)
+    if ultimo is not None:
+        _logar_erro_bruto(ultimo, contexto)
     raise RuntimeError(traduz_erro_com(ultimo or Exception("desconhecido")))
+
+
+def _logar_erro_bruto(e: Exception, contexto: str = "") -> None:
+    """Registra o erro COM original (hresult + args) no log de erros,
+    antes da traducao amigavel - essencial para diagnosticar no servidor."""
+    try:
+        from src.utils.error_log import log_error
+        args = tuple(repr(a) for a in getattr(e, "args", ()))
+        det = (f"tipo={e.__class__.__name__} "
+               f"hresult={_hresult(e)} args={args} repr={e!r}")
+        if contexto:
+            det = f"[{contexto}] {det}"
+        log_error("com-pdf-diag", RuntimeError(det))
+    except Exception:
+        pass
 
 
 def garantir_pasta(destino: Path) -> None:

@@ -166,7 +166,8 @@ def xlsx_para_pdf(xlsx_path: Path) -> Optional[Path]:
             excel.Quit()
 
     try:
-        com_retry(_uma_tentativa)
+        com_retry(_uma_tentativa,
+                  contexto=f"romaneio xlsx={xlsx_path} pdf={pdf_path}")
     except Exception as e:  # noqa: BLE001
         log_error("romaneio-pdf-com", e)
         return None
