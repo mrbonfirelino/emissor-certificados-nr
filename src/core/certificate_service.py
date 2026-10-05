@@ -38,6 +38,7 @@ class CertificateService:
         carga_horaria: int,
         descricao_treinamento: str,
         campos_extra: Dict[str, str],
+        data_inicio: Optional[date] = None,
         output_dir: Optional[Path] = None,
         validade_meses: Optional[int] = None
     ) -> Optional[Path]:
@@ -78,6 +79,7 @@ class CertificateService:
             carga_horaria=carga_horaria,
             descricao_treinamento=descricao_treinamento,
             campos_extra=campos_extra,
+            data_inicio=data_inicio,
             conteudo_programatico=template.conteudo_programatico,
             assinaturas=template.assinaturas,
             data_hora_impressao=data_hora_impressao
@@ -94,7 +96,7 @@ class CertificateService:
         if pptx_cert.get_pptx_template_path(nr_code):
             pptx_cert.gerar_pdf_pptx(
                 nr_code, employee, data_treinamento, cert_number, pdf_path,
-                data_hora=data_hora_impressao
+                data_hora=data_hora_impressao, data_inicio=data_inicio
             )
         else:
             generate_certificate_pdf(cert_data, template, pdf_path)
@@ -105,7 +107,7 @@ class CertificateService:
             employee_id=employee.id,
             funcionario_nome=employee.nome,
             funcionario_cpf=employee.cpf,
-            data_inicio=data_treinamento.isoformat(),
+            data_inicio=(data_inicio or data_treinamento).isoformat(),
             data_fim=data_treinamento.isoformat(),
             carga_horaria=carga_horaria,
             descricao_treinamento=descricao_treinamento,
@@ -134,7 +136,8 @@ class CertificateService:
         carga_horaria: int,
         descricao_treinamento: str,
         campos_extra: Dict[str, str],
-        output_path: Path
+        output_path: Path,
+        data_inicio: Optional[date] = None
     ) -> Optional[Path]:
         if not self.company_config:
             return None
@@ -159,6 +162,7 @@ class CertificateService:
             descricao_treinamento=descricao_treinamento,
             campos_extra=campos_extra,
             conteudo_programatico=template.conteudo_programatico,
+            data_inicio=data_inicio,
             assinaturas=template.assinaturas
         )
 

@@ -15,6 +15,20 @@ ROLES = ("admin", "emissor", "consulta")
 
 ROLE_LABELS = {"admin": "Administrador", "emissor": "Emissor", "consulta": "Consulta"}
 
+# Setores do usuario (v1.59.0): o admin configura, por setor, quais modulos o
+# grupo acessa (tabela setores_modulos). Sem regra gravada para o modulo, vale
+# o acesso do PAPEL. Admin nunca e restrito pelo setor.
+SETORES = [
+    ("seguranca", "Segurança"),
+    ("comercial", "Comercial"),
+    ("compras", "Compras"),
+    ("engenharia", "Engenharia"),
+    ("financeiro", "Financeiro"),
+    ("rh", "Recursos Humanos"),
+]
+
+SETOR_LABELS = dict(SETORES)
+
 # modulo -> papeis com acesso (BASE — usada quando nao ha ajuste gravado)
 PERMISSIONS = {
     "dashboard": {"admin", "emissor", "consulta"},
@@ -27,6 +41,7 @@ PERMISSIONS = {
     "frota": {"admin", "emissor", "consulta"},
     "presencas": {"admin", "emissor", "consulta"},
     "crachas": {"admin", "emissor", "consulta"},
+        "romaneios": {"admin", "emissor", "consulta"},
     "importacoes": {"admin", "emissor"},
     "integracoes": {"admin", "emissor"},
     "cartoes": {"admin", "emissor"},
@@ -46,6 +61,7 @@ MODULOS_UI = [
     ("epi", "Ficha de EPIs"),
     ("crachas", "Crachás"),
     ("cartoes", "Cartões"),
+    ("romaneios", "Romaneios"),
     ("funcionarios", "Funcionários (Cadastros)"),
     ("aso", "ASO"),
     ("frota", "Gestão de Frota"),
@@ -62,7 +78,7 @@ _MODULOS_ADMIN_FIXOS = {"usuarios", "config"}
 
 # -- cache curto dos ajustes gravados (evita 1 query SQL por item de menu) ---
 _TTL = 3.0
-_cache = {"t": 0.0, "papel": {}, "usuario": {}}
+_cache = {"t": 0.0, "papel": {}, "usuario": {}, "setor": {}, "user_setor": {}}
 
 
 def invalidar_cache_permissoes():
@@ -80,6 +96,11 @@ def _overrides():
         except Exception:
             papel_ov, usuario_ov = {}, {}
         _cache["papel"], _cache["usuario"] = papel_ov, usuario_ov
+        try:
+            _cache["setor"], _cache["user_setor"] = \
+                UsersRepository().setores_overrides()
+        except Exception:
+            _cache["setor"], _cache["user_setor"] = {}, {}
         _cache["t"] = agora
     return _cache["papel"], _cache["usuario"]
 
@@ -105,6 +126,12 @@ def pode_usuario(user, modulo: str) -> bool:
     ex = usuario_ov.get(user.get("id")) or {}
     if modulo in ex:
         return bool(ex[modulo])
+    # v1.59.0: regra do setor (exceto admin, que nunca e restringido)
+    if user.get("papel") != "admin":
+        setor = (_cache.get("user_setor") or {}).get(user.get("id")) or ""
+        regras = (_cache.get("setor") or {}).get(setor) or {}
+        if setor and modulo in regras:
+            return bool(regras[modulo])
     return pode(user.get("papel"), modulo)
 
 

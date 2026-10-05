@@ -1,6 +1,15 @@
 {% extends "base.html" %}
 {% block titulo %}Emissão em Lote — NormaTech{% endblock %}
 {% block conteudo %}
+<style>
+  /* Layout mais horizontal: "Dados do lote" em 4 colunas (item 7 do roadmap) */
+  .form-grid.lote-grid { grid-template-columns: repeat(4, 1fr); gap: 4px 18px; }
+  .form-grid.lote-grid .campo.span-3 { grid-column: span 3; }
+  @media (max-width: 900px) {
+    .form-grid.lote-grid { grid-template-columns: repeat(2, 1fr); }
+    .form-grid.lote-grid .campo.span-3 { grid-column: span 2; }
+  }
+</style>
 <div class="card">
   <h1>Emissão em Lote</h1>
   <p class="sub">Emita o mesmo treinamento para vários funcionários de uma vez, com ajuste individual opcional.</p>
@@ -25,10 +34,17 @@
     <input type="hidden" name="nr" value="{{ nr_sel }}">
 
     <h2 style="font-size:16px; margin:12px 0 6px;">Dados do lote (aplicados a todos)</h2>
-    <div class="form-grid">
+    <div class="form-grid lote-grid">
       <div class="campo">
-        <label for="data">Data do treinamento *</label>
+        <label for="data">Data de emissão (fim) *</label>
         <input type="text" id="data" name="data" class="js-data" value="{{ hoje_br }}" required>
+        <label style="font-weight:normal;">
+          <input type="checkbox" id="mesmo-dia" checked onchange="document.getElementById('campo-inicio').style.display=this.checked ? 'none' : 'block'"> Treinamento de vários dias
+        </label>
+        <div id="campo-inicio" style="display:none;">
+          <label for="data_inicio">Início do treinamento</label>
+          <input type="text" id="data_inicio" name="data_inicio" class="js-data" placeholder="dd/mm/aaaa">
+        </div>
       </div>
       <div class="campo">
         <label for="carga">Carga horária (h) *</label>
@@ -38,7 +54,7 @@
         <label for="validade">Validade (meses)</label>
         <input type="number" id="validade" name="validade" min="1" max="120" value="{{ tmpl.validade_meses }}">
       </div>
-      <div class="campo" style="grid-column: span 2;">
+      <div class="campo span-3">
         <label for="descricao">Descrição do treinamento *</label>
         <input type="text" id="descricao" name="descricao" value="{{ tmpl.descricao_padrao }}" required>
       </div>

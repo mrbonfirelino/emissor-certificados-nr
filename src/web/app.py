@@ -9,8 +9,8 @@ Execucao: python run_web.py [--host 0.0.0.0] [--port 8000]
 import secrets
 from pathlib import Path
 
-from fastapi import FastAPI, Request, Form
-from fastapi.responses import RedirectResponse
+from fastapi import FastAPI, Request, Form, UploadFile, File, HTTPException
+from fastapi.responses import RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -91,7 +91,9 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
         ]),
         ("Controle", [
             ("Importa\u00e7\u00f5es", "/importacoes", "importacoes"),
-        ]),
+            ("Romaneios", "/romaneios", "romaneios"),
+        ],
+        ("Administração", [("Templates NR", "/admin/templates", "config")])),
     ]
 
     def _nav(user: dict, caminho: str = "") -> list:
@@ -281,6 +283,12 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
         agora = datetime.now()
         anivers_hoje = er.get_aniversariantes(agora.month, agora.day)
         anivers_mes = er.get_aniversariantes(agora.month)
+        venc_resumo = None
+        try:
+            from src.web.routers.vencimentos import resumo_vencimentos
+            venc_resumo = resumo_vencimentos()
+        except Exception:
+            venc_resumo = None
         frota_stats = None
         if pode_usuario(user, "frota"):
             try:
@@ -305,7 +313,8 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
                 anivers_hoje=anivers_hoje,
                 anivers_mes=anivers_mes,
                 frota_stats=frota_stats,
-                pode_lote=pode_escrever(user["papel"], "certificados")))
+                pode_lote=pode_escrever(user["papel"], "certificados"),
+                venc_resumo=venc_resumo))
 
     # ---------------- jobs de fundo (progresso, 2.32.1) ----------------
     @app.get("/jobs/{jid}")
@@ -317,7 +326,99 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
                                 status_code=404)
         return JSONResponse({"ok": True, **snap})
 
+
+    # ---------------- perfil do usuario (v1.59.0) ----------------
+    @app.get("/perfil")
+    def perfil_ver(request: Request, user: dict = auth.require_user()):
+        u = users.get_by_id(user["id"])
+        return templates.TemplateResponse(
+            request=request, name="perfil.html",
+            context=_ctx(request, me=u))
+
+    @app.post("/perfil/nome")
+    async def perfil_nome(request: Request, user: dict = auth.require_user()):
+        form = await request.form()
+        nome = (form.get("nome") or "").strip()
+        users.set_nome(user["id"], nome)
+        auth.set_user(request, users.get_by_id(user["id"]))
+        users.audit("perfil-nome", user["username"])
+        _flash(request, msg="Nome atualizado.")
+        return RedirectResponse("/perfil", status_code=303)
+
+    @app.post("/perfil/senha")
+    async def perfil_senha(request: Request, user: dict = auth.require_user()):
+        form = await request.form()
+        atual = form.get("atual") or ""
+        nova = form.get("nova") or ""
+        confirma = form.get("confirma") or ""
+        if users.verify_login(user["username"], atual) is None:
+            _flash(request, erro="Senha atual incorreta.")
+        elif len(nova) < 6:
+            _flash(request, erro="A nova senha deve ter pelo menos 6 caracteres.")
+        elif nova != confirma:
+            _flash(request, erro="A confirmação não confere com a nova senha.")
+        else:
+            users.change_password(user["id"], nova)
+            users.audit("perfil-senha", user["username"])
+            _flash(request, msg="Senha alterada com sucesso.")
+        return RedirectResponse("/perfil", status_code=303)
+
+    @app.get("/perfil/foto/img")
+    def perfil_foto_img(request: Request, user: dict = auth.require_user()):
+        dados = users.get_foto(user["id"])
+        if not dados:
+            raise HTTPException(status_code=404)
+        blob, tipo = dados
+        media = "image/jpeg" if tipo in ("jpg", "jpeg") else f"image/{tipo}"
+        return Response(content=blob, media_type=media)
+
+    @app.post("/perfil/foto")
+    async def perfil_foto(request: Request, user: dict = auth.require_user(),
+                          foto: UploadFile = File(None)):
+        dados = await foto.read() if foto is not None else b""
+        nome = (foto.filename or "") if foto is not None else ""
+        ext = nome.rsplit(".", 1)[-1].lower() if "." in nome else ""
+        if not dados:
+            flash(request, erro="Selecione um arquivo de imagem.")
+            return RedirectResponse("/perfil", status_code=303)
+        if ext not in ("png", "jpg", "jpeg"):
+            flash(request, erro="Formato nao suportado (use PNG ou JPG).")
+            return RedirectResponse("/perfil", status_code=303)
+        if len(dados) > 3 * 1024 * 1024:
+            flash(request, erro="Imagem muito grande (maximo 3 MB).")
+            return RedirectResponse("/perfil", status_code=303)
+        users.set_foto(user["id"], dados, ext)
+        users.audit("perfil-foto", user["username"])
+        flash(request, msg="Foto atualizada.")
+        return RedirectResponse("/perfil", status_code=303)
+
+    @app.post("/perfil/foto/remover")
+    def perfil_foto_remover(request: Request, user: dict = auth.require_user()):
+        users.remover_foto(user["id"])
+        users.audit("perfil-foto-remover", user["username"])
+        flash(request, msg="Foto removida.")
+        return RedirectResponse("/perfil", status_code=303)
+
+    @app.post("/perfil/notificacoes")
+    async def perfil_notificacoes(request: Request, user: dict = auth.require_user()):
+        form = await request.form()
+        users.set_pref_notif(user["id"], form.get("notif") == "1")
+        auth.set_user(request, users.get_by_id(user["id"]))
+        _flash(request, msg="Preferências de notificação salvas.")
+        return RedirectResponse("/perfil", status_code=303)
+
     # ---------------- usuarios (admin) ----------------
+    from src.web.permissions import SETORES as _SETORES_LIST
+    _SETORES_FLAT = [(s, lbl) for s, lbl in _SETORES_LIST]
+
+    def _perm_setores_ctx():
+        """Estado das regras setor -> modulo para a tela Usuários."""
+        from src.web.permissions import SETORES
+        regras, _user_setor = users.setores_overrides()
+        return [{"setor": s, "label": lbl,
+                 "regras": regras.get(s) or {}}
+                for s, lbl in SETORES]
+
     @app.get("/usuarios")
     def usuarios(request: Request, user: dict = auth.require_permission("usuarios")):
         papel_ov, usuario_ov = users.permissoes_overrides()
@@ -339,7 +440,9 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
             context=_ctx(request, usuarios=users.list_users(), papeis=ROLE_LABELS,
                          perm_modulos=_MODULOS_PERM_UI, perm_papeis=ROLES,
                          perm_estado=estado, perm_override=override,
-                         perm_excecoes=excecoes))
+                         perm_excecoes=excecoes,
+                         perm_setores=_perm_setores_ctx(),
+                         perm_setores_flat=_SETORES_FLAT()))
 
     @app.post("/usuarios/permissoes")
     async def permissoes_salvar(request: Request,
@@ -398,16 +501,58 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
 
     @app.post("/usuarios/criar")
     def usuarios_criar(request: Request, username: str = Form(""), nome: str = Form(""),
-                       papel: str = Form("consulta"),
+                       papel: str = Form("consulta"), setor: str = Form(""),
                        user: dict = auth.require_permission("usuarios")):
         try:
             novo_id, provisoria = users.create_user(username, nome, papel)
+            if setor.strip():
+                users.set_setor(novo_id, setor)
             users.audit("criar-usuario", user["username"], username, f"papel={papel}")
             _flash(request, msg=f"Usuário '{username.strip().lower()}' criado."
                                 f" Senha provisória: {provisoria} (exibida uma única vez).")
         except ValueError as e:
             _flash(request, erro=str(e))
         return RedirectResponse("/usuarios", status_code=303)
+
+
+    @app.post("/usuarios/permissoes-setor")
+    async def permissoes_setor_salvar(request: Request,
+                                      user: dict = auth.require_permission("usuarios")):
+        """Regras setor -> modulo (checkbox marcado = setor acessa o modulo)."""
+        from src.web.permissions import SETORES as _SETORES
+        form = await request.form()
+        setor = (form.get("setor") or "").strip().lower()
+        if setor not in {s for s, _l in _SETORES}:
+            _flash(request, erro="Setor inválido.")
+            return RedirectResponse("/usuarios", status_code=303)
+        n = 0
+        for modulo, _label in _MODULOS_PERM_UI:
+            marcado = form.get(f"setor_{modulo}") == "1"
+            users.set_regra_setor(setor, modulo, True if marcado else None)
+            n += 1
+        from src.web.permissions import invalidar_cache_permissoes
+        invalidar_cache_permissoes()
+        users.audit("permissoes-setor", user["username"], setor,
+                    f"{n} modulos avaliados")
+        _flash(request, msg=f"Permissões do setor '{setor}' atualizadas.")
+        return RedirectResponse("/usuarios", status_code=303)
+
+    @app.post("/usuarios/{user_id}/setor")
+    async def usuario_setor(request: Request, user_id: int,
+                            user: dict = auth.require_permission("usuarios")):
+        form = await request.form()
+        alvo = users.get_by_id(user_id)
+        if alvo is None:
+            _flash(request, erro="Usuário não encontrado.")
+        else:
+            users.set_setor(user_id, form.get("setor") or "")
+            from src.web.permissions import invalidar_cache_permissoes
+            invalidar_cache_permissoes()
+            users.audit("setor-usuario", user["username"], alvo["username"],
+                        f"setor={form.get('setor') or ''}")
+            _flash(request, msg=f"Setor de '{alvo['username']}' atualizado.")
+        return RedirectResponse("/usuarios", status_code=303)
+
 
     def _guarda_admin_alvo(user: dict, alvo_id: int) -> str:
         alvo = users.get_by_id(alvo_id)
@@ -481,6 +626,8 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
     # ---------------- routers da Fase 2+3 ----------------
     deps = {"users": users, "templates": templates, "ctx": _ctx, "flash": _flash}
     from src.web.routers import employees as rotas_funcionarios
+    from src.web.routers import romaneios as rotas_romaneios
+    from src.web.routers import admin_templates as rotas_admin_templates
     from src.web.routers import certificates as rotas_certificados
     from src.web.routers import history as rotas_historico
     from src.web.routers import lote as rotas_lote
@@ -497,6 +644,8 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
     from src.web.routers import auditoria as rotas_auditoria
     from src.web.routers import presencas as rotas_presencas
     rotas_funcionarios.register(app, deps)
+    rotas_romaneios.register(app, deps)
+    rotas_admin_templates.register(app, deps)
     rotas_certificados.register(app, deps)
     rotas_historico.register(app, deps)
     rotas_lote.register(app, deps)

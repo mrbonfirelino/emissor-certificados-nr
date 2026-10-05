@@ -58,7 +58,8 @@ def register(app, deps: dict):
                         total=len(todos), cortados=max(0, len(todos) - MAX_LISTA)))
 
     def _coletar(form, tmpl, nr, data_global, carga_global, validade_global,
-                 descricao, campos, selecionados):
+                 descricao, campos, selecionados, data_inicio_global=None):
+        data_inicio_global = data_inicio_global or data_global
         er = EmployeeRepository()
         itens = []
         for id_txt in selecionados:
@@ -80,6 +81,11 @@ def register(app, deps: dict):
                 itens.append({"emp": emp, "nome": emp.nome,
                               "erro": f"Data individual inválida ({d_txt})."})
                 continue
+            # início do período (multi-dia): individual ou global
+            di_txt = (form.get(f"data_inicio_{emp.id}") or "").strip()
+            data_inicio_item = validar_data(di_txt) if di_txt else data_inicio_global
+            if data_inicio_item and data_inicio_item > data_item:
+                data_inicio_item = data_item
             c_txt = (form.get(f"carga_{emp.id}") or "").strip()
             try:
                 carga_item = int(c_txt) if c_txt else carga_global
@@ -102,6 +108,7 @@ def register(app, deps: dict):
                                   "erro": f"Validade individual inválida ({v_txt})."})
                     continue
             itens.append({"emp": emp, "nome": emp.nome, "data": data_item,
+                          "data_inicio": data_inicio_item,
                           "carga": carga_item, "validade": validade_item,
                           "erro": None})
         return itens
@@ -126,6 +133,7 @@ def register(app, deps: dict):
                     progresso(i - 1, total, it["emp"].nome)
                 caminho = service.generate_certificate(
                     nr_code=nr, employee=it["emp"], data_treinamento=it["data"],
+                    data_inicio=it.get("data_inicio"),
                     carga_horaria=it["carga"],
                     descricao_treinamento=descricao, campos_extra=campos,
                     validade_meses=it["validade"])
@@ -171,6 +179,17 @@ def register(app, deps: dict):
         data_global = validar_data((form.get("data") or "").strip())
         if data_global is None:
             return _voltar("Data do treinamento inválida (use dd/mm/aaaa).")
+        # período multi-dia: início global (padrão = mesma data)
+        data_inicio_global = data_global
+        di_txt = (form.get("data_inicio") or "").strip()
+        if di_txt:
+            di = validar_data(di_txt)
+            if di is None:
+                return _voltar("Data de início inválida (use dd/mm/aaaa).")
+            if di > data_global:
+                return _voltar("Data de início deve ser anterior ou igual à "
+                               "data de emissão.")
+            data_inicio_global = di
         try:
             carga_global = int(form.get("carga") or 0)
         except ValueError:
@@ -206,7 +225,8 @@ def register(app, deps: dict):
             return _voltar("Selecione pelo menos um funcionário.")
 
         itens = _coletar(form, tmpl, nr, data_global, carga_global,
-                         validade_global, descricao, campos, selecionados)
+                         validade_global, descricao, campos, selecionados,
+                         data_inicio_global=data_inicio_global)
 
         if via_fetch:
             job = jobs.criar_job(titulo=f"Emissão em Lote {nr}")

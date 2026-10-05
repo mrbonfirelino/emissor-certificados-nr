@@ -223,6 +223,7 @@
   <span class="versao">v{{ versao }}</span>
   {% if user %}
     <span class="quem">{{ user.nome or user.username }} · {{ papel_label }} </span>
+    <a class="sair" href="/perfil">Meu perfil</a>
     <a class="sair" href="/logout">Sair</a>
   {% endif %}
 </header>
@@ -534,6 +535,47 @@
   }
   _ligarMascaras(document);
   window.normaTechMascaras = _ligarMascaras;
+})();
+</script>
+<script>
+/* Notificacoes de vencimentos no navegador (v1.60.0) */
+(function () {
+  if (!document.querySelector("header .quem")) return; // so usuarios logados
+  var ROTULO = {seguranca: "Segurança", frota: "Frota", outros: "Outros"};
+  function mostrar(d) {
+    if (!d || !d.notif || !d.alertas) return;
+    if (!("Notification" in window)) return;
+    var lancar = function () {
+      if (Notification.permission !== "granted") return;
+      var partes = [];
+      var setores = d.por_setor || {};
+      var meu = d.setor_usuario;
+      Object.keys(setores).forEach(function (s) {
+        var info = setores[s];
+        var total = (info.alerta || 0) + (info.vencido || 0);
+        if (total > 0) {
+          var nome = ROTULO[s] || s;
+          if (meu && s === meu) nome += " (seu setor)";
+          partes.push(nome + ": " + total);
+        }
+      });
+      var corpo = partes.length ? partes.join(" · ") : "Acesse a página de Vencimentos.";
+      var n = new Notification("NormaTech: você tem " + d.alertas + " vencimento(s) urgente(s)", {body: corpo});
+      n.onclick = function () { window.focus(); window.location.href = "/vencimentos"; };
+    };
+    if (Notification.permission === "granted") lancar();
+    else if (Notification.permission === "default") {
+      Notification.requestPermission().then(function (p) { if (p === "granted") lancar(); });
+    }
+  }
+  function poll() {
+    fetch("/api/vencimentos/resumo", {credentials: "same-origin"})
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(mostrar)
+      .catch(function () {});
+  }
+  poll();
+  setInterval(poll, 10 * 60 * 1000);
 })();
 </script>
 </body>

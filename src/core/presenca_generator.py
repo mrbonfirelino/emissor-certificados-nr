@@ -182,13 +182,30 @@ def _fechar_excel(excel, wb=None):
 
 
 def _excel_to_pdf(xlsx_path: Path, pdf_path: Path):
-    excel = _excel_app()
-    wb = None
-    try:
-        wb = excel.Workbooks.Open(str(Path(xlsx_path).resolve()))
-        wb.ExportAsFixedFormat(XL_TYPE_PDF, str(Path(pdf_path).resolve()))
-    finally:
-        _fechar_excel(excel, wb)
+    """
+    Exporta o xlsx para PDF via Excel COM com ate 3 tentativas (erros
+    transitorios de COM) e mensagem amigavel em caso de falha.
+    """
+    from src.utils.com_pdf_errors import com_retry
+
+    def _uma_tentativa():
+        excel = _excel_app()
+        wb = None
+        try:
+            wb = excel.Workbooks.Open(str(Path(xlsx_path).resolve()))
+            wb.ExportAsFixedFormat(XL_TYPE_PDF, str(Path(pdf_path).resolve()))
+        finally:
+            _fechar_excel(excel, wb)
+
+    pdf_path = Path(pdf_path)
+    if pdf_path.exists():
+        try:
+            pdf_path.unlink()
+        except Exception:
+            pass
+    com_retry(_uma_tentativa)
+    if not pdf_path.exists():
+        raise RuntimeError("Excel nao gerou o PDF da lista")
 
 
 def _celula(ws, ref: str):

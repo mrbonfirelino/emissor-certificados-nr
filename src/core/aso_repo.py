@@ -49,11 +49,22 @@ class AsoRepository:
                 );
                 INSERT OR IGNORE INTO sequences_aso (name, value) VALUES ('aso', 0);
             """)
+            # migracao idempotente: bloqueio de ASO (bloquear != excluir)
+            cols = {r[1] for r in conn.execute("PRAGMA table_info(asos)").fetchall()}
+            if "bloqueado" not in cols:
+                conn.execute(
+                    "ALTER TABLE asos ADD COLUMN bloqueado INTEGER DEFAULT 0")
+            if "bloqueado_por" not in cols:
+                conn.execute("ALTER TABLE asos ADD COLUMN bloqueado_por TEXT")
+            if "bloqueado_em" not in cols:
+                conn.execute("ALTER TABLE asos ADD COLUMN bloqueado_em TEXT")
 
     # colunas de listagem (BLOB aso_doc fica de fora: carga pesada)
     _LIST_COLS = """
         asos.id, aso_number, employee_id, tipo_aso, data_exame, validade_meses,
-        pdf_path, asos.created_at, (aso_doc IS NOT NULL) AS has_doc
+        pdf_path, asos.created_at, (aso_doc IS NOT NULL) AS has_doc,
+        COALESCE(asos.bloqueado, 0) AS bloqueado, asos.bloqueado_por,
+        asos.bloqueado_em
     """
 
     def next_aso_number(self) -> str:
@@ -76,6 +87,31 @@ class AsoRepository:
     def update_pdf_path(self, aso_id: int, pdf_path: str) -> bool:
         with self._get_conn() as conn:
             conn.execute("UPDATE asos SET pdf_path = ? WHERE id = ?", (pdf_path, aso_id))
+            return True
+
+    # --- Bloqueio (bloquear != excluir: registro e PDF permanecem) ---
+
+    def set_bloqueio(self, aso_id: int, bloqueado: bool, usuario: str) -> bool:
+        from datetime import datetime
+        with self._get_conn() as conn:
+            conn.execute(
+                "UPDATE asos SET bloqueado = ?, bloqueado_por = ?, bloqueado_em = ? "
+                "WHERE id = ?",
+                (1 if bloqueado else 0,
+                 usuario if bloqueado else None,
+                 datetime.now().isoformat(timespec="seconds") if bloqueado else None,
+                 aso_id))
+            return True
+
+    # --- Edição de dados do ASO (não altera numero/funcionario) ---
+
+    def update(self, aso_id: int, tipo_aso: str, data_exame: str,
+               validade_meses: int) -> bool:
+        with self._get_conn() as conn:
+            conn.execute(
+                "UPDATE asos SET tipo_aso = ?, data_exame = ?, validade_meses = ? "
+                "WHERE id = ?",
+                (tipo_aso, data_exame, validade_meses, aso_id))
             return True
 
     def get_by_id(self, aso_id: int) -> Optional[Dict[str, Any]]:

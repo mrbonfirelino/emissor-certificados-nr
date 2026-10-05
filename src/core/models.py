@@ -175,6 +175,15 @@ class LayoutConfig(BaseModel):
     content_columns: Dict[str, Any] = {"count": 1, "padding_mm": 5}
 
 
+def _data_extensa(d: date) -> str:
+    meses_pt = {
+        1: "janeiro", 2: "fevereiro", 3: "marco", 4: "abril",
+        5: "maio", 6: "junho", 7: "julho", 8: "agosto",
+        9: "setembro", 10: "outubro", 11: "novembro", 12: "dezembro"
+    }
+    return f"{d.day} de {meses_pt[d.month]} de {d.year}"
+
+
 class CertificateData(BaseModel):
     cert_number: str
     nr_code: str
@@ -187,6 +196,8 @@ class CertificateData(BaseModel):
     instrutor_nome: str
     instrutor_registro_mte: str
     data_treinamento: date
+    # inicio real do periodo do treinamento (multi-dia); None = mesmo dia
+    data_inicio: Optional[date] = None
     carga_horaria: int
     descricao_treinamento: str
     campos_extra: Dict[str, str] = {}
@@ -197,13 +208,14 @@ class CertificateData(BaseModel):
     data_hora_impressao: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
-        meses_pt = {
-            1: "janeiro", 2: "fevereiro", 3: "marco", 4: "abril",
-            5: "maio", 6: "junho", 7: "julho", 8: "agosto",
-            9: "setembro", 10: "outubro", 11: "novembro", 12: "dezembro"
-        }
         d = self.data_treinamento
-        data_extensa = f"{d.day} de {meses_pt[d.month]} de {d.year}"
+        data_extensa = _data_extensa(d)
+        # periodo multi-dia: 'realizado de X a Y' (data_inicio != emissao)
+        if self.data_inicio and self.data_inicio != d:
+            data_extensa = (
+                f"realizado de {_data_extensa(self.data_inicio)}"
+                f" a {data_extensa}"
+            )
 
         return {
             "cert_number": self.cert_number,

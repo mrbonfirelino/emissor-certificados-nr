@@ -52,6 +52,13 @@
       <div class="campo largo">
         <label for="foto">Foto 3x4 {{ '(deixe vazio para manter a atual)' if emp and emp.foto else '(opcional)' }}</label>
         <input type="file" id="foto" name="foto" accept="image/*">
+        {% if emp and emp.foto %}
+        <div style="margin-top:6px; display:flex; align-items:center; gap:10px;">
+          <img src="/funcionarios/{{ emp.id }}/foto" alt="Foto atual de {{ emp.nome }}"
+               style="width:72px; height:96px; object-fit:cover; border-radius:6px; border:1px solid #ccc; background:#f5f5f5;">
+          <span class="muted" style="font-size:12px;">Foto atual</span>
+        </div>
+        {% endif %}
       </div>
     </div>
     <div class="linha-botoes">

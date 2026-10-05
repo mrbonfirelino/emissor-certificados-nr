@@ -11,9 +11,28 @@
     </div>
     <div class="campo">
       <label for="password">Senha</label>
-      <input id="password" name="password" type="password" autocomplete="current-password" required>
+      <div style="position:relative;">
+        <input id="password" name="password" type="password" autocomplete="current-password" required style="width:100%; padding-right:38px;">
+        <button type="button" id="toggle-senha" title="Mostrar senha" aria-label="Mostrar senha"
+                style="position:absolute; right:6px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; font-size:16px; padding:2px 4px; line-height:1;">👁</button>
+      </div>
     </div>
     <button type="submit" class="verde">Entrar</button>
   </form>
 </div>
+<script>
+  (function () {
+    var inp = document.getElementById("password");
+    var btn = document.getElementById("toggle-senha");
+    if (!inp || !btn) return;
+    btn.addEventListener("click", function () {
+      var mostrar = inp.type === "password";
+      inp.type = mostrar ? "text" : "password";
+      btn.textContent = mostrar ? "🙈" : "👁";
+      btn.title = mostrar ? "Ocultar senha" : "Mostrar senha";
+      btn.setAttribute("aria-label", btn.title);
+      inp.focus();
+    });
+  })();
+</script>
 {% endblock %}

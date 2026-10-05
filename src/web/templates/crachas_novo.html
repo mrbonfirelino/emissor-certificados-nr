@@ -11,6 +11,12 @@
   <p><a class="btn cinza" href="/crachas">Voltar</a></p>
   {% else %}
 
+  <form method="get" action="/crachas/novo" class="filtros" style="margin-bottom:12px">
+    <input type="search" name="busca" value="{{ busca }}" placeholder="Buscar por nome ou CPF...">
+    <button class="btn" type="submit">Buscar</button>
+    {% if busca %}<a class="btn cinza" href="/crachas/novo">Limpar</a>{% endif %}
+  </form>
+
   <form method="post" action="/crachas/emitir" data-confirmar-lista>
     <div class="form-grid">
       <div class="campo">
@@ -19,6 +25,13 @@
           {% for t in tpls %}
           <option value="{{ t.code }}">{{ t.nome }}</option>
           {% endfor %}
+        </select>
+      </div>
+      <div class="campo">
+        <label>Orientação</label>
+        <select name="orientacao">
+          <option value="vertical" selected>Vertical (padrão)</option>
+          <option value="horizontal">Horizontal</option>
         </select>
       </div>
       <div class="campo">
@@ -35,7 +48,14 @@
     </div>
 
     <h2>Funcionários</h2>
+    <p class="muted">Requisitos de emissão: foto cadastrada, NR dentro da validade
+       e ASO válido. Funcionários sem esses requisitos aparecem como
+       <span class="badge b-vermelho">BLOQUEADO</span> com o motivo.</p>
+    {% if busca %}
+    <p class="muted">{{ total }} resultado(s) para “{{ busca }}”.</p>
+    {% endif %}
     {% if elegiveis or bloqueados %}
+    <div style="max-height:480px; overflow-y:auto; border:1px solid #ddd; border-radius:6px">
     <table>
       <tr><th>Emitir</th><th>Funcionário</th><th>CPF</th><th>NRs válidas (mais recentes)</th></tr>
       {% for e in elegiveis %}
@@ -55,13 +75,14 @@
       </tr>
       {% endfor %}
     </table>
+    </div>
+    {% include "_paginacao.html" %}
     {% else %}
     <p class="muted">Nenhum funcionário cadastrado.</p>
     {% endif %}
 
-    <p class="muted">Regras: crachá só é gerado com foto, NR dentro da validade e ASO
-       válido (bloqueados aparecem acima). Até 8 NRs mais recentes por funcionário.
-       PDF em folha A4 com guia de corte.</p>
+    <p class="muted">Até 8 NRs mais recentes por funcionário. PDF em folha A4
+       com guia de corte.</p>
 
     <button class="btn verde" type="submit">Emitir crachás</button>
     <a class="btn cinza" href="/crachas">Cancelar</a>

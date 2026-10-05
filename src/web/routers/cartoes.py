@@ -124,32 +124,51 @@ def register(app, deps: dict):
     # ---------------- nova emissão ----------------
     @app.get("/cartoes/novo")
     def cartoes_novo_form(request: Request, sel: str = "",
+                          busca: str = "",
+                          page: int = 1,
                           user: dict = auth.require_permission("cartoes")):
         if not auth.pode_escrever(user["papel"], "cartoes"):
             return templates.TemplateResponse(
                 request=request, name="cartoes_novo.html",
                 context=ctx(request, erro="Somente administrador ou emissor "
                                           "podem emitir cartões."))
+        from urllib.parse import quote_plus
         from src.core.employee_repo import EmployeeRepository
         er = EmployeeRepository()
         funcionarios = sorted(er.get_all(limit=1000000), key=lambda e: e.nome.lower())
         pre_sel = {s.strip() for s in (sel or "").split(",") if s.strip().isdigit()}
+        q = (busca or "").strip().lower()
         linhas = [{"id": e.id, "nome": e.nome, "cpf": e.cpf or "—",
                    "telefone": bool(getattr(e, "telefone", None)),
                    "foto": bool(getattr(e, "foto", None)),
                    "sel": str(e.id) in pre_sel}
-                  for e in funcionarios]
+                  for e in funcionarios
+                  if not q or q in e.nome.lower() or q in (e.cpf or "").lower()]
+        total = len(linhas)
+        paginas = max(1, (total + _PER_PAGE - 1) // _PER_PAGE)
+        page = max(1, min(page, paginas))
+        linhas = linhas[(page - 1) * _PER_PAGE: page * _PER_PAGE]
         tpls = [{"code": t.get("card_code"),
-                 "nome": f"{t.get('card_code')} — {_tipo_label(t)}"
-                         f" ({t.get('card_width_mm')}x{t.get('card_height_mm')}mm)",
+                 "nome": t.get("card_code"),
                  "tipo": _tipo_label(t),
+                 "w": t.get("card_width_mm"),
+                 "h": t.get("card_height_mm"),
                  "matricula": _usa_matricula(t),
                  "usa_setor": "SETOR" in set(t.get("used_fields") or []),
                  "usa_papel": "PAPEL" in set(t.get("used_fields") or [])}
                 for t in _templates_cartao()]
+        params = []
+        if q:
+            params.append("busca=" + quote_plus(q))
+        if pre_sel:
+            params.append("sel=" + ",".join(sorted(pre_sel, key=int)))
+        pg_base = "/cartoes/novo" + ("?" + "&".join(params) if params else "")
+        sel_str = ",".join(sorted(pre_sel, key=int))
         return templates.TemplateResponse(
             request=request, name="cartoes_novo.html",
-            context=ctx(request, linhas=linhas, tpls=tpls))
+            context=ctx(request, linhas=linhas, tpls=tpls, busca=q,
+                        total=total, page=page, paginas=paginas,
+                        pg_base=pg_base, sel_str=sel_str))
 
     @app.post("/cartoes/emitir")
     async def cartoes_emitir(request: Request,

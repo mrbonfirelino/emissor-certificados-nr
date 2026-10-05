@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ r.serial }}</h1>
+<p class="sub">OS {{ r.os or '—' }} · {{ r.cliente or 'Cliente não informado' }}</p>
+
+{% if r.bloqueado %}
+<p class="tarja-bloqueado" style="background:#fdecea;border:1px solid #f5c6cb;color:#8a1f1f;padding:10px 14px;border-radius:6px;font-weight:700;">
+  🚫 BLOQUEADO — somente leitura. Bloqueado por {{ r.bloqueado_por or '—' }} em {{ r.bloqueado_em or '—' }}.
+</p>
+{% endif %}
+
+<div class="ficha-grid" style="display:flex;gap:24px;flex-wrap:wrap;">
+  <table style="max-width:640px;flex:1;">
+    <tr><th>Serial</th><td class="numero">{{ r.serial }}</td></tr>
+    <tr><th>OS</th><td>{{ r.os or '—' }}</td></tr>
+    <tr><th>Cliente</th><td>{{ r.cliente or '—' }}</td></tr>
+    <tr><th>Nº ordem de compra</th><td>{{ r.ordem_compra or '—' }}</td></tr>
+    <tr><th>Resp. elaboração</th><td>{{ r.responsavel or '—' }}</td></tr>
+    <tr><th>Data de elaboração</th><td>{{ elaboracao_br }}</td></tr>
+    <tr><th>Emitido por</th><td>{{ r.emitido_por or '—' }}</td></tr>
+    <tr><th>Transportadora (CNPJ/CPF)</th><td>{{ r.transportadora or '—' }}{% if r.transportadora_doc %} — {{ r.transportadora_doc }}{% endif %}</td></tr>
+    <tr><th>Veículo (modelo / placa)</th><td>{{ r.veiculo or '—' }}{% if r.placa %} / {{ r.placa }}{% endif %}</td></tr>
+    <tr><th>Motorista</th><td>{{ r.motorista or '—' }}</td></tr>
+    <tr><th>Data do embarque</th><td>{{ embarque_br }}</td></tr>
+    <tr><th>Status</th>
+      <td>{% if r.bloqueado %}<span class="badge b-vermelho">BLOQUEADO</span>{% else %}<span class="badge b-verde">ATIVO</span>{% endif %}</td>
+    </tr>
+  </table>
+</div>
+
+<h2>Itens</h2>
+{% for b in [1, 2, 3, 4] %}
+  {% set itens_b = r.itens | selectattr('bloco', 'equalto', b) | list %}
+  {% if itens_b %}
+  <h3 class="bloco-titulo">{% if b == 1 %}EQUIPAMENTOS E COMPONENTES{% elif b == 2 %}PARAFUSOS E COMPONENTES{% elif b == 3 %}COMPONENTES{% else %}{{ itens_b[0].bloco_titulo or 'OUTROS' }}{% endif %}</h3>
+  <table>
+    <thead><tr><th>Código</th><th>Descrição</th><th>Un.</th><th>Qtd</th><th>Dimensões</th><th>Peso (kg)</th><th>Tipo</th><th>Obs.</th></tr></thead>
+    <tbody>
+      {% for it in itens_b %}
+      <tr>
+        <td>{{ it.codigo or '—' }}</td><td>{{ it.descricao or '—' }}</td><td>{{ it.unidade or '—' }}</td>
+        <td>{{ it.qtd or '—' }}</td><td>{{ it.dimensoes or '—' }}</td><td>{{ it.peso or '—' }}</td>
+        <td>{{ it.tipo or '—' }}</td><td>{{ it.observacoes or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+{% endfor %}
+
+<h2>Assinaturas</h2>
+<div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:10px;">
+  <div>
+    <h3 style="margin:0 0 4px;">Resp. ALTEC</h3>
+    {% if r.tem_ass_altec %}
+    <img src="/romaneios/{{ r.id }}/assinatura/altec" alt="Assinatura ALTEC" style="border:1px solid #ccc;border-radius:4px;max-width:300px;">
+    {% else %}
+    <p class="muted">Sem assinatura.</p>
+    {% endif %}
+  </div>
+  <div>
+    <h3 style="margin:0 0 4px;">Transportadora</h3>
+    {% if r.tem_ass_transp %}
+    <img src="/romaneios/{{ r.id }}/assinatura/transp" alt="Assinatura transportadora" style="border:1px solid #ccc;border-radius:4px;max-width:300px;">
+    {% else %}
+    <p class="muted">Sem assinatura.</p>
+    {% endif %}
+  </div>
+</div>
+{% if pode_escrever and not r.bloqueado %}
+<form method="post" action="/romaneios/{{ r.id }}/assinatura" id="form-ass">
+  <input type="hidden" name="altec" id="ass-altec-data">
+  <input type="hidden" name="transp" id="ass-transp-data">
+  <div style="display:flex;gap:24px;flex-wrap:wrap;">
+    <div>
+      <canvas id="cv-altec" width="300" height="110" style="border:1px dashed #999;border-radius:4px;touch-action:none;background:#fff;cursor:crosshair;"></canvas>
+      <div style="margin-top:4px;"><button type="button" onclick="limpar('altec')">Limpar</button></div>
+    </div>
+    <div>
+      <canvas id="cv-transp" width="300" height="110" style="border:1px dashed #999;border-radius:4px;touch-action:none;background:#fff;cursor:crosshair;"></canvas>
+      <div style="margin-top:4px;"><button type="button" onclick="limpar('transp')">Limpar</button></div>
+    </div>
+  </div>
+  <p class="muted">Desenhe com o mouse ou o dedo e clique em salvar. As assinaturas ficam salvas e sao embutidas no documento (xlsx/PDF).</p>
+  <button type="submit" class="btn verde">Salvar assinaturas</button>
+</form>
+<script>
+function setup(qual) {
+  var cv = document.getElementById('cv-' + qual);
+  var cx = cv.getContext('2d');
+  var desenhou = false, ativo = false;
+  cx.lineWidth = 2; cx.lineCap = 'round'; cx.strokeStyle = '#111';
+  function pos(e) {
+    var r = cv.getBoundingClientRect();
+    return [(e.clientX - r.left) * cv.width / r.width,
+            (e.clientY - r.top) * cv.height / r.height];
+  }
+  cv.addEventListener('pointerdown', function(e) {
+    ativo = true; desenhou = true;
+    var p = pos(e); cx.beginPath(); cx.moveTo(p[0], p[1]); e.preventDefault();
+  });
+  cv.addEventListener('pointermove', function(e) {
+    if (!ativo) return;
+    var p = pos(e); cx.lineTo(p[0], p[1]); cx.stroke(); e.preventDefault();
+  });
+  window.addEventListener('pointerup', function() { ativo = false; });
+  return function() { return desenhou; };
+}
+function limpar(qual) {
+  var cv = document.getElementById('cv-' + qual);
+  cv.getContext('2d').clearRect(0, 0, cv.width, cv.height);
+  cv.dataset.desenhou = '';
+}
+(function() {
+  var tA = setup('altec'), tT = setup('transp');
+  ['altec', 'transp'].forEach(function(q) {
+    var cv = document.getElementById('cv-' + q);
+    cv.addEventListener('pointerdown', function() { cv.dataset.desenhou = '1'; });
+  });
+  document.getElementById('form-ass').addEventListener('submit', function() {
+    var a = document.getElementById('cv-altec'), t = document.getElementById('cv-transp');
+    document.getElementById('ass-altec-data').value = a.dataset.desenhou ? a.toDataURL('image/png') : '';
+    document.getElementById('ass-transp-data').value = t.dataset.desenhou ? t.toDataURL('image/png') : '';
+    void tA; void tT;
+  });
+})();
+</script>
+{% endif %}
+
+<div class="acoes" style="margin-top:16px;display:flex;gap:8px;">
+  {% if r.pdf_path %}<a class="btn" href="/romaneios/{{ r.id }}/pdf" target="_blank">Ver documento</a>{% endif %}
+  {% if pode_escrever %}
+    {% if r.bloqueado %}
+    <form method="post" action="/romaneios/{{ r.id }}/desbloquear" onsubmit="return confirm('Desbloquear este romaneio?');">
+      <button type="submit" class="btn verde">Desbloquear</button>
+    </form>
+    {% else %}
+    <form method="post" action="/romaneios/{{ r.id }}/bloquear" onsubmit="return confirm('Bloquear este romaneio? O registro e o documento permanecem, mas ele ficará somente leitura.');">
+      <button type="submit" class="btn vermelho">Bloquear</button>
+    </form>
+    {% endif %}
+  {% endif %}
+  <a class="btn" href="/romaneios">« Voltar</a>
+</div>
+{% endblock %}

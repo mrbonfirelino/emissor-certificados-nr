@@ -67,8 +67,65 @@ def _br(iso: str) -> str:
     return s
 
 
+def _setor_do_item(c: dict) -> str:
+    """Mapa item -> setor (notificacoes estruturadas por setor)."""
+    nr = str(c.get("nr_code", ""))
+    if nr == "FROTA":
+        return "frota"
+    if nr.startswith("INTEGRA"):
+        return "outros"
+    # treinamentos de segurança (NR-XX, ASO, PTA, CIPAA, brigadista etc.)
+    return "seguranca"
+
+
+def resumo_vencimentos() -> dict:
+    """Contagens de vencimentos por status/categoria + itens mais urgentes."""
+    itens = _carregar_items()
+    hoje_status = {"vencido": 0, "urgente": 0, "critico": 0, "atencao": 0,
+                   "proximo": 0, "ok": 0}
+    por_setor = {}
+    urgentes = []
+    for c in itens:
+        st = str(c.get("status", "ok"))
+        hoje_status[st] = hoje_status.get(st, 0) + 1
+        setor = _setor_do_item(c)
+        por_setor.setdefault(setor, {"total": 0, "vencido": 0, "alerta": 0})
+        por_setor[setor]["total"] += 1
+        if st in ("vencido", "urgente", "critico"):
+            por_setor[setor]["vencido" if st == "vencido" else "alerta"] += 1
+        if c.get("dias_para_vencer", 999) <= 30:
+            urgentes.append(c)
+    urgentes.sort(key=lambda c: c.get("dias_para_vencer", 0))
+    top = [{"numero": c.get("cert_number", ""),
+            "nr": c.get("nr_code", ""),
+            "item": c.get("descricao_treinamento", ""),
+            "funcionario": c.get("funcionario_nome", ""),
+            "status": str(c.get("status", "")),
+            "classe": STATUS_CLASSE.get(str(c.get("status", "")), "b-verde"),
+            "dias": c.get("dias_para_vencer", 0)} for c in urgentes[:10]]
+    total = len(itens)
+    alertas = hoje_status["vencido"] + hoje_status["urgente"] + hoje_status["critico"]
+    return {"total": total, "status": hoje_status, "alertas": alertas,
+            "por_setor": por_setor, "itens_urgentes": top}
+
+
 def register(app, deps: dict):
+
     ctx, flash = deps["ctx"], deps["flash"]
+
+    users = deps["users"]
+
+    @app.get("/api/vencimentos/resumo")
+    def api_vencimentos_resumo(user: dict = require_permission("vencimentos")):
+        from fastapi.responses import JSONResponse
+        resumo = resumo_vencimentos()
+        try:
+            u = users.get_by_id(user["id"]) or {}
+        except Exception:
+            u = {}
+        resumo["notif"] = bool(u.get("pref_notif", 1))
+        resumo["setor_usuario"] = u.get("setor", "") or ""
+        return JSONResponse(resumo)
     templates = deps["templates"]
 
     @app.get("/vencimentos")

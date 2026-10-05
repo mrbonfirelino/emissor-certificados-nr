@@ -26,7 +26,8 @@
         <td>{{ a.tipo }}</td>
         <td>{{ a.exame }}</td>
         <td>{{ a.valido }}</td>
-        <td><span class="badge {{ a.classe }}">{{ a.status }}</span></td>
+        <td><span class="badge {{ a.classe }}">{{ a.status }}</span>
+            {% if a.bloqueado %}<span class="badge b-vermelho" title="Bloqueado por {{ a.bloqueado_por or '—' }} em {{ a.bloqueado_em or '—' }}">BLOQUEADO</span>{% endif %}</td>
         <td>{% if a.anexado %}<span class="badge b-verde">Anexado</span>{% else %}<span class="badge b-cinza">—</span>{% endif %}</td>
       </tr>
     {% else %}

@@ -1,3 +1,64 @@
+## [1.61.0] - 2026-10-05
+
+## [1.62.0] - 2026-10-05
+
+### Adicionado
+- Perfil: foto do usuario (enviar/remover em /perfil, exibida no perfil; PNG/JPG ate 3 MB, migração idempotente `foto`/`foto_tipo` em users).
+- Romaneios: captura de assinaturas (Resp. ALTEC e transportadora) direto no navegador (canvas) na ficha, salvas no banco e embutidas no documento (xlsx/PDF regenerado), com auditoria `assinar-romaneio`.
+
+
+### Adicionado
+- Certificados: datas multi-dia — checkbox 'Treinamento de varios dias' no formulario (individual e em lote); o PDF imprime 'realizado de X a Y' quando a data de inicio difere da data de emissao (fluxos JSON/ReportLab e PPTX).
+- Admin: editor de templates NR em /admin/templates (nome, carga minima, validade, descricao, riscos, conteudo programatico e campos extras), com backup .bak automatico, validacao antes de gravar, restauracao de backup e auditoria.
+
+## [1.60.0] - 2026-10-02
+
+### Adicionado
+- Dashboard: card de vencimentos com contagens por período (vencidos, 7/15/30 dias) e lista dos 5 itens mais urgentes, com link para /vencimentos.
+- Notificações do navegador: endpoint /api/vencimentos/resumo e aviso no navegador (Notification API, com polling a cada 10 minutos) informando 'você tem X vencimentos', estruturado por setor do usuário e respeitando a preferência de notificações do /perfil.
+
+## [1.59.0] - 2026-10-02
+
+### Adicionado
+- Permissoes por setor customizaveis pelo admin em /usuarios (seguranca, comercial, compras, engenharia, financeiro, RH) ? regras setor->modulo por checkbox.
+- Campo de setor por usuario (criacao e edicao rapida na lista de usuarios).
+- Pagina /perfil (Meu perfil): editar nome, trocar senha (exige senha atual) e preferencia de notificacoes; link no cabecalho.
+
+## [1.58.0] - 2026-10-02
+
+### Corrigido
+- Listas de presenca: erro "(-2147352567, 'Excecao.')" ao gerar PDF via Excel COM agora e traduzido para mensagem amigavel (arquivo aberto/bloqueado, Office ausente etc.), com ate 3 tentativas automaticas e fechamento garantido do Excel a cada tentativa. Mesmo tratamento aplicado ao PDF de romaneios (Excel) e cartoes PPTX (PowerPoint).
+
+## [1.57.0] - 2026-10-02
+
+### Adicionado
+- Romaneios: novo módulo do portal com página dedicada (busca + paginação), serial único ROM-000001 exibido no documento, bloqueio/desbloqueio sem exclusão (tarja BLOQUEADO + auditoria) e registro de quem emitiu.
+- Romaneios: documento gerado a partir do modelo xlsx (aba Romaneio) com PDF via Excel COM; dados de OS, cliente, ordem de compra, responsável, datas, transportadora (CNPJ/CPF), veículo/placa, motorista e assinaturas.
+- Romaneios: itens por blocos (Equipamentos, Parafusos, Componentes) + blocos 'Outros' dinâmicos; campos Código, Unidade, Qtd, Dimensões, Peso, Tipo e Observações.
+
+## [1.56.0] - 2026-10-02
+## [1.55.0] - 2026-10-02
+
+### Adicionado
+- Emissor de Crachás: barra de busca por nome/CPF na página de emissão, com paginação e scroll vertical na tabela (item 1 da fase de UX).
+- Emissor de Crachás: campo listando os requisitos de emissão (foto, NR válida e ASO válido) acima da tabela.
+- Emissor de Crachás: novo campo "Orientação" (Vertical padrão / Horizontal); o gerador troca largura×altura do modelo quando necessário.
+- Cartões de Bloqueio: barra de busca por nome/CPF na página de emissão, com paginação (seleção preservada) e scroll vertical na tabela.
+- Cartões de Bloqueio: pré-visualização em miniatura da proporção do cartão selecionado (largura × altura + tipo do modelo).
+
+### Alterado
+- Cartões de Bloqueio: lista de modelos sem informações técnicas (tipo/dimensões removidas do nome; exibidas na pré-visualização).
+- Cartões de Bloqueio: importação de lista (.xlsx) movida para um submenu hide/show (details).
+
+## [1.54.1] - 2026-10-02
+
+### Adicionado
+- Login do Portal Web: botão para mostrar/ocultar a senha (👁/🙈) no campo Senha (item 5 da fase de UX).
+- Edição de funcionário: a foto atual (3x4) agora é exibida no formulário de edição, abaixo do campo de upload.
+
+### Alterado
+- Emissão em Lote: layout dos "Dados do lote" mais horizontal, em 4 colunas (2 colunas em telas estreitas) (item 7 da fase de UX).
+
 ## [1.54.0] - 2026-09-25
 
 ### Adicionado

@@ -79,20 +79,26 @@ def register(app, deps):
 
     @app.get("/crachas/novo")
     def crachas_novo_form(request: Request,
+                          busca: str = "",
+                          page: int = 1,
                           user: dict = auth.require_permission("crachas")):
         if not auth.pode_escrever(user["papel"], "crachas"):
             return templates.TemplateResponse(
                 request=request, name="crachas_novo.html",
                 context=ctx(request, erro="Somente administrador ou emissor "
                                           "podem emitir crachás."))
+        from urllib.parse import quote_plus
         from src.core.employee_repo import EmployeeRepository
         from src.core.badge_service import (_expiration_maps, _vencido,
                                             cracha_block_reasons)
         er = EmployeeRepository()
         funcionarios = sorted(er.get_all(limit=1000000), key=lambda e: e.nome.lower())
         certs_by_emp, asos = _expiration_maps()
+        q = (busca or "").strip().lower()
         elegiveis, bloqueados = [], []
         for emp in funcionarios:
+            if q and q not in emp.nome.lower() and q not in (emp.cpf or "").lower():
+                continue
             disp = certs_by_emp.get(emp.id, {})
             motivos = cracha_block_reasons(emp, list(disp.values()),
                                            asos.get(emp.id))
@@ -105,20 +111,28 @@ def register(app, deps):
                 bloqueados.append({**item, "motivos": " e ".join(motivos)})
             else:
                 elegiveis.append(item)
+        total = len(elegiveis)
+        paginas = max(1, (total + _PER_PAGE - 1) // _PER_PAGE)
+        page = max(1, min(page, paginas))
+        elegiveis = elegiveis[(page - 1) * _PER_PAGE: page * _PER_PAGE]
         tpls = [{"code": t.get("card_code"),
                  "nome": f"{t.get('card_code')}"
                          f" ({t.get('card_width_mm')}x{t.get('card_height_mm')}mm)"}
                 for t in _templates_cracha()]
+        pg_base = "/crachas/novo" + (f"?busca={quote_plus(q)}" if q else "")
         return templates.TemplateResponse(
             request=request, name="crachas_novo.html",
             context=ctx(request, elegiveis=elegiveis, bloqueados=bloqueados,
-                        tpls=tpls, hoje=_hoje_br()))
+                        tpls=tpls, hoje=_hoje_br(), busca=q,
+                        total=total, page=page, paginas=paginas,
+                        pg_base=pg_base))
 
     @app.post("/crachas/emitir")
     async def crachas_emitir(request: Request,
                              user: dict = auth.require_permission("crachas"),
                              template_code: str = Form(""),
                              tamanho: str = Form("real"),
+                             orientacao: str = Form("vertical"),
                              data_emissao: str = Form("")):
         if not auth.pode_escrever(user["papel"], "crachas"):
             flash(request, erro="Somente administrador ou emissor podem emitir crachás.")
@@ -170,6 +184,7 @@ def register(app, deps):
             return RedirectResponse("/crachas/novo", status_code=303)
 
         options = {"data_emissao": data_iso, "tamanho": tamanho,
+                   "orientacao": (orientacao or "vertical").strip().lower(),
                    "nrs": {emp.id: [nr for nr, c in sorted(
                        certs_by_emp.get(emp.id, {}).items(),
                        key=lambda kv: kv[1]["data_fim"], reverse=True)

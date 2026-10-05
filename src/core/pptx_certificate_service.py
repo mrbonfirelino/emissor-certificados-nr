@@ -43,7 +43,8 @@ def get_pptx_template_path(nr_code: str) -> Optional[Path]:
     return p if p.exists() else None
 
 
-def valores_certificado(employee, data_treinamento: date) -> Dict[str, str]:
+def valores_certificado(employee, data_treinamento: date,
+                        data_inicio: Optional[date] = None) -> Dict[str, str]:
     d = data_treinamento
     return {
         "NOME": (employee.nome or "").upper(),
@@ -52,6 +53,31 @@ def valores_certificado(employee, data_treinamento: date) -> Dict[str, str]:
         "MES": MESES_PT[d.month - 1],
         "ANO": str(d.year),
     }
+
+
+def _extenso(d: date) -> str:
+    return f"{d.day} de {MESES_PT[d.month - 1]} de {d.year}"
+
+
+def _aplicar_periodo_multidia(prs, data_treinamento: date,
+                              data_inicio: Optional[date]) -> None:
+    """Se data_inicio != emissao, troca a data unica do modelo PPTX
+    ('de D de MES de ANO') por 'realizado de X a Y' (1a ocorrencia)."""
+    if not data_inicio or data_inicio == data_treinamento:
+        return
+    d = data_treinamento
+    alvo = f"de {d.day} de {MESES_PT[d.month - 1]} de {d.year}"
+    novo = f"realizado de {_extenso(data_inicio)} a {_extenso(d)}"
+    for slide in prs.slides:
+        for tf in _iterar_text_frames(slide.shapes):
+            for para in tf.paragraphs:
+                full = "".join(r.text for r in para.runs)
+                if alvo in full:
+                    if para.runs:
+                        para.runs[0].text = full.replace(alvo, novo, 1)
+                        for r in para.runs[1:]:
+                            r.text = ""
+                    return
 
 
 def _substituir_no_paragrafo(para, values: Dict[str, str]) -> bool:
@@ -142,6 +168,7 @@ def gerar_pdf_pptx(
     cert_number: str,
     pdf_path: Path,
     data_hora: str = "",
+    data_inicio: Optional[date] = None,
 ) -> Path:
     """
     Preenche o modelo PPTX da NR e converte para PDF (PowerPoint COM).
@@ -152,12 +179,13 @@ def gerar_pdf_pptx(
         raise ValueError(f"Modelo PPTX {nr_code} nao encontrado em templates/certificados_pptx/")
 
     prs = Presentation(str(tpl))
-    values = valores_certificado(employee, data_treinamento)
+    values = valores_certificado(employee, data_treinamento, data_inicio)
     for slide in prs.slides:
         for tf in _iterar_text_frames(slide.shapes):
             for para in tf.paragraphs:
                 _substituir_no_paragrafo(para, values)
         _add_caixa_numero(prs, slide, cert_number, data_hora)
+    _aplicar_periodo_multidia(prs, data_treinamento, data_inicio)
 
     tmp = Path(tempfile.mkdtemp(prefix="cert_pptx_"))
     try:

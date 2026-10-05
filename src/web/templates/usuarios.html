@@ -21,18 +21,38 @@
         <option value="admin">Administrador</option>
       </select>
     </div>
+    <div class="campo" style="display:inline-block; margin-right:12px;">
+      <label>Setor</label>
+      <select name="setor">
+        <option value="">— nenhum —</option>
+        {% for s_key, s_label in perm_setores_flat %}
+        <option value="{{ s_key }}">{{ s_label }}</option>
+        {% endfor %}
+      </select>
+    </div>
     <button type="submit" class="verde">Criar</button>
   </form>
 </div>
 
 <div class="card">
   <table>
-    <tr><th>Login</th><th>Nome</th><th>Papel</th><th>Situação</th><th>Ações</th></tr>
+    <tr><th>Login</th><th>Nome</th><th>Papel</th><th>Setor</th><th>Situação</th><th>Ações</th></tr>
     {% for u in usuarios %}
     <tr>
       <td><strong>{{ u.username }}</strong></td>
       <td>{{ u.nome }}</td>
       <td>{{ papeis[u.papel] }}</td>
+      <td>
+        <form method="post" action="/usuarios/{{ u.id }}/setor" style="display:flex; gap:4px; align-items:center;">
+          <select name="setor" style="max-width:130px;">
+            <option value="">— nenhum —</option>
+            {% for s_key, s_label in perm_setores_flat %}
+            <option value="{{ s_key }}" {{ 'selected' if u.setor == s_key else '' }}>{{ s_label }}</option>
+            {% endfor %}
+          </select>
+          <button class="cinza">✓</button>
+        </form>
+      </td>
       <td>
         {% if u.ativo %}<span class="badge b-verde">Ativo</span>{% else %}<span class="badge b-cinza">Bloqueado</span>{% endif %}
         {% if u.must_change %}<span class="badge b-amarelo">troca de senha pendente</span>{% endif %}
@@ -127,6 +147,31 @@
       <button type="submit" class="btn cinza">Restaurar padrão</button>
     </form>
   </details>
+</div>
+
+<div class="card">
+  <h2>Permissões por setor</h2>
+  <p class="sub">Define, por setor, quais módulos o grupo acessa. Sem regra marcada, vale o acesso do papel do usuário. Admin nunca é restringido.</p>
+  {% for s in perm_setores %}
+  <details class="opcoes" {% if loop.first %}open{% endif %}>
+    <summary class="btn cinza">{{ s.label }}</summary>
+    <form method="post" action="/usuarios/permissoes-setor" style="margin-top:8px;">
+      <input type="hidden" name="setor" value="{{ s.setor }}">
+      <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:6px 16px; max-width:900px;">
+        {% for modulo, label in perm_modulos %}
+        <label style="display:flex; gap:6px; align-items:center;">
+          <input type="checkbox" name="setor_{{ modulo }}" value="1"
+                 {{ 'checked' if s.regras.get(modulo) else '' }}>
+          <span>{{ label }}</span>
+        </label>
+        {% endfor %}
+      </div>
+      <div class="linha-botoes" style="margin-top:8px;">
+        <button type="submit" class="verde">Salvar {{ s.label }}</button>
+      </div>
+    </form>
+  </details>
+  {% endfor %}
 </div>
 <script>
 function _alternarSenha(btn, id) {

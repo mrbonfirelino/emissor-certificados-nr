@@ -11,18 +11,32 @@
   <p><a class="btn cinza" href="/cartoes">Voltar</a></p>
   {% else %}
 
+  <form method="get" action="/cartoes/novo" class="filtros" style="margin-bottom:12px">
+    <input type="hidden" name="sel" value="{{ sel_str }}">
+    <input type="search" name="busca" value="{{ busca }}" placeholder="Buscar por nome ou CPF...">
+    <button class="btn" type="submit">Buscar</button>
+    {% if busca %}<a class="btn cinza" href="/cartoes/novo{% if sel_str %}?sel={{ sel_str }}{% endif %}">Limpar</a>{% endif %}
+  </form>
+
   <form method="post" action="/cartoes/emitir" enctype="multipart/form-data" data-confirmar-lista>
     <div class="form-grid">
       <div class="campo">
         <label>Modelo do cartão</label>
-        <select name="template_code" onchange="aplicarCampos()">
+        <select name="template_code" id="sel-modelo" onchange="aplicarCampos()">
           {% for t in tpls %}
           <option value="{{ t.code }}"
                   data-usa-setor="{{ '1' if t.usa_setor else '0' }}"
                   data-usa-papel="{{ '1' if t.usa_papel else '0' }}"
-                  data-usa-matricula="{{ '1' if t.matricula else '0' }}">{{ t.nome }}</option>
+                  data-usa-matricula="{{ '1' if t.matricula else '0' }}"
+                  data-w="{{ t.w }}" data-h="{{ t.h }}"
+                  data-tipo="{{ t.tipo }}">{{ t.nome }}</option>
           {% endfor %}
         </select>
+      </div>
+      <div class="campo" id="campo-preview">
+        <label>Pré-visualização</label>
+        <div id="preview-cartao" title="Proporção do cartão"></div>
+        <p class="muted" id="preview-info" style="font-size:.85em"></p>
       </div>
       <div class="campo">
         <label>Saída</label>
@@ -42,12 +56,19 @@
     <p class="muted">Modelos JSON exigem telefone e foto 3x4; modelos PPTX exigem apenas
        os campos que usam. Os campos exibidos acima e as colunas da tabela se
        ajustam ao modelo selecionado.</p>
+    {% if busca %}
+    <p class="muted">{{ total }} resultado(s) para “{{ busca }}”.</p>
+    {% endif %}
 
-    <p class="upload">Importar lista de bloqueios (.xlsx — colunas Nome e CPF):
-       <input type="file" name="arquivo" accept=".xlsx"></p>
-    <button class="btn" type="submit" formaction="/cartoes/importar" formnovalidate>Importar lista</button>
+    <details style="margin:10px 0">
+      <summary>Importar lista de bloqueios (.xlsx)</summary>
+      <p class="upload">Arquivo com colunas Nome e CPF:
+        <input type="file" name="arquivo" accept=".xlsx"></p>
+      <button class="btn" type="submit" formaction="/cartoes/importar" formnovalidate>Importar lista</button>
+    </details>
 
     {% if linhas %}
+    <div style="max-height:480px; overflow-y:auto; border:1px solid #ddd; border-radius:6px">
     <table>
       <tr><th>Emitir</th><th>Funcionário</th><th>CPF</th><th>Telefone</th><th>Foto</th>
           <th class="col-matricula">Matrícula (só na emissão)</th><th class="col-papel">Papel</th></tr>
@@ -68,6 +89,8 @@
       </tr>
       {% endfor %}
     </table>
+    </div>
+    {% include "_paginacao.html" %}
     {% else %}
     <p class="muted">Nenhum funcionário cadastrado.</p>
     {% endif %}
@@ -103,9 +126,26 @@
     if (alvo) alvo.textContent = reqs.length
       ? 'Este modelo usa: ' + reqs.join(' · ') + '.'
       : 'Este modelo não usa setor, papel nem matrícula.';
+    // Pré-visualização (proporção do cartão, v1.55.0)
+    var box = document.getElementById('preview-cartao');
+    var info = document.getElementById('preview-info');
+    if (box) {
+      var w = parseFloat(opt.dataset.w) || 86;
+      var h = parseFloat(opt.dataset.h) || 54;
+      var maxW = 150, maxH = 96;
+      var esc = Math.min(maxW / w, maxH / h);
+      box.style.width = Math.max(24, w * esc) + 'px';
+      box.style.height = Math.max(16, h * esc) + 'px';
+      if (info) info.textContent = w.toFixed(0) + ' × ' + h.toFixed(0) +
+        ' mm · ' + (opt.dataset.tipo || '');
+    }
   }
   document.addEventListener('DOMContentLoaded', aplicarCampos);
   </script>
+  <style>
+  #preview-cartao { border: 2px dashed #9aa5b1; border-radius: 6px;
+    background: repeating-linear-gradient(45deg, #f4f6f8, #f4f6f8 8px, #e9edf2 8px, #e9edf2 16px); }
+  </style>
   {% endif %}
 </div>
 {% endblock %}

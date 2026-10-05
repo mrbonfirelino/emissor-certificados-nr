@@ -842,6 +842,84 @@ CLT – Artigo 462, § 1º - Em caso de dano causado pelo empregado, o desconto 
 
 ---
 
+## FASE: Melhorias de UX, Permissoes, Notificacoes e Romaneios (PENDENTE)
+
+### Emissor de Crachas
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Barra de busca | Adicionar barra de pesquisa para buscar funcionarios na pagina do emissor de cracha | Alta | Concluido (v1.55.0) |
+| Tabela com paginacao | Limitar quantidade de itens exibidos, adicionar paginacao e scrollbar vertical na tabela | Alta | Concluido (v1.55.0) |
+| Requisitos do cracha | Adicionar pequeno campo listando os requisitos para emissao do cracha | Media | Concluido (v1.55.0) |
+| Cracha vertical padrao | No modelo, adotar o cracha vertical como escolha padrao | Media | Concluido (v1.55.0) |
+
+### ASOs
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Editar ASO | Permitir que o usuario altere informacoes de um ASO ja registrado | Alta | Concluido (v1.56.0) |
+| Bloquear ASO | Permitir "Bloquear" um ASO (sem excluir totalmente) | Alta | Concluido (v1.56.0) |
+| Foto no ASO | Adicionar foto do funcionario na ficha do ASO (dentro do site) | Media | Concluido (v1.56.0) |
+
+### Dashboard e Vencimentos
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Dashboard de vencimentos | Ajustar o Dashboard principal para mostrar os dados de vencimentos | Alta | Concluido (v1.60.0)
+| Notificacoes do navegador | Implementar notificacoes pelo navegador ("voce tem X vencimentos"), estruturadas com base no setor do usuario | Alta | Concluido (v1.60.0)
+
+### Permissoes e Usuarios
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Permissoes por setor | Separar permissoes por setores (seguranca, comercial, compras, engenharia, financeiro, RH etc.) | Alta | Concluido (v1.59.0) |
+| Permissoes extras pelo admin | Admin pode adicionar permissoes a um usuario mesmo que ele nao pertença ao grupo (ex: usuario do financeiro acessa a parte de seguranca) | Alta | Concluido (v1.59.0) |
+| Menu de configuracoes do usuario | Menu proprio de configuracoes para o usuario: notificacoes, trocar senha, foto etc. | Media | Concluido (v1.59.0) - nome, senha e notificacoes (foto concluida em v1.62.0) |
+
+### Certificados
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Botao mostrar senha | Adicionar botao para o usuario visualizar a senha digitada no login | Media | Concluido (v1.54.1) |
+| Dados opcionais ocultos | No menu Emissao em lote, dados opcionais do certificado devem ficar em um menu show/hide oculto/minimizado por padrao | Media | Pendente |
+| Multi-day training dates | Alguns treinamentos duram mais de um dia: a primeira data do certificado deve ser a data de inicio do curso e a data acima do campo "participante" deve ser a data de emissao. Por padrao, treinamento no mesmo dia, mas adicionar botao/opcao para alterar as datas | Alta | Concluido (v1.61.0) |
+| Carga horaria minima | Alterar a carga horaria minima de todas as NRs para 1 hora | Alta | Concluido (v1.61.0) |
+| Editor de templates (admin) | Menu para o admin alterar dados dos templates pelo site (ex: carga horaria de uma NR), com botao/opcao de reset para voltar ao original do programa | Alta | Concluido (v1.61.0)
+| PDF lista de presenca | Corrigir erro ao gerar PDF da lista de presenca: "falha ao gerar PDF: (-2147352567, 'Exceção.', (None, None, None, 0, None))" | Alta | Concluido (v1.58.0) |
+
+### Cartoes de Bloqueio (/cartoes/novo)
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Busca e paginacao | Barra de pesquisa na lista, paginacao, numero de itens por pagina e scroll vertical | Alta | Concluido (v1.55.0) |
+| Preview do modelo | Adicionar pequena foto do modelo do cartao para identificacao visual | Media | Concluido (v1.55.0) |
+| Lista menos poluida | Remover informacoes tecnicas ("JSON (REPORTLAB) etc...") da lista de modelos | Media | Concluido (v1.55.0) |
+| Importar lista em submenu | Colocar a parte de importar lista em um submenu hide/show | Media | Concluido (v1.55.0) |
+
+### Emissao em Lote (/emissao-lote)
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Layout horizontal | Organizar campos de forma mais horizontal, permitindo ver a lista assim que abre a pagina | Media | Concluido (v1.54.1) |
+
+### Frota (/frota/custos)
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Filtro por periodo | Atualizar o grafico "custos por veiculo x tipo de combustivel" e a tabela "resumo por veiculo" com base no periodo selecionado no inicio da pagina | Alta | Ja implementado (verificado v1.54.1) |
+
+### Edicao de Funcionario
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Foto atual | Mostrar a foto atual do funcionario (se existir) no menu de edicao | Media | Concluido (v1.54.1) |
+| Botao de foto novo | Substituir o botao de adicionar foto por um modelo mais bonito; posicionar foto e botao na parte superior direita | Media | Pendente |
+
+### Romaneios (NOVA PAGINA)
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Pagina de romaneios | Nova pagina dedicada a emissao de romaneios | Alta | Concluido (v1.57.0) |
+| Codigo serial unico | Cada romaneio tem um codigo serial unico gerado pelo sistema, exibido no documento (cinza/escondido) | Alta | Concluido (v1.57.0) |
+| Bloqueio (nao exclusao) | Romaneios nao podem ser apagados, apenas bloqueados (e "ignorados"); documentos bloqueados mostram tarja "BLOQUEADO" | Alta | Concluido (v1.57.0) |
+| Auditoria de emissao | Salvar o nome de quem fez/emitiu o romaneio | Alta | Concluido (v1.57.0) |
+| Dados do romaneio | Numero da OS, nome do cliente, N serial do romaneio, N ordem de compra, responsavel pela elaboracao (nome do usuario), data de elaboracao, transportadora (CNPJ/CPF), veiculo (modelo e placa), motorista (nome), data do embarque | Alta | Concluido (v1.57.0) |
+| Assinaturas | Campos com o nome do responsavel (da Altec e da transportadora) e espaco para assinatura | Alta | Concluido (v1.62.0) - captura no navegador (canvas), salva no banco e embutida no documento xlsx/PDF |
+| Itens por tipo | Itens com base em tipos: Equipamentos, Parafusos, Componentes e Outros; permitir adicionar novo "Bloco" de "Outros" com descricao na hora | Alta | Concluido (v1.57.0) |
+| Campos dos itens | Todos os itens com: Codigo, Unidade, QTD total, Dimensoes aproximadas, Peso (KG), Tipo e Observacoes | Alta | Concluido (v1.57.0) |
+
+---
+
 ## Referencias
 - README.md: Visao geral do projeto
 - CHANGELOG.md: Historico de versoes

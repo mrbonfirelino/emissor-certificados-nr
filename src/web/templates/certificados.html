@@ -30,8 +30,15 @@
         {% if tmpl %}<span class="muted" id="nr-info">Carga mínima: {{ tmpl.carga_horaria_minima }}h · Validade padrão: {{ tmpl.validade_meses }} meses</span>{% endif %}
       </div>
       <div class="campo">
-        <label for="data">Data do treinamento *</label>
+        <label for="data">Data de emissão (fim do treinamento) *</label>
         <input type="text" id="data" name="data" class="js-data" placeholder="dd/mm/aaaa" value="{{ hoje_br }}">
+        <label style="font-weight:normal; margin-top:4px;">
+          <input type="checkbox" id="mesmo-dia" checked onchange="document.getElementById('campo-inicio').style.display=this.checked ? 'none' : 'block'"> Treinamento de vários dias
+        </label>
+        <div id="campo-inicio" style="display:none;">
+          <label for="data_inicio">Data de início do treinamento</label>
+          <input type="text" id="data_inicio" name="data_inicio" class="js-data" placeholder="dd/mm/aaaa">
+        </div>
       </div>
       <div class="campo">
         <label for="carga">Carga horária (h) *</label>

@@ -86,10 +86,25 @@ def register(app, deps: dict):
         if data_treino is None:
             flash(request, erro="Data inválida (use dd/mm/aaaa).")
             return RedirectResponse("/certificados", status_code=303)
+        # período multi-dia: data de início (padrão = mesma data)
+        data_inicio = data_treino
+        di_txt = (form.get("data_inicio") or "").strip()
+        if di_txt:
+            di = validar_data(di_txt)
+            if di is None:
+                flash(request, erro="Data de início inválida (use dd/mm/aaaa).")
+                return RedirectResponse("/certificados", status_code=303)
+            if di > data_treino:
+                flash(request, erro="Data de início deve ser anterior ou igual à data de emissão.")
+                return RedirectResponse("/certificados", status_code=303)
+            data_inicio = di
         try:
             carga = int(form.get("carga") or 0)
         except ValueError:
             carga = 0
+        if carga < 1:
+            flash(request, erro="Carga horária deve ser pelo menos 1h.")
+            return RedirectResponse("/certificados", status_code=303)
         if carga < tmpl.carga_horaria_minima:
             flash(request, erro=f"Carga horária mínima para {nr}: {tmpl.carga_horaria_minima}h.")
             return RedirectResponse("/certificados", status_code=303)
@@ -124,6 +139,7 @@ def register(app, deps: dict):
             service = CertificateService()
             pdf_path = service.generate_certificate(
                 nr_code=nr, employee=emp, data_treinamento=data_treino,
+                data_inicio=data_inicio,
                 carga_horaria=carga, descricao_treinamento=descricao,
                 campos_extra=campos, validade_meses=validade)
         except ValueError as e:
@@ -251,6 +267,10 @@ def register(app, deps: dict):
             return Response("Selecione uma NR válida.", status_code=400)
         data_treino = validar_data((form.get("data") or "").strip()) \
             or date.today()
+        data_inicio = validar_data((form.get("data_inicio") or "").strip()) \
+            or data_treino
+        if data_inicio > data_treino:
+            data_inicio = data_treino
         try:
             carga = int(form.get("carga") or 0) or tmpl.carga_horaria_minima
         except ValueError:
@@ -271,6 +291,7 @@ def register(app, deps: dict):
             service = CertificateService()
             service.generate_preview_pdf(
                 nr_code=nr, employee=emp, data_treinamento=data_treino,
+                data_inicio=data_inicio,
                 carga_horaria=carga, descricao_treinamento=descricao,
                 campos_extra=campos, output_path=alvo)
         except Exception:

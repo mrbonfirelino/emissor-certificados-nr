@@ -87,6 +87,25 @@ class UsersRepository:
                     PRIMARY KEY (papel, modulo)
                 )
             """)
+            # v1.59.0: setor do usuario, preferencia de notificacao e
+            # regras setor->modulo configuradas pelo admin
+            _cols = {r[1] for r in conn.execute("PRAGMA table_info(users)")}
+            if "setor" not in _cols:
+                conn.execute("ALTER TABLE users ADD COLUMN setor TEXT NOT NULL DEFAULT ''")
+            if "pref_notif" not in _cols:
+                conn.execute("ALTER TABLE users ADD COLUMN pref_notif INTEGER NOT NULL DEFAULT 1")
+            if "foto" not in _cols:
+                conn.execute("ALTER TABLE users ADD COLUMN foto BLOB")
+            if "foto_tipo" not in _cols:
+                conn.execute("ALTER TABLE users ADD COLUMN foto_tipo TEXT")
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS setores_modulos (
+                    setor TEXT NOT NULL,
+                    modulo TEXT NOT NULL,
+                    permitido INTEGER NOT NULL DEFAULT 1,
+                    PRIMARY KEY (setor, modulo)
+                )
+            """)
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS permissoes_usuario (
                     user_id INTEGER NOT NULL,
@@ -167,8 +186,8 @@ class UsersRepository:
     def list_users(self):
         with self._get_conn() as conn:
             return conn.execute(
-                "SELECT id, username, nome, papel, ativo, must_change, created_at"
-                " FROM users ORDER BY username"
+                "SELECT id, username, nome, papel, ativo, must_change, created_at,"
+                " setor, pref_notif FROM users ORDER BY username"
             ).fetchall()
 
     def create_user(self, username: str, nome: str, papel: str,
@@ -268,6 +287,67 @@ class UsersRepository:
         invalidar_cache_permissoes()
 
     # -- bootstrap ---------------------------------------------------------
+    # -- setor, preferencias e regras por setor (v1.59.0) ----------------
+    def set_nome(self, user_id: int, nome: str):
+        with self._get_conn() as conn:
+            conn.execute("UPDATE users SET nome=? WHERE id=?", (nome.strip(), user_id))
+
+    def set_setor(self, user_id: int, setor: str):
+        with self._get_conn() as conn:
+            conn.execute("UPDATE users SET setor=? WHERE id=?",
+                         ((setor or "").strip().lower(), user_id))
+
+    def set_pref_notif(self, user_id: int, valor: bool):
+        with self._get_conn() as conn:
+            conn.execute("UPDATE users SET pref_notif=? WHERE id=?",
+                         (1 if valor else 0, user_id))
+
+    # -- foto do usuario (v1.62.0) --------------------------------------
+    def set_foto(self, user_id: int, data: bytes, tipo: str):
+        with self._get_conn() as conn:
+            conn.execute("UPDATE users SET foto=?, foto_tipo=? WHERE id=?",
+                         (data, tipo, user_id))
+
+    def get_foto(self, user_id: int):
+        with self._get_conn() as conn:
+            row = conn.execute("SELECT foto, foto_tipo FROM users WHERE id=?",
+                               (user_id,)).fetchone()
+        if row is None or not row[0]:
+            return None
+        return (row[0], row[1] or "png")
+
+    def remover_foto(self, user_id: int):
+        with self._get_conn() as conn:
+            conn.execute("UPDATE users SET foto=NULL, foto_tipo=NULL WHERE id=?",
+                         (user_id,))
+
+    def setores_overrides(self):
+        """Retorna ({setor: {modulo: bool}}, {user_id: setor})."""
+        with self._get_conn() as conn:
+            regras = {}
+            for r in conn.execute("SELECT setor, modulo, permitido FROM setores_modulos"):
+                regras.setdefault(r["setor"], {})[r["modulo"]] = bool(r["permitido"])
+            setores = {r["id"]: (r["setor"] or "")
+                       for r in conn.execute("SELECT id, setor FROM users")}
+        return regras, setores
+
+    def set_regra_setor(self, setor: str, modulo: str, permitido):
+        with self._get_conn() as conn:
+            if permitido is None:
+                conn.execute("DELETE FROM setores_modulos WHERE setor=? AND modulo=?",
+                             (setor, modulo))
+            else:
+                conn.execute(
+                    "INSERT INTO setores_modulos (setor, modulo, permitido) VALUES (?, ?, ?) "
+                    "ON CONFLICT(setor, modulo) DO UPDATE SET permitido=excluded.permitido",
+                    (setor, modulo, 1 if permitido else 0),
+                )
+
+    def limpar_regras_setor(self, setor: str) -> int:
+        with self._get_conn() as conn:
+            cur = conn.execute("DELETE FROM setores_modulos WHERE setor=?", (setor,))
+            return cur.rowcount
+
     def bootstrap_admin(self) -> Optional[str]:
         """Cria o admin com senha provisoria no 1o boot. Retorna a senha ou None."""
         if self.get_by_username("admin") is not None:

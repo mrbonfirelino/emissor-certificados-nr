@@ -32,6 +32,29 @@
 
 <div class="duo">
   <div class="card">
+<div class="card">
+<h2>?? Vencimentos</h2>
+{% if venc_resumo %}
+  <div class="stat-cards" style="margin-bottom:10px;">
+    <a class="stat-card" href="/vencimentos?periodo=vencidos"><span class="num">{{ venc_resumo.status.vencido }}</span><span class="rot">Vencidos</span></a>
+    <a class="stat-card" href="/vencimentos?periodo=dias_7"><span class="num">{{ venc_resumo.status.urgente }}</span><span class="rot">Próximos 7 dias</span></a>
+    <a class="stat-card" href="/vencimentos?periodo=dias_15"><span class="num">{{ venc_resumo.status.critico }}</span><span class="rot">8 a 15 dias</span></a>
+    <a class="stat-card" href="/vencimentos?periodo=mes_1"><span class="num">{{ venc_resumo.status.atencao }}</span><span class="rot">16 a 30 dias</span></a>
+  </div>
+  {% if venc_resumo.itens_urgentes %}
+  <table>
+    <tr><th>Item</th><th>Responsável</th><th>Status</th><th>Dias</th></tr>
+    {% for v in venc_resumo.itens_urgentes[:5] %}
+    <tr><td>{{ v.nr }} — {{ v.item or v.numero }}</td><td>{{ v.funcionario }}</td>
+        <td><span class="badge {{ v.classe }}">{{ v.status }}</span></td><td>{{ v.dias }}</td></tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+  <p style="margin:8px 0 0;"><a href="/vencimentos">Ver todos os vencimentos »</a></p>
+{% else %}
+  <p class="muted">Sem dados de vencimentos.</p>
+{% endif %}
+</div>
     <h2>🎂 Aniversariantes de hoje</h2>
     {% if anivers_hoje %}
       <p>{{ anivers_hoje | map(attribute='nome') | join(', ') }}</p>
