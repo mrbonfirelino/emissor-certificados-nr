@@ -1,4 +1,4 @@
-"""Portal Web NormaTech — fabrica do app FastAPI (Fase 1).
+﻿"""Portal Web NormaTech — fabrica do app FastAPI (Fase 1).
 
 Rotas: login/logout, dashboard (leitura), usuarios (admin), troca de senha
 obrigatoria. Reaproveita src/core/ e o MESMO certificados.db.
@@ -329,14 +329,14 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
 
     # ---------------- perfil do usuario (v1.59.0) ----------------
     @app.get("/perfil")
-    def perfil_ver(request: Request, user: dict = auth.require_user()):
+    def perfil_ver(request: Request, user: dict = auth.require_permission("dashboard")):
         u = users.get_by_id(user["id"])
         return templates.TemplateResponse(
             request=request, name="perfil.html",
             context=_ctx(request, me=u))
 
     @app.post("/perfil/nome")
-    async def perfil_nome(request: Request, user: dict = auth.require_user()):
+    async def perfil_nome(request: Request, user: dict = auth.require_permission("dashboard")):
         form = await request.form()
         nome = (form.get("nome") or "").strip()
         users.set_nome(user["id"], nome)
@@ -346,7 +346,7 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
         return RedirectResponse("/perfil", status_code=303)
 
     @app.post("/perfil/senha")
-    async def perfil_senha(request: Request, user: dict = auth.require_user()):
+    async def perfil_senha(request: Request, user: dict = auth.require_permission("dashboard")):
         form = await request.form()
         atual = form.get("atual") or ""
         nova = form.get("nova") or ""
@@ -364,7 +364,7 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
         return RedirectResponse("/perfil", status_code=303)
 
     @app.get("/perfil/foto/img")
-    def perfil_foto_img(request: Request, user: dict = auth.require_user()):
+    def perfil_foto_img(request: Request, user: dict = auth.require_permission("dashboard")):
         dados = users.get_foto(user["id"])
         if not dados:
             raise HTTPException(status_code=404)
@@ -373,34 +373,34 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
         return Response(content=blob, media_type=media)
 
     @app.post("/perfil/foto")
-    async def perfil_foto(request: Request, user: dict = auth.require_user(),
+    async def perfil_foto(request: Request, user: dict = auth.require_permission("dashboard"),
                           foto: UploadFile = File(None)):
         dados = await foto.read() if foto is not None else b""
         nome = (foto.filename or "") if foto is not None else ""
         ext = nome.rsplit(".", 1)[-1].lower() if "." in nome else ""
         if not dados:
-            flash(request, erro="Selecione um arquivo de imagem.")
+            _flash(request, erro="Selecione um arquivo de imagem.")
             return RedirectResponse("/perfil", status_code=303)
         if ext not in ("png", "jpg", "jpeg"):
-            flash(request, erro="Formato nao suportado (use PNG ou JPG).")
+            _flash(request, erro="Formato nao suportado (use PNG ou JPG).")
             return RedirectResponse("/perfil", status_code=303)
         if len(dados) > 3 * 1024 * 1024:
-            flash(request, erro="Imagem muito grande (maximo 3 MB).")
+            _flash(request, erro="Imagem muito grande (maximo 3 MB).")
             return RedirectResponse("/perfil", status_code=303)
         users.set_foto(user["id"], dados, ext)
         users.audit("perfil-foto", user["username"])
-        flash(request, msg="Foto atualizada.")
+        _flash(request, msg="Foto atualizada.")
         return RedirectResponse("/perfil", status_code=303)
 
     @app.post("/perfil/foto/remover")
-    def perfil_foto_remover(request: Request, user: dict = auth.require_user()):
+    def perfil_foto_remover(request: Request, user: dict = auth.require_permission("dashboard")):
         users.remover_foto(user["id"])
         users.audit("perfil-foto-remover", user["username"])
-        flash(request, msg="Foto removida.")
+        _flash(request, msg="Foto removida.")
         return RedirectResponse("/perfil", status_code=303)
 
     @app.post("/perfil/notificacoes")
-    async def perfil_notificacoes(request: Request, user: dict = auth.require_user()):
+    async def perfil_notificacoes(request: Request, user: dict = auth.require_permission("dashboard")):
         form = await request.form()
         users.set_pref_notif(user["id"], form.get("notif") == "1")
         auth.set_user(request, users.get_by_id(user["id"]))

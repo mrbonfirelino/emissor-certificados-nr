@@ -1,5 +1,12 @@
 ## [1.61.0] - 2026-10-05
 
+## [1.62.1] - 2026-10-05
+
+### Corrigido
+- Portal nao subia (TypeError: require_user() missing 1 required positional argument): as rotas /perfil agora usam a dependencia padrao `auth.require_permission("dashboard")`. Bug introduzido na v1.59.0, so se manifestava ao executar create_app().
+- Rota /perfil/foto e /perfil/foto/remover usavam `flash` inexistente no escopo (correto: `_flash`).
+
+
 ## [1.62.0] - 2026-10-05
 
 ### Adicionado
