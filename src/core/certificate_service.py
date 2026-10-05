@@ -172,7 +172,23 @@ class CertificateService:
             assinaturas=template.assinaturas
         )
 
-        generate_certificate_pdf(cert_data, template, output_path)
+        # mesma prioridade da emissao real: PPTX quando existir template
+        # (a pre-visualizacao/exemplo nao grava nada no historico)
+        gerado = False
+        from src.core import pptx_certificate_service as pptx_cert
+        if pptx_cert.get_pptx_template_path(nr_code):
+            try:
+                pptx_cert.gerar_pdf_pptx(
+                    nr_code, employee, data_treinamento, "PREVIEW-000000",
+                    output_path, data_hora="", data_inicio=data_inicio
+                )
+                gerado = True
+            except Exception as e:  # noqa: BLE001
+                from src.utils.error_log import log_error
+
+                log_error("pptx-fallback", e)
+        if not gerado:
+            generate_certificate_pdf(cert_data, template, output_path)
         return output_path
 
     def regenerar_pdf(self, record: CertificateRecord) -> Path:

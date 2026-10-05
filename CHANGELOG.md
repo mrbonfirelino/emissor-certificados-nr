@@ -1,3 +1,8 @@
+## [1.63.3] - 2026-10-05
+
+### Corrigido
+- Pré-visualização e 'Gerar exemplo' de certificados agora usam o template PPTX da técnica quando existir (templates/certificados_pptx/NR-XX.pptx), igual à emissão real; fallback para o PDF padrão (ReportLab) registrado no log em caso de falha do PowerPoint.
+
 ## [1.63.2] - 2026-10-05
 
 ### Alterado
