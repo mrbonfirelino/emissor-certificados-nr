@@ -16,7 +16,7 @@
       {% else %}
       <select id="funcionario_id" name="funcionario_id" required>
         {% for f in funcionarios %}
-        <option value="{{ f.id }}">{{ f.nome }}{% if f.cpf %} — {{ f.cpf }}{% endif %}</option>
+        <option value="{{ f.id }}" {% if (editar and aso.employee_id == f.id) or (not editar and sel_id == f.id) %}selected{% endif %}>{{ f.nome }}{% if f.cpf %} — {{ f.cpf }}{% endif %}</option>
         {% endfor %}
       </select>
       {% endif %}

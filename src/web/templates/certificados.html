@@ -14,8 +14,8 @@
       <div class="campo largo">
         <label for="func_busca">Funcionário *</label>
         <div class="combo">
-          <input type="text" id="func_busca" placeholder="Digite o nome ou CPF do funcionário..." autocomplete="off">
-          <input type="hidden" name="funcionario_id" id="funcionario_id">
+          <input type="text" id="func_busca" value="{{ form_salvo.func_txt if form_salvo else '' }}" placeholder="Digite o nome ou CPF do funcionário..." autocomplete="off">
+          <input type="hidden" name="funcionario_id" id="funcionario_id" value="{{ form_salvo.funcionario_id if form_salvo else '' }}">
           <div class="combo-lista" id="combo_lista" style="display:none;"></div>
         </div>
         <span class="muted">Funcionários sem CPF não podem receber certificado.</span>
@@ -31,26 +31,26 @@
       </div>
       <div class="campo">
         <label for="data">Data de emissão (fim do treinamento) *</label>
-        <input type="text" id="data" name="data" class="js-data" placeholder="dd/mm/aaaa" value="{{ hoje_br }}">
+        <input type="text" id="data" name="data" class="js-data" placeholder="dd/mm/aaaa" value="{{ (form_salvo.data if form_salvo else '') or hoje_br }}">
         <label style="font-weight:normal; margin-top:4px;">
-          <input type="checkbox" id="mesmo-dia" onchange="document.getElementById('campo-inicio').style.display=this.checked ? 'block' : 'none'"> Treinamento de vários dias
+          <input type="checkbox" id="mesmo-dia" {% if form_salvo and form_salvo.data_inicio %}checked{% endif %} onchange="document.getElementById('campo-inicio').style.display=this.checked ? 'block' : 'none'"> Treinamento de vários dias
         </label>
-        <div id="campo-inicio" style="display:none;">
+        <div id="campo-inicio" style="display:{% if form_salvo and form_salvo.data_inicio %}block{% else %}none{% endif %};">
           <label for="data_inicio">Data de início do treinamento</label>
-          <input type="text" id="data_inicio" name="data_inicio" class="js-data" placeholder="dd/mm/aaaa">
+          <input type="text" id="data_inicio" name="data_inicio" class="js-data" placeholder="dd/mm/aaaa" value="{{ form_salvo.data_inicio if form_salvo else '' }}">
         </div>
       </div>
       <div class="campo">
         <label for="carga">Carga horária (h) *</label>
-        <input type="number" id="carga" name="carga" min="1" value="{{ tmpl.carga_horaria_minima if tmpl else 8 }}">
+        <input type="number" id="carga" name="carga" min="1" value="{{ (form_salvo.carga if form_salvo else '') or (tmpl.carga_horaria_minima if tmpl else 8) }}">
       </div>
       <div class="campo">
         <label for="validade">Validade (meses) — vazio usa a padrão</label>
-        <input type="number" id="validade" name="validade" min="1" max="120" value="{{ tmpl.validade_meses if tmpl else '' }}">
+        <input type="number" id="validade" name="validade" min="1" max="120" value="{{ (form_salvo.validade if form_salvo else '') or (tmpl.validade_meses if tmpl else '') }}">
       </div>
       <div class="campo largo">
         <label for="descricao">Descrição do treinamento *</label>
-        <input type="text" id="descricao" name="descricao" value="{{ tmpl.descricao_padrao if tmpl else '' }}">
+        <textarea id="descricao" name="descricao" rows="3" style="width:100%; resize:vertical;">{{ (form_salvo.descricao if form_salvo else '') or (tmpl.descricao_padrao if tmpl else '') }}</textarea>
       </div>
       <div id="extras-din" style="grid-column:1 / -1;"></div>
     </div>
@@ -200,6 +200,11 @@ var TMPLS = {{ tmpls_dados | tojson }};
 
   sel.addEventListener('change', aplicarNR);
   renderExtras(TMPLS[sel.value]);
+  var EXTRAS_SALVOS = {{ extras_salvos | tojson }};
+  for (var k in EXTRAS_SALVOS) {
+    var el = document.getElementById(k);
+    if (el) el.value = EXTRAS_SALVOS[k];
+  }
 })();
 </script>
 {% endif %}

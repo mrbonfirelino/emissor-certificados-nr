@@ -60,6 +60,15 @@ def register(app, deps):
                              rede_docs_caminho: str = Form(""),
                              tarefa_ativa: str = Form(""),
                              tarefa_hora: str = Form("12:00"),
+                             smtp_host: str = Form(""),
+                             smtp_porta: str = Form("587"),
+                             smtp_usuario: str = Form(""),
+                             smtp_senha: str = Form(""),
+                             smtp_seguranca: str = Form("tls"),
+                             smtp_remetente: str = Form(""),
+                             report_ativo: str = Form(""),
+                             report_destinatarios: str = Form(""),
+                             report_periodicidade: str = Form("mensal"),
                               pdf_data_hora: str = Form(""),
                               abast_duas_vias: str = Form(""),
                              user: dict = auth.require_permission("config")):
@@ -161,6 +170,29 @@ def register(app, deps):
 
         if not save_company_config(config):
             return _erro_form(request, user, "Erro ao salvar configuração")
+        from src.core.app_settings import (load_app_settings,
+                                                save_app_settings)
+        _smtp = load_app_settings()
+        _smtp["smtp_host"] = smtp_host.strip()
+        try:
+            _smtp["smtp_porta"] = max(1, min(65535, int(smtp_porta)))
+        except (TypeError, ValueError):
+            _smtp["smtp_porta"] = 587
+        _smtp["smtp_usuario"] = smtp_usuario.strip()
+        if smtp_senha:
+            _smtp["smtp_senha"] = smtp_senha
+        _smtp["smtp_seguranca"] = (smtp_seguranca
+                                   if smtp_seguranca in ("tls", "ssl", "none")
+                                   else "tls")
+        _smtp["smtp_remetente"] = smtp_remetente.strip()
+        _smtp["report_ativo"] = bool(report_ativo)
+        _smtp["report_destinatarios"] = report_destinatarios.strip()
+        _smtp["report_periodicidade"] = (report_periodicidade
+                                         if report_periodicidade in
+                                         ("mensal", "trimestral",
+                                          "semestral", "anual")
+                                         else "mensal")
+        save_app_settings(_smtp)
         if senha_restore:
             set_restore_password(senha_restore)
         if not request.session.get("flash", {}).get("erro"):

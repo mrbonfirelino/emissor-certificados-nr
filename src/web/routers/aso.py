@@ -104,12 +104,14 @@ def register(app, deps) -> None:
                         pode_escrever=pode_escrever(user["papel"], "aso")))
 
     @rotas.get("/aso/novo")
-    def novo_form(request: Request, user: dict = auth.require_permission("aso")):
+    def novo_form(request: Request, funcionario: int = 0,
+                  user: dict = auth.require_permission("aso")):
         from src.core.aso_repo import ASO_TIPOS
         _, er = _repos()
         funcionarios = sorted(er.get_all(limit=1000000), key=lambda e: e.nome.lower())
         return templates.TemplateResponse(request=request, name="aso_form.html",
             context=ctx(request, funcionarios=funcionarios, tipos=ASO_TIPOS,
+                        sel_id=funcionario,
                         hoje=_hoje_br(), erro="" if _pode_escrever(request)
                         else "Somente administrador ou emissor podem cadastrar ASO."))
 

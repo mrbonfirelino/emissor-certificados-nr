@@ -187,14 +187,26 @@ def _fechar_excel(excel, wb=None):
 
 def _excel_to_pdf(xlsx_path: Path, pdf_path: Path):
     """
-    Exporta o xlsx para PDF via Excel COM com ate 3 tentativas (erros
-    transitorios de COM) e mensagem amigavel em caso de falha.
+    Exporta o xlsx para PDF via Excel COM. Tenta, em ordem:
+    1) wb.ExportAsFixedFormat (caminho classico)
+    2) wb.SaveAs(FileFormat=57) (xlTypePDF - workbook inteiro)
+    3) export planilha a planilha + merge PyMuPDF
+    Cada metodo tem retry proprio; o metodo que funcionar e registrado
+    no log (com-pdf-metodo) para diagnostico no servidor.
     """
     from src.utils.com_pdf_errors import com_retry, remover_motw
+    from src.utils.error_log import log_error
 
     remover_motw(xlsx_path)
 
-    def _uma_tentativa():
+    pdf_path = Path(pdf_path)
+    if pdf_path.exists():
+        try:
+            pdf_path.unlink()
+        except Exception:
+            pass
+
+    def _via_export():
         excel = _excel_app()
         wb = None
         try:
@@ -203,16 +215,80 @@ def _excel_to_pdf(xlsx_path: Path, pdf_path: Path):
         finally:
             _fechar_excel(excel, wb)
 
-    pdf_path = Path(pdf_path)
-    if pdf_path.exists():
+    def _via_saveas():
+        destino = pdf_path.resolve().with_name("saveas_" + pdf_path.name)
+        if destino.exists():
+            try:
+                destino.unlink()
+            except Exception:
+                pass
+        excel = _excel_app()
+        wb = None
         try:
-            pdf_path.unlink()
-        except Exception:
-            pass
-    com_retry(_uma_tentativa,
-              contexto=f"lista-presenca xlsx={xlsx_path} pdf={pdf_path}")
-    if not pdf_path.exists():
-        raise RuntimeError("Excel nao gerou o PDF da lista")
+            wb = excel.Workbooks.Open(str(Path(xlsx_path).resolve()))
+            wb.SaveAs(str(destino), 57)  # 57 = xlTypePDF
+        finally:
+            _fechar_excel(excel, wb)
+        if not destino.exists():
+            raise RuntimeError("SaveAs xlTypePDF nao gerou o PDF")
+        shutil.move(str(destino), str(pdf_path))
+
+    def _via_sheets():
+        partes = []
+        excel = _excel_app()
+        wb = None
+        try:
+            wb = excel.Workbooks.Open(str(Path(xlsx_path).resolve()))
+            total = wb.Sheets.Count
+            for i in range(1, total + 1):
+                ws = wb.Sheets.Item(i)
+                parte = pdf_path.resolve().with_name("ws_%d.pdf" % i)
+                if parte.exists():
+                    try:
+                        parte.unlink()
+                    except Exception:
+                        pass
+                ws.ExportAsFixedFormat(XL_TYPE_PDF, str(parte))
+                if parte.exists():
+                    partes.append(parte)
+            if not partes:
+                raise RuntimeError("nenhuma planilha exportada")
+        finally:
+            _fechar_excel(excel, wb)
+        if len(partes) == 1:
+            shutil.move(str(partes[0]), str(pdf_path))
+        else:
+            import fitz
+            doc = fitz.open()
+            for parte in partes:
+                doc.insert_pdf(fitz.open(str(parte)))
+            doc.save(str(pdf_path))
+            doc.close()
+            for parte in partes:
+                try:
+                    parte.unlink()
+                except Exception:
+                    pass
+
+    metodos = (("ExportAsFixedFormat", _via_export),
+               ("SaveAs-xlsxTypePDF", _via_saveas),
+               ("por-planilha", _via_sheets))
+    ultimo = None
+    for nome, fn in metodos:
+        try:
+            com_retry(fn, tentativas=2, delay=1.0,
+                      contexto="lista-presenca metodo=%s xlsx=%s pdf=%s"
+                               % (nome, xlsx_path, pdf_path))
+            if pdf_path.exists():
+                log_error("com-pdf-metodo",
+                          Exception("metodo=%s OK xlsx=%s"
+                                    % (nome, Path(xlsx_path).name)))
+                return
+        except Exception as e:
+            ultimo = e
+    if ultimo is not None:
+        raise ultimo
+    raise RuntimeError("Excel nao gerou o PDF da lista")
 
 
 def _celula(ws, ref: str):

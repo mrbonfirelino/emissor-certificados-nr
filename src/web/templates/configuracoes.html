@@ -112,6 +112,31 @@
     </div>
   </details>
 
+  <details class="opcoes">
+    <summary>Relatórios por e-mail (envio automático — em breve)</summary>
+    <p class="muted">Preencha os dados do servidor de e-mail. O envio automático ainda será implementado; os campos ficam salvos aqui.</p>
+    <div class="form-grid">
+      <div class="campo"><label>Servidor SMTP</label><input name="smtp_host" value="{{ s.get('smtp_host') or '' }}" placeholder="smtp.exemplo.com.br"></div>
+      <div class="campo"><label>Porta</label><input name="smtp_porta" type="number" min="1" max="65535" value="{{ s.get('smtp_porta') or 587 }}"></div>
+      <div class="campo"><label>Usuário</label><input name="smtp_usuario" value="{{ s.get('smtp_usuario') or '' }}" autocomplete="off"></div>
+      <div class="campo"><label>Senha</label><input name="smtp_senha" type="password" value="" placeholder="{{ '(mantida)' if s.get('smtp_senha') else 'não definida' }}" autocomplete="new-password"></div>
+      <div class="campo"><label>Segurança</label><select name="smtp_seguranca">
+        <option value="tls" {{ 'selected' if s.get('smtp_seguranca') == 'tls' else '' }}>TLS</option>
+        <option value="ssl" {{ 'selected' if s.get('smtp_seguranca') == 'ssl' else '' }}>SSL</option>
+        <option value="none" {{ 'selected' if s.get('smtp_seguranca') == 'none' else '' }}>Nenhuma</option>
+      </select></div>
+      <div class="campo"><label>Remetente (De)</label><input name="smtp_remetente" value="{{ s.get('smtp_remetente') or '' }}" placeholder="normatech@exemplo.com.br"></div>
+      <div class="campo"><label>Destinatários (separados por vírgula)</label><input name="report_destinatarios" value="{{ s.get('report_destinatarios') or '' }}" placeholder="a@exemplo.com, b@exemplo.com"></div>
+      <div class="campo"><label>Periodicidade do relatório</label><select name="report_periodicidade">
+        <option value="mensal" {{ 'selected' if s.get('report_periodicidade') == 'mensal' else '' }}>Mensal</option>
+        <option value="trimestral" {{ 'selected' if s.get('report_periodicidade') == 'trimestral' else '' }}>Trimestral</option>
+        <option value="semestral" {{ 'selected' if s.get('report_periodicidade') == 'semestral' else '' }}>Semestral</option>
+        <option value="anual" {{ 'selected' if s.get('report_periodicidade') == 'anual' else '' }}>Anual</option>
+      </select></div>
+      <div class="campo"><label>Relatório ativo</label><input type="checkbox" name="report_ativo" value="1" {{ 'checked' if s.get('report_ativo') else '' }}></div>
+    </div>
+  </details>
+
   <div class="linha-botoes">
     <button type="submit" class="btn verde">Salvar Configuração</button>
     <a class="btn cinza" href="/">Cancelar</a>

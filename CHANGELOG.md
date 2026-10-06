@@ -1,3 +1,14 @@
+## [1.65.0] - 2026-10-06
+
+### Adicionado
+- Configurações: campos de relatórios por e-mail (SMTP: host, porta, usuário, senha, segurança TLS/SSL, remetente, destinatários) + periodicidade (mensal/trimestral/semestral/anual). O envio automático será implementado em versão futura.
+- Ficha do funcionário: card ASO com lista de ASOs do funcionário, link para o PDF, botão Atualizar e atalho “+ Gerar ASO” já com o funcionário pré-selecionado.
+
+### Corrigido
+- Lista de presença no servidor: cadeia de fallback na exportação para PDF (ExportAsFixedFormat → SaveAs PDF → exportação por planilha com mesclagem), registrando em data/error.log qual método funcionou (com-pdf-metodo).
+- Formulário de certificados não perde os dados preenchidos quando a validação falha; campo Descrição agora é textarea maior.
+- Formatação/encoding das páginas de Romaneios (texto quebrado por mojibake).
+
 ## [1.64.0] - 2026-10-05
 
 ### Adicionado

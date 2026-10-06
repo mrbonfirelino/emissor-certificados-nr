@@ -53,10 +53,20 @@ def register(app, deps: dict):
         templates_nr = _templates_ordenados()
         nr_sel = nr if nr in templates_nr else (next(iter(templates_nr), None))
         tmpl = templates_nr.get(nr_sel)
+        salvo = None
+        try:
+            salvo = request.session.pop("cert_form", None)
+        except Exception:
+            salvo = None
+        if salvo and salvo.get("nr") in templates_nr:
+            nr_sel = salvo["nr"]
+            tmpl = templates_nr.get(nr_sel)
+        extras_salvos = dict(salvo.get("extras") or {}) if salvo else {}
         return templates.TemplateResponse(
             request=request, name="certificados.html",
             context=ctx(request, funcionarios=funcs, templates_nr=templates_nr,
                         nr_sel=nr_sel, tmpl=tmpl, tmpls_dados=_tmpls_dados(templates_nr),
+                        form_salvo=salvo, extras_salvos=extras_salvos,
                         hoje_br=date.today().strftime("%d/%m/%Y"),
                         pode_escrever=pode_escrever(user["papel"], "certificados")))
 
@@ -68,22 +78,44 @@ def register(app, deps: dict):
             flash(request, erro="Seu papel é somente leitura neste módulo.")
             return RedirectResponse("/certificados", status_code=303)
         form = await request.form()
+
+        def _guardar():
+            try:
+                request.session["cert_form"] = {
+                    "funcionario_id": form.get("funcionario_id") or "",
+                    "func_txt": form.get("func_busca") or "",
+                    "nr": form.get("nr") or "",
+                    "data": form.get("data") or "",
+                    "data_inicio": form.get("data_inicio") or "",
+                    "carga": form.get("carga") or "",
+                    "validade": form.get("validade") or "",
+                    "descricao": form.get("descricao") or "",
+                    "extras": {k: v for k, v in form.items()
+                               if k.startswith("campo_")},
+                }
+            except Exception:
+                pass
+
         er = EmployeeRepository()
         emp = er.get_by_id(int(form.get("funcionario_id") or 0))
         if emp is None:
+            _guardar()
             flash(request, erro="Selecione o funcionário.")
             return RedirectResponse("/certificados", status_code=303)
         if not (emp.cpf or "").strip():
+            _guardar()
             flash(request, erro="Funcionário sem CPF cadastrado. Edite o funcionário antes de emitir.")
             return RedirectResponse("/certificados", status_code=303)
         templates_nr = _templates_ordenados()
         nr = form.get("nr") or ""
         tmpl = templates_nr.get(nr)
         if tmpl is None:
+            _guardar()
             flash(request, erro="Selecione uma NR válida.")
             return RedirectResponse("/certificados", status_code=303)
         data_treino = validar_data((form.get("data") or "").strip())
         if data_treino is None:
+            _guardar()
             flash(request, erro="Data inválida (use dd/mm/aaaa).")
             return RedirectResponse("/certificados", status_code=303)
         # período multi-dia: data de início (padrão = mesma data)
@@ -92,9 +124,11 @@ def register(app, deps: dict):
         if di_txt:
             di = validar_data(di_txt)
             if di is None:
+                _guardar()
                 flash(request, erro="Data de início inválida (use dd/mm/aaaa).")
                 return RedirectResponse("/certificados", status_code=303)
             if di > data_treino:
+                _guardar()
                 flash(request, erro="Data de início deve ser anterior ou igual à data de emissão.")
                 return RedirectResponse("/certificados", status_code=303)
             data_inicio = di
@@ -103,13 +137,16 @@ def register(app, deps: dict):
         except ValueError:
             carga = 0
         if carga < 1:
+            _guardar()
             flash(request, erro="Carga horária deve ser pelo menos 1h.")
             return RedirectResponse("/certificados", status_code=303)
         if carga < tmpl.carga_horaria_minima:
+            _guardar()
             flash(request, erro=f"Carga horária mínima para {nr}: {tmpl.carga_horaria_minima}h.")
             return RedirectResponse("/certificados", status_code=303)
         descricao = (form.get("descricao") or "").strip()
         if not descricao:
+            _guardar()
             flash(request, erro="Informe a descrição do treinamento.")
             return RedirectResponse("/certificados", status_code=303)
         validade_txt = (form.get("validade") or "").strip()
@@ -120,6 +157,7 @@ def register(app, deps: dict):
                 if not 1 <= validade <= 120:
                     raise ValueError
             except ValueError:
+                _guardar()
                 flash(request, erro="Validade inválida (meses entre 1 e 120).")
                 return RedirectResponse("/certificados", status_code=303)
         campos = {}
@@ -131,6 +169,7 @@ def register(app, deps: dict):
             if valor:
                 campos[extra.id] = valor
         if faltando:
+            _guardar()
             flash(request, erro="Preencha: " + ", ".join(faltando) + ".")
             return RedirectResponse("/certificados", status_code=303)
 
@@ -143,9 +182,11 @@ def register(app, deps: dict):
                 carga_horaria=carga, descricao_treinamento=descricao,
                 campos_extra=campos, validade_meses=validade)
         except ValueError as e:
+            _guardar()
             flash(request, erro=str(e))
             return RedirectResponse("/certificados", status_code=303)
         except Exception:
+            _guardar()
             flash(request, erro="Não foi possível gerar o certificado.")
             return RedirectResponse("/certificados", status_code=303)
 

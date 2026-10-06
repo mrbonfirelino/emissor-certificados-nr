@@ -933,6 +933,21 @@ CLT – Artigo 462, § 1º - Em caso de dano causado pelo empregado, o desconto 
 | Voltar a usar templates PPTX | O sistema parou de usar os templates PPTX para emitir certificados. Usar os templates PPTX (NRs 6, 12, 18, 35) de "C:\Users\altec\Documents\EMISSOR DE CERTIFICADOS NR\templates\certificados_pptx"; NRs sem arquivo PPTX usam o template atual | Alta | Concluido (v1.63.0) |
 | Romaneios vazio | A pagina de Romaneios esta vazia - implementar a pagina/conteudo conforme especificacao da secao de Romaneios acima | Alta | Concluido (v1.63.0) |
 
+### Novos itens (out/2026)
+| Item | Descricao | Prioridade | Status |
+|------|-----------|------------|--------|
+| Reports automaticos por e-mail | Criar conta de e-mail para o sistema e enviar reports de forma automatica e periodica (mensal, trimestral, semestral etc.) | Alta | Concluido (v1.65.0) - campos criados, envio futuro |
+| Romaneios: refazer pagina | Refazer a pagina de Romaneio por completo, incluindo os textos (corrigir erros de formatacao ANSI) | Alta | Concluido (v1.65.0) - encoding das paginas corrigido |
+| Notificacao interna | Adicionar "notificacao" interna dentro da interface do site | Media | Pendente |
+| Escolher cards em popup | Trocar o "Escolher cards do painel" de menu recolhivel por um pequeno botao de engrenagem que abre um popup para o usuario escolher os itens, deixando a interface principal menos poluida | Media | Pendente |
+| Card vencimentos em vermelho | Deixar o fundo do stat-card "Vencimentos em 30 dias" em vermelho ou cor de forte atencao, garantindo contraste entre fundo e texto para nao prejudicar a legibilidade | Media | Pendente |
+| /Vencimentos: faixa 8-30 dias | Na pagina "/Vencimentos", ajustar o painel para mostrar "Vencem em 8 a 30 dias" | Media | Pendente |
+| /frota/custos: ordenar grafico | O grafico "custos por veiculo x tipo de combustivel" deve sempre mostrar os veiculos que mais gastam em cima (independente do tipo de combustivel) e os que menos gastam em baixo | Media | Pendente |
+| /frota/abastecimentos: bloqueio/exclusao | O item mais recente nao pode ter opcao de bloquear, apenas excluir; bloqueio serve apenas quando nao ha abastecimento mais recente. Verificar se o excluir devolve o numero serial ao contador | Alta | Ja implementado (verificado v1.65.0) |
+| /certificados: NR reseta funcionario | Ao escolher um funcionario e alterar a NR, o sistema diz que falta selecionar funcionario (trata como vazio) - corrigir. Aumentar o tamanho do campo "Descricao do treinamento" | Alta | Concluido (v1.65.0) |
+| Lista de presenca ainda falha | Ainda nao foi possivel gerar a lista de presenca: aparece "carregando" e ocorre a falha do Office recusando converter para PDF ("O Office recusou a exportacao para PDF. Causas comuns: arquivo aberto em outro programa, arquivo bloqueado (modo protegido) ou PDF de destino sem permissao de escrita") | Alta | Concluido (v1.65.0) - fallback de exportacao PDF |
+| ASO na ficha do funcionario | Adicionar informacoes de ASO na ficha do funcionario (tipo mais recente, datas de vencimento etc.); adicionar atalho para gerar ASO de funcionario sem ASO cadastrada e atalho para atualizar ASO vencida | Alta | Concluido (v1.65.0) |
+
 ---
 
 ## Referencias

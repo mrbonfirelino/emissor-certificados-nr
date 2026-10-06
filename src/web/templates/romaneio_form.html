@@ -1,18 +1,18 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% block conteudo %}
 <h1>Novo Romaneio</h1>
-<p class="sub">Serial gerado automaticamente na emissÃ£o. O romaneio nÃ£o pode ser excluÃ­do â€” apenas bloqueado.</p>
+<p class="sub">Serial gerado automaticamente na emissão. O romaneio não pode ser excluído — apenas bloqueado.</p>
 
 <form method="post" action="/romaneios/novo" class="form-grid" id="form-romaneio">
   <h2>Dados do embarque</h2>
   <div class="form-grid romaneio-grid">
-    <label>OS (ordem de serviÃ§o / descriÃ§Ã£o)
-      <input type="text" name="os" placeholder="Ex.: 1234-5 â€” Montagem â€¦">
+    <label>OS (ordem de serviço / descrição)
+      <input type="text" name="os" placeholder="Ex.: 1234-5 — Montagem …">
     </label>
     <label>Cliente
       <input type="text" name="cliente">
     </label>
-    <label>NÂº ordem de compra
+    <label>Nº ordem de compra
       <input type="text" name="ordem_compra">
     </label>
     <label>Data do embarque
@@ -28,7 +28,7 @@
     <label>CNPJ / CPF da transportadora
       <input type="text" name="transportadora_doc">
     </label>
-    <label>VeÃ­culo (modelo)
+    <label>Veículo (modelo)
       <input type="text" name="veiculo">
     </label>
     <label>Placa
@@ -70,15 +70,15 @@ function linhaItem(bloco, titulo) {
   div.innerHTML = `
     <input type="hidden" name="bloco[]" value="${bloco}">
     <input type="hidden" name="bloco_titulo[]" value="${titulo}">
-    <input name="codigo[]" placeholder="CÃ³digo">
-    <input name="descricao[]" placeholder="DescriÃ§Ã£o">
+    <input name="codigo[]" placeholder="Código">
+    <input name="descricao[]" placeholder="Descrição">
     <input name="unidade[]" placeholder="Un.">
     <input name="qtd[]" placeholder="Qtd">
-    <input name="dimensoes[]" placeholder="DimensÃµes">
+    <input name="dimensoes[]" placeholder="Dimensões">
     <input name="peso[]" placeholder="Peso (kg)">
     <input name="tipo[]" placeholder="Tipo">
-    <input name="observacoes[]" placeholder="ObservaÃ§Ãµes">
-    <button type="button" class="rm" title="Remover linha" onclick="this.parentElement.remove()">âœ•</button>`;
+    <input name="observacoes[]" placeholder="Observações">
+    <button type="button" class="rm" title="Remover linha" onclick="this.parentElement.remove()">✕</button>`;
   return div;
 }
 
@@ -95,7 +95,7 @@ addBlocoFixo(2, BLOCOS_FIXOS[1][1], 4);
 addBlocoFixo(3, BLOCOS_FIXOS[2][1], 4);
 
 document.getElementById("btn-outros").addEventListener("click", () => {
-  const titulo = prompt("DescriÃ§Ã£o do bloco 'Outros':", "OUTROS");
+  const titulo = prompt("Descrição do bloco 'Outros':", "OUTROS");
   if (!titulo) return;
   nOutros += 1;
   addBlocoFixo(3 + nOutros, titulo.toUpperCase(), 3);

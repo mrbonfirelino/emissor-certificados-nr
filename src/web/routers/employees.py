@@ -355,11 +355,28 @@ def register(app, deps: dict):
             epi_count = len(EpiRepository().get_by_employee(emp_id))
         except Exception:
             epi_count = 0
+        asos = []
+        try:
+            from src.core.aso_repo import AsoRepository
+            from src.web.routers.aso import _br as _aso_br, _status_e_classe as _aso_status
+            for _a in AsoRepository().get_by_employee(emp_id):
+                _valido, _st, _cls = _aso_status(_a["data_exame"], _a.get("validade_meses") or 12)
+                asos.append({
+                    "id": _a["id"], "numero": _a["aso_number"],
+                    "tipo": _a["tipo_aso"], "exame_br": _aso_br(_a["data_exame"]),
+                    "valido_br": _valido.strftime("%d/%m/%Y") if _valido else "",
+                    "status": _st, "classe": _cls,
+                    "bloqueado": bool(_a.get("bloqueado")),
+                })
+        except Exception:
+            asos = []
         return templates.TemplateResponse(
             request=request, name="funcionario_ficha.html",
             context=ctx(request, emp=emp, docs=er.list_docs(emp_id),
                         certificados=hr.get_by_employee(emp_id),
                         epi_count=epi_count,
+                        asos=asos,
+                        pode_aso=pode_escrever(user["papel"], "aso"),
                         pode_escrever=pode_escrever(user["papel"], "funcionarios")))
 
     @app.get("/funcionarios/{emp_id}/foto")

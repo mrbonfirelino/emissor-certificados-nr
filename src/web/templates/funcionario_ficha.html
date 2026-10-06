@@ -27,6 +27,31 @@
 </div>
 
 <div class="card">
+  <h2>ASO</h2>
+  {% if asos %}
+  <table>
+    <thead><tr><th>Número</th><th>Tipo</th><th>Exame</th><th>Válido até</th><th>Status</th><th>Ações</th></tr></thead>
+    <tbody>
+    {% for a in asos %}
+      <tr>
+        <td><a class="numero" href="/aso/{{ a.id }}">{{ a.numero }}</a>{% if a.bloqueado %} <span class="badge b-vermelho">BLOQUEADO</span>{% endif %}</td>
+        <td>{{ a.tipo }}</td>
+        <td>{{ a.exame_br }}</td>
+        <td>{{ a.valido_br }}</td>
+        <td><span class="badge {{ a.classe }}">{{ a.status }}</span></td>
+        <td class="acoes">
+          <a class="btn cinza" href="/aso/{{ a.id }}/pdf" target="_blank">PDF</a>
+          {% if pode_aso and not a.bloqueado %}<a class="btn" href="/aso/{{ a.id }}/editar">Atualizar</a>{% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p class="muted">Nenhum ASO cadastrado para este funcionário.</p>{% endif %}
+  {% if pode_aso %}<a class="btn verde" href="/aso/novo?funcionario={{ emp.id }}">+ Gerar ASO</a>{% endif %}
+</div>
+
+<div class="card">
   <h2>Documentos</h2>
   {% if docs %}
   <table>
