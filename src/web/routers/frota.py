@@ -341,6 +341,9 @@ def register(app, deps):
         ordem = [vid for vid in ordem
                  if any((x["combustivel"] + x["extras"]) > 0
                         for x in por_veic[vid]["itens"])]
+        # 945: quem mais gasta sempre no topo (total = combustivel + extras)
+        ordem.sort(key=lambda vid: -sum(x["combustivel"] + x["extras"]
+                                        for x in por_veic[vid]["itens"]))
         if not ordem:
             return "", ""
 

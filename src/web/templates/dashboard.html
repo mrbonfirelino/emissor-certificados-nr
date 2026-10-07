@@ -11,16 +11,33 @@
   </div>
 </div>
 
-<details class="opcoes" style="margin-bottom:12px;">
-  <summary>Escolher cards do painel</summary>
-  <form method="post" action="/perfil/cards" style="display:flex; flex-wrap:wrap; gap:10px 18px; align-items:center;">
-    {% for chave, rotulo in cards_opcoes %}
-    <label style="font-weight:normal;"><input type="checkbox" name="card" value="{{ chave }}" {{ 'checked' if cards[chave] else '' }}> {{ rotulo }}</label>
-    {% endfor %}
-    <button type="submit" class="verde">Salvar</button>
-  </form>
-  <p class="muted">Desmarque o que não quer ver no painel.</p>
-</details>
+<div style="text-align:right; margin-bottom:6px;">
+  <button type="button" id="btn-cards" class="btn cinza" title="Escolher cards do painel"
+          style="font-size:13px; padding:4px 10px;">&#9881; Cards</button>
+</div>
+<div id="modal-cards" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:50; align-items:center; justify-content:center;">
+  <div style="background:#fff; border-radius:10px; padding:18px 22px; min-width:320px; max-width:92vw; box-shadow:0 10px 30px rgba(0,0,0,.25);">
+    <h2 style="margin-top:0;">Escolher cards do painel</h2>
+    <form method="post" action="/perfil/cards" style="display:flex; flex-direction:column; gap:8px;">
+      {% for chave, rotulo in cards_opcoes %}
+      <label style="font-weight:normal;"><input type="checkbox" name="card" value="{{ chave }}" {{ 'checked' if cards[chave] else '' }}> {{ rotulo }}</label>
+      {% endfor %}
+      <div style="display:flex; gap:8px; margin-top:10px;">
+        <button type="submit" class="btn verde">Salvar</button>
+        <button type="button" class="btn cinza" onclick="document.getElementById('modal-cards').style.display='none'">Cancelar</button>
+      </div>
+    </form>
+    <p class="muted">Desmarque o que não quer ver no painel.</p>
+  </div>
+</div>
+<script>
+(function () {
+  var b = document.getElementById("btn-cards"), m = document.getElementById("modal-cards");
+  if (!b || !m) return;
+  b.addEventListener("click", function () { m.style.display = "flex"; });
+  m.addEventListener("click", function (e) { if (e.target === m) m.style.display = "none"; });
+})();
+</script>
 
 <div class="stat-cards">
   {% if cards.historico %}<a class="stat-card" href="/historico"><span class="num">{{ stats.total }}</span><span class="rot">Certificados emitidos</span></a>{% endif %}
@@ -28,7 +45,7 @@
   {% if cards.nrs %}<a class="stat-card" href="/certificados"><span class="num">{{ total_nrs }}</span><span class="rot">NRs disponíveis</span></a>{% endif %}
 {% if cards.cert30 %}<a class="stat-card" href="/vencimentos"><span class="num">{{ cert30 }}</span><span class="rot">Certificados vencem em 30 dias</span></a>{% endif %}
   {% if cards.venc30 and setor_usuario == 'seguranca' and venc_resumo %}
-  <a class="stat-card" href="/vencimentos" style="background:#fdecea;border:1px solid #f5c6cb;"><span class="num" style="color:#8a1f1f;">{{ venc_resumo.status.vencido + venc_resumo.status.urgente + venc_resumo.status.critico + venc_resumo.status.atencao }}</span><span class="rot">Vencem em 30 dias (vencimentos)</span></a>
+  <a class="stat-card" href="/vencimentos" style="background:#c62828;border:1px solid #8e1b12;"><span class="num" style="color:#ffffff;">{{ venc_resumo.status.vencido + venc_resumo.status.urgente + venc_resumo.status.critico + venc_resumo.status.atencao }}</span><span class="rot" style="color:#ffffff;">Vencem em 30 dias (vencimentos)</span></a>
   {% endif %}
   {% if frota_stats %}
   {% if cards.veiculos %}<a class="stat-card" href="/frota"><span class="num">{{ frota_stats.veiculos }}</span><span class="rot">Veículos na frota</span></a>{% endif %}

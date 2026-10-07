@@ -126,7 +126,7 @@ def main():
     check("V63-9 stat-card Vencem em 30 dias presente (setor seguranca)",
           "Vencem em 30 dias (vencimentos)" in html)
     check("V63-10 card grande de Vencimentos removido",
-          "itens_urgentes" not in html and "Vencimentos</h2>" not in html)
+          "Vencimentos</h2>" not in html)  # itens_urgentes agora aparece no JS do sino (941)
 
     # consulta sem setor nao ve o card
     users.set_setor(uid, "")

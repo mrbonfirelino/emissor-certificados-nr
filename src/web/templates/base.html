@@ -223,6 +223,11 @@
   <span class="versao">v{{ versao }}</span>
   {% if user %}
     <span class="quem">{{ user.nome or user.username }} · {{ papel_label }} </span>
+    <div style="position:relative;">
+      <button type="button" id="sino-btn" title="Notificações internas"
+              style="background:rgba(255,255,255,.14); color:#fff; border:none; border-radius:6px; padding:5px 10px; cursor:pointer; font-size:15px;">&#128276;<span id="sino-badge" style="display:none; background:#e53935; color:#fff; border-radius:9px; font-size:11px; padding:0 5px; margin-left:4px;"></span></button>
+      <div id="sino-menu" style="display:none; position:absolute; right:0; top:36px; background:#fff; color:#222; border:1px solid #d7dee6; border-radius:8px; min-width:290px; max-height:340px; overflow:auto; box-shadow:0 8px 22px rgba(0,0,0,.18); z-index:60;"></div>
+    </div>
     <a class="sair" href="/perfil">Meu perfil</a>
     <a class="sair" href="/logout">Sair</a>
   {% endif %}
@@ -543,6 +548,27 @@
   if (!document.querySelector("header .quem")) return; // so usuarios logados
   var ROTULO = {seguranca: "Segurança", frota: "Frota", outros: "Outros"};
   function mostrar(d) {
+    var box = document.getElementById("sino-btn");
+    if (box) {
+      var badge = document.getElementById("sino-badge");
+      var menu = document.getElementById("sino-menu");
+      if (badge) {
+        if (d && d.alertas) { badge.style.display = "inline-block"; badge.textContent = d.alertas; }
+        else { badge.style.display = "none"; }
+      }
+      if (menu) {
+        var its = (d && d.itens_urgentes) || [];
+        var html = '<div style="padding:8px 12px; font-weight:700; border-bottom:1px solid #eee;">Vencimentos urgentes</div>';
+        if (!its.length) html += '<div style="padding:8px 12px; color:#666;">Nada urgente no momento.</div>';
+        its.forEach(function (it) {
+          html += '<a href="/vencimentos" style="display:block; padding:7px 12px; text-decoration:none; color:#222; border-bottom:1px solid #f0f2f5;">'
+                + '<b>' + (it.numero || "") + '</b> ' + (it.nr || "") + '<br>'
+                + '<span style="font-size:12px; color:#666;">' + (it.item || it.funcionario || "") + ' \u00b7 ' + (it.status || "") + (it.dias != null ? " \u00b7 " + it.dias + "d" : "") + '</span></a>';
+        });
+        html += '<a href="/vencimentos" style="display:block; padding:8px 12px; font-weight:600; color:#1d4e89;">Ver todos os vencimentos</a>';
+        menu.innerHTML = html;
+      }
+    }
     if (!d || !d.notif || !d.alertas) return;
     if (!("Notification" in window)) return;
     var lancar = function () {
@@ -573,6 +599,16 @@
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(mostrar)
       .catch(function () {});
+  }
+  var sbtn = document.getElementById("sino-btn"), smenu = document.getElementById("sino-menu");
+  if (sbtn && smenu) {
+    sbtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      smenu.style.display = (smenu.style.display === "block") ? "none" : "block";
+    });
+    document.addEventListener("click", function (e) {
+      if (!smenu.contains(e.target) && e.target !== sbtn) smenu.style.display = "none";
+    });
   }
   poll();
   setInterval(poll, 10 * 60 * 1000);

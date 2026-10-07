@@ -1,3 +1,14 @@
+## [1.65.1] - 2026-10-07
+
+### Adicionado
+- Notificacao interna: sino no cabecalho com badge e dropdown dos vencimentos urgentes (atualiza junto com o painel).
+- Escolher cards do painel: botao de engrenagem que abre um popup, no lugar do menu recolhivel (interface menos poluida).
+
+### Alterado
+- Card de vencimentos do painel em vermelho forte, com contraste garantido entre fundo e texto.
+- Pagina /vencimentos mostra a faixa 'Vencem em 8 a 30 dias'.
+- Grafico de custos por veiculo x combustivel ordenado do veiculo que mais gasta para o que menos gasta.
+
 ## [1.65.0] - 2026-10-06
 
 ### Adicionado
