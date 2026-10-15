@@ -948,12 +948,12 @@ CLT – Artigo 462, § 1º - Em caso de dano causado pelo empregado, o desconto 
 | Lista de presenca ainda falha | Ainda nao foi possivel gerar a lista de presenca: aparece "carregando" e ocorre a falha do Office recusando converter para PDF ("O Office recusou a exportacao para PDF. Causas comuns: arquivo aberto em outro programa, arquivo bloqueado (modo protegido) ou PDF de destino sem permissao de escrita") | Alta | Concluido (v1.65.0) - fallback de exportacao PDF |
 | ASO na ficha do funcionario | Adicionar informacoes de ASO na ficha do funcionario (tipo mais recente, datas de vencimento etc.); adicionar atalho para gerar ASO de funcionario sem ASO cadastrada e atalho para atualizar ASO vencida | Alta | Concluido (v1.65.0) |
 | /frota/abastecimentos: filtro pendentes | Adicionar opcao para filtrar abastecimentos nao preenchidos ainda (sem Litros nem valor) | Media | Pendente | Concluido (v1.66.0) |
-| Frota: Arla sem autorizacao | Definir procedimento para veiculos a diesel que precisam abastecer Arla mesmo quando a autorizacao so tem diesel (motorista pode nao saber que falta Arla etc.) | Media | Pendente |
-| /frota/custos: borda nos graficos | Adicionar borda de 1px em volta dos graficos para melhorar o contraste com a pagina | Baixa | Pendente |
+| Frota: Arla sem autorizacao | Definir procedimento para veiculos a diesel que precisam abastecer Arla mesmo quando a autorizacao so tem diesel (motorista pode nao saber que falta Arla etc.) | Media | Concluido (v1.66.1) - dica no form; edicao permite trocar combustivel |
+| /frota/custos: borda nos graficos | Adicionar borda de 1px em volta dos graficos para melhorar o contraste com a pagina | Baixa | Concluido (v1.66.1) |
 | Ficha veiculo: arquivar laudo | Adicionar opcao de "Arquivar" um Laudo (CRLV etc.); documentos arquivados ficam ocultos em um submenu acessivel para conferencia | Media | Pendente | Concluido (v1.66.0) |
 | Ficha veiculo: bloquear veiculo | Adicionar opcao para bloquear o veiculo (ex: em caso de manutencao) | Media | Pendente | Concluido (v1.66.0) |
 | Ficha veiculo: arquivar veiculo | Adicionar opcao de "Arquivar" veiculo devolvido a locadora; dados de custos/abastecimentos continuam salvos, mas nao podera criar Solicitacao de abastecimento. Na pagina "/frota", adicionar filtro entre veiculos arquivados ou nao, mostrando por padrao apenas os nao arquivados | Alta | Pendente | Concluido (v1.66.0) |
-| Card vencimentos: animacao | Na pagina inicial, adicionar animacao no Card de certificados que vencem em 30 dias (piscar vermelho ou similar) quando o numero for maior que 0 | Media | Pendente |
+| Card vencimentos: animacao | Na pagina inicial, adicionar animacao no Card de certificados que vencem em 30 dias (piscar vermelho ou similar) quando o numero for maior que 0 | Media | Concluido (v1.66.1) |
 
 ---
 

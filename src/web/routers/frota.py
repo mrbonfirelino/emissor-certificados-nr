@@ -215,7 +215,7 @@ def register(app, deps):
             f'<svg viewBox="0 0 {largura} {altura}" width="{largura}" '
             f'height="{altura}" role="img" '
             f'style="width:100%;height:auto;" '
-            f'xmlns="http://www.w3.org/2000/svg">{"".join(partes)}</svg>')
+            f'xmlns="http://www.w3.org/2000/svg">{"".join(partes)}<rect x="0.5" y="0.5" width="{largura - 1}" height="{altura - 1}" fill="none" stroke="#C9D2DC" stroke-width="1"/></svg>')
 
     # paleta p/ gráficos multi-veículo (2.37.2)
     _PALETA = ("#2E6DA4", "#E6A23C", "#256B28", "#B03A5B", "#6A5ACD",
@@ -335,7 +335,7 @@ def register(app, deps):
             f'<svg viewBox="0 0 {largura} {altura}" width="{largura}" '
             f'height="{altura}" role="img" '
             f'style="width:100%;height:auto;" '
-            f'xmlns="http://www.w3.org/2000/svg">{"".join(partes)}</svg>'), leg
+            f'xmlns="http://www.w3.org/2000/svg">{"".join(partes)}<rect x="0.5" y="0.5" width="{largura - 1}" height="{altura - 1}" fill="none" stroke="#C9D2DC" stroke-width="1"/></svg>'), leg
 
     def _svg_custos_comb(itens: list, largura=860, altura=300):
         """Gráfico POR VEÍCULO segmentado por tipo de combustível + extras
@@ -450,7 +450,7 @@ def register(app, deps):
             f'<svg viewBox="0 0 {largura} {altura}" width="{largura}" '
             f'height="{altura}" role="img" '
             f'style="width:100%;height:auto;" '
-            f'xmlns="http://www.w3.org/2000/svg">{"".join(partes)}</svg>'), leg
+            f'xmlns="http://www.w3.org/2000/svg">{"".join(partes)}<rect x="0.5" y="0.5" width="{largura - 1}" height="{altura - 1}" fill="none" stroke="#C9D2DC" stroke-width="1"/></svg>'), leg
 
     def _funcionarios_nomes() -> list:
         try:
