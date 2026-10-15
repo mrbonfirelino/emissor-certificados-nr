@@ -375,6 +375,21 @@ class FrotaRepository:
                          ("assinado_filename", "TEXT"), ("assinado_em", "TEXT")):
             if col not in chk_t:
                 conn.execute(f"ALTER TABLE frota_checklists ADD COLUMN {col} {ddl}")
+        # v1.66.0: arquivar/bloquear veiculo + arquivar laudo
+        laudos_t = {r[1] for r in conn.execute(
+            "PRAGMA table_info(frota_veic_laudos)").fetchall()}
+        if "arquivado" not in veic:
+            conn.execute(
+                "ALTER TABLE frota_veiculos ADD COLUMN arquivado INTEGER DEFAULT 0")
+        for col, ddl in (("bloqueado", "INTEGER DEFAULT 0"),
+                         ("bloqueado_motivo", "TEXT"),
+                         ("bloqueado_em", "TEXT"),
+                         ("bloqueado_por", "TEXT")):
+            if col not in veic:
+                conn.execute(f"ALTER TABLE frota_veiculos ADD COLUMN {col} {ddl}")
+        if "arquivado" not in laudos_t:
+            conn.execute(
+                "ALTER TABLE frota_veic_laudos ADD COLUMN arquivado INTEGER DEFAULT 0")
         # v1.53.0: backfill — extras com JSON gravado mas extras_total NULL
         # (registros criados antes da v1.48 não entravam nos relatórios de custo)
         for r in conn.execute(
@@ -548,7 +563,8 @@ class FrotaRepository:
         return dict(row) if row else None
 
     def list_veiculos(self, busca: str = "",
-                      limit: int = 500, offset: int = 0):
+                      limit: int = 500, offset: int = 0,
+                      arquivado: str = "nao"):
         q = f"%{(busca or '').strip().lower()}%"
         where = ""
         params: list = []
@@ -560,6 +576,14 @@ class FrotaRepository:
                      "lower(coalesce(v.cor,''))||' '||"
                      "lower(coalesce(v.ano,'')) LIKE ?")
             params.append(q)
+        # v1.66.0: filtro de veiculos arquivados ('nao' padrao/'sim'/'todos')
+        arq = ""
+        if arquivado == "sim":
+            arq = "v.arquivado = 1"
+        elif arquivado != "todos":
+            arq = "COALESCE(v.arquivado, 0) = 0"
+        if arq:
+            where = (where + " AND " + arq) if where else "WHERE " + arq
         with self._get_conn() as conn:
             rows = conn.execute(
                 f"SELECT v.*, e.nome AS empresa_nome,"
@@ -599,6 +623,35 @@ class FrotaRepository:
             return cur.rowcount > 0
 
     # ---------- empresas (veiculos) ----------
+
+    def set_arquivado_veiculo(self, veiculo_id: int, arquivado: bool) -> bool:
+        """v1.66.0: veiculo devolvido a locadora - some da lista por padrao;
+         custos/abastecimentos continuam salvos."""
+        with self._get_conn() as conn:
+            cur = conn.execute(
+                "UPDATE frota_veiculos SET arquivado=? WHERE id=?",
+                (1 if arquivado else 0, veiculo_id))
+        return cur.rowcount > 0
+
+    def set_bloqueio_veiculo(self, veiculo_id: int, bloqueado: bool,
+                             motivo: str = "", usuario: str = "") -> bool:
+        """v1.66.0: bloquear veiculo (ex. manutencao) sem excluir."""
+        em = datetime.now().isoformat(timespec="seconds") if bloqueado else None
+        with self._get_conn() as conn:
+            cur = conn.execute(
+                "UPDATE frota_veiculos SET bloqueado=?, bloqueado_motivo=?,"
+                " bloqueado_em=?, bloqueado_por=? WHERE id=?",
+                (1 if bloqueado else 0, (motivo or "").strip() or None,
+                 em, usuario if bloqueado else None, veiculo_id))
+        return cur.rowcount > 0
+
+    def set_laudo_arquivado(self, laudo_id: int, arquivado: bool) -> bool:
+        """v1.66.0: laudo arquivado sai dos vencimentos e da lista normal."""
+        with self._get_conn() as conn:
+            cur = conn.execute(
+                "UPDATE frota_veic_laudos SET arquivado=? WHERE id=?",
+                (1 if arquivado else 0, laudo_id))
+        return cur.rowcount > 0
 
     def add_empresa(self, nome: str, cnpj: str = "") -> int:
         nome = (nome or "").strip()
@@ -806,7 +859,8 @@ class FrotaRepository:
         with self._get_conn() as conn:
             rows = conn.execute(
                 "SELECT id, tipo, descricao, filename, tipo_arquivo, tamanho,"
-                " data_emissao, data_validade, created_at"
+                " data_emissao, data_validade, created_at,"
+                " COALESCE(arquivado, 0) AS arquivado"
                 " FROM frota_veic_laudos WHERE veiculo_id=?"
                 " ORDER BY data_validade", (veiculo_id,)).fetchall()
         hoje = date.today()
@@ -844,7 +898,8 @@ class FrotaRepository:
                 "SELECT l.id, l.tipo, l.descricao, l.data_validade,"
                 " v.modelo, v.marca, v.placa, v.id AS veiculo_id"
                 " FROM frota_veic_laudos l"
-                " JOIN frota_veiculos v ON l.veiculo_id = v.id").fetchall()
+                " JOIN frota_veiculos v ON l.veiculo_id = v.id"
+                " WHERE COALESCE(l.arquivado, 0) = 0").fetchall()
         hoje = date.today()
         itens = []
         for r in rows:
@@ -1039,6 +1094,11 @@ class FrotaRepository:
         elif situacao == "bloqueadas":
             where = (where + " AND a.status = 'bloqueada'") if where \
                 else "WHERE a.status = 'bloqueada'"
+        elif situacao == "pendentes":
+            # v1.66.0: solicitações sem Litros nem valor preenchidos
+            cond = "(a.status IS NULL AND a.litros IS NULL" \
+                   " AND a.valor IS NULL)"
+            where = (where + " AND " + cond) if where else "WHERE " + cond
         # 2.38.1: ordena só datas ISO (aaaa-mm-dd); datas quebradas vão
         # para o fim — evita AB recente cair por último na lista.
         order = ("a.serial DESC" if ordem == "serial"

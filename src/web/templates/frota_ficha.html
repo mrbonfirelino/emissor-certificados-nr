@@ -10,6 +10,8 @@
      {% if v.empresa_nome %} · {{ v.empresa_nome }}{% endif %}</p>
   <p class="sub" style="margin-top:6px;">
     <span class="badge {{ v.status_classe or 'b-cinza' }}">{{ v.status_label or '—' }}</span>
+    {% if v.arquivado %} · <span class="badge b-cinza">ARQUIVADO</span>{% endif %}
+    {% if v.bloqueado %} · <span class="badge b-vermelho" title="{{ v.bloqueado_motivo or 'Bloqueado' }}">BLOQUEADO</span>{% endif %}
     {% if v.motorista_atual %} · Motorista: <b>{{ v.motorista_atual }}</b>{% endif %}
     {% if v.destino_atual %} · Destino: {{ v.destino_atual }}{% endif %}
     {% if not v.proprio and v.fim_contrato_aluguel %} · contrato até {{ br(v.fim_contrato_aluguel) }}{% endif %}
@@ -43,6 +45,31 @@
           onsubmit="return confirm('Excluir o veículo e TODOS os seus registros (docs, laudos, movimentações e abastecimentos)?');">
       <button type="submit" class="vermelho">Excluir</button>
     </form>
+  </p>
+  {% endif %}
+
+  {% if pode_escrever %}
+  <p class="linha-botoes" style="margin-top:6px;">
+    {% if v.arquivado %}
+    <form method="post" action="/frota/{{ v.id }}/desarquivar">
+      <button type="submit" class="verde">Desarquivar veículo</button>
+    </form>
+    {% else %}
+    <form method="post" action="/frota/{{ v.id }}/arquivar"
+          onsubmit="return confirm('Arquivar este veículo (devolvido à locadora)? Ele sairá da lista por padrão e não poderá receber novas solicitações.');">
+      <button type="submit" class="cinza">Arquivar veículo</button>
+    </form>
+    {% endif %}
+    {% if v.bloqueado %}
+    <form method="post" action="/frota/{{ v.id }}/desbloquear">
+      <button type="submit" class="verde">Desbloquear veículo</button>
+    </form>
+    {% else %}
+    <form method="post" action="/frota/{{ v.id }}/bloquear" style="display:flex; gap:6px; align-items:center;">
+      <input type="text" name="motivo" placeholder="ex.: manutenção" style="max-width:210px;">
+      <button type="submit" class="amarelo">Bloquear veículo</button>
+    </form>
+    {% endif %}
   </p>
   {% endif %}
 
@@ -144,6 +171,31 @@
     {% endfor %}
     </tbody>
   </table>
+  {% if laudos_arquivados %}
+  <details class="opcoes" style="margin-top:8px;">
+    <summary class="btn cinza">Laudos arquivados ({{ laudos_arquivados|length }})</summary>
+    <table style="margin-top:10px;">
+      <thead><tr><th>Tipo</th><th>' + Descrição + '</th><th>Arquivo</th><th>Validade</th><th></th></tr></thead>
+      <tbody>
+      {% for l in laudos_arquivados %}
+        <tr>
+          <td>{{ l.tipo_label }}</td>
+          <td>{{ l.descricao or '-' }}</td>
+          <td><a href="/frota/{{ v.id }}/laudos/{{ l.id }}/download">{{ l.filename }}</a></td>
+          <td>{{ br(l.data_validade) }}</td>
+          <td class="acoes">
+            {% if pode_escrever %}
+            <form method="post" action="/frota/{{ v.id }}/laudos/{{ l.id }}/desarquivar">
+              <button type="submit" class="verde">Desarquivar</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </details>
+  {% endif %}
   {% if pode_escrever %}
   <details class="opcoes" style="margin-top:10px;">
     <summary class="btn cinza">+ Registrar laudo</summary>

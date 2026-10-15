@@ -30,9 +30,10 @@
     <div class="campo">
       <label for="situacao">Situação</label>
       <select id="situacao" name="situacao" onchange="this.form.submit();">
-        <option value="todas" {{ 'selected' if situacao != 'ativas' and situacao != 'bloqueadas' }}>Todas</option>
+        <option value="todas" {{ 'selected' if situacao not in ('ativas', 'bloqueadas', 'pendentes') }}>Todas</option>
         <option value="ativas" {{ 'selected' if situacao == 'ativas' }}>Ativas</option>
         <option value="bloqueadas" {{ 'selected' if situacao == 'bloqueadas' }}>Bloqueadas</option>
+        <option value="pendentes" {{ 'selected' if situacao == 'pendentes' }}>Pendentes de preenchimento</option>
       </select>
     </div>
     <button type="submit">Buscar</button>

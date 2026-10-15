@@ -34,6 +34,14 @@
       <input type="text" id="busca" name="busca" value="{{ busca }}" placeholder="Modelo, marca, placa ou empresa...">
     </div>
     <div class="campo">
+      <label for="arquivado">Arquivados</label>
+      <select id="arquivado" name="arquivado" onchange="this.form.submit();">
+        <option value="nao" {{ 'selected' if arquivado != 'sim' and arquivado != 'todos' }}>Não</option>
+        <option value="sim" {{ 'selected' if arquivado == 'sim' }}>Sim</option>
+        <option value="todos" {{ 'selected' if arquivado == 'todos' }}>Todos</option>
+      </select>
+    </div>
+    <div class="campo">
       <label for="per">Por página</label>
       <select id="per" name="per" onchange="this.form.submit();">
         {% for p in per_opcoes %}<option value="{{ p }}" {{ 'selected' if p == per }}>{{ p }}</option>{% endfor %}
@@ -52,7 +60,7 @@
         <td>{% if v.tem_foto %}<img src="/frota/{{ v.id }}/foto" alt="" style="width:44px; height:33px; object-fit:cover; border-radius:4px; border:1px solid #ccc;">{% else %}<span class="muted">—</span>{% endif %}</td>
         <td><a href="/frota/{{ v.id }}" style="color:var(--azul); font-weight:600;">{% if v.placa %}{{ v.placa }} - {% endif %}{{ v.marca }} {{ v.modelo }}</a></td>
         <td>{{ v.tipo_label }}{% if v.sub_label %} <span class="muted">({{ v.sub_label }})</span>{% endif %}</td>
-        <td><span class="badge {{ v.status_classe }}">{{ v.status_label }}</span></td>
+        <td><span class="badge {{ v.status_classe }}">{{ v.status_label }}</span>{% if v.arquivado %} <span class="badge b-cinza">ARQUIVADO</span>{% endif %}{% if v.bloqueado %} <span class="badge b-vermelho" title="{{ v.bloqueado_motivo or 'Bloqueado' }}">BLOQUEADO</span>{% endif %}</td>
         <td>{{ v.motorista_atual or '—' }}</td>
         <td>{{ v.destino_atual or '—' }}</td>
         <td>{{ v.posse }}</td>

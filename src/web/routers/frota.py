@@ -112,6 +112,18 @@ def register(app, deps):
         flash(request, erro="Seu papel é somente leitura neste módulo.")
         return RedirectResponse(url, status_code=303)
 
+    def _impedir_operacao(repo, veiculo_id, acao):
+        """v1.66.0: veiculo arquivado/bloqueado nao aceita novas operacoes."""
+        v = repo.get_veiculo(veiculo_id) or {}
+        if v.get("arquivado"):
+            return ("Veículo arquivado (devolvido à locadora): "
+                    f"não é possível {acao}.")
+        if v.get("bloqueado"):
+            return ("Veículo bloqueado"
+                    f" ({v.get('bloqueado_motivo') or 'manutenção'}):"
+                    f" não é possível {acao}.")
+        return None
+
     def _repo() -> FrotaRepository:
         return FrotaRepository()
 
@@ -487,14 +499,16 @@ def register(app, deps):
 
     @app.get("/frota")
     def frota_lista(request: Request, busca: str = "", page: int = 1,
-                    per: int = 20,
+                    per: int = 20, arquivado: str = "nao",
                     user: dict = auth.require_permission("frota")):
         repo = _repo()
         per_val = per if per in _PER_OPCOES else 20
         pagina = max(1, page)
+        arq_val = arquivado if arquivado in ("nao", "sim", "todos") else "nao"
         veiculos, total = repo.list_veiculos(busca=busca,
                                              limit=per_val,
-                                             offset=(pagina - 1) * per_val)
+                                             offset=(pagina - 1) * per_val,
+                                             arquivado=arq_val)
         for v in veiculos:
             v["rotulo"] = veiculo_rotulo(v)
             v["tipo_label"] = label_tipo(v["tipo"])
@@ -507,12 +521,15 @@ def register(app, deps):
             if (busca or "").strip() else ""
         if per_val != 20:
             qs = (qs + "&" if qs else "") + f"per={per_val}"
+        if arq_val != "nao":
+            qs = (qs + "&" if qs else "") + f"arquivado={arq_val}"
         return templates.TemplateResponse(
             request=request, name="frota.html",
             context=ctx(request, veiculos=veiculos, total=total,
                         busca=(busca or "").strip(), page=page_n,
                         paginas=paginas,
                         per=per_val, per_opcoes=_PER_OPCOES,
+                        arquivado=arq_val,
                         pg_base=("/frota?" + qs) if qs else "/frota",
                         pode_escrever=auth.pode_escrever(user["papel"],
                                                          "frota")))
@@ -913,7 +930,8 @@ def register(app, deps):
         repo = _repo()
         per_val = per if per in _PER_OPCOES else 20
         ordem_val = ordem if ordem in ("data", "serial") else "data"
-        sit_val = (situacao if situacao in ("todas", "ativas", "bloqueadas")
+        sit_val = (situacao if situacao in ("todas", "ativas", "bloqueadas",
+                                            "pendentes")
                    else "todas")
         pagina = max(1, page)
         itens, total = repo.list_abastecimentos(
@@ -958,6 +976,13 @@ def register(app, deps):
         red = _bloqueio(request, user, "/frota/abastecimentos")
         if red:
             return red
+        if veiculo:
+            _err = _impedir_operacao(_repo(), veiculo,
+                                     "criar solicitação")
+            if _err:
+                flash(request, erro=_err)
+                return RedirectResponse("/frota/abastecimentos",
+                                        status_code=303)
         repo = _repo()
         veiculo_sel = veiculo if repo.get_veiculo(veiculo) else None
         return templates.TemplateResponse(
@@ -991,6 +1016,17 @@ def register(app, deps):
         extras = _ler_extras(await request.form())
         data_iso = _iso(data)
         repo = _repo()
+        try:
+            _vid = int(str(veiculo_id).strip())
+        except ValueError:
+            _vid = 0
+        if _vid:
+            _err = _impedir_operacao(repo, _vid,
+                                     "criar solicitação")
+            if _err:
+                flash(request, erro=_err)
+                return RedirectResponse("/frota/abastecimentos",
+                                        status_code=303)
 
         def _re_render(erro):
             return templates.TemplateResponse(
@@ -1705,7 +1741,9 @@ def register(app, deps):
         v["rotulo"] = veiculo_rotulo(v)
         _status_veiculo(repo, v)  # 2.33.2: situação atual também na ficha
         docs = repo.list_docs(veiculo_id)
-        laudos = repo.list_laudos(veiculo_id)
+        _laudos = repo.list_laudos(veiculo_id)
+        laudos = [l for l in _laudos if not l.get("arquivado")]
+        laudos_arquivados = [l for l in _laudos if l.get("arquivado")]
         movs = repo.list_movimentacoes(veiculo_id)
         abasts = repo.list_abast_por_veiculo(veiculo_id)
         nf_map = repo.tem_nf([a["id"] for a in abasts])
@@ -1723,7 +1761,9 @@ def register(app, deps):
             context=ctx(request, v=v, rotulo=v["rotulo"],
                         tipo_label=label_tipo(v["tipo"]),
                         sub_label=label_subtipo(v["subtipo"]),
-                        docs=docs, laudos=laudos, movs=movs, abasts=abasts,
+                        docs=docs, laudos=laudos,
+                        laudos_arquivados=laudos_arquivados,
+                        movs=movs, abasts=abasts,
                         checklists=checklists, manutencoes=manutencoes,
                         resumo=resumo,
                         grafico_svg=_svg_grafico_custo(serie),
@@ -1734,6 +1774,69 @@ def register(app, deps):
                         hoje=date.today().strftime("%d/%m/%Y"),
                         pode_escrever=auth.pode_escrever(user["papel"],
                                                          "frota")))
+
+    # ---- v1.66.0: arquivar/bloquear veiculo + arquivar laudo ----
+
+    @app.post("/frota/{veiculo_id}/arquivar")
+    def frota_veic_arquivar(veiculo_id: int, request: Request,
+                            user: dict = auth.require_permission("frota")):
+        _repo().set_arquivado_veiculo(veiculo_id, True)
+        _audit(request, "frota-veiculo-arquivar", user["username"],
+               str(veiculo_id), "")
+        flash(request, msg="Veículo arquivado (devolvido à locadora). "
+              "Ele some da lista por padrão; custos continuam salvos.")
+        return RedirectResponse("/frota", status_code=303)
+
+    @app.post("/frota/{veiculo_id}/desarquivar")
+    def frota_veic_desarquivar(veiculo_id: int, request: Request,
+                               user: dict = auth.require_permission("frota")):
+        _repo().set_arquivado_veiculo(veiculo_id, False)
+        _audit(request, "frota-veiculo-desarquivar", user["username"],
+               str(veiculo_id), "")
+        flash(request, msg="Veículo desarquivado.")
+        return RedirectResponse(f"/frota/{veiculo_id}", status_code=303)
+
+    @app.post("/frota/{veiculo_id}/bloquear")
+    def frota_veic_bloquear(veiculo_id: int, request: Request,
+                            motivo: str = Form(""),
+                            user: dict = auth.require_permission("frota")):
+        _repo().set_bloqueio_veiculo(veiculo_id, True, motivo,
+                                     user["username"])
+        _audit(request, "frota-veiculo-bloquear", user["username"],
+               str(veiculo_id), motivo)
+        flash(request, msg="Veículo bloqueado (não aceita novas "
+              "solicitações nem saídas).")
+        return RedirectResponse(f"/frota/{veiculo_id}", status_code=303)
+
+    @app.post("/frota/{veiculo_id}/desbloquear")
+    def frota_veic_desbloquear(veiculo_id: int, request: Request,
+                               user: dict = auth.require_permission("frota")):
+        _repo().set_bloqueio_veiculo(veiculo_id, False, "", "")
+        _audit(request, "frota-veiculo-desbloquear", user["username"],
+               str(veiculo_id), "")
+        flash(request, msg="Veículo desbloqueado.")
+        return RedirectResponse(f"/frota/{veiculo_id}", status_code=303)
+
+    @app.post("/frota/{veiculo_id}/laudos/{laudo_id}/arquivar")
+    def frota_laudo_arquivar(veiculo_id: int, laudo_id: int,
+                             request: Request,
+                             user: dict = auth.require_permission("frota")):
+        _repo().set_laudo_arquivado(laudo_id, True)
+        _audit(request, "frota-laudo-arquivar", user["username"],
+               str(laudo_id), "")
+        flash(request, msg="Laudo arquivado (só no submenu de "
+              "conferência; fora dos vencimentos).")
+        return RedirectResponse(f"/frota/{veiculo_id}", status_code=303)
+
+    @app.post("/frota/{veiculo_id}/laudos/{laudo_id}/desarquivar")
+    def frota_laudo_desarquivar(veiculo_id: int, laudo_id: int,
+                                request: Request,
+                                user: dict = auth.require_permission("frota")):
+        _repo().set_laudo_arquivado(laudo_id, False)
+        _audit(request, "frota-laudo-desarquivar", user["username"],
+               str(laudo_id), "")
+        flash(request, msg="Laudo desarquivado.")
+        return RedirectResponse(f"/frota/{veiculo_id}", status_code=303)
 
     # ---- documentos (pasta virtual) ----
 
@@ -1845,6 +1948,11 @@ def register(app, deps):
         red = _bloqueio(request, user, f"/frota/{veiculo_id}")
         if red:
             return red
+        _err = _impedir_operacao(_repo(), veiculo_id,
+                                 "registrar saída")
+        if _err:
+            flash(request, erro=_err)
+            return RedirectResponse(f"/frota/{veiculo_id}", status_code=303)
         data_iso = _iso(data_saida)
         if data_iso is None:
             flash(request, erro="Data de saída inválida (dd/mm/aaaa).")
