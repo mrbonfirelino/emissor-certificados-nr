@@ -1003,6 +1003,10 @@ class FrotaRepository:
             out.append(d)
         return out
 
+    def veiculo_em_viagem(self, veiculo_id: int) -> bool:
+        """True se ha saida sem entrada registrada (v1.67.0)."""
+        return any(m.get("aberta") for m in self.list_movimentacoes(veiculo_id))
+
     def get_mov(self, mov_id: int) -> Optional[dict]:
         with self._get_conn() as conn:
             row = conn.execute(

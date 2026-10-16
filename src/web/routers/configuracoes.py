@@ -231,6 +231,57 @@ def register(app, deps):
         response.background = BackgroundTask(network_sync.sync_all, notify_success=False)
         return response
 
+    @app.post("/configuracoes/testar-caminho")
+    def configuracoes_testar_caminho(request: Request, caminho: str = Form(""),
+                                     user: dict = auth.require_permission("config")):
+        """Testa acesso a um caminho de rede/pasta (v1.67.1)."""
+        from pathlib import Path as _P
+        caminho = (caminho or "").strip()
+        if not caminho:
+            flash(request, erro="Informe o caminho para testar.")
+            return RedirectResponse("/configuracoes", status_code=303)
+        try:
+            p = _P(caminho)
+            if p.is_dir():
+                n = sum(1 for _ in p.iterdir())
+                flash(request, msg=f"Caminho acessivel ({n} item(ns)).")
+                users.audit("testar-caminho", user["username"], caminho)
+            else:
+                flash(request, erro="Caminho nao encontrado ou sem acesso.")
+        except Exception as e:
+            flash(request, erro=f"Sem acesso ao caminho: {e}")
+        return RedirectResponse("/configuracoes", status_code=303)
+
+    @app.post("/configuracoes/email-testar")
+    def configuracoes_email_testar(request: Request,
+                                   user: dict = auth.require_permission("config")):
+        """Testa login/conexao SMTP com os dados salvos (v1.67.1)."""
+        from src.utils.email_report import testar_conexao
+        ok, msg = testar_conexao()
+        if ok:
+            users.audit("email-testar", user["username"], "ok")
+            flash(request, msg=msg)
+        else:
+            flash(request, erro=msg)
+        return RedirectResponse("/configuracoes", status_code=303)
+
+    @app.post("/configuracoes/email-testar-envio")
+    def configuracoes_email_testar_envio(request: Request,
+                                         user: dict = auth.require_permission("config")):
+        """Envia um e-mail de teste para os destinatarios salvos (v1.67.1)."""
+        from src.core.app_settings import load_app_settings
+        from src.utils.email_report import enviar_email
+        cfg = load_app_settings()
+        ok, msg = enviar_email(cfg, "NormaTech - e-mail de teste",
+                               "<p>Este \u00e9 um e-mail de teste do portal NormaTech.</p>")
+        if ok:
+            users.audit("email-testar-envio", user["username"], "ok")
+        if ok:
+            flash(request, msg=msg)
+        else:
+            flash(request, erro=msg)
+        return RedirectResponse("/configuracoes", status_code=303)
+
     @app.post("/configuracoes/log/limpar")
     def configuracoes_log_limpar(request: Request,
                                  user: dict = auth.require_permission("config")):

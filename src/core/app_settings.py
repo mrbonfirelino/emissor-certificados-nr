@@ -35,6 +35,7 @@ DEFAULTS: Dict[str, Any] = {
     "report_ativo": False,
     "report_destinatarios": "",
     "report_periodicidade": "mensal",
+    "report_ultimo_envio": "",
 }
 
 

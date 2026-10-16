@@ -359,8 +359,11 @@ def main():
 
     print("\n--- Integracao Vencimentos/Dashboard ---")
     r = client.get("/vencimentos")
-    check("FR38 vencimentos lista FROTA", "FROTA" in r.text
-          and "CRLV" in r.text)
+    check("FR38a vencimentos NAO mistura frota",
+          "FROTA" not in r.text)
+    r = client.get("/frota/vencimentos")
+    check("FR38 vencimentos frota em pagina propria",
+          "CRLV" in r.text and "Vencimentos da Frota" in r.text)
     st = HistoryRepository().get_dashboard_stats()
     check("FR39 dashboard soma laudo vencido", st["vencidos"] >= 1)
     r = client.get("/")

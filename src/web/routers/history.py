@@ -69,6 +69,42 @@ def register(app, deps: dict):
                         tem_pdf_map=tem_pdf_map,
                         pode_escrever=pode_escrever(user["papel"], "historico")))
 
+    @app.get("/historico/exportar")
+    def historico_exportar(request: Request, busca: str = "", nr: str = "",
+                           de: str = "", ate: str = "", assinado: str = "",
+                           user: dict = auth.require_permission("historico")):
+        """Exportar Excel dos certificados filtrados (v1.67.1)."""
+        from io import BytesIO
+        from openpyxl import Workbook
+        hr = HistoryRepository()
+        busca = (busca or "").strip()
+        nr = (nr or "").strip()
+        de = (de or "").strip()
+        ate = (ate or "").strip()
+        assinado = assinado if assinado in ("sim", "nao") else ""
+        registros = hr.query(query=busca, nr_code=nr or None,
+                             data_de=(validar_data(de).isoformat() if de else None),
+                             data_ate=(validar_data(ate).isoformat() if ate else None),
+                             assinado=assinado or None, limit=1000000, offset=0)
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Historico"
+        ws.append(["Numero", "NR", "Funcionario", "CPF", "Inicio", "Fim",
+                   "Carga (h)", "Validade (meses)", "Assinado"])
+        for r in registros:
+            ws.append([r.cert_number, r.nr_code, r.funcionario_nome,
+                       r.funcionario_cpf, r.data_inicio, r.data_fim,
+                       r.carga_horaria, r.validade_meses,
+                       "Sim" if r.has_signed_doc else "Nao"])
+        buf = BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+        users.audit("exportar-historico", user["username"], str(len(registros)))
+        return Response(
+            content=buf.getvalue(),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": 'attachment; filename="historico.xlsx"'})
+
     # ---------------- pdf ----------------
     def _regenerar_ou_motivo(record):
         """2.33.3 — tenta recriar o PDF ausente; devolve (path|None, motivo|None)."""

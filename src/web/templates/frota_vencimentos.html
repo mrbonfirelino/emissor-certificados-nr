@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block titulo %}Vencimentos da Frota — NormaTech{% endblock %}
+{% block conteudo %}
+<div class="card">
+  <h1>Vencimentos da Frota</h1>
+  <p class="sub">Laudos (CRLV etc.) e manutenções por KM — {{ total }} item(ns). <a href="/vencimentos">Ver vencimentos de segurança (NRs, ASOs...)</a></p>
+  <div class="paineis">
+    <span class="painel p-vermelho"><span class="num-p">{{ vencidos }}</span><span class="rot-p">Vencidos</span></span>
+    <span class="painel p-laranja"><span class="num-p">{{ sete }}</span><span class="rot-p">Vencem em 7 dias</span></span>
+    <span class="painel p-ambar"><span class="num-p">{{ quinze }}</span><span class="rot-p">Vencem em 8 a 15 dias</span></span>
+    <span class="painel p-ambar"><span class="num-p">{{ trinta }}</span><span class="rot-p">Vencem em 16 a 30 dias</span></span>
+  </div>
+  <table style="margin-top:12px;">
+    <thead><tr><th>Veículo</th><th>Documento</th><th>Válido até</th><th>Dias</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for l in linhas %}
+      <tr>
+        <td>{% if l.veiculo_id %}<a href="/frota/{{ l.veiculo_id }}">{{ l.veiculo }}</a>{% else %}{{ l.veiculo }}{% endif %}</td>
+        <td>{{ l.documento }}</td>
+        <td>{{ l.validade }}</td>
+        <td>{{ l.dias }}</td>
+        <td><span class="badge {{ l.classe }}">{{ l.status }}</span></td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5" class="muted">Nenhum vencimento de frota no momento.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

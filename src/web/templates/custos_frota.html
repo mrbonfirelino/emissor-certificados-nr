@@ -28,7 +28,7 @@
   {% endif %}
 
   <h2 style="margin-top:26px;">Custos por veículo × tipo de combustível</h2>
-  <div id="graf-comb" style="max-height:430px; overflow-y:auto;">{{ grafico_comb }}</div>
+  <div id="graf-comb" style="max-height:430px; overflow-y:auto; border: 1px solid lightgray;">{{ grafico_comb }}</div>
   {% if grafico_comb %}
   <div class="legenda-graf" id="leg-comb">{{ legenda_comb | safe }}</div>
   <button type="button" class="btn" data-png="graf-comb" data-nome="custos_frota_por_veiculo" style="margin-top:10px;">Baixar gráfico (PNG)</button>
@@ -38,7 +38,7 @@
 
   <h2 style="margin-top:26px;">Resumo por veículo</h2>
   {% if resumos %}
-  <div style="max-height:520px; overflow:auto;">
+  <div style="max-height:520px; overflow:auto; border: 1px solid lightgray;">
   <table>
     <thead><tr><th>Veículo</th><th>Abast. ativos</th><th>Litros</th><th>KM/L (real)</th><th>KM/L padrão</th><th>Combustível</th><th>Itens extras</th><th>Total</th><th></th></tr></thead>
     <tbody>

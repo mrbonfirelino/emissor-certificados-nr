@@ -238,8 +238,8 @@ def main():
     r = client.get(f"/frota/{vid}")
     check("N31 ficha mostra 1000 km restantes",
           "1.000 km restantes" in r.text)
-    r = client.get("/vencimentos")
-    check("N32 vencimentos mostra manutencao", "Manuten" in r.text)
+    r = client.get("/frota/vencimentos")
+    check("N32 vencimentos frota mostra manutencao", "Manuten" in r.text)
     manut = repo.list_manutencoes(vid)[0]
     check("N33 repo status proximo", manut["restante"] == 1000
           and manut["status"] == "proximo")

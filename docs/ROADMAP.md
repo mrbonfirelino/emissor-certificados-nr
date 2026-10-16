@@ -954,7 +954,14 @@ CLT – Artigo 462, § 1º - Em caso de dano causado pelo empregado, o desconto 
 | Ficha veiculo: bloquear veiculo | Adicionar opcao para bloquear o veiculo (ex: em caso de manutencao) | Media | Pendente | Concluido (v1.66.0) |
 | Ficha veiculo: arquivar veiculo | Adicionar opcao de "Arquivar" veiculo devolvido a locadora; dados de custos/abastecimentos continuam salvos, mas nao podera criar Solicitacao de abastecimento. Na pagina "/frota", adicionar filtro entre veiculos arquivados ou nao, mostrando por padrao apenas os nao arquivados | Alta | Pendente | Concluido (v1.66.0) |
 | Card vencimentos: animacao | Na pagina inicial, adicionar animacao no Card de certificados que vencem em 30 dias (piscar vermelho ou similar) quando o numero for maior que 0 | Media | Concluido (v1.66.1) |
-
+| Veiculo arquivado com badge errado | Veiculo arquivado ainda aparece com badge "Disponivel" - nao pode acontecer; corrigir badge para refletir status arquivado | Alta | Concluido (v1.67.0) |
+| Veiculo em viagem nao pode ser arquivado | Bloquear arquivamento de veiculo que ainda esteja em viagem | Alta | Concluido (v1.67.0) |
+| Relatorios por e-mail: checar prontidao | Verificar se o sistema de relatorios por e-mail ja pode entrar em operacao (se existe alguma parte tecnica faltando; a configuracao do usuario de e-mail sera feita pelo usuario depois) | Alta | Concluido (v1.67.1) - motor smtplib + agendador diario implementados |
+| Relatorios por e-mail: botoes de teste | Adicionar botao de teste no relatorio por e-mail: um para testar o "login" na conta de e-mail e outro para enviar um e-mail com mensagem de teste | Media | Concluido (v1.67.1) |
+| /Configuracoes: caminho de rede | Na pagina "/Configuracoes", adicionar botao para selecionar o caminho em pasta de rede | Media | Concluido (v1.67.1) - botao Testar acesso no caminho de rede |
+| /vencimentos x Card inicial divergem | O numero de Vencimentos na pagina "/vencimentos" nao bate com o Card da pagina inicial (ex: 5 em 7 dias, 12 em 8 a 15 dias, 20 em 8 a 30 dias; o Card so mostra 20). O Card deve mostrar o total de vencimentos dos proximos 30 dias. Verificar tambem se ha erro na logica de calculo dentro da pagina "/vencimentos" | Alta | Concluido (v1.67.0) |
+| /vencimentos: separar frota de NRs | Nao misturar a documentacao da frota com os vencimentos de NRs na pagina "/vencimentos". Criar pagina propria para acompanhar vencimentos da frota com botao de acesso dentro de "/frota", com alerta/notificacoes para usuarios com permissao de frota, e Card na tela inicial com os vencimentos da frota (incluindo animacao de piscar vermelho) | Alta | Concluido (v1.67.0) |
+| /vencimentos: lista de renovacao | Adicionar botao na pagina "/vencimentos" para gerar uma lista com o nome de todos os funcionarios que precisam renovar algum certificado | Media | Concluido (v1.67.0) - botao Exportar Excel em /vencimentos |
 ---
 
 ## Referencias

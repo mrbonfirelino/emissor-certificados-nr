@@ -4,6 +4,7 @@
 <div class="card">
   <h1>Controle de Vencimentos</h1>
   <p class="sub">Certificados, ASOs e integrações com validade — {{ total }} item(ns).</p>
+  <p style="margin:10px 0 0;"><a class="btn" href="/vencimentos/exportar{% if qs %}?{{ qs }}{% endif %}">Exportar Excel</a></p>
 
   <div class="paineis">
     <a class="painel p-vermelho" href="/vencimentos?periodo=vencidos" title="Filtrar vencidos">
@@ -14,11 +15,11 @@
       <span class="num-p">{{ sete }}</span>
       <span class="rot-p">Vencem em 7 dias</span>
     </a>
-    <a class="painel p-ambar" href="/vencimentos?periodo=dias_15" title="Filtrar próximos 15 dias">
+    <a class="painel p-ambar" href="/vencimentos?periodo=dias_8_15" title="Filtrar próximos 15 dias">
       <span class="num-p">{{ quinze }}</span>
       <span class="rot-p">Vencem em 8 a 15 dias</span>
     </a>
-    <a class="painel p-ambar" href="/vencimentos?periodo=mes_1" title="Filtrar próximos 30 dias">
+    <a class="painel p-ambar" href="/vencimentos?periodo=dias_8_30" title="Filtrar próximos 30 dias">
       <span class="num-p">{{ trinta }}</span>
       <span class="rot-p">Vencem em 8 a 30 dias</span>
     </a>

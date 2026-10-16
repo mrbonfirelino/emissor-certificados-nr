@@ -9,6 +9,8 @@ logica sem depender de customtkinter (servidor nao tem interface grafica).
 PERIOD_RANGES = {
     "dias_7": (0, 7),
     "dias_15": (0, 15),
+    "dias_8_15": (8, 15),
+    "dias_8_30": (8, 30),
     "mes_1": (0, 30),
     "meses_3": (0, 90),
 }

@@ -473,6 +473,20 @@ def register(app, deps):
     def _status_veiculo(repo, v: dict):
         """Deriva status/motorista/destino: viagem > manutenção/indisponível > disponível."""
         vid = v["id"]
+        if v.get("arquivado"):
+            v["status"] = "arquivado"
+            v["status_label"] = "Arquivado"
+            v["status_classe"] = "b-cinza"
+            v["motorista_atual"] = ""
+            v["destino_atual"] = ""
+            return
+        if v.get("bloqueado"):
+            v["status"] = "bloqueado"
+            v["status_label"] = "Bloqueado"
+            v["status_classe"] = "b-vermelho"
+            v["motorista_atual"] = ""
+            v["destino_atual"] = ""
+            return
         movs = repo.list_movimentacoes(vid)
         aberta = next((m for m in movs if m["aberta"]), None)
         pior = None
@@ -1730,6 +1744,41 @@ def register(app, deps):
 
 # ================= ficha do veiculo =================
 
+    # ---- v1.67.0: vencimentos da frota (pagina propria) ----
+
+    @app.get("/frota/vencimentos")
+    def frota_vencimentos(request: Request,
+                          user: dict = auth.require_permission("frota")):
+        from src.web.routers.vencimentos import (
+            _carregar_frota, STATUS_CLASSE, _br)
+        itens = _carregar_frota()
+        itens.sort(key=lambda c: (c["dias_para_vencer"],
+                                  str(c.get("funcionario_nome", "")).lower()))
+        vencidos = sum(1 for c in itens if c["dias_para_vencer"] < 0)
+        sete = sum(1 for c in itens if 0 <= c["dias_para_vencer"] <= 7)
+        quinze = sum(1 for c in itens if 8 <= c["dias_para_vencer"] <= 15)
+        trinta = sum(1 for c in itens if 16 <= c["dias_para_vencer"] <= 30)
+        linhas = []
+        for c in itens:
+            if c.get("por_km"):
+                validade, dias = "\u2014 (por KM)", f"{c['dias_para_vencer']} km"
+            else:
+                validade, dias = (_br(c.get("data_validade")),
+                                  c["dias_para_vencer"])
+            linhas.append({
+                "veiculo": c.get("funcionario_nome", ""),
+                "documento": c.get("descricao_treinamento", ""),
+                "validade": validade, "dias": dias,
+                "status": c.get("status", ""),
+                "classe": STATUS_CLASSE.get(c.get("status", ""), "b-verde"),
+                "veiculo_id": c.get("veiculo_id", 0),
+            })
+        return templates.TemplateResponse(
+            request=request, name="frota_vencimentos.html",
+            context=ctx(request, linhas=linhas, total=len(itens),
+                        vencidos=vencidos, sete=sete,
+                        quinze=quinze, trinta=trinta))
+
     @app.get("/frota/{veiculo_id}")
     def frota_ficha(veiculo_id: int, request: Request,
                     user: dict = auth.require_permission("frota")):
@@ -1739,7 +1788,9 @@ def register(app, deps):
             flash(request, erro="Veículo não encontrado.")
             return RedirectResponse("/frota", status_code=303)
         v["rotulo"] = veiculo_rotulo(v)
+        _status_veiculo(repo, v)  # 2.33.2
         _status_veiculo(repo, v)  # 2.33.2: situação atual também na ficha
+        em_viagem = repo.veiculo_em_viagem(veiculo_id)
         docs = repo.list_docs(veiculo_id)
         _laudos = repo.list_laudos(veiculo_id)
         laudos = [l for l in _laudos if not l.get("arquivado")]
@@ -1766,6 +1817,7 @@ def register(app, deps):
                         movs=movs, abasts=abasts,
                         checklists=checklists, manutencoes=manutencoes,
                         resumo=resumo,
+                        em_viagem=em_viagem,
                         grafico_svg=_svg_grafico_custo(serie),
                         tags_doc=TAGS_DOC,
                         funcionarios=_funcionarios_nomes(),
@@ -1780,7 +1832,11 @@ def register(app, deps):
     @app.post("/frota/{veiculo_id}/arquivar")
     def frota_veic_arquivar(veiculo_id: int, request: Request,
                             user: dict = auth.require_permission("frota")):
-        _repo().set_arquivado_veiculo(veiculo_id, True)
+        repo = _repo()
+        if repo.veiculo_em_viagem(veiculo_id):
+            flash(request, erro="O ve\u00edculo est\u00e1 em viagem (sa\u00edda sem entrada registrada). Registre a entrada antes de arquivar.")
+            return RedirectResponse(f"/frota/{veiculo_id}", status_code=303)
+        repo.set_arquivado_veiculo(veiculo_id, True)
         _audit(request, "frota-veiculo-arquivar", user["username"],
                str(veiculo_id), "")
         flash(request, msg="Veículo arquivado (devolvido à locadora). "
@@ -1837,6 +1893,7 @@ def register(app, deps):
                str(laudo_id), "")
         flash(request, msg="Laudo desarquivado.")
         return RedirectResponse(f"/frota/{veiculo_id}", status_code=303)
+
 
     # ---- documentos (pasta virtual) ----
 

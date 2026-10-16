@@ -55,10 +55,14 @@
       <button type="submit" class="verde">Desarquivar veículo</button>
     </form>
     {% else %}
+    {% if em_viagem %}
+    <span class="muted" title="Registre a entrada da viagem antes de arquivar.">Em viagem — arquivamento bloqueado</span>
+    {% else %}
     <form method="post" action="/frota/{{ v.id }}/arquivar"
           onsubmit="return confirm('Arquivar este veículo (devolvido à locadora)? Ele sairá da lista por padrão e não poderá receber novas solicitações.');">
       <button type="submit" class="cinza">Arquivar veículo</button>
     </form>
+    {% endif %}
     {% endif %}
     {% if v.bloqueado %}
     <form method="post" action="/frota/{{ v.id }}/desbloquear">

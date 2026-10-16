@@ -27,9 +27,27 @@ PERIODOS = [
     ("vencidos", "Vencidos"),
     ("dias_7", "Próximos 7 dias"),
     ("dias_15", "Próximos 15 dias"),
+    ("dias_8_15", "Vencem em 8 a 15 dias"),
+    ("dias_8_30", "Vencem em 8 a 30 dias"),
     ("mes_1", "Próximos 30 dias"),
     ("meses_3", "Próximos 90 dias"),
 ]
+
+
+def _carregar_frota() -> list:
+    """Itens de vencimento da frota (laudos + manutencoes por KM)."""
+    from src.core.frota_repo import FrotaRepository
+    fr = FrotaRepository()
+    out = []
+    try:
+        out += fr.get_laudos_with_expiration()
+    except Exception:
+        pass
+    try:
+        out += fr.get_manutencoes_with_expiration()
+    except Exception:
+        pass
+    return out
 
 
 def _carregar_items() -> list:
@@ -45,16 +63,6 @@ def _carregar_items() -> list:
     try:
         from src.core.integracao_repo import IntegracaoRepository
         itens += IntegracaoRepository().get_integracoes_with_expiration()
-    except Exception:
-        pass
-    try:
-        from src.core.frota_repo import FrotaRepository
-        itens += FrotaRepository().get_laudos_with_expiration()
-    except Exception:
-        pass
-    try:
-        from src.core.frota_repo import FrotaRepository
-        itens += FrotaRepository().get_manutencoes_with_expiration()
     except Exception:
         pass
     return itens
@@ -105,7 +113,9 @@ def resumo_vencimentos() -> dict:
             "dias": c.get("dias_para_vencer", 0)} for c in urgentes[:10]]
     total = len(itens)
     alertas = hoje_status["vencido"] + hoje_status["urgente"] + hoje_status["critico"]
+    proximos30 = sum(1 for c in itens if 0 <= c.get("dias_para_vencer", 999) <= 30)
     return {"total": total, "status": hoje_status, "alertas": alertas,
+            "proximos30": proximos30,
             "por_setor": por_setor, "itens_urgentes": top}
 
 
@@ -114,6 +124,37 @@ def register(app, deps: dict):
     ctx, flash = deps["ctx"], deps["flash"]
 
     users = deps["users"]
+
+
+    @app.get("/vencimentos/exportar")
+    def vencimentos_exportar(user: dict = require_permission("vencimentos"),
+                             nr: str = "TODAS", periodo: str = "", busca: str = ""):
+        from io import BytesIO
+        from openpyxl import Workbook
+        from fastapi.responses import Response
+        itens = _carregar_items()
+        termo = (busca or "").strip().lower()
+        filtrados = filter_certs(itens, nr or "TODAS", termo, periodo or "")
+        filtrados.sort(key=lambda c: (c["dias_para_vencer"],
+                                      str(c.get("funcionario_nome", "")).lower()))
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Vencimentos"
+        ws.append(["Funcionário", "CPF", "Documento", "NR/Doc", "Item",
+                   "Validade", "Dias", "Status"])
+        for c in filtrados:
+            validade = ("\u2014 (por KM)" if c.get("por_km")
+                        else _br(c.get("data_validade")))
+            ws.append([c.get("funcionario_nome", ""), c.get("funcionario_cpf", ""),
+                       c.get("cert_number", ""), c.get("nr_code", ""),
+                       c.get("descricao_treinamento", ""), validade,
+                       c.get("dias_para_vencer", ""), str(c.get("status", ""))])
+        buf = BytesIO()
+        wb.save(buf)
+        return Response(
+            content=buf.getvalue(),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": "attachment; filename=vencimentos.xlsx"})
 
     @app.get("/api/vencimentos/resumo")
     def api_vencimentos_resumo(user: dict = require_permission("vencimentos")):
@@ -126,6 +167,39 @@ def register(app, deps: dict):
         chaves = set(u.keys()) if hasattr(u, "keys") else set()
         resumo["notif"] = bool(u["pref_notif"]) if "pref_notif" in chaves else True
         resumo["setor_usuario"] = (u["setor"] or "") if "setor" in chaves else ""
+        f_itens = _carregar_frota()
+        f_alert = sorted((c for c in f_itens
+                          if c.get("dias_para_vencer", 999) <= 30),
+                         key=lambda c: c.get("dias_para_vencer", 0))
+        resumo["frota"] = {"alertas": len(f_alert),
+                            "itens": [{"numero": c.get("cert_number", ""),
+                                       "item": c.get("descricao_treinamento", ""),
+                                       "funcionario": c.get("funcionario_nome", ""),
+                                       "status": str(c.get("status", "")),
+                                       "classe": STATUS_CLASSE.get(str(c.get("status", "")), "b-verde"),
+                                       "dias": c.get("dias_para_vencer", 0)}
+                                      for c in f_alert[:3]]}
+        pode_frota = False
+        try:
+            from src.web.permissions import pode_usuario
+            try:
+                pode_frota = pode_usuario(user, "frota")
+            except TypeError:
+                pode_frota = pode_usuario(user.get("papel"), "frota")
+        except Exception:
+            pass
+        resumo["notif_frota"] = pode_frota
+        if pode_frota and f_alert:
+            for c in f_alert[:3]:
+                if len(resumo["itens_urgentes"]) >= 10:
+                    break
+                resumo["itens_urgentes"].append({
+                    "numero": c.get("cert_number", ""), "nr": "FROTA",
+                    "item": c.get("descricao_treinamento", ""),
+                    "funcionario": c.get("funcionario_nome", ""),
+                    "status": str(c.get("status", "")),
+                    "classe": STATUS_CLASSE.get(str(c.get("status", "")), "b-verde"),
+                    "dias": c.get("dias_para_vencer", 0)})
         return JSONResponse(resumo)
     templates = deps["templates"]
 
@@ -170,7 +244,7 @@ def register(app, deps: dict):
         vencidos = sum(1 for c in filtrados if c["dias_para_vencer"] < 0)
         sete = sum(1 for c in filtrados if 0 <= c["dias_para_vencer"] <= 7)
         quinze = sum(1 for c in filtrados if 8 <= c["dias_para_vencer"] <= 15)
-        trinta = sum(1 for c in filtrados if 0 <= c["dias_para_vencer"] <= 30)
+        trinta = sum(1 for c in filtrados if 8 <= c["dias_para_vencer"] <= 30)
 
         filtros = {"nr": nr or "TODAS", "periodo": periodo or "",
                    "busca": (busca or "").strip()}

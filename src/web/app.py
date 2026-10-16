@@ -330,9 +330,25 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
                     cert30 += 1
         except Exception:
             pass
+        frotavenc = 0
+        _pode_frota = False
+        try:
+            from src.web.routers.vencimentos import _carregar_frota as _cf
+            frotavenc = sum(1 for _c in _cf() if 0 <= _c["dias_para_vencer"] <= 30)
+        except Exception:
+            pass
+        try:
+            from src.web.permissions import pode_usuario as _pu
+            try:
+                _pode_frota = _pu(user, "frota")
+            except TypeError:
+                _pode_frota = _pu(user.get("papel"), "frota")
+        except Exception:
+            pass
         cards = {
             "historico": True, "funcionarios": True, "nrs": True,
             "cert30": True,
+        "frotavenc": _pode_frota,
             "venc30": bool(setor_usuario == "seguranca" and venc_resumo),
             "veiculos": bool(frota_stats), "saidas": bool(frota_stats),
             "custo": bool(frota_stats),
@@ -345,6 +361,7 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
             ("funcionarios", "Funcion\u00e1rios cadastrados"),
             ("nrs", "NRs dispon\u00edveis"),
             ("cert30", "Certificados vencem em 30 dias"),
+        ("frotavenc", "Vencimentos da frota"),
         ]
         if setor_usuario == "seguranca":
             cards_opcoes.append(("venc30", "Vencem em 30 dias (vencimentos)"))
@@ -370,14 +387,14 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
                 venc_resumo=venc_resumo,
                 setor_usuario=setor_usuario,
                 cards=cards,
-                cards_opcoes=cards_opcoes, cert30=cert30))
+                cards_opcoes=cards_opcoes, cert30=cert30, frotavenc=frotavenc))
 
     @app.post("/perfil/cards")
     def perfil_cards(request: Request, card: list = Form([]),
                      user: dict = auth.require_permission("dashboard")):
         """Salva quais cards do dashboard o usuario quer ver (v1.63.1)."""
         import json as _json
-        chaves = ("historico", "funcionarios", "nrs", "cert30", "venc30",
+        chaves = ("historico", "funcionarios", "nrs", "cert30", "frotavenc", "venc30",
                   "veiculos", "saidas", "custo")
         prefs = {k: (k in card) for k in chaves}
         users.set_cards_prefs(user["id"], _json.dumps(prefs))
@@ -733,5 +750,29 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
     rotas_backup.register(app, deps)
     rotas_auditoria.register(app, deps)
     rotas_presencas.register(app, deps)
+
+    # ---------------- tarefas agendadas (v1.67.1) ----------------
+    try:
+        from apscheduler.schedulers.background import BackgroundScheduler
+        from src.utils import email_report
+
+        def _normatech_diarias() -> None:
+            try:
+                email_report.tarefas_diarias()
+            except Exception:
+                from src.utils.error_log import log_error
+                log_error("portal-tarefas-diarias")
+
+        try:
+            email_report.limpar_previews()
+        except Exception:
+            pass
+        _sched = BackgroundScheduler(daemon=True)
+        _sched.add_job(_normatech_diarias, "cron", hour=7, minute=30,
+                       id="normatech-diarias", replace_existing=True)
+        _sched.start()
+        app.state.normatech_scheduler = _sched
+    except Exception:
+        pass
 
     return app

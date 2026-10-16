@@ -63,6 +63,10 @@
       {% if chk_rede %}checked{% endif %}> Backup em rede (drive mapeado — pula com aviso se o drive estiver fora)</label></div>
     <div class="campo"><label>Caminho na rede</label>
       <input name="backup_rede_caminho" value="{{ v_backup_caminho }}"></div>
+  <div class="linha-botoes">
+    <input form="f-caminho" name="caminho" value="{{ v_backup_caminho }}" style="max-width:320px;" placeholder="\\servidor\pasta">
+    <button type="submit" form="f-caminho" class="btn cinza">Testar acesso</button>
+  </div>
     <div class="campo"><label><input type="checkbox" name="tarefa_ativa" value="1" style="width:auto"
       {% if chk_task %}checked{% endif %}> Tarefa Agendada do Windows (backup diário com o portal fechado)</label></div>
     <div class="form-grid">
@@ -135,6 +139,11 @@
       </select></div>
       <div class="campo"><label>Relatório ativo</label><input type="checkbox" name="report_ativo" value="1" {{ 'checked' if s.get('report_ativo') else '' }}></div>
     </div>
+    <div class="linha-botoes">
+      <button type="submit" form="f-email-testar" class="btn cinza">Testar conexão SMTP</button>
+      <button type="submit" form="f-email-envio" class="btn cinza">Enviar e-mail de teste</button>
+    </div>
+    <p class="muted">Os testes usam os dados j\u00e1 salvos — salve a configuração antes de testar.</p>
   </details>
 
   <div class="linha-botoes">
@@ -144,6 +153,9 @@
 </form>
 
 <form id="f-sync" method="post" action="/configuracoes/sincronizar"></form>
+<form id="f-email-testar" method="post" action="/configuracoes/email-testar"></form>
+<form id="f-email-envio" method="post" action="/configuracoes/email-testar-envio"></form>
+<form id="f-caminho" method="post" action="/configuracoes/testar-caminho"></form>
 <form id="f-log" method="post" action="/configuracoes/log/limpar"></form>
 
 <script>

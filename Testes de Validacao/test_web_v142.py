@@ -168,9 +168,9 @@ def main():
                   (hoje - timedelta(days=18)).isoformat(), 1)
     r = client.get("/vencimentos")
     check("V16 card 8 a 15 dias", "Vencem em 8 a 15 dias" in r.text
-          and "/vencimentos?periodo=dias_15" in r.text)
+          and "/vencimentos?periodo=dias_8_15" in r.text)
     import re as _re
-    m = _re.search(r'href="/vencimentos\?periodo=dias_15"[^>]*>\s*'
+    m = _re.search(r'href="/vencimentos\?periodo=dias_8_15"[^>]*>\s*'
                    r'<span class="num-p">(\d+)</span>', r.text)
     check("V18 numero do card 15 dias reflete o item",
           m and int(m.group(1)) >= 1)
