@@ -1772,6 +1772,8 @@ def register(app, deps):
                 "status": c.get("status", ""),
                 "classe": STATUS_CLASSE.get(c.get("status", ""), "b-verde"),
                 "veiculo_id": c.get("veiculo_id", 0),
+                "laudo_id": (c.get("id") if (not c.get("por_km")
+                             and c.get("tipo_laudo")) else 0),
             })
         return templates.TemplateResponse(
             request=request, name="frota_vencimentos.html",
@@ -1875,14 +1877,15 @@ def register(app, deps):
 
     @app.post("/frota/{veiculo_id}/laudos/{laudo_id}/arquivar")
     def frota_laudo_arquivar(veiculo_id: int, laudo_id: int,
-                             request: Request,
+                             request: Request, voltar: str = Form(""),
                              user: dict = auth.require_permission("frota")):
         _repo().set_laudo_arquivado(laudo_id, True)
         _audit(request, "frota-laudo-arquivar", user["username"],
                str(laudo_id), "")
         flash(request, msg="Laudo arquivado (só no submenu de "
               "conferência; fora dos vencimentos).")
-        return RedirectResponse(f"/frota/{veiculo_id}", status_code=303)
+        destino = voltar if voltar.startswith("/") else f"/frota/{veiculo_id}"
+        return RedirectResponse(destino, status_code=303)
 
     @app.post("/frota/{veiculo_id}/laudos/{laudo_id}/desarquivar")
     def frota_laudo_desarquivar(veiculo_id: int, laudo_id: int,

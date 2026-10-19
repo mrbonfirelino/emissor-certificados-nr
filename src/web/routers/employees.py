@@ -273,12 +273,21 @@ def register(app, deps: dict):
     # ---------------- lista ----------------
     @app.get("/funcionarios")
     def funcionarios(request: Request, busca: str = "", page: int = 1, per: int = PER_PAGE,
+                     arquivado: str = "nao",
                      user: dict = auth.require_permission("funcionarios")):
         er = EmployeeRepository()
         busca = (busca or "").strip()
         per = per if per in PER_OPCOES else PER_PAGE
-        todos = (er.search(busca, limit=1_000_000) if busca
-                 else er.get_all(limit=1_000_000))
+        arquivado = arquivado if arquivado in ("nao", "sim", "todos") else "nao"
+        if arquivado == "sim":
+            todos = er.get_all_arquivados(limit=1_000_000)
+        elif arquivado == "todos":
+            todos = list(er.get_all(limit=1_000_000)) + \
+                list(er.get_all_arquivados(limit=1_000_000))
+            todos.sort(key=lambda e: str(e.nome).lower())
+        else:
+            todos = (er.search(busca, limit=1_000_000) if busca
+                     else er.get_all(limit=1_000_000))
         total = len(todos)
         page = max(1, page)
         paginas = max(1, (total + per - 1) // per)
@@ -289,13 +298,49 @@ def register(app, deps: dict):
             params.append(f"busca={busca}")
         if per != PER_PAGE:
             params.append(f"per={per}")
+        if arquivado != "nao":
+            params.append(f"arquivado={arquivado}")
         pg_base = "/funcionarios" + (("?" + "&".join(params)) if params else "")
         return templates.TemplateResponse(
             request=request, name="funcionarios.html",
             context=ctx(request, lista=fatia, total=total, page=page,
                         paginas=paginas, pg_base=pg_base, busca=busca, per=per,
-                        per_opcoes=PER_OPCOES,
+                        per_opcoes=PER_OPCOES, arquivado=arquivado,
                         pode_escrever=pode_escrever(user["papel"], "funcionarios")))
+
+    # ---------------- arquivar / desarquivar (v1.69.0) ----------------
+    @app.post("/funcionarios/{emp_id}/excluir")
+    def excluir_funcionario(emp_id: int, request: Request,
+                            user: dict = auth.require_permission("funcionarios")):
+        if user["papel"] != "admin":
+            flash(request, erro="Somente o administrador pode excluir/arquivar funcionarios.")
+            return RedirectResponse(f"/funcionarios/{emp_id}", status_code=303)
+        er = EmployeeRepository()
+        emp = er.get_by_id(emp_id)
+        if not emp:
+            flash(request, erro="Funcionario nao encontrado.")
+            return RedirectResponse("/funcionarios", status_code=303)
+        if er.delete(emp_id):
+            users.audit("excluir-funcionario", user["username"], emp_id, emp.nome)
+            flash(request, msg=f"Funcionario {emp.nome} excluido.")
+        else:
+            er.set_arquivado(emp_id, True)
+            users.audit("arquivar-funcionario", user["username"], emp_id, emp.nome)
+            flash(request, msg=f"Funcionario {emp.nome} ARQUIVADO (possui certificados, "
+                  "nao pode ser excluido). Ele sai das listas, mas o historico permanece.")
+        return RedirectResponse("/funcionarios", status_code=303)
+
+    @app.post("/funcionarios/{emp_id}/desarquivar")
+    def desarquivar_funcionario(emp_id: int, request: Request,
+                                user: dict = auth.require_permission("funcionarios")):
+        if user["papel"] != "admin":
+            flash(request, erro="Somente o administrador pode desarquivar funcionarios.")
+            return RedirectResponse(f"/funcionarios/{emp_id}", status_code=303)
+        er = EmployeeRepository()
+        er.set_arquivado(emp_id, False)
+        users.audit("desarquivar-funcionario", user["username"], emp_id, "")
+        flash(request, msg="Funcionario desarquivado.")
+        return RedirectResponse("/funcionarios?arquivado=nao", status_code=303)
 
     # ---------------- novo ----------------
     # IMPORTANTE: declarado ANTES de /funcionarios/{emp_id} — o FastAPI casa
@@ -376,6 +421,7 @@ def register(app, deps: dict):
                         certificados=hr.get_by_employee(emp_id),
                         epi_count=epi_count,
                         asos=asos,
+                        eh_admin=(user["papel"] == "admin"),
                         pode_aso=pode_escrever(user["papel"], "aso"),
                         pode_escrever=pode_escrever(user["papel"], "funcionarios")))
 

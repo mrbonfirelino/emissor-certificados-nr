@@ -8,20 +8,30 @@
     {% else %}<div class="foto" style="display:flex; align-items:center; justify-content:center; color:#98A4B0;">sem foto</div>{% endif %}
   </div>
   <div style="flex:1;">
-    <h1>{{ emp.nome }}</h1>
+    <h1>{{ emp.nome }}{% if emp.arquivado %} <span class="badge b-cinza">ARQUIVADO</span>{% endif %}</h1>
     <p class="sub">{{ emp.funcao or 'Sem função' }}</p>
     <table style="max-width:560px;">
       <tr><td class="muted">CPF</td><td>{{ emp.cpf or '—' }}</td></tr>
       <tr><td class="muted">Telefone</td><td>{{ emp.telefone or '—' }}</td></tr>
-      <tr><td class="muted">Nascimento</td><td>{{ emp.data_nascimento or '—' }}</td></tr>
+      <tr><td class="muted">Nascimento</td><td>{{ (emp.data_nascimento or '') | databr or '—' }}</td></tr>
       <tr><td class="muted">Tipo sanguíneo</td><td>{{ emp.tipo_sanguineo or '—' }}</td></tr>
-      <tr><td class="muted">Admissão</td><td>{{ emp.data_admissao or '—' }}</td></tr>
+      <tr><td class="muted">Admissão</td><td>{{ (emp.data_admissao or '') | databr or '—' }}</td></tr>
       <tr><td class="muted">Registro CTPS</td><td>{{ emp.registro_ctps or '—' }}</td></tr>
       <tr><td class="muted">CNH EAR</td><td>{{ 'Sim' if emp.cnh_ear else 'Não' }}</td></tr>
     </table>
     <div class="linha-botoes">
-      {% if pode_escrever %}<a class="btn" href="/funcionarios/{{ emp.id }}/editar">Editar</a>{% endif %}
+      {% if pode_escrever and not emp.arquivado %}<a class="btn" href="/funcionarios/{{ emp.id }}/editar">Editar</a>{% endif %}
       <a class="btn cinza" href="/epi/funcionario/{{ emp.id }}">Fichas de EPI ({{ epi_count }})</a>
+      {% if eh_admin and not emp.arquivado %}
+      <form method="post" action="/funcionarios/{{ emp.id }}/excluir" style="display:inline;"
+            onsubmit="return confirm('Excluir este funcionario? Se houver certificados, ele sera ARQUIVADO (mantem historico).');">
+        <button type="submit" class="vermelho">Excluir</button>
+      </form>
+      {% elif eh_admin and emp.arquivado %}
+      <form method="post" action="/funcionarios/{{ emp.id }}/desarquivar" style="display:inline;">
+        <button type="submit" class="verde">Desarquivar</button>
+      </form>
+      {% endif %}
     </div>
   </div>
 </div>

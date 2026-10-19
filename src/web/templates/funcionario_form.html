@@ -33,15 +33,15 @@
       </div>
       <div class="campo">
         <label for="telefone">Telefone</label>
-        <input type="text" id="telefone" name="telefone" class="js-tel" value="{{ emp.telefone or '' if emp else '' }}" placeholder="21984209236" maxlength="11">
+        <input type="text" id="telefone" name="telefone" class="js-tel" value="{{ emp.telefone or '' if emp else '' }}" placeholder="11987654321" >
       </div>
       <div class="campo">
         <label for="nascimento">Nascimento</label>
-        <input type="text" id="nascimento" name="nascimento" class="js-data" value="{{ emp.data_nascimento or '' if emp else '' }}" placeholder="dd/mm/aaaa">
+        <input type="text" id="nascimento" name="nascimento" class="js-data" value="{{ (emp.data_nascimento or '') | databr if emp else '' }}" placeholder="dd/mm/aaaa">
       </div>
       <div class="campo">
         <label for="admissao">Admissão</label>
-        <input type="text" id="admissao" name="admissao" class="js-data" value="{{ emp.data_admissao or '' if emp else '' }}" placeholder="dd/mm/aaaa">
+        <input type="text" id="admissao" name="admissao" class="js-data" value="{{ (emp.data_admissao or '') | databr if emp else '' }}" placeholder="dd/mm/aaaa">
       </div>
       <div class="campo">
         <label for="tipo">Tipo sanguíneo</label>

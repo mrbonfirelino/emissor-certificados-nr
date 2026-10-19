@@ -56,17 +56,17 @@
   {% if cards.funcionarios %}<a class="stat-card" href="/funcionarios"><span class="num">{{ total_funcionarios }}</span><span class="rot">Funcionários cadastrados</span></a>{% endif %}
   {% if cards.nrs %}<a class="stat-card" href="/certificados"><span class="num">{{ total_nrs }}</span><span class="rot">NRs disponíveis</span></a>{% endif %}
   {% if cards.cert30 %}<a class="stat-card{% if cert30 %} pulsa{% endif %}" href="/vencimentos"><span class="num">{{ cert30 }}</span><span class="rot">Certificados vencem em 30 dias</span></a>{% endif %}
-  {% if cards.frotavenc %}<a class="stat-card{% if frotavenc %} pulsa{% endif %}" href="/frota/vencimentos"><span class="num">{{ frotavenc }}</span><span class="rot">Vencimentos da frota (30 dias)</span></a>{% endif %}
+  {% if cards.frotavenc %}<a class="stat-card{% if frotavenc %} pulsa{% endif %}" href="/frota/vencimentos"><span class="num">{{ frotavenc }}</span><span class="rot">Documentos da frota próximos de vencer (30 dias)</span></a>{% endif %}
   {% if cards.venc30 and setor_usuario == 'seguranca' and venc_resumo %}
 {% set v30 = venc_resumo.proximos30 %}
-  <a class="stat-card{% if v30 %} pulsa{% endif %}" href="/vencimentos" style="background:#c62828;border:1px solid #8e1b12;"><span class="num" style="color:#ffffff;">{{ v30 }}</span><span class="rot" style="color:#ffffff;">Vencem em 30 dias (vencimentos)</span></a>
+  <a class="stat-card{% if v30 %} pulsa{% endif %}" href="/vencimentos" style="background:#c62828;border:1px solid #8e1b12;"><span class="num" style="color:#ffffff;">{{ v30 }}</span><span class="rot" style="color:#ffffff;">Documentos de Segurança vencem em 30 dias</span></a>
   {% endif %}
   {% if frota_stats %}
   {% if cards.veiculos %}<a class="stat-card" href="/frota"><span class="num">{{ frota_stats.veiculos }}</span><span class="rot">Veículos na frota</span></a>{% endif %}
   {% if cards.saidas %}<a class="stat-card" href="/frota"><span class="num">{{ frota_stats.movs_abertas }}</span><span class="rot">Saídas em aberto</span></a>{% endif %}
-  {% if cards.custo %}<a class="stat-card" href="/frota/abastecimentos"><span class="num num-brl" data-valor="{{ frota_stats.custo_mes or 0 }}">{{ brl(frota_stats.custo_mes) }}</span><span class="rot">Custo de abastecimento (mês)</span></a>{% endif %}
-  {% if cards.sem_nf %}<a class="stat-card" href="/frota/abastecimentos"><span class="num">{{ sem_nf }}</span><span class="rot">Abastecimentos sem nota fiscal</span></a>{% endif %}
-  {% if cards.sem_valor %}<a class="stat-card" href="/frota/abastecimentos"><span class="num">{{ sem_valor }}</span><span class="rot">Abastecimentos sem valor</span></a>{% endif %}
+  {% if cards.custo %}<a class="stat-card" href="/frota/abastecimentos"><span class="num num-brl" data-valor="{{ frota_stats.custo_mes or 0 }}">{{ brl(frota_stats.custo_mes) }}</span><span class="rot">Custo de abastecimento (este mês)</span></a>{% endif %}
+  {% if cards.sem_nf %}<a class="stat-card" href="/frota/abastecimentos"><span class="num">{{ sem_nf }}</span><span class="rot">Abastecimentos sem nota fiscal cadastrada</span></a>{% endif %}
+  {% if cards.sem_valor %}<a class="stat-card" href="/frota/abastecimentos"><span class="num">{{ sem_valor }}</span><span class="rot">Abastecimentos sem valor definido</span></a>{% endif %}
   {% endif %}
 </div>
 

@@ -39,6 +39,7 @@ class Employee(BaseModel):
     data_admissao: Optional[str] = None
     registro_ctps: Optional[str] = None
     cnh_ear: bool = False
+    arquivado: bool = False
     created_at: Optional[str] = None
 
     @field_validator('data_nascimento')
@@ -97,7 +98,7 @@ class Employee(BaseModel):
         if not v or not str(v).strip():
             return None
         if not validar_telefone(v):
-            raise ValueError("Telefone invalido: use 11 digitos DDD+numero (ex: 21984209236)")
+            raise ValueError("Telefone invalido: use 11 digitos DDD+numero (ex: 11987654321)")
         return re.sub(r'\D', '', str(v))
 
     def display_name(self) -> str:

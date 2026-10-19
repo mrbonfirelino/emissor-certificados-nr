@@ -19,6 +19,14 @@
         {% for op in per_opcoes %}<option value="{{ op }}" {{ 'selected' if op == per else '' }}>{{ op }}</option>{% endfor %}
       </select>
     </div>
+    <div class="campo">
+      <label for="arq">Arquivados</label>
+      <select id="arq" name="arquivado" onchange="this.form.submit()" style="max-width:110px;">
+        <option value="nao" {{ 'selected' if arquivado == 'nao' else '' }}>Ativos</option>
+        <option value="sim" {{ 'selected' if arquivado == 'sim' else '' }}>Arquivados</option>
+        <option value="todos" {{ 'selected' if arquivado == 'todos' else '' }}>Todos</option>
+      </select>
+    </div>
     <button type="submit">Buscar</button>
     {% if busca %}<a class="btn cinza" href="/funcionarios">Limpar</a>{% endif %}
   </form>
@@ -32,7 +40,7 @@
         <td><a href="/funcionarios/{{ emp.id }}" style="color:var(--azul); font-weight:600;">{{ emp.nome }}</a></td>
         <td>{{ emp.cpf or '—' }}</td>
         <td>{{ emp.funcao or '—' }}</td>
-        <td>{{ emp.telefone or '—' }}</td>
+        <td>{{ emp.telefone or '—' }}{% if emp.arquivado %} <span class="badge b-cinza">ARQUIVADO</span>{% endif %}</td>
       </tr>
     {% else %}
       <tr><td colspan="5" class="muted">Nenhum funcionário encontrado.</td></tr>

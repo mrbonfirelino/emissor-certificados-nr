@@ -174,6 +174,20 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
             return v
 
     templates.env.filters["brl"] = _brl
+
+    def _databr(v):
+        if not v:
+            return v
+        s = str(v)
+        if "/" in s:
+            return s
+        try:
+            from datetime import date as _d
+            return _d.fromisoformat(s[:10]).strftime("%d/%m/%Y")
+        except Exception:
+            return s
+
+    templates.env.filters["databr"] = _databr
     templates.env.globals["dec"] = _dec
     templates.env.globals["brl"] = _brl
 

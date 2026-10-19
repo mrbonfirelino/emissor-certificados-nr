@@ -4,6 +4,11 @@
  - Versao atual: 1.45.0
 - NRs disponiveis: 17 (01, 05, 06, 09, 10, 11, 12, 17, 18, 26, 33, 34, 35 + FDS, BRIGADISTA-NR23, PTA, MOTOSERRA, MUNCK, PONTE-ROLANTE, DIR-DEFENSIVA, CIPAA)
 
+| Arquivar funcionario com certificado | Admin pode excluir funcionario; se houver certificados, o funcionario e ARQUIVADO (some das listas, historico mantido) com filtro Ativos/Arquivados/Todos e botao Desarquivar | Alta | Concluido (v1.69.0) |
+| Datas do banco: converter automaticamente | Campos de data aceitam e convertem automaticamente os formatos dd/mm/aaaa e aaaa-mm-dd; exibicao sempre em dd/mm/aaaa (filtro databr) | Alta | Concluido (v1.69.0) |
+| Telefone: colar numero formatado | Campo de telefone aceita colar numeros formatados (mantendo apenas digitos) | Alta | Concluido (v1.69.0) |
+| Telefone: exemplo de numero | Exemplo de telefone alterado para 11987654321 | Alta | Concluido (v1.69.0) |
+| Arquivar laudo vencido em /frota/vencimentos | Botao Arquivar direto na pagina de vencimentos da frota para laudos vencidos (volta para a mesma pagina) | Alta | Concluido (v1.69.0) |
 ---
 
 ## FASE 1: Novas NRs/Itens (CONCLUÍDA)
@@ -962,15 +967,18 @@ CLT – Artigo 462, § 1º - Em caso de dano causado pelo empregado, o desconto 
 | /vencimentos x Card inicial divergem | O numero de Vencimentos na pagina "/vencimentos" nao bate com o Card da pagina inicial (ex: 5 em 7 dias, 12 em 8 a 15 dias, 20 em 8 a 30 dias; o Card so mostra 20). O Card deve mostrar o total de vencimentos dos proximos 30 dias. Verificar tambem se ha erro na logica de calculo dentro da pagina "/vencimentos" | Alta | Concluido (v1.67.0) |
 | /vencimentos: separar frota de NRs | Nao misturar a documentacao da frota com os vencimentos de NRs na pagina "/vencimentos". Criar pagina propria para acompanhar vencimentos da frota com botao de acesso dentro de "/frota", com alerta/notificacoes para usuarios com permissao de frota, e Card na tela inicial com os vencimentos da frota (incluindo animacao de piscar vermelho) | Alta | Concluido (v1.67.0) |
 | /vencimentos: lista de renovacao | Adicionar botao na pagina "/vencimentos" para gerar uma lista com o nome de todos os funcionarios que precisam renovar algum certificado | Media | Concluido (v1.67.0) - botao Exportar Excel em /vencimentos |
+| /frota: submenus | Colocar "Vencimentos da frota" como submenu de "Gestao de frota". Adicionar tambem "Abastecimentos" como submenu | Media | Pendente |
+| Ficha veiculo: arquivar docs vencidos | Na parte de Laudos e documentos com vencimento, permitir arquivar documentos vencidos: documentos antigos (CRLVs, certificados etc.) ficam registrados no sistema mas nao entram nos dados de documentos vencidos. Botao para exibir os laudos arquivados; por default, itens arquivados ficam ocultos | Alta | Concluido (v1.69.0) - botao Arquivar em /frota/vencimentos; gestao na ficha desde v1.66.0 |
+| Ficha veiculo: ano da CRLV | Permitir que o usuario indique a que ano se refere a CRLV cadastrada (apenas o ano, ex: 2025, 2026, 2027). Campo adicional de informacao, nao substitui os outros campos | Media | Pendente |
+| Telefone de exemplo pessoal | Em todos os campos que pedem numero de telefone, alterar o numero de exemplo (21984209236) para outro numero, pois atualmente esta salvo o numero pessoal do usuario | Alta | Concluido (v1.69.0) |
+| /cartoes: busca e selecao estavel | Na pagina de emissao de cartoes, incluir a barra de pesquisa de funcionarios logo acima da tabela/lista. A selecao do cartao NAO PODE se alterar ao avancar/voltar paginas da lista. Adicionar campo com os nomes dos funcionarios selecionados (para o usuario confirmar se selecionou todos que precisava) | Alta | Pendente |
+| Ficha funcionario: telefone colar | Ao editar a ficha de um funcionario, colar um numero de telefone copiado da erro; atualmente so funciona digitando manualmente - corrigir | Alta | Concluido (v1.69.0) |
+| Admin: excluir funcionarios | O admin precisa ter opcao para excluir funcionarios do sistema (pode ocorrer por duplicidade ou erro de preenchimento manual) | Alta | Concluido (v1.69.0) - com certificados vira arquivamento automatico |
+| Ficha funcionario: data admissao formato | Ao editar a ficha de funcionarios cadastrados com data de admissao no formato "1990-10-10", ocorre erro de formatacao pois o sistema so aceita "10/10/1990" - encontrar solucao (ex: aceitar/normalizar ambos os formatos) | Alta | Concluido (v1.69.0) |
+| Validacao sem perder dados (CRITICO) | MUITO IMPORTANTE: em todos os menus, opcoes e acoes, se alguma informacao estiver errada ou com erro de formatacao, o sistema deve avisar o usuario na mesma pagina SEM perder as informacoes digitadas (nada de reenvio que zera o formulario). O sistema tambem deve INDICAR qual campo tem erro (ex: formato de data invalida - avisar e, se possivel, destacar o campo com cor diferente, visivel para o usuario final) | Alta | Pendente |
 ---
 
 ## Referencias
 - README.md: Visao geral do projeto
 - CHANGELOG.md: Historico de versoes
 - templates/: Templates de NRs existentes
-| Menu: Vencimentos da Frota | Link "Vencimentos da Frota" no menu da Frota (alem do card do painel) | Media | Concluido (v1.68.0) |
-| Card: Abastecimentos sem NF | Card no painel contando abastecimentos ativos sem nota fiscal anexada | Media | Concluido (v1.68.0) |
-| Card: Abastecimentos sem valor | Card no painel contando abastecimentos ativos sem valor preenchido | Media | Concluido (v1.68.0) |
-| Seletor de cards em tabela | Modal de escolha de cards do painel virou tabela com rolagem | Media | Concluido (v1.68.0) |
-| Usuarios: menu de acoes | Coluna Acoes de /usuarios virou um so botao com menu suspenso (senha/permissões abrem paineis) | Media | Concluido (v1.68.0) |
-| Permissoes recolhidas | Cards de permissões por papel e por setor começam recolhidos | Media | Concluido (v1.68.0) |
