@@ -1134,6 +1134,23 @@ class FrotaRepository:
             out.append(d)
         return out, total
 
+    def count_abast_sem_nf(self) -> int:
+        """Abastecimentos ativos (nao bloqueados) sem nota fiscal anexada (v1.68.0)."""
+        row = self._get_conn().execute(
+            "SELECT COUNT(*) FROM frota_abastecimentos a "
+            "WHERE COALESCE(a.status, '') != 'bloqueada' "
+            "AND NOT EXISTS (SELECT 1 FROM frota_abast_nfs n WHERE n.abastecimento_id = a.id)"
+        ).fetchone()
+        return int(row[0] or 0)
+
+    def count_abast_sem_valor(self) -> int:
+        """Abastecimentos ativos (nao bloqueados) sem valor preenchido (v1.68.0)."""
+        row = self._get_conn().execute(
+            "SELECT COUNT(*) FROM frota_abastecimentos a "
+            "WHERE COALESCE(a.status, '') != 'bloqueada' AND a.valor IS NULL"
+        ).fetchone()
+        return int(row[0] or 0)
+
     def tem_nf(self, abast_ids: List[int]) -> Dict[int, Optional[str]]:
         """Mapa abastecimento_id -> numero da NF (2.35.2) ou None."""
         if not abast_ids:

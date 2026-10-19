@@ -85,7 +85,7 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
     # grupos (2.30.1): titulo=None vira link direto no topo da barra.
     _GRUPOS_NAV = [
         (None, [("Dashboard", "/", "dashboard")]),
-        ("__botao__", [("Gest\u00e3o de Frota", "/frota", "frota")]),
+        ("__botao__", [("Gest\u00e3o de Frota", "/frota", "frota"), ("Vencimentos da Frota", "/frota/vencimentos", "frota")]),
         ("Seguran\u00e7a", [
             ("Certificados", "/certificados", "certificados"),
             ("Emiss\u00e3o em Lote", "/emissao-lote", "certificados"),
@@ -314,7 +314,10 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
                 _, n_veic = fr.list_veiculos(limit=1)
                 frota_stats = {"veiculos": n_veic,
                                "movs_abertas": fr.count_movs_abertas(),
-                               "custo_mes": fr.custo_mes()}
+                               "custo_mes": fr.custo_mes(),
+            "sem_nf": fr.count_abast_sem_nf(),
+            "sem_valor": fr.count_abast_sem_valor(),
+        }
             except Exception:
                 frota_stats = None
         # cards modulares (v1.63.1): usuario escolhe quais cards ver
@@ -352,6 +355,8 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
             "venc30": bool(setor_usuario == "seguranca" and venc_resumo),
             "veiculos": bool(frota_stats), "saidas": bool(frota_stats),
             "custo": bool(frota_stats),
+         "sem_nf": bool(frota_stats),
+            "sem_valor": bool(frota_stats),
         }
         if _prefs:
             for _k in cards:
@@ -369,6 +374,8 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
             ("veiculos", "Ve\u00edculos na frota"),
             ("saidas", "Sa\u00eddas em aberto"),
             ("custo", "Custo de abastecimento (m\u00eas)"),
+            ("sem_nf", "Abastecimentos sem nota fiscal"),
+            ("sem_valor", "Abastecimentos sem valor"),
         ]
         return templates.TemplateResponse(
             request=request, name="dashboard.html",
@@ -387,7 +394,9 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
                 venc_resumo=venc_resumo,
                 setor_usuario=setor_usuario,
                 cards=cards,
-                cards_opcoes=cards_opcoes, cert30=cert30, frotavenc=frotavenc))
+                cards_opcoes=cards_opcoes, cert30=cert30, frotavenc=frotavenc,
+                             sem_nf=(frota_stats.get("sem_nf", 0) if frota_stats else 0),
+                             sem_valor=(frota_stats.get("sem_valor", 0) if frota_stats else 0)))
 
     @app.post("/perfil/cards")
     def perfil_cards(request: Request, card: list = Form([]),
@@ -395,7 +404,8 @@ def create_app(db_path=None, secret_file: Path = None) -> FastAPI:
         """Salva quais cards do dashboard o usuario quer ver (v1.63.1)."""
         import json as _json
         chaves = ("historico", "funcionarios", "nrs", "cert30", "frotavenc", "venc30",
-                  "veiculos", "saidas", "custo")
+                  "veiculos", "saidas", "custo",
+                  "sem_nf", "sem_valor")
         prefs = {k: (k in card) for k in chaves}
         users.set_cards_prefs(user["id"], _json.dumps(prefs))
         try:

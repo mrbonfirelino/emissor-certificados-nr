@@ -19,9 +19,16 @@
   <div style="background:#fff; border-radius:10px; padding:18px 22px; min-width:320px; max-width:92vw; box-shadow:0 10px 30px rgba(0,0,0,.25);">
     <h2 style="margin-top:0;">Escolher cards do painel</h2>
     <form method="post" action="/perfil/cards" style="display:flex; flex-direction:column; gap:8px;">
-      {% for chave, rotulo in cards_opcoes %}
-      <label style="font-weight:normal;"><input type="checkbox" name="card" value="{{ chave }}" {{ 'checked' if cards[chave] else '' }}> {{ rotulo }}</label>
-      {% endfor %}
+      <div style="max-height:46vh; overflow:auto; border:1px solid #e3e8ef; border-radius:8px;">
+        <table style="width:100%; border-collapse:collapse;">
+          {% for chave, rotulo in cards_opcoes %}
+          <tr>
+            <td style="padding:6px 10px; width:34px;"><input type="checkbox" name="card" value="{{ chave }}" {{ 'checked' if cards[chave] else '' }}></td>
+            <td style="padding:6px 10px;">{{ rotulo }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+      </div>
       <div style="display:flex; gap:8px; margin-top:10px;">
         <button type="submit" class="btn verde">Salvar</button>
         <button type="button" class="btn cinza" onclick="document.getElementById('modal-cards').style.display='none'">Cancelar</button>
@@ -58,6 +65,8 @@
   {% if cards.veiculos %}<a class="stat-card" href="/frota"><span class="num">{{ frota_stats.veiculos }}</span><span class="rot">Veículos na frota</span></a>{% endif %}
   {% if cards.saidas %}<a class="stat-card" href="/frota"><span class="num">{{ frota_stats.movs_abertas }}</span><span class="rot">Saídas em aberto</span></a>{% endif %}
   {% if cards.custo %}<a class="stat-card" href="/frota/abastecimentos"><span class="num num-brl" data-valor="{{ frota_stats.custo_mes or 0 }}">{{ brl(frota_stats.custo_mes) }}</span><span class="rot">Custo de abastecimento (mês)</span></a>{% endif %}
+  {% if cards.sem_nf %}<a class="stat-card" href="/frota/abastecimentos"><span class="num">{{ sem_nf }}</span><span class="rot">Abastecimentos sem nota fiscal</span></a>{% endif %}
+  {% if cards.sem_valor %}<a class="stat-card" href="/frota/abastecimentos"><span class="num">{{ sem_valor }}</span><span class="rot">Abastecimentos sem valor</span></a>{% endif %}
   {% endif %}
 </div>
 

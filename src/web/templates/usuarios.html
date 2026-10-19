@@ -57,22 +57,28 @@
         {% if u.ativo %}<span class="badge b-verde">Ativo</span>{% else %}<span class="badge b-cinza">Bloqueado</span>{% endif %}
         {% if u.must_change %}<span class="badge b-amarelo">troca de senha pendente</span>{% endif %}
       </td>
-      <td class="acoes">
+      <td class="acoes" style="position:relative;">
+        <details class="menu-acoes">
+          <summary class="btn cinza">Ações ▾</summary>
+          <div class="menu-acoes-lista">
         {% if u.ativo and u.username != user.username %}
-        <form method="post" action="/usuarios/{{ u.id }}/bloquear">
-          <button class="cinza" onclick="return confirm('Bloquear {{ u.username }}?')">Bloquear</button>
-        </form>
+            <form method="post" action="/usuarios/{{ u.id }}/bloquear">
+              <button class="cinza" onclick="return confirm('Bloquear {{ u.username }}?')">Bloquear</button>
+            </form>
         {% elif not u.ativo %}
-        <form method="post" action="/usuarios/{{ u.id }}/ativar">
-          <button class="verde">Ativar</button>
-        </form>
+            <form method="post" action="/usuarios/{{ u.id }}/ativar">
+              <button class="verde">Ativar</button>
+            </form>
         {% endif %}
-        <form method="post" action="/usuarios/{{ u.id }}/reset">
-          <button>Resetar senha</button>
-        </form>
-        <details class="opcoes">
-          <summary class="btn cinza">Definir senha</summary>
-          <form method="post" action="/usuarios/{{ u.id }}/senha" style="margin-top:8px; display:grid; gap:8px; max-width:280px;">
+            <form method="post" action="/usuarios/{{ u.id }}/reset">
+              <button>Resetar senha</button>
+            </form>
+            <button type="button" class="btn cinza" onclick="_abrirPainel('painel-senha-{{ u.id }}')">Definir senha</button>
+            <button type="button" class="btn cinza" onclick="_abrirPainel('painel-perm-{{ u.id }}')">Permissões</button>
+          </div>
+        </details>
+        <div class="painel-acoes" id="painel-senha-{{ u.id }}" style="display:none; margin-top:8px; border:1px solid #e3e8ef; border-radius:8px; padding:10px; background:#fff;">
+          <form method="post" action="/usuarios/{{ u.id }}/senha" style="display:grid; gap:8px; max-width:280px;">
             <div class="campo"><label>Nova senha (mín. 6)</label>
               <div style="display:flex; gap:6px;">
                 <input type="password" id="nova-{{ u.id }}" name="nova" required minlength="6" style="flex:1;">
@@ -85,10 +91,9 @@
               </div></div>
             <button class="verde">Salvar senha</button>
           </form>
-        </details>
-        <details class="opcoes">
-          <summary class="btn cinza">Permissões</summary>
-          <form method="post" action="/usuarios/{{ u.id }}/permissoes" style="margin-top:8px; display:grid; gap:6px; max-width:320px;">
+        </div>
+        <div class="painel-acoes" id="painel-perm-{{ u.id }}" style="display:none; margin-top:8px; border:1px solid #e3e8ef; border-radius:8px; padding:10px; background:#fff;">
+          <form method="post" action="/usuarios/{{ u.id }}/permissoes" style="display:grid; gap:6px; max-width:320px;">
             <p class="muted" style="margin:0 0 4px;">Exceção individual sobre o papel {{ papeis[u.papel] }}:</p>
             {% for modulo, label in perm_modulos %}
             {% set exc = perm_excecoes.get(u.id, {}).get(modulo, '') %}
@@ -103,15 +108,42 @@
             {% endfor %}
             <button class="verde" style="margin-top:6px;">Salvar exceções</button>
           </form>
-        </details>
+        </div>
       </td>
     </tr>
     {% endfor %}
   </table>
 </div>
 
+<style>
+.menu-acoes { position: relative; display: inline-block; }
+.menu-acoes > summary { list-style: none; cursor: pointer; }
+.menu-acoes[open] > summary::after { content: ""; }
+.menu-acoes-lista { position: absolute; right: 0; top: 100%; z-index: 40; min-width: 170px;
+  background: #fff; border: 1px solid #e3e8ef; border-radius: 8px; box-shadow: 0 8px 22px rgba(0,0,0,.15);
+  padding: 6px; display: grid; gap: 4px; }
+.menu-acoes-lista form { margin: 0; }
+.menu-acoes-lista button { width: 100%; text-align: left; }
+</style>
+<script>
+function _fecharMenusAcoes(ev) {
+  document.querySelectorAll(".menu-acoes[open]").forEach(function (d) {
+    if (!d.contains(ev.target)) d.removeAttribute("open");
+  });
+}
+document.addEventListener("click", _fecharMenusAcoes);
+function _abrirPainel(id) {
+  document.querySelectorAll(".menu-acoes[open]").forEach(function (d) { d.removeAttribute("open"); });
+  var el = document.getElementById(id);
+  if (!el) return;
+  var vis = el.style.display !== "none";
+  document.querySelectorAll(".painel-acoes").forEach(function (p) { p.style.display = "none"; });
+  el.style.display = vis ? "none" : "block";
+}
+</script>
+
 <div class="card">
-  <details class="card" style="background:none; border:none; padding:0;" open>
+  <details class="card" style="background:none; border:none; padding:0;">
     <summary><b>Permissões por papel</b> — ajuste o acesso de cada papel por módulo (aplica na hora, sem re-login).</summary>
     <form method="post" action="/usuarios/permissoes" style="margin-top:10px;">
       <div style="max-width:640px; overflow-x:auto;">
@@ -153,7 +185,7 @@
   <h2>Permissões por setor</h2>
   <p class="sub">Define, por setor, quais módulos o grupo acessa. Sem regra marcada, vale o acesso do papel do usuário. Admin nunca é restringido.</p>
   {% for s in perm_setores %}
-  <details class="opcoes" {% if loop.first %}open{% endif %}>
+  <details class="opcoes">
     <summary><b>{{ s.label }}</b>{% if s.regras %} &mdash; {{ s.regras | length }} regra(s){% endif %}</summary>
     <form method="post" action="/usuarios/permissoes-setor" style="margin-top:8px;">
       <input type="hidden" name="setor" value="{{ s.setor }}">

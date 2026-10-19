@@ -938,21 +938,21 @@ CLT – Artigo 462, § 1º - Em caso de dano causado pelo empregado, o desconto 
 |------|-----------|------------|--------|
 | Reports automaticos por e-mail | Criar conta de e-mail para o sistema e enviar reports de forma automatica e periodica (mensal, trimestral, semestral etc.) | Alta | Concluido (v1.65.0) - campos criados, envio futuro |
 | Romaneios: refazer pagina | Refazer a pagina de Romaneio por completo, incluindo os textos (corrigir erros de formatacao ANSI) | Alta | Concluido (v1.65.0) - encoding das paginas corrigido |
-| Notificacao interna | Adicionar "notificacao" interna dentro da interface do site | Media | Pendente | Concluido (v1.65.1) |
-| Escolher cards em popup | Trocar o "Escolher cards do painel" de menu recolhivel por um pequeno botao de engrenagem que abre um popup para o usuario escolher os itens, deixando a interface principal menos poluida | Media | Pendente | Concluido (v1.65.1) |
-| Card vencimentos em vermelho | Deixar o fundo do stat-card "Vencimentos em 30 dias" em vermelho ou cor de forte atencao, garantindo contraste entre fundo e texto para nao prejudicar a legibilidade | Media | Pendente | Concluido (v1.65.1) |
-| /Vencimentos: faixa 8-30 dias | Na pagina "/Vencimentos", ajustar o painel para mostrar "Vencem em 8 a 30 dias" | Media | Pendente | Concluido (v1.65.1) |
-| /frota/custos: ordenar grafico | O grafico "custos por veiculo x tipo de combustivel" deve sempre mostrar os veiculos que mais gastam em cima (independente do tipo de combustivel) e os que menos gastam em baixo | Media | Pendente | Concluido (v1.65.1) |
+| Notificacao interna | Adicionar "notificacao" interna dentro da interface do site | Media | Concluido (v1.65.1) |
+| Escolher cards em popup | Trocar o "Escolher cards do painel" de menu recolhivel por um pequeno botao de engrenagem que abre um popup para o usuario escolher os itens, deixando a interface principal menos poluida | Media | Concluido (v1.65.1) |
+| Card vencimentos em vermelho | Deixar o fundo do stat-card "Vencimentos em 30 dias" em vermelho ou cor de forte atencao, garantindo contraste entre fundo e texto para nao prejudicar a legibilidade | Media | Concluido (v1.65.1) |
+| /Vencimentos: faixa 8-30 dias | Na pagina "/Vencimentos", ajustar o painel para mostrar "Vencem em 8 a 30 dias" | Media | Concluido (v1.65.1) |
+| /frota/custos: ordenar grafico | O grafico "custos por veiculo x tipo de combustivel" deve sempre mostrar os veiculos que mais gastam em cima (independente do tipo de combustivel) e os que menos gastam em baixo | Media | Concluido (v1.65.1) |
 | /frota/abastecimentos: bloqueio/exclusao | O item mais recente nao pode ter opcao de bloquear, apenas excluir; bloqueio serve apenas quando nao ha abastecimento mais recente. Verificar se o excluir devolve o numero serial ao contador | Alta | Ja implementado (verificado v1.65.0) |
 | /certificados: NR reseta funcionario | Ao escolher um funcionario e alterar a NR, o sistema diz que falta selecionar funcionario (trata como vazio) - corrigir. Aumentar o tamanho do campo "Descricao do treinamento" | Alta | Concluido (v1.65.0) |
 | Lista de presenca ainda falha | Ainda nao foi possivel gerar a lista de presenca: aparece "carregando" e ocorre a falha do Office recusando converter para PDF ("O Office recusou a exportacao para PDF. Causas comuns: arquivo aberto em outro programa, arquivo bloqueado (modo protegido) ou PDF de destino sem permissao de escrita") | Alta | Concluido (v1.65.0) - fallback de exportacao PDF |
 | ASO na ficha do funcionario | Adicionar informacoes de ASO na ficha do funcionario (tipo mais recente, datas de vencimento etc.); adicionar atalho para gerar ASO de funcionario sem ASO cadastrada e atalho para atualizar ASO vencida | Alta | Concluido (v1.65.0) |
-| /frota/abastecimentos: filtro pendentes | Adicionar opcao para filtrar abastecimentos nao preenchidos ainda (sem Litros nem valor) | Media | Pendente | Concluido (v1.66.0) |
+| /frota/abastecimentos: filtro pendentes | Adicionar opcao para filtrar abastecimentos nao preenchidos ainda (sem Litros nem valor) | Media | Concluido (v1.66.0) |
 | Frota: Arla sem autorizacao | Definir procedimento para veiculos a diesel que precisam abastecer Arla mesmo quando a autorizacao so tem diesel (motorista pode nao saber que falta Arla etc.) | Media | Concluido (v1.66.1) - dica no form; edicao permite trocar combustivel |
 | /frota/custos: borda nos graficos | Adicionar borda de 1px em volta dos graficos para melhorar o contraste com a pagina | Baixa | Concluido (v1.66.1) |
-| Ficha veiculo: arquivar laudo | Adicionar opcao de "Arquivar" um Laudo (CRLV etc.); documentos arquivados ficam ocultos em um submenu acessivel para conferencia | Media | Pendente | Concluido (v1.66.0) |
-| Ficha veiculo: bloquear veiculo | Adicionar opcao para bloquear o veiculo (ex: em caso de manutencao) | Media | Pendente | Concluido (v1.66.0) |
-| Ficha veiculo: arquivar veiculo | Adicionar opcao de "Arquivar" veiculo devolvido a locadora; dados de custos/abastecimentos continuam salvos, mas nao podera criar Solicitacao de abastecimento. Na pagina "/frota", adicionar filtro entre veiculos arquivados ou nao, mostrando por padrao apenas os nao arquivados | Alta | Pendente | Concluido (v1.66.0) |
+| Ficha veiculo: arquivar laudo | Adicionar opcao de "Arquivar" um Laudo (CRLV etc.); documentos arquivados ficam ocultos em um submenu acessivel para conferencia | Media | Concluido (v1.66.0) |
+| Ficha veiculo: bloquear veiculo | Adicionar opcao para bloquear o veiculo (ex: em caso de manutencao) | Media | Concluido (v1.66.0) |
+| Ficha veiculo: arquivar veiculo | Adicionar opcao de "Arquivar" veiculo devolvido a locadora; dados de custos/abastecimentos continuam salvos, mas nao podera criar Solicitacao de abastecimento. Na pagina "/frota", adicionar filtro entre veiculos arquivados ou nao, mostrando por padrao apenas os nao arquivados | Alta | Concluido (v1.66.0) |
 | Card vencimentos: animacao | Na pagina inicial, adicionar animacao no Card de certificados que vencem em 30 dias (piscar vermelho ou similar) quando o numero for maior que 0 | Media | Concluido (v1.66.1) |
 | Veiculo arquivado com badge errado | Veiculo arquivado ainda aparece com badge "Disponivel" - nao pode acontecer; corrigir badge para refletir status arquivado | Alta | Concluido (v1.67.0) |
 | Veiculo em viagem nao pode ser arquivado | Bloquear arquivamento de veiculo que ainda esteja em viagem | Alta | Concluido (v1.67.0) |
@@ -968,3 +968,9 @@ CLT – Artigo 462, § 1º - Em caso de dano causado pelo empregado, o desconto 
 - README.md: Visao geral do projeto
 - CHANGELOG.md: Historico de versoes
 - templates/: Templates de NRs existentes
+| Menu: Vencimentos da Frota | Link "Vencimentos da Frota" no menu da Frota (alem do card do painel) | Media | Concluido (v1.68.0) |
+| Card: Abastecimentos sem NF | Card no painel contando abastecimentos ativos sem nota fiscal anexada | Media | Concluido (v1.68.0) |
+| Card: Abastecimentos sem valor | Card no painel contando abastecimentos ativos sem valor preenchido | Media | Concluido (v1.68.0) |
+| Seletor de cards em tabela | Modal de escolha de cards do painel virou tabela com rolagem | Media | Concluido (v1.68.0) |
+| Usuarios: menu de acoes | Coluna Acoes de /usuarios virou um so botao com menu suspenso (senha/permissões abrem paineis) | Media | Concluido (v1.68.0) |
+| Permissoes recolhidas | Cards de permissões por papel e por setor começam recolhidos | Media | Concluido (v1.68.0) |
