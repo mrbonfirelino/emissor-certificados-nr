@@ -4,6 +4,12 @@
 <div class="card">
   <h1>{% if editar %}Editar {{ aso.aso_number }}{% else %}Novo ASO{% endif %}</h1>
 
+  {% if form_erros %}
+  <div class="msg erro" style="margin-bottom:10px;">
+    {% for e in form_erros %}<div>&bull; {{ e }}</div>{% endfor %}
+  </div>
+  {% endif %}
+
   {% if erro %}
   <p class="msg erro">{{ erro }}</p>
   {% else %}
@@ -16,7 +22,7 @@
       {% else %}
       <select id="funcionario_id" name="funcionario_id" required>
         {% for f in funcionarios %}
-        <option value="{{ f.id }}" {% if (editar and aso.employee_id == f.id) or (not editar and sel_id == f.id) %}selected{% endif %}>{{ f.nome }}{% if f.cpf %} — {{ f.cpf }}{% endif %}</option>
+        <option value="{{ f.id }}" {% if (editar and aso.employee_id == f.id) or (not editar and sel_id == f.id) or (form_salvo and (form_salvo.get('funcionario_id') | int) == f.id) %}selected{% endif %}>{{ f.nome }}{% if f.cpf %} — {{ f.cpf }}{% endif %}</option>
         {% endfor %}
       </select>
       {% endif %}
@@ -24,16 +30,16 @@
     <div class="campo">
       <label for="tipo_aso">Tipo de ASO *</label>
       <select id="tipo_aso" name="tipo_aso" required>
-        {% for t in tipos %}<option value="{{ t }}" {% if editar and aso.tipo_aso == t %}selected{% endif %}>{{ t }}</option>{% endfor %}
+        {% for t in tipos %}<option value="{{ t }}" {% if (editar and aso.tipo_aso == t) or (form_salvo and form_salvo.get('tipo_aso') == t) %}selected{% endif %}>{{ t }}</option>{% endfor %}
       </select>
     </div>
     <div class="campo">
       <label for="data_exame">Data do exame *</label>
-      <input type="text" id="data_exame" name="data_exame" class="js-data" value="{{ exame_br if editar else hoje }}" placeholder="dd/mm/aaaa" required>
+      <input type="text" id="data_exame" name="data_exame" class="js-data" value="{{ form_salvo.get('data_exame') if form_salvo else (exame_br if editar else hoje) }}" placeholder="dd/mm/aaaa" required>
     </div>
     <div class="campo">
       <label for="validade_meses">Validade (meses)</label>
-      <input type="number" id="validade_meses" name="validade_meses" value="{{ aso.validade_meses if editar else 12 }}" min="1" max="120">
+      <input type="number" id="validade_meses" name="validade_meses" value="{{ form_salvo.get('validade_meses') if form_salvo else (aso.validade_meses if editar else 12) }}" min="1" max="120">
     </div>
     <div style="grid-column:1/-1; margin-top:8px;">
       <button type="submit" class="verde">{% if editar %}Salvar alterações{% else %}Cadastrar ASO{% endif %}</button>

@@ -1950,6 +1950,7 @@ def register(app, deps):
                               descricao: str = Form(""),
                               emissao: str = Form(""),
                               validade: str = Form(""),
+                              ano: str = Form(""),
                               arquivo: UploadFile = File(None),
                               user: dict = auth.require_permission("frota")):
         red = _bloqueio(request, user, f"/frota/{veiculo_id}")
@@ -1965,9 +1966,13 @@ def register(app, deps):
             return RedirectResponse(f"/frota/{veiculo_id}", status_code=303)
         data = await arquivo.read()
         try:
+            try:
+                ano_i = int(str(ano or "").strip() or 0)
+            except ValueError:
+                ano_i = 0
             _repo().add_laudo(veiculo_id, tipo,
                               Path(arquivo.filename).name, data,
-                              data_emi, data_val, descricao)
+                              data_emi, data_val, descricao, ano_i)
         except ValueError as e:
             flash(request, erro=str(e))
             return RedirectResponse(f"/frota/{veiculo_id}", status_code=303)

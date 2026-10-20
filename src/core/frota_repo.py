@@ -390,6 +390,11 @@ class FrotaRepository:
         if "arquivado" not in laudos_t:
             conn.execute(
                 "ALTER TABLE frota_veic_laudos ADD COLUMN arquivado INTEGER DEFAULT 0")
+            try:
+                conn.execute("SELECT ano FROM frota_veic_laudos LIMIT 1")
+            except sqlite3.OperationalError:
+                conn.execute(
+                    "ALTER TABLE frota_veic_laudos ADD COLUMN ano INTEGER")
         # v1.53.0: backfill — extras com JSON gravado mas extras_total NULL
         # (registros criados antes da v1.48 não entravam nos relatórios de custo)
         for r in conn.execute(
@@ -837,7 +842,7 @@ class FrotaRepository:
 
     def add_laudo(self, veiculo_id: int, tipo: str, filename: str,
                   data: bytes, data_emissao: str, data_validade: str,
-                  descricao: str = "") -> int:
+                  descricao: str = "", ano: int = 0) -> int:
         if tipo not in dict(TIPOS_LAUDO):
             raise ValueError("Tipo de laudo inválido.")
         if not data_validade:
@@ -849,10 +854,11 @@ class FrotaRepository:
             cur = conn.execute(
                 "INSERT INTO frota_veic_laudos (veiculo_id, tipo, descricao,"
                 " filename, tipo_arquivo, tamanho, dados, data_emissao,"
-                " data_validade) VALUES (?,?,?,?,?,?,?,?,?)",
+                " data_validade, ano) VALUES (?,?,?,?,?,?,?,?,?,?)",
                 (veiculo_id, tipo, (descricao or "").strip() or None,
                  Path(filename).name, tipo_arq, len(data),
-                 sqlite3.Binary(data), data_emissao or None, data_validade))
+                 sqlite3.Binary(data), data_emissao or None, data_validade,
+                 int(ano or 0)))
             return cur.lastrowid
 
     def list_laudos(self, veiculo_id: int) -> List[dict]:
@@ -860,7 +866,7 @@ class FrotaRepository:
             rows = conn.execute(
                 "SELECT id, tipo, descricao, filename, tipo_arquivo, tamanho,"
                 " data_emissao, data_validade, created_at,"
-                " COALESCE(arquivado, 0) AS arquivado"
+                " COALESCE(arquivado, 0) AS arquivado, COALESCE(ano, 0) AS ano"
                 " FROM frota_veic_laudos WHERE veiculo_id=?"
                 " ORDER BY data_validade", (veiculo_id,)).fetchall()
         hoje = date.today()

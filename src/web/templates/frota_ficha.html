@@ -155,7 +155,7 @@
     <tbody>
     {% for l in laudos %}
       <tr>
-        <td>{{ l.tipo_label }}</td>
+        <td>{{ l.tipo_label }}{% if l.ano %} <span class="badge b-cinza">ano {{ l.ano }}</span>{% endif %}</td>
         <td>{{ l.descricao or '—' }}</td>
         <td><a href="/frota/{{ v.id }}/laudos/{{ l.id }}/download">{{ l.filename }}</a></td>
         <td>{{ br(l.data_emissao) }}</td>
@@ -179,7 +179,7 @@
   <details class="opcoes" style="margin-top:8px;">
     <summary class="btn cinza">Laudos arquivados ({{ laudos_arquivados|length }})</summary>
     <table style="margin-top:10px;">
-      <thead><tr><th>Tipo</th><th>' + Descrição + '</th><th>Arquivo</th><th>Validade</th><th></th></tr></thead>
+      <thead><tr><th>Tipo</th><th>Descrição</th><th>Arquivo</th><th>Validade</th><th></th></tr></thead>
       <tbody>
       {% for l in laudos_arquivados %}
         <tr>
@@ -221,6 +221,10 @@
       <div class="campo">
         <label for="l-validade">Validade *</label>
         <input type="text" id="l-validade" name="validade" class="js-data" required placeholder="dd/mm/aaaa">
+      </div>
+      <div class="campo">
+        <label for="l-ano">Ano (CRLV)</label>
+        <input type="text" id="l-ano" name="ano" inputmode="numeric" placeholder="Ex.: 2026">
       </div>
       <div class="campo">
         <label for="l-arquivo">Arquivo *</label>

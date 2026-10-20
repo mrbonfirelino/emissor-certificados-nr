@@ -348,9 +348,13 @@ def register(app, deps: dict):
     @app.get("/funcionarios/novo")
     def novo_form(request: Request,
                   user: dict = auth.require_permission("funcionarios")):
+        salvo = request.session.pop("func_form", None) or {}
+        fvals = salvo.get("campos", {}) if isinstance(salvo, dict) else {}
+        ferros = salvo.get("erros", []) if isinstance(salvo, dict) else []
         return templates.TemplateResponse(
             request=request, name="funcionario_form.html",
             context=ctx(request, emp=None, tipos=_TIPOS_SANGUINEOS,
+                        form_salvo=fvals, form_erros=ferros,
                         pode_escrever=pode_escrever(user["papel"], "funcionarios")))
 
     @app.post("/funcionarios/novo")
@@ -367,7 +371,9 @@ def register(app, deps: dict):
         if isinstance(foto_res, str):
             erros.append(foto_res)
         if erros:
-            flash(request, erro=" ".join(erros))
+            request.session["func_form"] = {
+                "campos": {k: v for k, v in form.items() if isinstance(v, str)},
+                "erros": erros}
             return RedirectResponse("/funcionarios/novo", status_code=303)
         er = EmployeeRepository()
         nasc = validar_data(c["nascimento"]) if c["nascimento"] else None
@@ -440,9 +446,13 @@ def register(app, deps: dict):
         if emp is None:
             flash(request, erro="Funcionário não encontrado.")
             return RedirectResponse("/funcionarios", status_code=303)
+        salvo = request.session.pop("func_form", None) or {}
+        fvals = salvo.get("campos", {}) if isinstance(salvo, dict) else {}
+        ferros = salvo.get("erros", []) if isinstance(salvo, dict) else []
         return templates.TemplateResponse(
             request=request, name="funcionario_form.html",
             context=ctx(request, emp=emp, tipos=_TIPOS_SANGUINEOS,
+                        form_salvo=fvals, form_erros=ferros,
                         pode_escrever=pode_escrever(user["papel"], "funcionarios")))
 
     @app.post("/funcionarios/{emp_id}/editar")
@@ -464,7 +474,9 @@ def register(app, deps: dict):
         if isinstance(foto_res, str):
             erros.append(foto_res)
         if erros:
-            flash(request, erro=" ".join(erros))
+            request.session["func_form"] = {
+                "campos": {k: v for k, v in form.items() if isinstance(v, str)},
+                "erros": erros}
             return RedirectResponse(f"/funcionarios/{emp_id}/editar", status_code=303)
         nasc = validar_data(c["nascimento"]) if c["nascimento"] else None
         adm = validar_data(c["admissao"]) if c["admissao"] else None

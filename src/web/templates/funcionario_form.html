@@ -16,47 +16,52 @@
     {% endif %}
   </div>
 
+  {% if form_erros %}
+  <div class="erro" style="margin-bottom:12px;">
+    {% for e in form_erros %}<div>&bull; {{ e }}</div>{% endfor %}
+  </div>
+  {% endif %}
   {% if pode_escrever %}
   <form method="post" enctype="multipart/form-data">
     <div class="form-grid">
       <div class="campo largo">
         <label for="nome">Nome completo *</label>
-        <input type="text" id="nome" name="nome" value="{{ emp.nome if emp else '' }}" required>
+        <input type="text" id="nome" name="nome" value="{{ form_salvo.get('nome') if form_salvo else (emp.nome if emp else '' ) }}" required>
       </div>
       <div class="campo">
         <label for="cpf">CPF</label>
-        <input type="text" id="cpf" name="cpf" value="{{ emp.cpf or '' if emp else '' }}" placeholder="000.000.000-00" maxlength="14" inputmode="numeric" autocomplete="off">
+        <input type="text" id="cpf" name="cpf" value="{{ form_salvo.get('cpf') if form_salvo else (emp.cpf or '' if emp else '' ) }}" placeholder="000.000.000-00" maxlength="14" inputmode="numeric" autocomplete="off">
       </div>
       <div class="campo">
         <label for="funcao">Função</label>
-        <input type="text" id="funcao" name="funcao" value="{{ emp.funcao or '' if emp else '' }}">
+        <input type="text" id="funcao" name="funcao" value="{{ form_salvo.get('funcao') if form_salvo else (emp.funcao or '' if emp else '' ) }}">
       </div>
       <div class="campo">
         <label for="telefone">Telefone</label>
-        <input type="text" id="telefone" name="telefone" class="js-tel" value="{{ emp.telefone or '' if emp else '' }}" placeholder="11987654321" >
+        <input type="text" id="telefone" name="telefone" class="js-tel" value="{{ form_salvo.get('telefone') if form_salvo else (emp.telefone or '' if emp else '' ) }}" placeholder="11987654321" >
       </div>
       <div class="campo">
         <label for="nascimento">Nascimento</label>
-        <input type="text" id="nascimento" name="nascimento" class="js-data" value="{{ (emp.data_nascimento or '') | databr if emp else '' }}" placeholder="dd/mm/aaaa">
+        <input type="text" id="nascimento" name="nascimento" class="js-data" value="{{ form_salvo.get('nascimento') if form_salvo else ((emp.data_nascimento or '') | databr if emp else '' ) }}" placeholder="dd/mm/aaaa">
       </div>
       <div class="campo">
         <label for="admissao">Admissão</label>
-        <input type="text" id="admissao" name="admissao" class="js-data" value="{{ (emp.data_admissao or '') | databr if emp else '' }}" placeholder="dd/mm/aaaa">
+        <input type="text" id="admissao" name="admissao" class="js-data" value="{{ form_salvo.get('admissao') if form_salvo else ((emp.data_admissao or '') | databr if emp else '' ) }}" placeholder="dd/mm/aaaa">
       </div>
       <div class="campo">
         <label for="tipo">Tipo sanguíneo</label>
         <select id="tipo" name="tipo">
           <option value="">—</option>
-          {% for t in tipos %}<option value="{{ t }}" {{ 'selected' if emp and emp.tipo_sanguineo == t else '' }}>{{ t }}</option>{% endfor %}
+          {% for t in tipos %}<option value="{{ t }}" {{ 'selected' if (form_salvo and form_salvo.get('tipo') == t) or (not form_salvo and emp and emp.tipo_sanguineo == t) else '' }}>{{ t }}</option>{% endfor %}
         </select>
       </div>
       <div class="campo">
         <label for="ctps">Registro CTPS</label>
-        <input type="text" id="ctps" name="ctps" value="{{ emp.registro_ctps or '' if emp else '' }}">
+        <input type="text" id="ctps" name="ctps" value="{{ form_salvo.get('ctps') if form_salvo else (emp.registro_ctps or '' if emp else '' ) }}">
       </div>
       <div class="campo">
         <label style="font-weight:600;">
-          <input type="checkbox" name="ear" style="width:auto;" {{ 'checked' if emp and emp.cnh_ear else '' }}>
+          <input type="checkbox" name="ear" style="width:auto;" {{ 'checked' if (form_salvo and form_salvo.get('ear') == 'on') or (not form_salvo and emp and emp.cnh_ear) else '' }}>
           Possui CNH com E.A.R. (Exerce Atividade Remunerada)
         </label>
       </div>

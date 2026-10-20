@@ -129,26 +129,31 @@ def register(app, deps) -> None:
         from src.core import network_sync
 
         aso_repo, er = _repos()
+
+        def _voltar(msg):
+            request.session["aso_form"] = {
+                "campos": {"funcionario_id": funcionario_id,
+                           "tipo_aso": tipo_aso, "data_exame": data_exame,
+                           "validade_meses": validade_meses},
+                "erros": [msg]}
+            return RedirectResponse("/aso/novo", status_code=303)
+
         employee = er.get_by_id(funcionario_id)
         if employee is None:
-            flash(request, erro="Selecione o funcionário.")
-            return RedirectResponse("/aso/novo", status_code=303)
+            return _voltar("Selecione o funcionário.")
         if tipo_aso not in ("Admissional", "Periódico", "Mudança de Função",
                             "Retorno ao Trabalho", "Demissional"):
-            flash(request, erro="Tipo de ASO inválido.")
-            return RedirectResponse("/aso/novo", status_code=303)
+            return _voltar("Tipo de ASO inválido.")
         try:
             meses = int(validade_meses or "12")
         except ValueError:
             meses = 0
         if not 1 <= meses <= 120:
-            flash(request, erro="Validade deve ser entre 1 e 120 meses.")
-            return RedirectResponse("/aso/novo", status_code=303)
+            return _voltar("Validade deve ser entre 1 e 120 meses.")
         data_iso = (date.today().isoformat() if not (data_exame or "").strip()
                     else _iso_br(data_exame))
         if data_iso is None:
-            flash(request, erro="Data do exame inválida (use dd/mm/aaaa).")
-            return RedirectResponse("/aso/novo", status_code=303)
+            return _voltar("Data do exame inválida (use dd/mm/aaaa).")
         numero = aso_repo.next_aso_number()
         pasta = get_asos_dir() / employee_folder_name(
             employee, er.get_all(limit=1000000))

@@ -13,7 +13,7 @@
 
   <form method="get" action="/cartoes/novo" class="filtros" style="margin-bottom:12px">
         <div class="campo"><label for="f-per">Ver por página</label><select id="f-per" name="per" onchange="this.form.submit()" style="max-width:90px;"><option value="10" {{ 'selected' if per == 10 else '' }}>10</option><option value="20" {{ 'selected' if per == 20 else '' }}>20</option><option value="25" {{ 'selected' if per == 25 else '' }}>25</option><option value="50" {{ 'selected' if per == 50 else '' }}>50</option></select></div>
-    <input type="hidden" name="sel" value="{{ sel_str }}">
+    <input type="hidden" id="sel-hidden" name="sel" value="{{ sel_str }}">
     <input type="search" name="busca" value="{{ busca }}" placeholder="Buscar por nome ou CPF...">
     <button class="btn" type="submit">Buscar</button>
     {% if busca %}<a class="btn cinza" href="/cartoes/novo{% if sel_str %}?sel={{ sel_str }}{% endif %}">Limpar</a>{% endif %}
@@ -68,6 +68,7 @@
       <button class="btn" type="submit" formaction="/cartoes/importar" formnovalidate>Importar lista</button>
     </details>
 
+    <p class="muted" id="sel-nomes" style="margin:4px 0"></p>
     {% if linhas %}
     <div style="max-height:480px; overflow-y:auto; border:1px solid #ddd; border-radius:6px">
     <table>
@@ -142,6 +143,44 @@
     }
   }
   document.addEventListener('DOMContentLoaded', aplicarCampos);
+  // 969: selecao estavel entre paginas
+  var SEL = [];
+  "{{ sel_str }}".split(",").forEach(function (s) { if (s) SEL.push(s); });
+  function atualizarSel() {
+    SEL.sort(function (a, b) { return (a | 0) - (b | 0); });
+    var hid = document.getElementById('sel-hidden');
+    if (hid) hid.value = SEL.join(',');
+    var box = document.getElementById('sel-nomes');
+    if (box) {
+      var vis = 0;
+      document.querySelectorAll('input[type=checkbox][name^="sel_"]').forEach(function (cb) {
+        var id = cb.name.slice(4);
+        if (SEL.indexOf(id) >= 0) vis++;
+      });
+      var ocultos = SEL.length - vis;
+      box.textContent = SEL.length
+        ? 'Selecionados: ' + SEL.length + (ocultos > 0 ? ' (' + ocultos + ' em outras página(s)/busca)' : '')
+        : '';
+    }
+    document.querySelectorAll('.paginacao a').forEach(function (a) {
+      var parts = a.getAttribute('href').split('?');
+      var params = (parts[1] || '').split('&').filter(function (p) {
+        return p && p.indexOf('sel=') !== 0;
+      });
+      if (SEL.length) params.push('sel=' + SEL.join(','));
+      a.setAttribute('href', parts[0] + (params.length ? '?' + params.join('&') : ''));
+    });
+  }
+  document.querySelectorAll('input[type=checkbox][name^="sel_"]').forEach(function (cb) {
+    cb.addEventListener('change', function () {
+      var id = cb.name.slice(4);
+      var i = SEL.indexOf(id);
+      if (cb.checked && i < 0) SEL.push(id);
+      if (!cb.checked && i >= 0) SEL.splice(i, 1);
+      atualizarSel();
+    });
+  });
+  document.addEventListener('DOMContentLoaded', atualizarSel);
   </script>
   <style>
   #preview-cartao { border: 2px dashed #9aa5b1; border-radius: 6px;

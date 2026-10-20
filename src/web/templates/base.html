@@ -237,7 +237,16 @@
   {% for grupo in nav %}
     {% if grupo.titulo == '__botao__' %}
       {% set grupo_ativo = grupo.itens | selectattr('ativo') | list %}
-      {% for item in grupo.itens %}<a href="{{ item.url }}" class="btn destaque-nav {{ 'ativo' if item.ativo else '' }}">{{ item.label }}</a>{% endfor %}
+      {% if grupo.itens %}
+      <div class="nav-grupo">
+        <a href="{{ grupo.itens[0].url }}" class="btn destaque-nav {{ 'ativo' if grupo.itens[0].ativo else '' }}">{{ grupo.itens[0].label }} ?</a>
+        {% if grupo.itens | length > 1 %}
+        <div class="submenu">
+          {% for item in grupo.itens %}<a href="{{ item.url }}" class="{{ 'ativo' if item.ativo else '' }}">{{ item.label }}</a>{% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
     {% elif grupo.titulo %}
       {% set grupo_ativo = grupo.itens | selectattr('ativo') | list %}
       <div class="nav-grupo">
