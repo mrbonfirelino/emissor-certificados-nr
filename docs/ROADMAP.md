@@ -14,6 +14,8 @@
 | Cartoes: modelo persistente | O tipo de cartao escolhido nao volta ao padrao ao trocar de pagina/buscar | Alta | Concluido (v1.70.1) |
 | Cartoes: busca acima da lista | Barra de busca movida para cima da lista de funcionarios e 3x mais larga | Media | Concluido (v1.70.1) |
 
+| Cartoes: popup de setor | Ao emitir modelos com setor (ex.: LOTOTO), popup pergunta sempre: todos do mesmo setor ou informar individualmente | Media | Concluido (v1.70.2) |
+
 ---
 
 ## FASE 1: Novas NRs/Itens (CONCLUÍDA)

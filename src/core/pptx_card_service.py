@@ -468,7 +468,8 @@ def _employee_values(emp, template: dict, options: dict) -> Dict[str, str]:
         "TELEFONE": tel,
         "CPF": emp.cpf or "",
         "MATRICULA": matricula,
-        "SETOR": options.get("setor", ""),
+        "SETOR": ((options.get("setores") or {}).get(emp.id)
+                  or options.get("setor", "")),
         "EMPRESA": template.get("empresa_default", "ALTEC"),
         "PAPEL": papeis.get(emp.id, "LIDERADO"),
     }

@@ -211,6 +211,78 @@
     if (cb) cb.checked = false;
     atualizarSel();
   });
+  // v1.70.2: popup de setor antes de emitir (sempre que o modelo usa setor)
+  var _formEmit = document.querySelector('form[action="/cartoes/emitir"]');
+  if (_formEmit) {
+    _formEmit.addEventListener('submit', function (ev) {
+      var sel = document.querySelector('select[name="template_code"]');
+      var opt = sel && sel.options[sel.selectedIndex];
+      if (!opt || opt.dataset.usaSetor !== '1') return;
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+      msAbrir();
+    });
+  }
+  function msAbrir() {
+    var campo = _formEmit.querySelector('input[name="setor"]');
+    var atual = campo ? campo.value : '';
+    document.getElementById('ms-setor').value = atual;
+    var box = document.getElementById('ms-individual');
+    box.innerHTML = '';
+    var ids = SEL.slice();
+    ids.sort(function (a, b) { return (a | 0) - (b | 0); });
+    if (!ids.length) {
+      box.innerHTML = '<p class="muted">N\u00e3o h\u00e1 funcion\u00e1rios selecionados.</p>';
+    }
+    ids.forEach(function (id) {
+      var nome = (typeof NOMES !== 'undefined' && NOMES[id]) ? NOMES[id] : ('ID ' + id);
+      var row = document.createElement('div');
+      row.style.margin = '4px 0';
+      row.innerHTML = '<label style="display:block; font-size:.85em">' + _escH(nome) +
+        '</label><input type="text" data-ms-emp="' + id + '" value="' + _escH(atual) +
+        '" style="width:100%">';
+      box.appendChild(row);
+    });
+    document.getElementById('modal-setor').style.display = 'flex';
+  }
+  function msModo() {
+    var ind = document.querySelector('input[name="ms-modo"]:checked').value === 'individual';
+    document.getElementById('ms-mesmo').style.display = ind ? 'none' : '';
+    document.getElementById('ms-individual').style.display = ind ? '' : 'none';
+  }
+  function msFechar() { document.getElementById('modal-setor').style.display = 'none'; }
+  var msOk = document.getElementById('ms-ok');
+  if (msOk) msOk.addEventListener('click', function () {
+    var ind = document.querySelector('input[name="ms-modo"]:checked').value === 'individual';
+    if (!SEL.length) { msFechar(); return; }
+    _formEmit.querySelectorAll('input[type=hidden][name^="setor_"]').forEach(function (h) { h.remove(); });
+    if (!ind) {
+      var v = document.getElementById('ms-setor').value.trim();
+      if (!v) { document.getElementById('ms-setor').focus(); return; }
+      _formEmit.querySelector('input[name="setor"]').value = v;
+    } else {
+      var faltando = null;
+      document.querySelectorAll('#ms-individual input[data-ms-emp]').forEach(function (inp) {
+        var vv = inp.value.trim();
+        if (!vv && !faltando) faltando = inp;
+        var hid = document.createElement('input');
+        hid.type = 'hidden';
+        hid.name = 'setor_' + inp.getAttribute('data-ms-emp');
+        hid.value = vv;
+        _formEmit.appendChild(hid);
+      });
+      if (faltando) { faltando.focus(); faltando.style.borderColor = '#c62828'; return; }
+      _formEmit.querySelector('input[name="setor"]').value = '';
+    }
+    msFechar();
+    HTMLFormElement.prototype.submit.call(_formEmit);
+  });
+  var msCancel = document.getElementById('ms-cancel');
+  if (msCancel) msCancel.addEventListener('click', msFechar);
+  var msModal = document.getElementById('modal-setor');
+  if (msModal) msModal.addEventListener('click', function (ev) {
+    if (ev.target === msModal) msFechar();
+  });
   </script>
   <style>
   .sel-chip { display:inline-block; background:#eef2f6; border:1px solid #d5dde5;
@@ -218,6 +290,22 @@
   .sel-chip a { text-decoration:none; color:#c62828; font-weight:bold; margin-left:2px; }
   #preview-cartao { border: 2px dashed #9aa5b1; border-radius: 6px;
     background: repeating-linear-gradient(45deg, #f4f6f8, #f4f6f8 8px, #e9edf2 8px, #e9edf2 16px); }
+  <div id="modal-setor" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:60; align-items:center; justify-content:center;">
+    <div style="background:#fff; border-radius:10px; padding:18px 20px; max-width:470px; width:92%; max-height:82vh; overflow:auto; box-shadow:0 8px 30px rgba(0,0,0,.25);">
+      <h3 style="margin:0 0 6px">Setor dos funcionários</h3>
+      <p class="muted" style="font-size:.9em; margin-top:0">Este modelo imprime o setor no cartão. Como deseja informar?</p>
+      <label style="display:block; margin:8px 0 4px"><input type="radio" name="ms-modo" value="mesmo" checked onchange="msModo()"> Todos do mesmo setor</label>
+      <div id="ms-mesmo" style="margin:0 0 10px 22px">
+        <input type="text" id="ms-setor" placeholder="Ex.: Manutenção" style="width:100%">
+      </div>
+      <label style="display:block; margin:8px 0 4px"><input type="radio" name="ms-modo" value="individual" onchange="msModo()"> Informar individualmente</label>
+      <div id="ms-individual" style="margin:0 0 4px 22px; display:none; max-height:200px; overflow:auto"></div>
+      <div class="linha-botoes" style="margin-top:12px">
+        <button type="button" class="btn verde" id="ms-ok">Continuar emissão</button>
+        <button type="button" class="btn cinza" id="ms-cancel">Cancelar</button>
+      </div>
+    </div>
+  </div>
   </style>
   {% endif %}
 </div>

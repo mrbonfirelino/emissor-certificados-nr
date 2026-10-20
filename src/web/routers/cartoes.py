@@ -228,6 +228,13 @@ def register(app, deps: dict):
         options = {"matriculas": matriculas}
         if "SETOR" in usados:
             options["setor"] = str(form.get("setor") or "").strip()
+            setores_ind = {}
+            for emp in selecionados:
+                v = str(form.get(f"setor_{emp.id}") or "").strip()
+                if v:
+                    setores_ind[emp.id] = v
+            if setores_ind:
+                options["setores"] = setores_ind
         if "PAPEL" in usados:
             options["papeis"] = {emp.id: str(form.get(f"papel_{emp.id}")
                                              or "LIDERADO").upper()
