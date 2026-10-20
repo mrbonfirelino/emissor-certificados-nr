@@ -9,6 +9,11 @@
 | Telefone: colar numero formatado | Campo de telefone aceita colar numeros formatados (mantendo apenas digitos) | Alta | Concluido (v1.69.0) |
 | Telefone: exemplo de numero | Exemplo de telefone alterado para 11987654321 | Alta | Concluido (v1.69.0) |
 | Arquivar laudo vencido em /frota/vencimentos | Botao Arquivar direto na pagina de vencimentos da frota para laudos vencidos (volta para a mesma pagina) | Alta | Concluido (v1.69.0) |
+| Cartoes: pre-visualizacao do cartao | Botao de pre-visualizacao em /cartoes/novo gera PDF de exemplo sem gravar no sistema | Media | Concluido (v1.70.1) |
+| Cartoes: lista de selecionados | Mostrar nomes dos funcionarios selecionados (removiveis) mesmo entre paginas | Media | Concluido (v1.70.1) |
+| Cartoes: modelo persistente | O tipo de cartao escolhido nao volta ao padrao ao trocar de pagina/buscar | Alta | Concluido (v1.70.1) |
+| Cartoes: busca acima da lista | Barra de busca movida para cima da lista de funcionarios e 3x mais larga | Media | Concluido (v1.70.1) |
+
 ---
 
 ## FASE 1: Novas NRs/Itens (CONCLUÍDA)

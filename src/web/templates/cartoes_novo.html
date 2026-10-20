@@ -11,21 +11,13 @@
   <p><a class="btn cinza" href="/cartoes">Voltar</a></p>
   {% else %}
 
-  <form method="get" action="/cartoes/novo" class="filtros" style="margin-bottom:12px">
-        <div class="campo"><label for="f-per">Ver por página</label><select id="f-per" name="per" onchange="this.form.submit()" style="max-width:90px;"><option value="10" {{ 'selected' if per == 10 else '' }}>10</option><option value="20" {{ 'selected' if per == 20 else '' }}>20</option><option value="25" {{ 'selected' if per == 25 else '' }}>25</option><option value="50" {{ 'selected' if per == 50 else '' }}>50</option></select></div>
-    <input type="hidden" id="sel-hidden" name="sel" value="{{ sel_str }}">
-    <input type="search" name="busca" value="{{ busca }}" placeholder="Buscar por nome ou CPF...">
-    <button class="btn" type="submit">Buscar</button>
-    {% if busca %}<a class="btn cinza" href="/cartoes/novo{% if sel_str %}?sel={{ sel_str }}{% endif %}">Limpar</a>{% endif %}
-  </form>
-
   <form method="post" action="/cartoes/emitir" enctype="multipart/form-data" data-confirmar-lista>
     <div class="form-grid">
       <div class="campo">
         <label>Modelo do cartão</label>
         <select name="template_code" id="sel-modelo" onchange="aplicarCampos()">
           {% for t in tpls %}
-          <option value="{{ t.code }}"
+          <option value="{{ t.code }}"{{ ' selected' if t.code == modelo else '' }}
                   data-usa-setor="{{ '1' if t.usa_setor else '0' }}"
                   data-usa-papel="{{ '1' if t.usa_papel else '0' }}"
                   data-usa-matricula="{{ '1' if t.matricula else '0' }}"
@@ -60,6 +52,15 @@
     {% if busca %}
     <p class="muted">{{ total }} resultado(s) para “{{ busca }}”.</p>
     {% endif %}
+
+  <form method="get" action="/cartoes/novo" class="filtros" style="margin:10px 0 12px">
+        <div class="campo"><label for="f-per">Ver por página</label><select id="f-per" name="per" onchange="this.form.submit()" style="max-width:90px;"><option value="10" {{ 'selected' if per == 10 else '' }}>10</option><option value="20" {{ 'selected' if per == 20 else '' }}>20</option><option value="25" {{ 'selected' if per == 25 else '' }}>25</option><option value="50" {{ 'selected' if per == 50 else '' }}>50</option></select></div>
+    <input type="hidden" id="sel-hidden" name="sel" value="{{ sel_str }}">
+    <input type="hidden" id="modelo-hidden" name="modelo" value="{{ modelo }}">
+    <input type="search" name="busca" value="{{ busca }}" placeholder="Buscar por nome ou CPF..." style="width:450px; max-width:100%">
+    <button class="btn" type="submit">Buscar</button>
+    {% if busca %}<a class="btn cinza" href="/cartoes/novo{% if sel_str %}?sel={{ sel_str }}{% endif %}">Limpar</a>{% endif %}
+  </form>
 
     <details style="margin:10px 0">
       <summary>Importar lista de bloqueios (.xlsx)</summary>
@@ -98,6 +99,7 @@
     {% endif %}
 
     <div class="linha-botoes">
+      <button class="btn cinza" type="submit" formaction="/cartoes/preview" formtarget="_blank">Pré-visualizar cartão</button>
       <button class="btn verde" type="submit" formaction="/cartoes/emitir">Emitir cartões</button>
       <a class="btn cinza" href="/cartoes">Cancelar</a>
     </div>
@@ -107,6 +109,9 @@
   function aplicarCampos() {
     var sel = document.querySelector('select[name="template_code"]');
     if (!sel) return;
+    var mh = document.getElementById('modelo-hidden');
+    if (mh) mh.value = sel.value;
+    if (typeof atualizarSel === "function") atualizarSel();
     var opt = sel.options[sel.selectedIndex];
     if (!opt) return;
     var setor = opt.dataset.usaSetor === '1';
@@ -146,6 +151,8 @@
   // 969: selecao estavel entre paginas
   var SEL = [];
   "{{ sel_str }}".split(",").forEach(function (s) { if (s) SEL.push(s); });
+  var NOMES = {{ nomes | tojson }};
+  function _escH(s) { var d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
   function atualizarSel() {
     SEL.sort(function (a, b) { return (a | 0) - (b | 0); });
     var hid = document.getElementById('sel-hidden');
@@ -158,16 +165,28 @@
         if (SEL.indexOf(id) >= 0) vis++;
       });
       var ocultos = SEL.length - vis;
-      box.textContent = SEL.length
-        ? 'Selecionados: ' + SEL.length + (ocultos > 0 ? ' (' + ocultos + ' em outras página(s)/busca)' : '')
-        : '';
+      if (!SEL.length) { box.innerHTML = ''; }
+      else {
+        var maxMostrar = 15;
+        var html = 'Selecionados: ' + SEL.length + (ocultos > 0 ? ' (' + ocultos + ' em outras página(s)/busca)' : '') + '<br>';
+        var parte = SEL.slice(0, maxMostrar);
+        html += parte.map(function (id) {
+          var nome = NOMES[id] || ('ID ' + id);
+          return '<span class="sel-chip">' + _escH(nome) +
+                 ' <a href="#" data-sel-remove="' + id + '" title="Remover">×</a></span>';
+        }).join(' ');
+        if (SEL.length > parte.length) html += ' <span class="muted">+' + (SEL.length - parte.length) + ' outro(s)</span>';
+        box.innerHTML = html;
+      }
     }
+    var selMod = document.querySelector('select[name="template_code"]');
     document.querySelectorAll('.paginacao a').forEach(function (a) {
       var parts = a.getAttribute('href').split('?');
       var params = (parts[1] || '').split('&').filter(function (p) {
-        return p && p.indexOf('sel=') !== 0;
+        return p && p.indexOf('sel=') !== 0 && p.indexOf('modelo=') !== 0;
       });
       if (SEL.length) params.push('sel=' + SEL.join(','));
+      if (selMod && selMod.value) params.push('modelo=' + encodeURIComponent(selMod.value));
       a.setAttribute('href', parts[0] + (params.length ? '?' + params.join('&') : ''));
     });
   }
@@ -181,8 +200,22 @@
     });
   });
   document.addEventListener('DOMContentLoaded', atualizarSel);
+  document.addEventListener('click', function (ev) {
+    var a = ev.target.closest ? ev.target.closest("[data-sel-remove]") : null;
+    if (!a) return;
+    ev.preventDefault();
+    var id = a.getAttribute("data-sel-remove");
+    var i = SEL.indexOf(id);
+    if (i >= 0) SEL.splice(i, 1);
+    var cb = document.querySelector('input[type=checkbox][name="sel_' + id + '"]');
+    if (cb) cb.checked = false;
+    atualizarSel();
+  });
   </script>
   <style>
+  .sel-chip { display:inline-block; background:#eef2f6; border:1px solid #d5dde5;
+    border-radius:12px; padding:1px 8px; margin:2px 6px 2px 0; font-size:.85em; }
+  .sel-chip a { text-decoration:none; color:#c62828; font-weight:bold; margin-left:2px; }
   #preview-cartao { border: 2px dashed #9aa5b1; border-radius: 6px;
     background: repeating-linear-gradient(45deg, #f4f6f8, #f4f6f8 8px, #e9edf2 8px, #e9edf2 16px); }
   </style>

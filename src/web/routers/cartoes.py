@@ -1,3 +1,4 @@
+import io
 """Portal Web — Cartões de bloqueio (emissão de cartões/crachás de acesso).
 
 Reaproveita blocking_card_service (templates JSON/ReportLab e PPTX/PowerPoint),
@@ -12,7 +13,7 @@ from typing import Optional
 from fastapi import Request, UploadFile
 from fastapi.responses import FileResponse, RedirectResponse, Response
 
-from src.utils.paths import get_cartoes_dir
+from src.utils.paths import get_cartoes_dir, get_data_dir
 from src.web import auth
 
 _MIME = "application/pdf"
@@ -130,6 +131,7 @@ def register(app, deps: dict):
                           busca: str = "",
                           page: int = 1,
                       per: int = 10,
+                          modelo: str = "",
                           user: dict = auth.require_permission("cartoes")):
         if not auth.pode_escrever(user["papel"], "cartoes"):
             return templates.TemplateResponse(
@@ -143,6 +145,7 @@ def register(app, deps: dict):
         pre_sel = {s.strip() for s in (sel or "").split(",") if s.strip().isdigit()}
         q = (busca or "").strip().lower()
         per = per if per in (10, 20, 25, 50) else 10
+        modelo = (modelo or "").strip()
         linhas = [{"id": e.id, "nome": e.nome, "cpf": e.cpf or "—",
                    "telefone": bool(getattr(e, "telefone", None)),
                    "foto": bool(getattr(e, "foto", None)),
@@ -150,6 +153,7 @@ def register(app, deps: dict):
                   for e in funcionarios
                   if not q or q in e.nome.lower() or q in (e.cpf or "").lower()]
         total = len(linhas)
+        nomes = {str(l["id"]): l["nome"] for l in linhas}
         paginas = max(1, (total + per - 1) // per)
         page = max(1, min(page, paginas))
         linhas = linhas[(page - 1) * per: page * per]
@@ -168,13 +172,16 @@ def register(app, deps: dict):
         if pre_sel:
             params.append("sel=" + ",".join(sorted(pre_sel, key=int)))
         params.append("per=" + str(per))
+        if modelo:
+            params.append("modelo=" + quote_plus(modelo))
         pg_base = "/cartoes/novo" + ("?" + "&".join(params) if params else "")
         sel_str = ",".join(sorted(pre_sel, key=int))
         return templates.TemplateResponse(
             request=request, name="cartoes_novo.html",
             context=ctx(request, linhas=linhas, tpls=tpls, busca=q,
                         total=total, page=page, paginas=paginas,
-                        pg_base=pg_base, sel_str=sel_str, per=per))
+                        pg_base=pg_base, sel_str=sel_str, per=per,
+                    modelo=modelo, nomes=nomes))
 
     @app.post("/cartoes/emitir")
     async def cartoes_emitir(request: Request,
@@ -248,6 +255,69 @@ def register(app, deps: dict):
             request=request, name="cartoes_resultado.html",
             context=ctx(request, gerados=gerados, faltantes=list(faltantes or []),
                         total=len(gerados)))
+
+    # ---------------- pre-visualizacao do cartao (v1.70.1) ----------------
+    @app.post("/cartoes/preview")
+    async def cartoes_preview(request: Request,
+                              user: dict = auth.require_permission("cartoes")):
+        if not auth.pode_escrever(user["papel"], "cartoes"):
+            flash(request, erro="Somente administrador ou emissor podem "
+                                "pr\u00e9-visualizar cart\u00f5es.")
+            return RedirectResponse("/cartoes/novo", status_code=303)
+        form = await request.form()
+        from src.core.blocking_card_service import (generate_cards,
+                                                    load_card_template)
+        template = load_card_template(str(form.get("template_code") or ""))
+        if template is None:
+            flash(request, erro="Selecione um modelo de cart\u00e3o v\u00e1lido.")
+            return RedirectResponse("/cartoes/novo", status_code=303)
+        from types import SimpleNamespace
+        try:
+            from PIL import Image
+            _buf = io.BytesIO()
+            Image.new("RGB", (300, 400), (222, 228, 235)).save(_buf, format="PNG")
+            _foto_exemplo = _buf.getvalue()
+        except Exception:
+            _foto_exemplo = b""
+        fake = SimpleNamespace(id=0, nome="EXEMPLO - Fulano de Tal",
+                               cpf="000.000.000-00",
+                               funcao="Auxiliar Administrativo",
+                               telefone="11987654321", foto=_foto_exemplo)
+        usados = set(template.get("used_fields") or [])
+        options = {"matriculas": {0: "000123"}}
+        if "SETOR" in usados:
+            options["setor"] = "EXEMPLO"
+        if "PAPEL" in usados:
+            options["papeis"] = {0: "LIDERADO"}
+        destino = get_data_dir() / "_previews"
+        _eh_cracha = (template.get("template_type") or "") == "cracha"
+        _orig_block = None
+        if _eh_cracha:
+            from src.core import badge_service as _bs
+            _orig_block = _bs.cracha_block_reasons
+            _bs.cracha_block_reasons = lambda *a, **k: []
+        try:
+            paths, faltantes = generate_cards(
+                [fake], template, single_pdf=True, output_dir=destino,
+                options=options)
+        except Exception as e:
+            from src.utils.error_log import log_error
+            log_error("portal-cartoes-preview", e)
+            flash(request, erro="Falha ao gerar a pr\u00e9-visualiza\u00e7\u00e3o "
+                                "(modelos PPTX exigem PowerPoint no servidor).")
+            return RedirectResponse("/cartoes/novo", status_code=303)
+        finally:
+            if _orig_block is not None:
+                from src.core import badge_service as _bs
+                _bs.cracha_block_reasons = _orig_block
+        if not paths:
+            flash(request, erro="N\u00e3o foi poss\u00edvel pr\u00e9-visualizar. Pend\u00eancias: "
+                                + " | ".join(faltantes or ["desconhecida"]))
+            return RedirectResponse("/cartoes/novo", status_code=303)
+        users.audit("preview-cartao", user["username"],
+                    template.get("card_code"), "")
+        return FileResponse(paths[0], media_type="application/pdf",
+                            filename="preview_cartao.pdf")
 
     # ---------------- importar lista de bloqueios (.xlsx) ----------------
     @app.post("/cartoes/importar")
