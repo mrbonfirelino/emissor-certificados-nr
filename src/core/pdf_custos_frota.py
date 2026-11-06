@@ -1,4 +1,4 @@
-"""Relatório de custos de frota em PDF (2.37.2) — para diretoria.
+﻿"""Relatório de custos de frota em PDF (2.37.2) — para diretoria.
 
 Modo 'todos': página de resumo (gráfico geral dos últimos 12 meses empilhado
 por veículo + tabela por veículo com desglose combustível/extras) e uma
@@ -11,7 +11,7 @@ padrão visual ALTEC dos demais PDFs. Nenhuma faixa sobrepõe textos (lição
 2.34.3): gap dedicado entre faixa azul e conteúdo.
 """
 
-from datetime import date, datetime
+from datetime import date as _dt_date, datetime
 from io import BytesIO
 
 from reportlab.lib.colors import HexColor
@@ -546,23 +546,41 @@ def _pagina_veiculo(c: rl_canvas.Canvas, repo: FrotaRepository, v: dict,
 
 
 def gerar_pdf_custos_frota(veiculo_id=None, repo: FrotaRepository = None,
-                           dias=None) -> bytes:
+                           dias=None, mes: str = "") -> bytes:
     """Gera o RELATÓRIO DE CUSTOS — FROTA e devolve os bytes do PDF.
     veiculo_id=None → resumo geral + 1 página por veículo (com dados).
     veiculo_id informado → somente a página desse veículo.
     2.39.3: `dias` restringe o período (None = 12 meses).
-    2.39.1: disclaimers de consumo (pesados/leves) nos relatórios."""
+    2.39.1: disclaimers de consumo (pesados/leves) nos relatórios.
+    v1.85.0: `mes` (mm/aaaa) restringe a um mês específico — tem prioridade
+    sobre `dias`."""
     repo = repo or FrotaRepository()
     meses = {30: 1, 90: 3, 180: 6}.get(dias, 12)
     rotulo_periodo = ({30: "últimos 30 dias", 90: "últimos 3 meses",
                        180: "últimos 6 meses"}.get(dias, "últimos 12 meses"))
+    de = ate = ""
+    if mes:
+        try:
+            mm, aa = (int(x) for x in mes.split("/"))
+        except ValueError:
+            raise ValueError("Mês inválido (use mm/aaaa).")
+        if not (1 <= mm <= 12 and 1900 <= aa <= 2100):
+            raise ValueError("Mês inválido (use mm/aaaa).")
+        import calendar as _cal
+        de = f"{aa:04d}-{mm:02d}-01"
+        ate = f"{aa:04d}-{mm:02d}-{_cal.monthrange(aa, mm)[1]:02d}"
+        hoje = _dt_date.today()
+        span = (hoje.year - aa) * 12 + (hoje.month - mm) + 1
+        meses = max(1, min(span, 1200))
+        rotulo_periodo = f"mês {mes}"
     pesados = {"caminhao", "empilhadeira", "retroescavadeira", "outros"}
     buf = BytesIO()
     c = rl_canvas.Canvas(buf, pagesize=(PAGE_W, PAGE_H))
     c.setTitle("Relatório de Custos — Frota")
 
     if veiculo_id is None:
-        serie = repo.custo_serie_todos(meses=meses, dias=dias)
+        serie = repo.custo_serie_todos(meses=meses, dias=None if mes else dias,
+                                       de=de, ate=ate)
         tot12 = _serie_totais(serie)
         nota_resumo = ("Nota sobre Consumo: os índices de KM/L de caminhões "
                        "e equipamentos operacionais são médias referenciais "
@@ -578,8 +596,8 @@ def gerar_pdf_custos_frota(veiculo_id=None, repo: FrotaRepository = None,
             v = repo.get_veiculo(vid)
             if not v:
                 continue
-            comb_linhas = [it for it in repo.custo_por_combustivel(dias=dias)
-                           if it["vid"] == vid]
+            comb_linhas = [it for it in repo.custo_por_combustivel(
+                de=de, ate=ate) if it["vid"] == vid]
             try:
                 extras_dados = repo.list_extras_veiculo(vid)
             except Exception:
@@ -587,7 +605,8 @@ def gerar_pdf_custos_frota(veiculo_id=None, repo: FrotaRepository = None,
             nota_v = (DISC_PESADOS if (v.get("tipo") or "outros") in pesados
                       else DISC_LEVES)
             _pagina_veiculo(c, repo, v,
-                            repo.custo_serie_veiculo(vid, meses=meses),
+                            repo.custo_serie_veiculo(vid, meses=meses,
+                                                     de=de, ate=ate),
                             comb_linhas, extras_dados,
                             rotulo_periodo=rotulo_periodo, nota=nota_v)
             _rodape(c)
@@ -596,8 +615,8 @@ def gerar_pdf_custos_frota(veiculo_id=None, repo: FrotaRepository = None,
         v = repo.get_veiculo(veiculo_id)
         if not v:
             raise ValueError("Veículo não encontrado.")
-        comb_linhas = [it for it in repo.custo_por_combustivel(dias=dias)
-                       if it["vid"] == veiculo_id]
+        comb_linhas = [it for it in repo.custo_por_combustivel(
+            de=de, ate=ate) if it["vid"] == veiculo_id]
         try:
             extras_dados = repo.list_extras_veiculo(veiculo_id)
         except Exception:
@@ -605,7 +624,8 @@ def gerar_pdf_custos_frota(veiculo_id=None, repo: FrotaRepository = None,
         nota_v = (DISC_PESADOS if (v.get("tipo") or "outros") in pesados
                   else DISC_LEVES)
         _pagina_veiculo(c, repo, v,
-                        repo.custo_serie_veiculo(veiculo_id, meses=meses),
+                        repo.custo_serie_veiculo(veiculo_id, meses=meses,
+                                                 de=de, ate=ate),
                         comb_linhas, extras_dados,
                         rotulo_periodo=rotulo_periodo, nota=nota_v)
         _rodape(c)

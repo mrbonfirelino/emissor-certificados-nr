@@ -9,21 +9,26 @@ logica sem depender de customtkinter (servidor nao tem interface grafica).
 PERIOD_RANGES = {
     "dias_7": (0, 7),
     "dias_15": (0, 15),
+    "dias_8_15": (8, 15),
+    "dias_8_30": (8, 30),
     "mes_1": (0, 30),
     "meses_3": (0, 90),
 }
 
 
 def filter_certs(certs: list, nr: str, search: str, period: str) -> list:
-    """Filtra certificados por NR, busca textual e periodo de vencimento."""
+    """Filtra certificados por NR, busca textual e periodo de vencimento.
+    v1.71.0: busca sem acentos (normalize_text nos dois lados)."""
+    from src.utils.text_utils import normalize_text
+    _s = normalize_text(search) if search else ""
     out = []
     for c in certs:
         if nr != "TODAS" and c["nr_code"] != nr:
             continue
-        if search:
-            if (search not in c["funcionario_nome"].lower()
-                    and search not in c["funcionario_cpf"]
-                    and search not in c["nr_code"].lower()):
+        if _s:
+            if (_s not in normalize_text(c["funcionario_nome"])
+                    and _s not in c["funcionario_cpf"]
+                    and _s not in normalize_text(c["nr_code"])):
                 continue
         d = c["dias_para_vencer"]
         if period == "vencidos":

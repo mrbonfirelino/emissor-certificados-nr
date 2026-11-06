@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block titulo %}Cintos e Talabartes — NormaTech{% endblock %}
+{% block conteudo %}
+<div class="card">
+  <h1>Cintos e Talabartes</h1>
+  <p class="sub">{{ counts.total }} item(ns) em estoque — {{ counts.vencidos }} vencido(s), {{ counts.antichama }} antichama(s).</p>
+
+  {% if pode_escrever %}
+  <p class="linha-botoes"><a class="btn verde" href="/cintos/novo">+ Novo item</a></p>
+  {% endif %}
+
+  <div class="filtros">
+    <form method="get" action="/cintos" id="form-filtros" style="display:flex;flex-wrap:wrap;gap:10px;align-items:end;">
+      <div class="campo">
+        <label>Situação</label>
+        <select name="situacao" onchange="document.getElementById('form-filtros').submit()">
+          <option value="">Todas</option>
+          <option value="valido" {% if situacao == 'valido' %}selected{% endif %}>Válido</option>
+          <option value="vencido" {% if situacao == 'vencido' %}selected{% endif %}>Vencido</option>
+          <option value="descartado" {% if situacao == 'descartado' %}selected{% endif %}>Descartado</option>
+        </select>
+      </div>
+      <div class="campo">
+        <label>Tipo</label>
+        <select name="tipo" onchange="document.getElementById('form-filtros').submit()">
+          <option value="">Todos</option>
+          <option value="cinto" {% if tipo == 'cinto' %}selected{% endif %}>Cinto</option>
+          <option value="talabarte" {% if tipo == 'talabarte' %}selected{% endif %}>Talabarte</option>
+        </select>
+      </div>
+      <div class="campo">
+        <label>Antichama</label>
+        <select name="antichama" onchange="document.getElementById('form-filtros').submit()">
+          <option value="">Todos</option>
+          <option value="sim" {% if antichama == 'sim' %}selected{% endif %}>Antichama</option>
+          <option value="nao" {% if antichama == 'nao' %}selected{% endif %}>Comum</option>
+        </select>
+      </div>
+      <div class="campo">
+        <label>Descartados</label>
+        <select name="arquivado" onchange="document.getElementById('form-filtros').submit()">
+          <option value="nao" {% if arquivado != 'sim' %}selected{% endif %}>Não</option>
+          <option value="sim" {% if arquivado == 'sim' %}selected{% endif %}>Sim</option>
+        </select>
+      </div>
+      <div class="campo">
+        <label>Por página</label>
+        <select name="per" onchange="document.getElementById('form-filtros').submit()">
+          {% for p in [10, 20, 25, 50] %}
+          <option value="{{ p }}" {% if per == p %}selected{% endif %}>{{ p }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </form>
+  </div>
+
+  <form method="get" action="/cintos" class="filtros" style="margin-top:6px;">
+    <div class="campo" style="display:flex;gap:8px;align-items:end;">
+      <div style="flex:1;">
+        <label>Busca</label>
+        <input type="text" name="busca" value="{{ busca }}" placeholder="Nome, código, marca, modelo, CA, lote, série, localização" style="width:100%;">
+      </div>
+      {% if tipo %}<input type="hidden" name="tipo" value="{{ tipo }}">{% endif %}
+      {% if situacao %}<input type="hidden" name="situacao" value="{{ situacao }}">{% endif %}
+      {% if antichama %}<input type="hidden" name="antichama" value="{{ antichama }}">{% endif %}
+      {% if arquivado != 'nao' %}<input type="hidden" name="arquivado" value="{{ arquivado }}">{% endif %}
+      <button type="submit">Buscar</button>
+    </div>
+  </form>
+
+  <div style="max-height:60vh;overflow-y:auto;border:1px solid var(--borda,#ddd);border-radius:6px;">
+  <table>
+    <thead>
+      <tr>
+        <th>Código</th><th>Item</th><th>Tipo</th><th>CA</th><th>Lote</th><th>Nº de série</th>
+        <th>Fabricação</th><th>Validade</th><th>Próx. inspeção</th><th>Localização</th>
+        {% if pode_escrever %}<th>Ações</th>{% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for it in itens %}
+      <tr>
+        <td><b>{{ it.codigo }}</b></td>
+        <td>
+          <a href="/cintos/{{ it.id }}"><b>{{ it.nome or (it.marca ~ " " ~ it.modelo) }}</b></a>
+          {% if it.antichama %}<span class="badge b-azul">Antichama</span>{% endif %}
+          {% if it.situacao == 'vencido' %}<span class="badge b-vermelho alerta-verm">Vencido</span>
+          {% elif it.situacao == 'descartado' %}<span class="badge b-cinza">Descartado</span>{% endif %}
+        </td>
+        <td>{{ "Talabarte" if it.tipo == 'talabarte' else "Cinto" }}</td>
+        <td>{{ it.ca or "—" }}</td>
+        <td>{{ it.lote }}</td>
+        <td>{{ it.numero_serie }}</td>
+        <td>{{ it.data_fabricacao_br }}</td>
+        <td>{{ it.data_validade }}</td>
+        <td>
+          {% if it.inspecao_status == 'vencida' %}
+            <span class="badge b-vermelho alerta-verm">{{ it.proxima_inspecao or "Sem inspeção" }}</span>
+          {% elif it.inspecao_status == 'proxima' %}
+            <span class="badge b-amarelo pulsa">{{ it.proxima_inspecao }}</span>
+          {% elif it.proxima_inspecao %}
+            <span class="badge b-verde">{{ it.proxima_inspecao }}</span>
+          {% else %}
+            <span class="badge b-vermelho">Sem inspeção</span>
+          {% endif %}
+        </td>
+        <td>{{ it.localizacao or "Estoque" }}</td>
+        {% if pode_escrever %}
+        <td>
+          {% if it.situacao != 'descartado' and not it.saida_aberta %}
+          <button type="button" class="verde" style="padding:2px 8px;" onclick="abrirDlgL('dlg-saida-l', {{ it.id }}, '{{ (it.nome or it.codigo) | e }}')">Saída</button>
+          {% elif it.saida_aberta %}
+          <button type="button" class="" style="padding:2px 8px;" onclick="abrirDlgL('dlg-ret-l', {{ it.id }}, '{{ (it.nome or it.codigo) | e }}')">Retorno</button>
+          {% else %}
+          <span class="muted">—</span>
+          {% endif %}
+        </td>
+        {% endif %}
+      </tr>
+      {% else %}
+      <tr><td colspan="{{ 11 if pode_escrever else 10 }}" class="muted">Nenhum item encontrado.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+
+  {% with paginas = paginas %}{% include "_paginacao.html" %}{% endwith %}
+</div>
+
+<!-- v1.84.1: popups grandes (mesmo padrao da ficha) para os atalhos da tabela -->
+<dialog id="dlg-saida-l" class="modal largo">
+  <div class="modal-topo"><b id="saidal-titulo">Registrar saída</b><button type="button" data-fecha-dlg="dlg-saida-l">✕</button></div>
+  <div class="modal-corpo">
+    <form id="form-saidal" method="post" action="/cintos" class="form-grid">
+      <input type="hidden" name="voltar" value="lista">
+      <div class="campo"><label>Data *</label><input type="text" name="data" class="js-data" placeholder="dd/mm/aaaa" required></div>
+      <div class="campo"><label>Destino / local *</label><input type="text" name="destino" placeholder="Ex: Ternium - Rio Negro" required></div>
+      <div class="campo"><label><input type="checkbox" name="testado" value="1" required> Inspecionado e apto para uso</label></div>
+      <div class="campo"><label>Observações</label><textarea name="observacoes" rows="2"></textarea></div>
+      <button type="submit" class="verde">Confirmar saída</button>
+    </form>
+  </div>
+</dialog>
+
+<dialog id="dlg-ret-l" class="modal largo">
+  <div class="modal-topo"><b id="retl-titulo">Registrar entrada (retorno)</b><button type="button" data-fecha-dlg="dlg-ret-l">✕</button></div>
+  <div class="modal-corpo">
+    <form id="form-retl" method="post" action="/cintos" class="form-grid">
+      <input type="hidden" name="voltar" value="lista">
+      <div class="campo"><label>Data *</label><input type="text" name="data" class="js-data" placeholder="dd/mm/aaaa" required></div>
+      <div class="campo"><label><input type="checkbox" name="testado" value="1" required> Item inspecionado</label></div>
+      <div class="campo"><label>Resultado</label>
+        <select name="resultado" required>
+          <option value="apto">Item apto para uso</option>
+          <option value="danificado">Item danificado</option>
+        </select>
+      </div>
+      <div class="campo"><label>Observações</label><textarea name="observacoes" rows="2"></textarea></div>
+      <button type="submit" class="verde">Confirmar entrada</button>
+    </form>
+  </div>
+</dialog>
+
+<script>
+  // v1.84.1: abre os popups grandes apontando o form para o item escolhido
+  function abrirDlgL(id, itemId, nome) {
+    const dlg = document.getElementById(id);
+    const form = dlg.querySelector("form");
+    const acao = id === "dlg-saida-l" ? "saida" : "entrada";
+    form.action = "/cintos/" + itemId + "/" + acao;
+    const tit = document.getElementById(id === "dlg-saida-l" ? "saidal-titulo" : "retl-titulo");
+    if (tit) tit.textContent = (acao === "saida" ? "Registrar saída — " : "Registrar entrada (retorno) — ") + nome;
+    dlg.showModal();
+  }
+</script>
+{% endblock %}

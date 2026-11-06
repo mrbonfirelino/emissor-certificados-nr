@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block conteudo %}
+<div class="cartao">
+  <h1>Editar template {{ nr }}</h1>
+  <p class="sub">Alterações gravam backup .bak automático e são validadas antes de salvar.</p>
+
+  <form method="post" action="/admin/templates/{{ nr }}/salvar" class="form-grid" style="max-width:760px;">
+    <div class="campo">
+      <label for="nr_name">Nome da NR *</label>
+      <input type="text" id="nr_name" name="nr_name" value="{{ raw.get('nr_name', '') }}" required>
+    </div>
+    <div class="campo">
+      <label for="carga_horaria_minima">Carga horária mínima (h) *</label>
+      <input type="number" id="carga_horaria_minima" name="carga_horaria_minima"
+             min="1" value="{{ raw.get('carga_horaria_minima', 8) }}" required>
+    </div>
+    <div class="campo">
+      <label for="validade_meses">Validade padrão (meses) *</label>
+      <input type="number" id="validade_meses" name="validade_meses"
+             min="1" max="120" value="{{ raw.get('validade_meses', 12) }}" required>
+    </div>
+    <div class="campo largo">
+      <label for="descricao_padrao">Descrição padrão do treinamento</label>
+      <input type="text" id="descricao_padrao" name="descricao_padrao"
+             value="{{ raw.get('descricao_padrao', '') }}">
+    </div>
+    <div class="campo largo">
+      <label for="riscos">Riscos (um por linha)</label>
+      <textarea id="riscos" name="riscos" rows="5">{{ riscos_txt }}</textarea>
+    </div>
+    <div class="campo largo">
+      <label for="conteudo_programatico">Conteúdo programático (um item por linha)</label>
+      <textarea id="conteudo_programatico" name="conteudo_programatico" rows="8">{{ conteudo_txt }}</textarea>
+    </div>
+    <div class="campo largo">
+      <label for="campos_extra">Campos extras (um JSON por linha)</label>
+      <textarea id="campos_extra" name="campos_extra" rows="5" placeholder='{"id": "matricula", "label": "Matrícula", "tipo": "text", "obrigatorio": true}'>{{ extras_txt }}</textarea>
+      <span class="muted">Formato: {"id": "...", "label": "...", "tipo": "text|select|number", "obrigatorio": true|false, "placeholder": "...", "opcoes": [...]}</span>
+    </div>
+    <div class="campo largo">
+      <label>Texto do certificado (somente leitura)</label>
+      <textarea rows="4" readonly class="muted">{{ raw.get('texto_certificado', '') }}</textarea>
+    </div>
+    <div class="linha-botoes">
+      <button type="submit" class="verde">Salvar template</button>
+      <a class="btn cinza" href="/admin/templates">Voltar</a>
+    </div>
+  </form>
+
+  {% if tem_bak %}
+  <form method="post" action="/admin/templates/{{ nr }}/restaurar"
+        onsubmit="return confirm('Restaurar {{ nr }} do backup .bak? Alterações não salvas serão perdidas.');">
+    <button type="submit" class="cinza">Restaurar backup (.bak)</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block conteudo %}
+<div class="cartao">
+  <h1>Templates de NR</h1>
+  <p class="sub">Editor de templates (somente admin) — um backup .bak é criado antes de cada gravação.</p>
+  <table>
+    <thead><tr><th>NR</th><th>Nome</th><th>Carga mín.</th><th>Validade</th><th></th></tr></thead>
+    <tbody>
+      {% for it in itens %}
+      <tr>
+        <td class="numero">{{ it.nr }}</td>
+        <td>{{ it.nome }}</td>
+        <td>{{ it.carga }}h</td>
+        <td>{{ it.validade }} meses</td>
+        <td>
+          <a class="btn" href="/admin/templates/{{ it.nr }}">Editar</a>
+          {% if it.tem_bak %}
+          <form method="post" action="/admin/templates/{{ it.nr }}/restaurar" style="display:inline;"
+                onsubmit="return confirm('Restaurar {{ it.nr }} do backup .bak?');">
+            <button type="submit" class="cinza">Restaurar backup</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="muted">Nenhum template encontrado.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

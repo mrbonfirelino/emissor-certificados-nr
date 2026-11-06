@@ -6,8 +6,14 @@
   <p class="sub">{{ total }} funcionário(s) no banco de dados.</p>
 
   {% if pode_escrever %}<p><a class="btn verde" href="/funcionarios/novo">+ Novo funcionário</a>
-  <a class="btn" href="/funcionarios/importar-fotos">Importar Fotos</a></p>{% endif %}
+  <a class="btn" href="/funcionarios/importar-fotos">Importar Fotos</a>
+  <a class="btn" href="/funcionarios/incompletos/exportar">📥 Incompletos (Excel)</a>
+  {% if user and user.papel == 'admin' %}<a class="btn amarelo" href="/funcionarios/duplicidades">🔍 Duplicidades</a>{% endif %}</p>{% endif %}
 
+  {% set _f_ativo = (busca or arquivado != 'nao' or nivel != 'todos'
+                     or tem_aso != 'todos' or tem_telefone != 'todos'
+                     or tem_foto != 'todos' or tem_cpf != 'todos'
+                     or tem_funcao != 'todos') %}
   <form method="get" action="/funcionarios" class="filtros" style="margin-bottom:12px;">
     <div class="campo">
       <label for="busca">Buscar</label>
@@ -19,23 +25,49 @@
         {% for op in per_opcoes %}<option value="{{ op }}" {{ 'selected' if op == per else '' }}>{{ op }}</option>{% endfor %}
       </select>
     </div>
+    <div class="campo">
+      <label for="arq">Arquivados</label>
+      <select id="arq" name="arquivado" onchange="this.form.submit()" style="max-width:110px;">
+        <option value="nao" {{ 'selected' if arquivado == 'nao' else '' }}>Ativos</option>
+        <option value="sim" {{ 'selected' if arquivado == 'sim' else '' }}>Arquivados</option>
+        <option value="todos" {{ 'selected' if arquivado == 'todos' else '' }}>Todos</option>
+      </select>
+    </div>
+    <div class="campo">
+      <label for="niv">Nível de cadastro</label>
+      <select id="niv" name="nivel" onchange="this.form.submit()" style="max-width:140px;">
+        <option value="todos" {{ 'selected' if nivel == 'todos' else '' }}>Todos</option>
+        <option value="completo" {{ 'selected' if nivel == 'completo' else '' }}>Completo</option>
+        <option value="basico" {{ 'selected' if nivel == 'basico' else '' }}>Básico</option>
+        <option value="incompleto" {{ 'selected' if nivel == 'incompleto' else '' }}>Incompleto</option>
+      </select>
+    </div>
+    <div class="campo"><label for="t-aso">ASO</label><select id="t-aso" name="tem_aso" onchange="this.form.submit()" style="max-width:90px;"><option value="todos" {{ 'selected' if tem_aso == 'todos' else '' }}>Todos</option><option value="sim" {{ 'selected' if tem_aso == 'sim' else '' }}>Sim</option><option value="nao" {{ 'selected' if tem_aso == 'nao' else '' }}>Não</option></select></div>
+    <div class="campo"><label for="t-tel">Telefone</label><select id="t-tel" name="tem_telefone" onchange="this.form.submit()" style="max-width:90px;"><option value="todos" {{ 'selected' if tem_telefone == 'todos' else '' }}>Todos</option><option value="sim" {{ 'selected' if tem_telefone == 'sim' else '' }}>Sim</option><option value="nao" {{ 'selected' if tem_telefone == 'nao' else '' }}>Não</option></select></div>
+    <div class="campo"><label for="t-foto">Foto</label><select id="t-foto" name="tem_foto" onchange="this.form.submit()" style="max-width:90px;"><option value="todos" {{ 'selected' if tem_foto == 'todos' else '' }}>Todos</option><option value="sim" {{ 'selected' if tem_foto == 'sim' else '' }}>Sim</option><option value="nao" {{ 'selected' if tem_foto == 'nao' else '' }}>Não</option></select></div>
+    <div class="campo"><label for="t-cpf">CPF</label><select id="t-cpf" name="tem_cpf" onchange="this.form.submit()" style="max-width:90px;"><option value="todos" {{ 'selected' if tem_cpf == 'todos' else '' }}>Todos</option><option value="sim" {{ 'selected' if tem_cpf == 'sim' else '' }}>Sim</option><option value="nao" {{ 'selected' if tem_cpf == 'nao' else '' }}>Não</option></select></div>
+    <div class="campo"><label for="t-fun">Função</label><select id="t-fun" name="tem_funcao" onchange="this.form.submit()" style="max-width:90px;"><option value="todos" {{ 'selected' if tem_funcao == 'todos' else '' }}>Todos</option><option value="sim" {{ 'selected' if tem_funcao == 'sim' else '' }}>Sim</option><option value="nao" {{ 'selected' if tem_funcao == 'nao' else '' }}>Não</option></select></div>
     <button type="submit">Buscar</button>
-    {% if busca %}<a class="btn cinza" href="/funcionarios">Limpar</a>{% endif %}
+    {% if _f_ativo %}<a class="btn cinza" href="/funcionarios">Limpar</a>{% endif %}
   </form>
 
   <table>
-    <thead><tr><th>Foto</th><th>Nome</th><th>CPF</th><th>Função</th><th>Telefone</th></tr></thead>
+    <thead><tr><th>Foto</th><th>Nome</th><th>CPF</th><th>Função</th><th>Telefone</th><th>Nível de cadastro</th></tr></thead>
     <tbody>
     {% for emp in lista %}
+      {% set nv = nivel_map.get(emp.id, 'incompleto') %}
       <tr>
         <td>{% if emp.foto %}<img class="foto-pequena" src="/funcionarios/{{ emp.id }}/foto" alt="">{% else %}<span class="muted">—</span>{% endif %}</td>
         <td><a href="/funcionarios/{{ emp.id }}" style="color:var(--azul); font-weight:600;">{{ emp.nome }}</a></td>
         <td>{{ emp.cpf or '—' }}</td>
         <td>{{ emp.funcao or '—' }}</td>
-        <td>{{ emp.telefone or '—' }}</td>
+        <td>{{ emp.telefone or '—' }}{% if emp.arquivado %} <span class="badge b-cinza">ARQUIVADO</span>{% endif %}</td>
+        <td>{% if nv == 'completo' %}<span class="badge b-verde">Completo</span>
+            {% elif nv == 'basico' %}<span class="badge b-amarelo">Básico</span>
+            {% else %}<span class="badge b-vermelho">Incompleto</span>{% endif %}</td>
       </tr>
     {% else %}
-      <tr><td colspan="5" class="muted">Nenhum funcionário encontrado.</td></tr>
+      <tr><td colspan="6" class="muted">Nenhum funcionário encontrado.</td></tr>
     {% endfor %}
     </tbody>
   </table>

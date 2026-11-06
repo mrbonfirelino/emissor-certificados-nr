@@ -37,6 +37,7 @@
         <select id="combustivel" name="combustivel" required>
           {% for cod, rot in combustiveis %}<option value="{{ cod }}" {{ 'selected' if ed and ed.combustivel == cod }}>{{ rot }}</option>{% endfor %}
         </select>
+        <p class="muted" style="font-size:12px;margin:4px 0 0;">Precisa registrar Arla? Você pode editar a solicitação depois e trocar o combustível para ARLA ou ARLA + DIESEL.</p>
       </div>
       <div class="campo">
         <label for="data">Data da solicitação *</label>

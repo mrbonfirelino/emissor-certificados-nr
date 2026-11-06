@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% block titulo %}Emitir certificado — NormaTech{% endblock %}
 {% block conteudo %}
 <div class="card">
@@ -14,8 +14,8 @@
       <div class="campo largo">
         <label for="func_busca">Funcionário *</label>
         <div class="combo">
-          <input type="text" id="func_busca" placeholder="Digite o nome ou CPF do funcionário..." autocomplete="off">
-          <input type="hidden" name="funcionario_id" id="funcionario_id">
+          <input type="text" id="func_busca" value="{{ form_salvo.func_txt if form_salvo else '' }}" placeholder="Digite o nome ou CPF do funcionário..." autocomplete="off">
+          <input type="hidden" name="funcionario_id" id="funcionario_id" value="{{ form_salvo.funcionario_id if form_salvo else '' }}">
           <div class="combo-lista" id="combo_lista" style="display:none;"></div>
         </div>
         <span class="muted">Funcionários sem CPF não podem receber certificado.</span>
@@ -30,26 +30,47 @@
         {% if tmpl %}<span class="muted" id="nr-info">Carga mínima: {{ tmpl.carga_horaria_minima }}h · Validade padrão: {{ tmpl.validade_meses }} meses</span>{% endif %}
       </div>
       <div class="campo">
-        <label for="data">Data do treinamento *</label>
-        <input type="text" id="data" name="data" class="js-data" placeholder="dd/mm/aaaa" value="{{ hoje_br }}">
+        <label for="data">Data de emissão (fim do treinamento) *</label>
+        <input type="text" id="data" name="data" class="js-data" placeholder="dd/mm/aaaa" value="{{ (form_salvo.data if form_salvo else '') or hoje_br }}">
+        <label style="font-weight:normal; margin-top:4px;">
+          <input type="checkbox" id="mesmo-dia" {% if form_salvo and form_salvo.data_inicio %}checked{% endif %} onchange="document.getElementById('campo-inicio').style.display=this.checked ? 'block' : 'none'"> Treinamento de vários dias
+        </label>
+        <div id="campo-inicio" style="display:{% if form_salvo and form_salvo.data_inicio %}block{% else %}none{% endif %};">
+          <label for="data_inicio">Data de início do treinamento</label>
+          <input type="text" id="data_inicio" name="data_inicio" class="js-data" placeholder="dd/mm/aaaa" value="{{ form_salvo.data_inicio if form_salvo else '' }}">
+        </div>
       </div>
       <div class="campo">
         <label for="carga">Carga horária (h) *</label>
-        <input type="number" id="carga" name="carga" min="1" value="{{ tmpl.carga_horaria_minima if tmpl else 8 }}">
+        <input type="number" id="carga" name="carga" min="1" value="{{ (form_salvo.carga if form_salvo else '') or (tmpl.carga_horaria_minima if tmpl else 8) }}">
       </div>
       <div class="campo">
         <label for="validade">Validade (meses) — vazio usa a padrão</label>
-        <input type="number" id="validade" name="validade" min="1" max="120" value="{{ tmpl.validade_meses if tmpl else '' }}">
+        <input type="number" id="validade" name="validade" min="1" max="120" value="{{ (form_salvo.validade if form_salvo else '') or (tmpl.validade_meses if tmpl else '') }}">
       </div>
       <div class="campo largo">
         <label for="descricao">Descrição do treinamento *</label>
-        <input type="text" id="descricao" name="descricao" value="{{ tmpl.descricao_padrao if tmpl else '' }}">
+        <textarea id="descricao" name="descricao" rows="3" style="width:100%; resize:vertical;">{{ (form_salvo.descricao if form_salvo else '') or (tmpl.descricao_padrao if tmpl else '') }}</textarea>
       </div>
       <div id="extras-din" style="grid-column:1 / -1;"></div>
     </div>
+    {% if nr_vigente %}
+    <div style="grid-column:1 / -1; background:#fff7e6; border:1px solid #e6b800; border-radius:10px; padding:12px 14px; margin-bottom:4px;">
+      <strong>⚠️ {{ nr_vigente.nome }} já possui {{ nr_vigente.nr }} dentro da validade</strong>
+      <p style="margin:6px 0;">Certificado {{ nr_vigente.numero }} válido até
+        {{ nr_vigente.venc }}. Ao emitir novamente, o novo certificado
+        <strong>substituirá o vigente</strong> (o antigo permanece no histórico).</p>
+      <label style="display:flex; gap:8px; align-items:center; font-weight:600;">
+        <input type="checkbox" id="confirmar-subst" required>
+        Confirmo que desejo substituir o certificado vigente
+      </label>
+    </div>
+    {% endif %}
+    {% if nr_vigente %}<input type="hidden" name="confirmar_nr" value="1">{% endif %}
     <div class="linha-botoes">
-      <button type="submit" class="verde">Emitir certificado</button>
-      <button type="submit" class="cinza" formaction="/certificados/preview" formtarget="_blank">Visualizar prévia</button>
+      <button type="submit" class="amarelo">Emitir certificado</button>
+      <button type="submit" class="verde" formaction="/certificados/preview" formtarget="_blank">Visualizar prévia</button>
+      <a class="btn cinza" href="/certificados/exemplo?nr={{ nr_sel if nr_sel else (templates_nr.keys() | first if templates_nr else '') }}" target="_blank">Gerar exemplo</a>
     </div>
   </form>
   {% elif not pode_escrever %}
@@ -77,15 +98,20 @@ var TMPLS = {{ tmpls_dados | tojson }};
     lista.style.display = 'none';
   }
 
+  // v1.71.0: busca sem acentos ("joao" acha "João")
+  function norm(s) {
+    return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+
   function render() {
-    var q = inp.value.trim().toLowerCase();
+    var q = norm(inp.value.trim());
     hid.value = '';
     lista.innerHTML = '';
     if (!q) { lista.style.display = 'none'; return; }
     var achou = 0;
     for (var i = 0; i < FUNCS.length && achou < 30; i++) {
       var f = FUNCS[i];
-      if (f.nome.toLowerCase().indexOf(q) >= 0 || f.cpf.indexOf(q) >= 0) {
+      if (norm(f.nome).indexOf(q) >= 0 || f.cpf.indexOf(q) >= 0) {
         var d = document.createElement('div');
         d.textContent = f.nome + (f.cpf ? ' — ' + f.cpf : ' (sem CPF)');
         d.onmousedown = (function (func) { return function () { escolher(func); }; })(f);
@@ -192,7 +218,38 @@ var TMPLS = {{ tmpls_dados | tojson }};
 
   sel.addEventListener('change', aplicarNR);
   renderExtras(TMPLS[sel.value]);
+  var EXTRAS_SALVOS = {{ extras_salvos | tojson }};
+  for (var k in EXTRAS_SALVOS) {
+    var el = document.getElementById(k);
+    if (el) el.value = EXTRAS_SALVOS[k];
+  }
 })();
+</script>
+{% endif %}
+
+{% if pode_escrever %}
+<script>
+// v1.86.0: aviso/confirmação quando a data de emissão difere de hoje
+(function () {
+  var form = document.getElementById('form-emitir');
+  if (!form) return;
+  var hj = new Date();
+  var hoje = String(hj.getDate()).padStart(2, '0') + '/' +
+             String(hj.getMonth() + 1).padStart(2, '0') + '/' + hj.getFullYear();
+  document.addEventListener('submit', function (ev) {
+    if (ev.target !== form) return;
+    var dif = [];
+    form.querySelectorAll('input.js-data').forEach(function (i) {
+      var v = (i.value || '').trim();
+      if (v && /^\d{2}\/\d{2}\/\d{4}$/.test(v) && v !== hoje && dif.indexOf(v) < 0) dif.push(v);
+    });
+    if (!dif.length) return;
+    if (!window.confirm('ATENÇÃO: a data de emissão (' + dif.join(', ') +
+        ') é diferente de hoje (' + hoje + ').\n\nDeseja emitir mesmo assim?')) {
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+    }
+  }, true);})();
 </script>
 {% endif %}
 {% endblock %}

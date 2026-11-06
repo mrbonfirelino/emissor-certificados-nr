@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block titulo %}Meu perfil — NormaTech{% endblock %}
+{% block conteudo %}
+<div class="card" style="max-width:640px;">
+  <h1>Meu perfil</h1>
+  <p class="sub">{{ user.username }} · {{ papel_label }}</p>
+
+  <h2>Foto</h2>
+  <div style="display:flex;gap:16px;align-items:center;margin-bottom:10px;">
+    {% if me.foto %}
+    <img src="/perfil/foto/img" alt="Minha foto" style="width:72px;height:96px;object-fit:cover;border-radius:6px;">
+    {% else %}
+    <div style="width:72px;height:96px;border:1px dashed #bbb;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#999;font-size:12px;">sem foto</div>
+    {% endif %}
+    <div>
+      <form method="post" action="/perfil/foto" enctype="multipart/form-data" style="margin-bottom:6px;">
+        <input type="file" name="foto" accept=".png,.jpg,.jpeg" required>
+        <button type="submit" class="verde">Enviar foto</button>
+      </form>
+      {% if me.foto %}
+      <form method="post" action="/perfil/foto/remover" onsubmit="return confirm('Remover sua foto?');">
+        <button type="submit" class="vermelho">Remover foto</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <h2>Nome de exibição</h2>
+  <form method="post" action="/perfil/nome">
+    <div class="campo">
+      <label>Nome</label>
+      <input name="nome" value="{{ me.nome or user.nome or '' }}" required>
+    </div>
+    <button type="submit" class="verde">Salvar nome</button>
+  </form>
+
+  <h2>Trocar senha</h2>
+  <form method="post" action="/perfil/senha">
+    <div class="campo"><label>Senha atual</label>
+      <input type="password" name="atual" required></div>
+    <div class="campo"><label>Nova senha (mín. 6)</label>
+      <input type="password" name="nova" required minlength="6"></div>
+    <div class="campo"><label>Confirmar nova senha</label>
+      <input type="password" name="confirma" required></div>
+    <button type="submit" class="verde">Alterar senha</button>
+  </form>
+
+  <h2>Notificações</h2>
+  <form method="post" action="/perfil/notificacoes">
+    <label style="display:flex; gap:8px; align-items:center; margin-bottom:10px;">
+      <input type="checkbox" name="notif" value="1" {{ 'checked' if me.pref_notif else '' }}>
+      <span>Receber alertas de vencimentos no navegador</span>
+    </label>
+    <button type="submit" class="verde">Salvar preferências</button>
+  </form>
+
+  <p style="margin-top:18px;"><a href="/">« Voltar ao início</a></p>
+</div>
+{% endblock %}

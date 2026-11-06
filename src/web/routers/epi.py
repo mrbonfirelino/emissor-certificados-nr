@@ -115,21 +115,25 @@ def register(app, deps):
                  "employee_id": f.get("employee_id"),
                  "data": _br(f.get("data_emissao")),
                  "estado_ficha": _estado_ficha(f),
+                 "arquivado": bool(f.get("arquivado")),
                  "itens": len(f.get("items") or [])}
                 for f in fichas]
 
     @app.get("/epi")
     def epi_lista(request: Request, user: dict = auth.require_permission("epi"),
                   page: int = 1, busca: str = "", status: str = "",
+                  arquivado: str = "nao",
                   per: int = PER_PAGE):
         from src.core.epi_repo import EpiRepository
         repo = EpiRepository()
-        todas = repo.get_all(limit=1000000)
-        termo = (busca or "").strip().lower()
+        arquivado = arquivado if arquivado in ("nao", "sim", "todos") else "nao"
+        todas = repo.get_all(limit=1000000, arquivado=arquivado)
+        from src.utils.text_utils import normalize_text
+        termo = normalize_text(busca)
         if termo:
             todas = [f for f in todas
-                     if termo in (f.get("funcionario_nome") or "").lower()
-                     or termo in (f.get("epi_number") or "").lower()]
+                     if termo in normalize_text(f.get("funcionario_nome") or "")
+                     or termo in normalize_text(f.get("epi_number") or "")]
         status = status if status in ("aberto", "fechado", "devolvidos",
                                       "parcial") else ""
         if status:
@@ -146,6 +150,8 @@ def register(app, deps):
             params.append(f"busca={busca.strip()}")
         if status:
             params.append(f"status={status}")
+        if arquivado != "nao":
+            params.append(f"arquivado={arquivado}")
         if per != PER_PAGE:
             params.append(f"per={per}")
         pg_base = "/epi" + (("?" + "&".join(params)) if params else "")
@@ -154,8 +160,37 @@ def register(app, deps):
             context=ctx(request, linhas=_linhas_fichas(fatia), busca=busca or "",
                         page=page, total_paginas=total_paginas, pg_base=pg_base,
                         total=total, status_sel=status, status_opcoes=STATUS_FILTROS,
+                        arquivado=arquivado,
                         per=per, per_opcoes=PER_OPCOES, funcionario=None,
                         pode_escrever=auth.pode_escrever(user["papel"], "epi")))
+
+    @app.post("/epi/{epi_id}/arquivar")
+    def epi_arquivar(epi_id: int, request: Request, motivo: str = Form(""),
+                     user: dict = auth.require_permission("epi")):
+        """v1.77.0: arquivar ficha de EPI (motivo via popup)."""
+        if not auth.pode_escrever(user["papel"], "epi"):
+            flash(request, erro="Sem permissão para arquivar fichas de EPI.")
+            return RedirectResponse("/epi", status_code=303)
+        from src.core.epi_repo import EpiRepository
+        EpiRepository().set_arquivado(epi_id, 1)
+        try:
+            users.audit("epi-arquivar", user.get("username", ""), str(epi_id),
+                        motivo or "")
+        except Exception:
+            pass
+        flash(request, msg=f"Ficha de EPI #{epi_id} arquivada.")
+        return RedirectResponse("/epi", status_code=303)
+
+    @app.post("/epi/{epi_id}/desarquivar")
+    def epi_desarquivar(epi_id: int, request: Request,
+                        user: dict = auth.require_permission("epi")):
+        if not auth.pode_escrever(user["papel"], "epi"):
+            flash(request, erro="Sem permissão.")
+            return RedirectResponse("/epi?arquivado=sim", status_code=303)
+        from src.core.epi_repo import EpiRepository
+        EpiRepository().set_arquivado(epi_id, 0)
+        flash(request, msg=f"Ficha de EPI #{epi_id} desarquivada.")
+        return RedirectResponse("/epi?arquivado=sim", status_code=303)
 
     @app.get("/epi/funcionario/{emp_id}")
     def epi_por_funcionario(request: Request, emp_id: int,

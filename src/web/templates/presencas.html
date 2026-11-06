@@ -12,9 +12,18 @@
   {% endif %}
 
   <form method="get" action="/presencas" class="filtros" style="margin-bottom:12px;">
+        <div class="campo"><label for="f-per">Ver por página</label><select id="f-per" name="per" onchange="this.form.submit()" style="max-width:90px;"><option value="10" {{ 'selected' if per == 10 else '' }}>10</option><option value="20" {{ 'selected' if per == 20 else '' }}>20</option><option value="25" {{ 'selected' if per == 25 else '' }}>25</option><option value="50" {{ 'selected' if per == 50 else '' }}>50</option></select></div>
     <div class="campo">
       <label for="busca">Buscar</label>
       <input type="text" id="busca" name="busca" value="{{ busca }}" placeholder="Serial, NR ou assunto...">
+    </div>
+    <div class="campo">
+      <label for="arq">Arquivadas</label>
+      <select id="arq" name="arquivado" onchange="this.form.submit()" style="max-width:110px;">
+        <option value="nao" {{ 'selected' if arquivado == 'nao' else '' }}>Ativas</option>
+        <option value="sim" {{ 'selected' if arquivado == 'sim' else '' }}>Arquivadas</option>
+        <option value="todos" {{ 'selected' if arquivado == 'todos' else '' }}>Todas</option>
+      </select>
     </div>
     <button type="submit">Buscar</button>
     {% if busca %}<a class="btn cinza" href="/presencas">Limpar</a>{% endif %}
@@ -33,13 +42,39 @@
     <tbody>
     {% for it in itens %}
       <tr>
-        <td><a href="/presencas/{{ it.id }}" style="color:var(--azul); font-weight:600;">{{ it.serial }}</a></td>
+        <td><a href="/presencas/{{ it.id }}" style="color:var(--azul); font-weight:600;">{{ it.serial }}</a>
+            {% if it.arquivado %}<span class="badge b-cinza">ARQUIVADA</span>{% endif %}</td>
         <td>{{ it.nr_code }}</td>
         <td>{{ it.data_br }}</td>
         <td>{{ it.participantes | length }}</td>
         <td>{{ '%g' % it.carga_horaria }}h</td>
         <td><span class="badge {{ it.status_classe }}">{{ it.status_label }}</span></td>
-        <td><a href="/presencas/{{ it.id }}">Ver</a></td>
+        <td style="white-space:nowrap; text-align:right;">
+          <a href="/presencas/{{ it.id }}">Ver</a>
+          {% if pode_escrever and not arquivado == 'sim' and not it.arquivado %}
+          <form method="post" action="/presencas/{{ it.id }}/arquivar" data-pedir-motivo="Arquivar lista|Motivo do arquivamento da lista {{ it.serial }}:" style="display:inline; margin-left:8px;">
+            <button type="submit" class="btn vermelho" style="font-size:12px; padding:2px 8px;">Arquivar</button>
+          </form>
+          {% elif pode_escrever and it.arquivado %}
+          <form method="post" action="/presencas/{{ it.id }}/desarquivar" style="display:inline; margin-left:8px;">
+            <button type="submit" class="btn cinza" style="font-size:12px; padding:2px 8px;">Desarquivar</button>
+          </form>
+          {% endif %}
+          {% if pode_escrever %}
+          <details class="anexo-pop" style="margin-left:8px;">
+            <summary class="btn cinza" style="font-size:12px; padding:2px 8px;">{{ 'Trocar assinada' if it.status == 'assinada' else 'Enviar assinada' }}</summary>
+            <div class="anexo-box abre-dir" style="width:260px; padding:12px;">
+              <form method="post" action="/presencas/{{ it.id }}/assinar" enctype="multipart/form-data" style="display:flex; flex-direction:column; gap:8px;">
+                <label class="upload-area">
+                  <input type="file" name="arquivo" accept=".pdf,.jpg,.jpeg,.png" required>
+                </label>
+                <button type="submit" class="verde">Anexar lista assinada</button>
+                <span class="muted" style="font-size:12px;">PDF, JPG ou PNG (máx. 50 MB)</span>
+              </form>
+            </div>
+          </details>
+          {% endif %}
+        </td>
       </tr>
     {% else %}
       <tr><td colspan="7" class="muted">Nenhuma lista encontrada.</td></tr>

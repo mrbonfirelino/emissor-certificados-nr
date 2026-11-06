@@ -1,0 +1,88 @@
+ATUALIZACAO PORTAL NormaTech v1.87.1 (06/11/2026)
+
+COMO ATUALIZAR
+--------------
+1. Feche o portal / pare o servico NormaTechPortal.
+2. Copie o conteudo desta pasta por cima da pasta C:\NormaTech.
+3. Confirme substituir todos os arquivos.
+4. NAO apague nem substitua a pasta C:\NormaTech\data (banco de dados).
+5. Abra o portal e confira a versao v1.87.1 no topo da pagina.
+
+NOVIDADES v1.87.1
+-----------------
+- CORRECAO: o arquivamento de feedbacks NAO funcionava (o popup enviava os
+  campos errados e o formulario nao tinha destino). Agora funciona com os
+  motivos padrao (Realizado, Corrigido, Cancelado) e com motivo
+  personalizado digitado.
+- O statcard de feedbacks no dashboard agora se chama "Feedbacks em aberto"
+  e pisca com FUNDO azul claro (texto em azul escuro, alto contraste).
+- Na pagina de feedbacks, a lista mostra so uma previa da mensagem, com um
+  botao "Ler" que abre o texto completo e os anexos para ver/baixar.
+
+NOVIDADES v1.87.0
+-----------------
+- NOVO modulo de Feedback: botao roxo "FeedBack" no topo de todas as
+  paginas. Qualquer usuario logado pode escrever erros/feedback e anexar
+  arquivos (fotos/prints/PDF, ate 8 arquivos de 50 MB). O horario e a
+  pagina onde o usuario estava sao gravados automaticamente. Os feedbacks
+  ficam salvos em arquivos na pasta do programa no servidor
+  (data\feedbacks\).
+- Pagina /feedbacks (acesso SOMENTE do administrador): lista completa com
+  data/hora, usuario, pagina, texto, anexos para download e status. O
+  admin arquiva cada feedback com motivo: Realizado, Corrigido, Cancelado
+  ou um motivo personalizado.
+- Dashboard: novo statcard "Feedbacks abertos" — mostra quantos feedbacks
+  ainda nao foram atendidos e pisca em azul claro quando houver algum.
+  Clique nele para abrir a lista (visivel apenas para o administrador).
+- Link "Feedbacks" na guia Sistema do menu e atalho personalizavel na
+  area de Atalhos do dashboard.
+
+NOVIDADES v1.86.2
+-----------------
+- Listas de presenca: nomes e funcoes longos NAO sao mais cortados na lateral
+  da celula (quebra de linha ativada nos participantes e altura das linhas
+  ajustada para o texto completo). Cada folha sai sempre em 1 pagina.
+  Testado com NR-01, NR-06, NR-12, NR-18, NR-35, FDS e layout padrao.
+
+NOVIDADES v1.86.1
+-----------------
+- Listas de presenca NR-01 e FDS: o PDF agora sai DEITADO (horizontal),
+  ocupando a folha inteira.
+- Listas de presenca: correcao garantida contra corte de texto — o conteudo
+  programatico (NR-06 e demais NRs) nunca mais sai cortado; o gerador amplia
+  a altura da linha automaticamente quando o texto precisa de mais espaco.
+
+NOVIDADES v1.86.0
+-----------------
+- Backup: novo campo "Locais extras de backup" em Configuracoes - cadastre
+  varios destinos adicionais (um caminho por linha, inclusive pastas de
+  rede); cada backup passa a ser copiado para todos os locais.
+- Listas de presenca: nova pagina "Lista avulsa" - escolha a NR, qualquer
+  data (futura ou passada) e selecione livremente os colaboradores do
+  cadastro (com busca e marcar/desmarcar todos) ou digite nomes avulsos;
+  nao depende de emissao de certificados no dia.
+- Listas de presenca: a lista de FDS (FISPQ) agora usa o modelo proprio
+  "Lista de presenca de treinamento - FISPQ.xlsx" (8 vagas por folha).
+- Certificados: emissao com data futura liberada; ao usar data diferente de
+  hoje (individual ou lote), aparece um popup de confirmacao antes de emitir.
+- Frota (custos): o campo "Mes especifico" atualiza a pagina automaticamente
+  ao selecionar o mes (sem precisar apertar Enter).
+- Frota (custos): o grafico "Custos por mes" ganhou uma linha vermelha com o
+  total mensal sobre as barras; o tooltip mostra apenas o veiculo sob o
+  mouse (gasto total, combustivel e extras).
+- Funcionarios: o setor Seguranca agora pode ARQUIVAR funcionarios
+  desligados (sai das listas, historico preservado); excluir e desarquivar
+  continuam exclusivos do administrador.
+- Verificado: lista de presenca NR-12 nao corta conteudo no PDF (testes com
+  1 a 33 participantes, todas as folhas completas).
+
+HISTORICO RECENTE
+-----------------
+- v1.85.1: botao "Baixar Pacote" nos custos da frota (PDF + Excel em um ZIP);
+  "Mes especifico" com seletor de calendario; correcao do PDF do mes.
+- v1.85.0: anexos ao descartar cintos; cards de inspecoes de cintos no
+  dashboard; custos da frota por mes especifico (PDF/Excel).
+- v1.84.0/1.84.1: modulo Cintos e Talabartes (tipos, codigo proprio,
+  inspecoes automaticas, saida/retorno com confirmacao, popups grandes).
+- v1.83.0: novo modulo Controle de Cintos e Talabartes (estoque, inspecoes
+  3 meses, entrada/saida com localizacao e confirmacao).

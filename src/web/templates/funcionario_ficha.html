@@ -8,26 +8,64 @@
     {% else %}<div class="foto" style="display:flex; align-items:center; justify-content:center; color:#98A4B0;">sem foto</div>{% endif %}
   </div>
   <div style="flex:1;">
-    <h1>{{ emp.nome }}</h1>
+    <h1>{{ emp.nome }}{% if emp.arquivado %} <span class="badge b-cinza">ARQUIVADO</span>{% endif %}</h1>
     <p class="sub">{{ emp.funcao or 'Sem função' }}</p>
     <table style="max-width:560px;">
       <tr><td class="muted">CPF</td><td>{{ emp.cpf or '—' }}</td></tr>
       <tr><td class="muted">Telefone</td><td>{{ emp.telefone or '—' }}</td></tr>
-      <tr><td class="muted">Nascimento</td><td>{{ emp.data_nascimento or '—' }}</td></tr>
+      <tr><td class="muted">Nascimento</td><td>{{ (emp.data_nascimento or '') | databr or '—' }}</td></tr>
       <tr><td class="muted">Tipo sanguíneo</td><td>{{ emp.tipo_sanguineo or '—' }}</td></tr>
-      <tr><td class="muted">Admissão</td><td>{{ emp.data_admissao or '—' }}</td></tr>
+      <tr><td class="muted">Admissão</td><td>{{ (emp.data_admissao or '') | databr or '—' }}</td></tr>
       <tr><td class="muted">Registro CTPS</td><td>{{ emp.registro_ctps or '—' }}</td></tr>
       <tr><td class="muted">CNH EAR</td><td>{{ 'Sim' if emp.cnh_ear else 'Não' }}</td></tr>
     </table>
     <div class="linha-botoes">
-      {% if pode_escrever %}<a class="btn" href="/funcionarios/{{ emp.id }}/editar">Editar</a>{% endif %}
+      {% if pode_escrever and not emp.arquivado %}<a class="btn" href="/funcionarios/{{ emp.id }}/editar">Editar</a>{% endif %}
       <a class="btn cinza" href="/epi/funcionario/{{ emp.id }}">Fichas de EPI ({{ epi_count }})</a>
+      {% if pode_escrever and not emp.arquivado %}<a class="btn" href="/crachas/novo?busca={{ emp.nome | urlencode }}" title="Gerar crachá deste funcionário">🪪 Crachá rápido</a>{% endif %}
+      {% if pode_escrever and not emp.arquivado %}<a class="btn" href="/cartoes/novo?busca={{ emp.nome | urlencode }}" title="Emitir cartão de bloqueio deste funcionário">🚧 Cartão de bloqueio</a>{% endif %}
+      {% if eh_admin and not emp.arquivado %}
+      <form method="post" action="/funcionarios/{{ emp.id }}/excluir" style="display:inline;"
+            data-pedir-motivo="Excluir funcionário|Se houver certificados, ele será ARQUIVADO (mantém histórico) em vez de excluído.">
+        <button type="submit" class="vermelho">Excluir</button>
+      </form>
+      {% elif eh_admin and emp.arquivado %}
+      <form method="post" action="/funcionarios/{{ emp.id }}/desarquivar" style="display:inline;">
+        <button type="submit" class="verde">Desarquivar</button>
+      </form>
+      {% endif %}
     </div>
   </div>
 </div>
 
 <div class="card">
-  <h2>Documentos</h2>
+  <h2>ASO</h2>
+  {% if asos %}
+  <table>
+    <thead><tr><th>Número</th><th>Tipo</th><th>Exame</th><th>Válido até</th><th>Status</th><th>Ações</th></tr></thead>
+    <tbody>
+    {% for a in asos %}
+      <tr>
+        <td><a class="numero" href="/aso/{{ a.id }}">{{ a.numero }}</a>{% if a.bloqueado %} <span class="badge b-vermelho">BLOQUEADO</span>{% endif %}</td>
+        <td>{{ a.tipo }}</td>
+        <td>{{ a.exame_br }}</td>
+        <td>{{ a.valido_br }}</td>
+        <td><span class="badge {{ a.classe }}">{{ a.status }}</span></td>
+        <td class="acoes">
+          <a class="btn cinza" href="/aso/{{ a.id }}/pdf" target="_blank">PDF</a>
+          {% if pode_aso and not a.bloqueado %}<a class="btn" href="/aso/{{ a.id }}/editar">Atualizar</a>{% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p class="muted">Nenhum ASO cadastrado para este funcionário.</p>{% endif %}
+  {% if pode_aso %}<a class="btn verde" href="/aso/novo?funcionario={{ emp.id }}">+ Gerar ASO</a>{% endif %}
+</div>
+
+<div class="card">
+  <h2>Pasta de documentos</h2>
+  <p class="muted">Aqui você pode guardar outros documentos do funcionário</p>
   {% if docs %}
   <table>
     <thead><tr><th>Arquivo</th><th>Tipo</th><th>Enviado em</th><th>Ações</th></tr></thead>
@@ -64,14 +102,30 @@
 <div class="card">
   <h2>Certificados ({{ certificados | length }})</h2>
   {% if certificados %}
-  <table>
-    <thead><tr><th>Número</th><th>NR</th><th>Data</th><th>Carga</th><th>Assinado</th><th>Ações</th></tr></thead>
+  <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:8px;">
+    <label style="font-size:13px;">NR:
+      <select id="f-cert-nr" style="max-width:160px;"><option value="">Todas</option></select>
+    </label>
+    <label style="font-size:13px;">Situação:
+      <select id="f-cert-st">
+        <option value="">Todas</option>
+        <option value="validas">Dentro da validade</option>
+        <option value="vencidas">Vencidas</option>
+        <option value="proximas">Próximas de vencer (30 dias)</option>
+      </select>
+    </label>
+    <label style="font-size:13px;"><input type="checkbox" id="f-cert-antigos"> Mostrar antigos (substituídos)</label>
+    <span id="f-cert-conta" class="muted" style="font-size:12px;"></span>
+  </div>
+  <table id="tab-certificados">
+    <thead><tr><th>Número</th><th>NR</th><th>Data</th><th>Validade</th><th>Carga</th><th>Assinado</th><th>Ações</th></tr></thead>
     <tbody>
     {% for cert in certificados %}
-      <tr>
+      <tr data-nr="{{ cert.nr_code }}" data-dias="{{ cert.dias if cert.dias is not none else '' }}" data-vigente="{{ '1' if cert.vigente else '0' }}">
         <td><b class="numero">{{ cert.cert_number }}</b></td>
         <td>{{ cert.nr_code }}</td>
         <td>{{ cert.data_fim }}</td>
+        <td>{{ cert.validade_br or '—' }}</td>
         <td>{{ cert.carga_horaria }}h</td>
         <td>{% if cert.has_signed_doc %}<span class="badge b-verde">Assinado</span>{% else %}<span class="badge b-cinza">—</span>{% endif %}</td>
         <td class="acoes">
@@ -82,6 +136,46 @@
     {% endfor %}
     </tbody>
   </table>
+  <script>
+  (function () {
+    var tab = document.getElementById("tab-certificados");
+    if (!tab) return;
+    var selNr = document.getElementById("f-cert-nr");
+    var selSt = document.getElementById("f-cert-st");
+    var chkAnt = document.getElementById("f-cert-antigos");
+    var conta = document.getElementById("f-cert-conta");
+    var nrs = {};
+    Array.prototype.forEach.call(tab.tBodies[0].rows, function (tr) {
+      nrs[tr.dataset.nr] = true;
+    });
+    Object.keys(nrs).sort().forEach(function (nr) {
+      var o = document.createElement("option");
+      o.value = nr; o.textContent = nr;
+      selNr.appendChild(o);
+    });
+    function aplica() {
+      var nr = selNr.value, st = selSt.value, antigos = chkAnt.checked;
+      var vis = 0;
+      Array.prototype.forEach.call(tab.tBodies[0].rows, function (tr) {
+        var ok = true;
+        if (nr && tr.dataset.nr !== nr) ok = false;
+        var dias = tr.dataset.dias === "" ? null : parseInt(tr.dataset.dias, 10);
+        var vigente = tr.dataset.vigente === "1";
+        if (ok && !antigos && !vigente) ok = false;
+        if (ok && st === "validas" && (dias === null || dias < 0)) ok = false;
+        if (ok && st === "vencidas" && (dias === null || dias >= 0)) ok = false;
+        if (ok && st === "proximas" && (dias === null || dias < 0 || dias > 30)) ok = false;
+        tr.style.display = ok ? "" : "none";
+        if (ok) vis++;
+      });
+      conta.textContent = vis + " de " + tab.tBodies[0].rows.length + " certificado(s)";
+    }
+    selNr.addEventListener("change", aplica);
+    selSt.addEventListener("change", aplica);
+    chkAnt.addEventListener("change", aplica);
+    aplica();
+  })();
+  </script>
   {% else %}<p class="muted">Nenhum certificado emitido.</p>{% endif %}
 </div>
 {% endblock %}

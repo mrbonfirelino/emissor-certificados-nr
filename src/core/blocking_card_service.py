@@ -108,6 +108,15 @@ def _fit_image(img_reader, box_x, box_y, box_w, box_h, c: pdfcanvas.Canvas):
     c.drawImage(img_reader, dx, dy, dw, dh, mask='auto')
 
 
+def _fs_fit(c: pdfcanvas.Canvas, text: str, font: str, fs: float, max_w: float,
+            min_fs: float = 4.5) -> float:
+    """v1.84.0: reduz o tamanho da fonte ate o texto caber em max_w (cartoes de
+    bloqueio: nomes/cargos longos nao podem sair cortados)."""
+    while fs > min_fs and c.stringWidth(text, font, fs) > max_w:
+        fs -= 0.25
+    return fs
+
+
 def _draw_card(c: pdfcanvas.Canvas, x: float, y: float, template: dict, emp, logo_path: Optional[Path]):
     """
     Desenha um cartao na posicao (x, y) = canto inferior esquerdo (pontos).
@@ -248,17 +257,20 @@ def _draw_card(c: pdfcanvas.Canvas, x: float, y: float, template: dict, emp, log
             nome_cfg = cfg.get("nome", {})
             funcao_cfg = cfg.get("funcao", {})
             nome = (emp.nome or "").upper()
-            if int(nome_cfg.get("max_chars", 30) or 0):
-                nome = nome[:int(nome_cfg["max_chars"])]
             funcao = (emp.funcao or "-").upper()
-            if int(funcao_cfg.get("max_chars", 28) or 0):
-                funcao = funcao[:int(funcao_cfg["max_chars"])]
             fs_n = float(nome_cfg.get("size", 9))
             fs_f = float(funcao_cfg.get("size", 8.5))
-            c.setFont(nome_cfg.get("font", "Helvetica-Bold"), fs_n)
+            # v1.84.0: reduz a fonte ate caber na largura do cartao (antes
+            # truncava por max_chars e nomes/cargos longos saiam cortados)
+            max_w = cw - 6 * mm
+            f_n = nome_cfg.get("font", "Helvetica-Bold")
+            f_f = funcao_cfg.get("font", "Helvetica")
+            fs_n = _fs_fit(c, nome, f_n, fs_n, max_w)
+            fs_f = _fs_fit(c, funcao, f_f, fs_f, max_w)
+            c.setFont(f_n, fs_n)
             c.setFillColor(_hex(nome_cfg.get("color", "#111111")))
             c.drawCentredString(x + cw / 2, sec_y + sec_h * 0.60, nome)
-            c.setFont(funcao_cfg.get("font", "Helvetica"), fs_f)
+            c.setFont(f_f, fs_f)
             c.setFillColor(_hex(funcao_cfg.get("color", "#111111")))
             c.drawCentredString(x + cw / 2, sec_y + sec_h * 0.25, funcao)
 

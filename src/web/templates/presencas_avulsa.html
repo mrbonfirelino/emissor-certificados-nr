@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block titulo %}Lista de presença avulsa{% endblock %}
+
+{% block conteudo %}
+<h1>Lista de presença avulsa</h1>
+<p class="muted">Monte uma lista separada da emissão: escolha a NR, a data do treinamento
+(qualquer data — futura ou passada) e selecione livremente os colaboradores.
+A lista é gerada na hora, sem depender de certificados emitidos no dia.</p>
+
+<form method="post" action="/presencas/emitir-avulsa" id="f-avulsa">
+    <div class="card">
+        <h2 style="margin-top:0">Dados do treinamento</h2>
+        <div class="form-grid">
+            <label class="campo">NR do treinamento
+                <select name="nr" required>
+                    <option value="">— escolha —</option>
+                    {% for n in nrs %}
+                    <option value="{{ n.codigo }}">{{ n.codigo }}{% if n.label and n.label != n.codigo %} — {{ n.label }}{% endif %}{{ ' · modelo pronto' if n.tem_modelo else ' · layout padrão' }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label class="campo">Data do treinamento
+                <input type="date" name="data" required>
+            </label>
+            <label class="campo">Carga horária (h)
+                <input type="number" name="carga" min="0" step="1" placeholder="ex.: 8">
+            </label>
+        </div>
+        <p class="muted" style="margin-bottom:0">A data pode ser futura ou passada — não precisa haver emissão de certificados nesse dia.</p>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+        <h2 style="margin-top:0">Colaboradores</h2>
+        <div class="filtros" style="margin-bottom:10px">
+            <label>Buscar
+                <input type="search" id="f-busca" placeholder="nome ou função…">
+            </label>
+            <div class="linha-botoes">
+                <button type="button" class="btn" id="b-todos">Marcar todos</button>
+                <button type="button" class="btn cinza" id="b-ninguem">Desmarcar todos</button>
+            </div>
+        </div>
+        <table id="tab-funcs">
+            <tr><th></th><th>Nome</th><th>Função</th></tr>
+            {% for f in funcionarios %}
+            <tr class="linha-func" data-busca="{{ (f.nome ~ ' ' ~ f.funcao)|lower }}">
+                <td><input type="checkbox" name="emp_{{ f.id }}"></td>
+                <td>{{ f.nome }}</td>
+                <td>{{ f.funcao or '—' }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3">Nenhum funcionário cadastrado. Você pode digitar nomes abaixo.</td></tr>
+            {% endfor %}
+        </table>
+        <label class="campo" style="margin-top:12px">Nomes avulsos (um por linha, opcional)
+            <textarea name="nomes_extras" rows="4" placeholder="Nome completo de participante não cadastrado"></textarea>
+        </label>
+    </div>
+
+    {% if pode_escrever %}
+    <div class="linha-botoes" style="margin-top:14px">
+        <button class="btn verde">Gerar lista de presença</button>
+        <a class="btn cinza" href="/presencas">Cancelar</a>
+    </div>
+    {% else %}
+    <p class="muted">Você não tem permissão para emitir listas.</p>
+    {% endif %}
+</form>
+
+<script>
+(function () {
+    var busca = document.getElementById('f-busca');
+    if (busca) {
+        busca.addEventListener('input', function () {
+            var q = busca.value.trim().toLowerCase();
+            document.querySelectorAll('tr.linha-func').forEach(function (tr) {
+                tr.style.display = (!q || (tr.dataset.busca || '').indexOf(q) >= 0) ? '' : 'none';
+            });
+        });
+    }
+    function marcar(marcarTodos) {
+        document.querySelectorAll('tr.linha-func').forEach(function (tr) {
+            if (tr.style.display === 'none') return;
+            var cb = tr.querySelector('input[type="checkbox"]');
+            if (cb) cb.checked = marcarTodos;
+        });
+    }
+    var bt = document.getElementById('b-todos');
+    var bn = document.getElementById('b-ninguem');
+    if (bt) bt.addEventListener('click', function () { marcar(true); });
+    if (bn) bn.addEventListener('click', function () { marcar(false); });
+})();
+</script>
+{% endblock %}

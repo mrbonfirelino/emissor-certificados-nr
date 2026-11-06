@@ -9,6 +9,7 @@
 {% set chk_duplo = form.backup_duplo if form else s.get('backup_duplo', true) %}
 {% set chk_rede = form.backup_rede if form else s.get('backup_rede_ativo', true) %}
 {% set v_backup_caminho = form.backup_rede_caminho if form else (s.get('backup_rede_caminho') or '') %}
+{% set v_locais_extras = form.backup_locais_extras if form else '\n'.join(s.get('backup_locais_extras') or []) %}
 {% set chk_docs = form.rede_docs if form else s.get('rede_documentos_ativo', false) %}
 {% set v_docs_caminho = form.rede_docs_caminho if form else (s.get('rede_documentos_caminho') or '') %}
 {% set chk_task = form.tarefa_ativa if form else s.get('tarefa_agendada_ativo', false) %}
@@ -17,6 +18,8 @@
 
 <h1>Configurações</h1>
 <p class="sub">Mesmas opções do NormaTech Desktop — dados que saem nos certificados, backups e diagnósticos.</p>
+<p><a class="btn cinza" href="/configuracoes/painel-setores">⚙ Painel do Dashboard por setor</a>
+   <span class="muted">— defina statcards e atalhos padrão de cada setor (v1.77.0)</span></p>
 
 <form method="post" action="/configuracoes/salvar">
   <details class="opcoes" open>
@@ -63,6 +66,12 @@
       {% if chk_rede %}checked{% endif %}> Backup em rede (drive mapeado — pula com aviso se o drive estiver fora)</label></div>
     <div class="campo"><label>Caminho na rede</label>
       <input name="backup_rede_caminho" value="{{ v_backup_caminho }}"></div>
+    <div class="campo"><label>Locais extras de backup (um caminho por linha — v1.86.0)</label>
+      <textarea name="backup_locais_extras" rows="4" placeholder="D:\Backups NormaTech&#10;\\servidor\pasta\backup">{{ v_locais_extras }}</textarea></div>
+  <div class="linha-botoes">
+    <input form="f-caminho" name="caminho" value="{{ v_backup_caminho }}" style="max-width:320px;" placeholder="\\servidor\pasta">
+    <button type="submit" form="f-caminho" class="btn cinza">Testar acesso</button>
+  </div>
     <div class="campo"><label><input type="checkbox" name="tarefa_ativa" value="1" style="width:auto"
       {% if chk_task %}checked{% endif %}> Tarefa Agendada do Windows (backup diário com o portal fechado)</label></div>
     <div class="form-grid">
@@ -112,6 +121,51 @@
     </div>
   </details>
 
+  <details class="opcoes">
+    <summary>Relatórios por e-mail (envio automático — em breve)</summary>
+    <p class="muted">Preencha os dados do servidor de e-mail. O envio automático ainda será implementado; os campos ficam salvos aqui.</p>
+    <div class="form-grid">
+      <div class="campo"><label>Servidor SMTP</label><input name="smtp_host" value="{{ s.get('smtp_host') or '' }}" placeholder="smtp.exemplo.com.br"></div>
+      <div class="campo"><label>Porta</label><input name="smtp_porta" type="number" min="1" max="65535" value="{{ s.get('smtp_porta') or 587 }}"></div>
+      <div class="campo"><label>Usuário</label><input name="smtp_usuario" value="{{ s.get('smtp_usuario') or '' }}" autocomplete="off"></div>
+      <div class="campo"><label>Senha</label><input name="smtp_senha" type="password" value="" placeholder="{{ '(mantida)' if s.get('smtp_senha') else 'não definida' }}" autocomplete="new-password"></div>
+      <div class="campo"><label>Segurança</label><select name="smtp_seguranca">
+        <option value="tls" {{ 'selected' if s.get('smtp_seguranca') == 'tls' else '' }}>TLS</option>
+        <option value="ssl" {{ 'selected' if s.get('smtp_seguranca') == 'ssl' else '' }}>SSL</option>
+        <option value="none" {{ 'selected' if s.get('smtp_seguranca') == 'none' else '' }}>Nenhuma</option>
+      </select></div>
+      <div class="campo"><label>Remetente (De)</label><input name="smtp_remetente" value="{{ s.get('smtp_remetente') or '' }}" placeholder="normatech@exemplo.com.br"></div>
+      <div class="campo"><label>Destinatários (separados por vírgula)</label><input name="report_destinatarios" value="{{ s.get('report_destinatarios') or '' }}" placeholder="a@exemplo.com, b@exemplo.com"></div>
+      <div class="campo"><label>Periodicidade do relatório</label><select name="report_periodicidade">
+        <option value="mensal" {{ 'selected' if s.get('report_periodicidade') == 'mensal' else '' }}>Mensal</option>
+        <option value="trimestral" {{ 'selected' if s.get('report_periodicidade') == 'trimestral' else '' }}>Trimestral</option>
+        <option value="semestral" {{ 'selected' if s.get('report_periodicidade') == 'semestral' else '' }}>Semestral</option>
+        <option value="anual" {{ 'selected' if s.get('report_periodicidade') == 'anual' else '' }}>Anual</option>
+      </select></div>
+      <div class="campo"><label>Relatório ativo</label><input type="checkbox" name="report_ativo" value="1" {{ 'checked' if s.get('report_ativo') else '' }}></div>
+      <!-- v1.81.0: aviso mensal de ASOs a vencer -->
+      <div style="grid-column:1/-1; border-top:1px solid var(--borda,#e3e8ef); margin-top:10px; padding-top:10px;">
+        <label style="font-weight:700;">📩 Aviso mensal de ASOs a vencer (dia 1º de cada mês)</label>
+        <div style="display:flex; align-items:center; gap:8px; margin:8px 0;">
+          <input type="checkbox" name="aso_email_ativo" value="1" {{ 'checked' if s.get('aso_email_ativo') else '' }} id="aso-email-chk">
+          <span>Ativar aviso por e-mail (usa o SMTP acima)</span>
+        </div>
+        <p class="muted">E-mails dos usuários (preencha quem deve receber o aviso):</p>
+        <div style="display:flex; flex-wrap:wrap; gap:10px;">
+          {% for u in usuarios_email %}
+          <div class="campo"><label>{{ u.nome or u.username }}</label><input name="email_{{ u.id }}" value="{{ u.email or '' }}" placeholder="e-mail" style="max-width:230px;"></div>
+          {% endfor %}
+        </div>
+        <div class="campo"><label>Outros destinatários (separados por vírgula)</label><input name="aso_email_extras" value="{{ s.get('aso_email_extras') or '' }}" placeholder="gestor@exemplo.com"></div>
+      </div>
+    </div>
+    <div class="linha-botoes">
+      <button type="submit" form="f-email-testar" class="btn cinza">Testar conexão SMTP</button>
+      <button type="submit" form="f-email-envio" class="btn cinza">Enviar e-mail de teste</button>
+    </div>
+    <p class="muted">Os testes usam os dados j\u00e1 salvos — salve a configuração antes de testar.</p>
+  </details>
+
   <div class="linha-botoes">
     <button type="submit" class="btn verde">Salvar Configuração</button>
     <a class="btn cinza" href="/">Cancelar</a>
@@ -119,6 +173,9 @@
 </form>
 
 <form id="f-sync" method="post" action="/configuracoes/sincronizar"></form>
+<form id="f-email-testar" method="post" action="/configuracoes/email-testar"></form>
+<form id="f-email-envio" method="post" action="/configuracoes/email-testar-envio"></form>
+<form id="f-caminho" method="post" action="/configuracoes/testar-caminho"></form>
 <form id="f-log" method="post" action="/configuracoes/log/limpar"></form>
 
 <script>

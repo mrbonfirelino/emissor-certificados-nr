@@ -1,14 +1,18 @@
-"""Vencimentos no portal (Fase 3) — leitura, mesmos filtros do desktop.
+﻿"""Vencimentos no portal (Fase 3) — leitura, mesmos filtros do desktop.
 
 Certs + ASOs + Integrações com a mesma lógica de filtro do desktop
 (src/core/filtros_vencimentos). Consulta e emissor veem; é read-only.
 """
 
 from urllib.parse import urlencode
+from pathlib import Path
+import time
+from typing import Optional
 
 from fastapi import APIRouter, Request
 
 from src.core.filtros_vencimentos import PERIOD_RANGES, filter_certs
+from src.utils.paths import get_db_path
 from src.web.auth import require_permission
 
 PER_PAGE = 20
@@ -27,13 +31,73 @@ PERIODOS = [
     ("vencidos", "Vencidos"),
     ("dias_7", "Próximos 7 dias"),
     ("dias_15", "Próximos 15 dias"),
+    ("dias_8_15", "Vencem em 8 a 15 dias"),
+    ("dias_8_30", "Vencem em 8 a 30 dias"),
     ("mes_1", "Próximos 30 dias"),
     ("meses_3", "Próximos 90 dias"),
 ]
 
 
+# v1.82.0: cache da pilha de vencimentos (TTL curto + invalidacao por mtime do
+# banco). Evita 3 varreduras completas (certificados + ASOs + integracoes) em
+# cada request do painel, /vencimentos e /api/vencimentos/resumo.
+_CACHE_TTL = 15.0  # segundos
+_cache_items: dict = {"data": None, "ts": 0.0, "mtime": None}
+_cache_frota: dict = {"data": None, "ts": 0.0, "mtime": None}
+
+
+def _db_mtime():
+    """mtime do banco (considera -wal p/ invalidar cache apos escritas em WAL)."""
+    try:
+        p = Path(get_db_path())
+        m = p.stat().st_mtime
+        wal = p.with_name(p.name + "-wal")
+        if wal.exists():
+            m = max(m, wal.stat().st_mtime)
+        return m
+    except Exception:
+        return None
+
+
+def _cache_ok(cache: dict) -> bool:
+    if cache["data"] is None:
+        return False
+    if time.time() - cache["ts"] > _CACHE_TTL:
+        return False
+    return cache["mtime"] == _db_mtime()
+
+
+def _cache_put(cache: dict, data: list) -> list:
+    cache["data"] = data
+    cache["ts"] = time.time()
+    cache["mtime"] = _db_mtime()
+    return data
+
+
+def _carregar_frota() -> list:
+    """Itens de vencimento da frota (laudos + manutencoes por KM)."""
+    # v1.82.0: cache com TTL + invalidacao por mtime do banco
+    if _cache_ok(_cache_frota):
+        return _cache_frota["data"]
+    from src.core.frota_repo import FrotaRepository
+    fr = FrotaRepository()
+    out = []
+    try:
+        out += fr.get_laudos_with_expiration()
+    except Exception:
+        pass
+    try:
+        out += fr.get_manutencoes_with_expiration()
+    except Exception:
+        pass
+    return _cache_put(_cache_frota, out)
+
+
 def _carregar_items() -> list:
     """Mesma fonte do desktop: certificados + ASOs + integrações."""
+    # v1.82.0: cache com TTL + invalidacao por mtime do banco
+    if _cache_ok(_cache_items):
+        return _cache_items["data"]
     from src.core.history_repo import HistoryRepository
 
     itens = list(HistoryRepository().get_certificates_with_expiration())
@@ -47,17 +111,7 @@ def _carregar_items() -> list:
         itens += IntegracaoRepository().get_integracoes_with_expiration()
     except Exception:
         pass
-    try:
-        from src.core.frota_repo import FrotaRepository
-        itens += FrotaRepository().get_laudos_with_expiration()
-    except Exception:
-        pass
-    try:
-        from src.core.frota_repo import FrotaRepository
-        itens += FrotaRepository().get_manutencoes_with_expiration()
-    except Exception:
-        pass
-    return itens
+    return _cache_put(_cache_items, itens)
 
 
 def _br(iso: str) -> str:
@@ -67,8 +121,157 @@ def _br(iso: str) -> str:
     return s
 
 
+def _setor_do_item(c: dict) -> str:
+    """Mapa item -> setor (notificacoes estruturadas por setor)."""
+    nr = str(c.get("nr_code", ""))
+    if nr == "FROTA":
+        return "frota"
+    if nr.startswith("INTEGRA"):
+        return "outros"
+    # treinamentos de segurança (NR-XX, ASO, PTA, CIPAA, brigadista etc.)
+    return "seguranca"
+
+
+def resumo_vencimentos(itens: Optional[list] = None) -> dict:
+    """Contagens de vencimentos por status/categoria + itens mais urgentes.
+
+    v1.81.2: aceita `itens` já carregados (rota do painel reusa a pilha)."""
+    if itens is None:
+        itens = _carregar_items()
+    hoje_status = {"vencido": 0, "urgente": 0, "critico": 0, "atencao": 0,
+                   "proximo": 0, "ok": 0}
+    por_setor = {}
+    urgentes = []
+    for c in itens:
+        st = str(c.get("status", "ok"))
+        hoje_status[st] = hoje_status.get(st, 0) + 1
+        setor = _setor_do_item(c)
+        por_setor.setdefault(setor, {"total": 0, "vencido": 0, "alerta": 0})
+        por_setor[setor]["total"] += 1
+        if st in ("vencido", "urgente", "critico"):
+            por_setor[setor]["vencido" if st == "vencido" else "alerta"] += 1
+        if c.get("dias_para_vencer", 999) <= 30:
+            urgentes.append(c)
+    urgentes.sort(key=lambda c: c.get("dias_para_vencer", 0))
+    top = [{"numero": c.get("cert_number", ""),
+            "nr": c.get("nr_code", ""),
+            "item": c.get("descricao_treinamento", ""),
+            "funcionario": c.get("funcionario_nome", ""),
+            "status": str(c.get("status", "")),
+            "classe": STATUS_CLASSE.get(str(c.get("status", "")), "b-verde"),
+            "dias": c.get("dias_para_vencer", 0)} for c in urgentes[:10]]
+    total = len(itens)
+    alertas = hoje_status["vencido"] + hoje_status["urgente"] + hoje_status["critico"]
+    proximos30 = sum(1 for c in itens if 0 <= c.get("dias_para_vencer", 999) <= 30)
+    return {"total": total, "status": hoje_status, "alertas": alertas,
+            "proximos30": proximos30,
+            "por_setor": por_setor, "itens_urgentes": top}
+
+
 def register(app, deps: dict):
+
     ctx, flash = deps["ctx"], deps["flash"]
+
+    users = deps["users"]
+
+
+    @app.get("/vencimentos/exportar")
+    def vencimentos_exportar(user: dict = require_permission("vencimentos"),
+                             nr: str = "TODAS", periodo: str = "", busca: str = ""):
+        from io import BytesIO
+        from openpyxl import Workbook
+        from fastapi.responses import Response
+        itens = _carregar_items()
+        termo = (busca or "").strip().lower()
+        filtrados = filter_certs(itens, nr or "TODAS", termo, periodo or "")
+        # v1.75.0: ordena por funcionario (alfabetica)
+        filtrados.sort(key=lambda c: (str(c.get("funcionario_nome", "")).lower(),
+                                      c["dias_para_vencer"]))
+        from openpyxl.styles import Font, PatternFill, Border, Side
+        from openpyxl.utils import get_column_letter
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Vencimentos"
+        # v1.75.0: colunas — Funcionario, CPF, NR/Doc, Status, Dias, Documento, Validade, Item
+        ws.append(["Funcionário", "CPF", "NR/Doc", "Status", "Dias",
+                   "Documento", "Validade", "Item"])
+        for c in filtrados:
+            validade = ("\u2014 (por KM)" if c.get("por_km")
+                        else _br(c.get("data_validade")))
+            ws.append([c.get("funcionario_nome", ""), c.get("funcionario_cpf", ""),
+                       c.get("nr_code", ""), str(c.get("status", "")),
+                       c.get("dias_para_vencer", ""), c.get("cert_number", ""),
+                       validade, c.get("descricao_treinamento", "")])
+        # v1.75.0: formatacao — cabecalho negrito/fundo amarelo/bordas, larguras
+        _fina = Side(style="thin", color="999999")
+        _borda = Border(left=_fina, right=_fina, top=_fina, bottom=_fina)
+        _amarelo = PatternFill("solid", fgColor="FFE699")
+        for cel in ws[1]:
+            cel.font = Font(bold=True)
+            cel.fill = _amarelo
+            cel.border = _borda
+            cel.alignment = cel.alignment.copy(horizontal="center")
+        _larguras = {"A": 40, "B": 18, "C": 12, "D": 14, "E": 8, "F": 16,
+                     "G": 14, "H": 46}
+        for col, larg in _larguras.items():
+            ws.column_dimensions[col].width = larg
+        for linha in ws.iter_rows(min_row=2):
+            for cel in linha:
+                cel.border = _borda
+        ws.freeze_panes = "A2"
+        ws.auto_filter.ref = ws.dimensions
+        buf = BytesIO()
+        wb.save(buf)
+        return Response(
+            content=buf.getvalue(),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": "attachment; filename=vencimentos.xlsx"})
+
+    @app.get("/api/vencimentos/resumo")
+    def api_vencimentos_resumo(user: dict = require_permission("vencimentos")):
+        from fastapi.responses import JSONResponse
+        resumo = resumo_vencimentos()
+        try:
+            u = users.get_by_id(user["id"]) or {}
+        except Exception:
+            u = {}
+        chaves = set(u.keys()) if hasattr(u, "keys") else set()
+        resumo["notif"] = bool(u["pref_notif"]) if "pref_notif" in chaves else True
+        resumo["setor_usuario"] = (u["setor"] or "") if "setor" in chaves else ""
+        f_itens = _carregar_frota()
+        f_alert = sorted((c for c in f_itens
+                          if c.get("dias_para_vencer", 999) <= 30),
+                         key=lambda c: c.get("dias_para_vencer", 0))
+        resumo["frota"] = {"alertas": len(f_alert),
+                            "itens": [{"numero": c.get("cert_number", ""),
+                                       "item": c.get("descricao_treinamento", ""),
+                                       "funcionario": c.get("funcionario_nome", ""),
+                                       "status": str(c.get("status", "")),
+                                       "classe": STATUS_CLASSE.get(str(c.get("status", "")), "b-verde"),
+                                       "dias": c.get("dias_para_vencer", 0)}
+                                      for c in f_alert[:3]]}
+        pode_frota = False
+        try:
+            from src.web.permissions import pode_usuario
+            try:
+                pode_frota = pode_usuario(user, "frota")
+            except TypeError:
+                pode_frota = pode_usuario(user.get("papel"), "frota")
+        except Exception:
+            pass
+        resumo["notif_frota"] = pode_frota
+        if pode_frota and f_alert:
+            for c in f_alert[:3]:
+                if len(resumo["itens_urgentes"]) >= 10:
+                    break
+                resumo["itens_urgentes"].append({
+                    "numero": c.get("cert_number", ""), "nr": "FROTA",
+                    "item": c.get("descricao_treinamento", ""),
+                    "funcionario": c.get("funcionario_nome", ""),
+                    "status": str(c.get("status", "")),
+                    "classe": STATUS_CLASSE.get(str(c.get("status", "")), "b-verde"),
+                    "dias": c.get("dias_para_vencer", 0)})
+        return JSONResponse(resumo)
     templates = deps["templates"]
 
     @app.get("/vencimentos")
@@ -112,7 +315,7 @@ def register(app, deps: dict):
         vencidos = sum(1 for c in filtrados if c["dias_para_vencer"] < 0)
         sete = sum(1 for c in filtrados if 0 <= c["dias_para_vencer"] <= 7)
         quinze = sum(1 for c in filtrados if 8 <= c["dias_para_vencer"] <= 15)
-        trinta = sum(1 for c in filtrados if 0 <= c["dias_para_vencer"] <= 30)
+        trinta = sum(1 for c in filtrados if 8 <= c["dias_para_vencer"] <= 30)
 
         filtros = {"nr": nr or "TODAS", "periodo": periodo or "",
                    "busca": (busca or "").strip()}

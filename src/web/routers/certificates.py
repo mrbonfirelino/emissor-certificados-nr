@@ -53,10 +53,35 @@ def register(app, deps: dict):
         templates_nr = _templates_ordenados()
         nr_sel = nr if nr in templates_nr else (next(iter(templates_nr), None))
         tmpl = templates_nr.get(nr_sel)
+        salvo = None
+        try:
+            salvo = request.session.pop("cert_form", None)
+        except Exception:
+            salvo = None
+        # v1.73.0: aviso de substituição de NR vigente (mostra o box de
+        # confirmação somente se o form restaurado é o mesmo funcionário/NR)
+        nr_vigente = None
+        try:
+            cand = request.session.get("cert_nr_vigente")
+            if cand:
+                if (salvo
+                        and str(salvo.get("funcionario_id") or "") == str(cand.get("funcionario_id"))
+                        and (salvo.get("nr") or "") == (cand.get("nr") or "")):
+                    nr_vigente = cand
+                else:
+                    request.session.pop("cert_nr_vigente", None)
+        except Exception:
+            pass
+        if salvo and salvo.get("nr") in templates_nr:
+            nr_sel = salvo["nr"]
+            tmpl = templates_nr.get(nr_sel)
+        extras_salvos = dict(salvo.get("extras") or {}) if salvo else {}
         return templates.TemplateResponse(
             request=request, name="certificados.html",
             context=ctx(request, funcionarios=funcs, templates_nr=templates_nr,
                         nr_sel=nr_sel, tmpl=tmpl, tmpls_dados=_tmpls_dados(templates_nr),
+                        form_salvo=salvo, extras_salvos=extras_salvos,
+                        nr_vigente=nr_vigente,
                         hoje_br=date.today().strftime("%d/%m/%Y"),
                         pode_escrever=pode_escrever(user["papel"], "certificados")))
 
@@ -68,33 +93,75 @@ def register(app, deps: dict):
             flash(request, erro="Seu papel é somente leitura neste módulo.")
             return RedirectResponse("/certificados", status_code=303)
         form = await request.form()
+
+        def _guardar():
+            try:
+                request.session["cert_form"] = {
+                    "funcionario_id": form.get("funcionario_id") or "",
+                    "func_txt": form.get("func_busca") or "",
+                    "nr": form.get("nr") or "",
+                    "data": form.get("data") or "",
+                    "data_inicio": form.get("data_inicio") or "",
+                    "carga": form.get("carga") or "",
+                    "validade": form.get("validade") or "",
+                    "descricao": form.get("descricao") or "",
+                    "extras": {k: v for k, v in form.items()
+                               if k.startswith("campo_")},
+                }
+            except Exception:
+                pass
+
         er = EmployeeRepository()
         emp = er.get_by_id(int(form.get("funcionario_id") or 0))
         if emp is None:
+            _guardar()
             flash(request, erro="Selecione o funcionário.")
             return RedirectResponse("/certificados", status_code=303)
         if not (emp.cpf or "").strip():
+            _guardar()
             flash(request, erro="Funcionário sem CPF cadastrado. Edite o funcionário antes de emitir.")
             return RedirectResponse("/certificados", status_code=303)
         templates_nr = _templates_ordenados()
         nr = form.get("nr") or ""
         tmpl = templates_nr.get(nr)
         if tmpl is None:
+            _guardar()
             flash(request, erro="Selecione uma NR válida.")
             return RedirectResponse("/certificados", status_code=303)
         data_treino = validar_data((form.get("data") or "").strip())
         if data_treino is None:
+            _guardar()
             flash(request, erro="Data inválida (use dd/mm/aaaa).")
             return RedirectResponse("/certificados", status_code=303)
+        # período multi-dia: data de início (padrão = mesma data)
+        data_inicio = data_treino
+        di_txt = (form.get("data_inicio") or "").strip()
+        if di_txt:
+            di = validar_data(di_txt)
+            if di is None:
+                _guardar()
+                flash(request, erro="Data de início inválida (use dd/mm/aaaa).")
+                return RedirectResponse("/certificados", status_code=303)
+            if di > data_treino:
+                _guardar()
+                flash(request, erro="Data de início deve ser anterior ou igual à data de emissão.")
+                return RedirectResponse("/certificados", status_code=303)
+            data_inicio = di
         try:
             carga = int(form.get("carga") or 0)
         except ValueError:
             carga = 0
+        if carga < 1:
+            _guardar()
+            flash(request, erro="Carga horária deve ser pelo menos 1h.")
+            return RedirectResponse("/certificados", status_code=303)
         if carga < tmpl.carga_horaria_minima:
+            _guardar()
             flash(request, erro=f"Carga horária mínima para {nr}: {tmpl.carga_horaria_minima}h.")
             return RedirectResponse("/certificados", status_code=303)
         descricao = (form.get("descricao") or "").strip()
         if not descricao:
+            _guardar()
             flash(request, erro="Informe a descrição do treinamento.")
             return RedirectResponse("/certificados", status_code=303)
         validade_txt = (form.get("validade") or "").strip()
@@ -105,6 +172,7 @@ def register(app, deps: dict):
                 if not 1 <= validade <= 120:
                     raise ValueError
             except ValueError:
+                _guardar()
                 flash(request, erro="Validade inválida (meses entre 1 e 120).")
                 return RedirectResponse("/certificados", status_code=303)
         campos = {}
@@ -116,20 +184,51 @@ def register(app, deps: dict):
             if valor:
                 campos[extra.id] = valor
         if faltando:
+            _guardar()
             flash(request, erro="Preencha: " + ", ".join(faltando) + ".")
             return RedirectResponse("/certificados", status_code=303)
+
+        # v1.73.0: regra 1 certificado por tipo de NR dentro da validade —
+        # se já existe NR vigente, exigir confirmação antes de substituir.
+        vig = None
+        try:
+            vig = HistoryRepository().get_vigente(emp.id, nr)
+        except Exception:
+            vig = None
+        if vig and (form.get("confirmar_nr") or "") != "1":
+            try:
+                request.session["cert_nr_vigente"] = {
+                    "funcionario_id": emp.id, "nr": nr, "nome": emp.nome,
+                    "venc": vig.get("data_validade", ""),
+                    "numero": vig.get("cert_number", "")}
+            except Exception:
+                pass
+            _guardar()
+            flash(request, erro=(
+                f"{emp.nome} já possui {nr} válida até "
+                f"{vig.get('data_validade', '')} "
+                f"(certificado {vig.get('cert_number', '')}). "
+                "Confirme a substituição para emitir novamente."))
+            return RedirectResponse("/certificados", status_code=303)
+        try:
+            request.session.pop("cert_nr_vigente", None)
+        except Exception:
+            pass
 
         from src.core.certificate_service import CertificateService
         try:
             service = CertificateService()
             pdf_path = service.generate_certificate(
                 nr_code=nr, employee=emp, data_treinamento=data_treino,
+                data_inicio=data_inicio,
                 carga_horaria=carga, descricao_treinamento=descricao,
                 campos_extra=campos, validade_meses=validade)
         except ValueError as e:
+            _guardar()
             flash(request, erro=str(e))
             return RedirectResponse("/certificados", status_code=303)
         except Exception:
+            _guardar()
             flash(request, erro="Não foi possível gerar o certificado.")
             return RedirectResponse("/certificados", status_code=303)
 
@@ -144,6 +243,37 @@ def register(app, deps: dict):
             if numero else RedirectResponse("/historico", status_code=303)
 
     # ---------------- detalhe + pdf ----------------
+    @app.get("/certificados/exemplo")
+    def certificado_exemplo(request: Request, nr: str = "",
+                            user: dict = auth.require_permission("certificados")):
+        """Gera um PDF de exemplo (dados inventados) sem gravar no historico."""
+        from types import SimpleNamespace
+        from src.core.certificate_service import CertificateService
+        from src.utils.paths import get_data_dir
+        tmpl = load_all_templates().get(nr)
+        if not tmpl:
+            return RedirectResponse("/certificados", 303)
+        hoje = date.today()
+        emp_fake = SimpleNamespace(id=0, nome="EXEMPLO - Fulano de Tal",
+                                   cpf="000.000.000-00")
+        out = get_data_dir() / "_previews" / "web_exemplo.pdf"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            pdf = CertificateService().generate_preview_pdf(
+                nr_code=nr, employee=emp_fake, data_treinamento=hoje,
+                carga_horaria=tmpl.carga_horaria_minima,
+                descricao_treinamento=tmpl.descricao_padrao,
+                campos_extra={}, output_path=out)
+        except Exception:
+            pdf = None
+        if not pdf or not Path(pdf).exists():
+            flash(request, erro="N\u00e3o foi poss\u00edvel gerar o exemplo "
+                                "(verifique os dados da empresa em Configura\u00e7\u00f5es).")
+            return RedirectResponse("/certificados", 303)
+        return FileResponse(str(pdf), media_type="application/pdf",
+                            headers={"Content-Disposition":
+                                     "inline; filename=exemplo.pdf"})
+
     @app.get("/certificados/{numero}")
     def detalhe(numero: str, request: Request,
                 user: dict = auth.require_permission("certificados")):
@@ -251,6 +381,10 @@ def register(app, deps: dict):
             return Response("Selecione uma NR válida.", status_code=400)
         data_treino = validar_data((form.get("data") or "").strip()) \
             or date.today()
+        data_inicio = validar_data((form.get("data_inicio") or "").strip()) \
+            or data_treino
+        if data_inicio > data_treino:
+            data_inicio = data_treino
         try:
             carga = int(form.get("carga") or 0) or tmpl.carga_horaria_minima
         except ValueError:
@@ -271,6 +405,7 @@ def register(app, deps: dict):
             service = CertificateService()
             service.generate_preview_pdf(
                 nr_code=nr, employee=emp, data_treinamento=data_treino,
+                data_inicio=data_inicio,
                 carga_horaria=carga, descricao_treinamento=descricao,
                 campos_extra=campos, output_path=alvo)
         except Exception:

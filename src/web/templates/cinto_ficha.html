@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+{% block titulo %}{{ item.nome or (item.marca ~ " " ~ item.modelo) }} — Cintos e Talabartes{% endblock %}
+{% block conteudo %}
+{% macro br(d) %}{{ d or "" }}{% endmacro %}
+<p><a class="btn-voltar" href="/cintos">← Voltar</a></p>
+
+<div class="card">
+  <h1>{{ item.codigo }} — {{ item.nome or (item.marca ~ " " ~ item.modelo) }}
+    <span class="badge b-azul">{{ "Talabarte" if item.tipo == 'talabarte' else "Cinto" }}</span>
+    {% if item.antichama %}<span class="badge b-azul">Antichama</span>{% endif %}
+    {% if item.situacao == 'vencido' %}<span class="badge b-vermelho alerta-verm">Vencido</span>
+    {% elif item.situacao == 'descartado' %}<span class="badge b-cinza">Descartado</span>
+    {% else %}<span class="badge b-verde">Válido</span>{% endif %}
+    {% if item.inspecao_status == 'vencida' %}<span class="badge b-vermelho alerta-verm">Inspeção vencida</span>
+    {% elif item.inspecao_status == 'proxima' %}<span class="badge b-amarelo pulsa">Inspeção próxima</span>{% endif %}
+  </h1>
+  {% if item.situacao == 'descartado' %}
+  <p class="sub">Descartado em {{ item.arquivado_em }} por {{ item.arquivado_por }} — motivo: {{ item.motivo_arquivamento }}</p>
+  {% endif %}
+
+  {% if item.situacao == 'descartado' and desc_anexos %}
+  <div class="card" style="margin-top:10px;">
+    <h2>Anexos do descarte</h2>
+    <table>
+      <thead><tr><th>Arquivo</th><th>Enviado por</th></tr></thead>
+      <tbody>
+        {% for a in desc_anexos %}
+        <tr>
+          <td><a href="/cintos/descarte/{{ a.id }}/download">{{ a.filename }}</a>
+            {% if a.tipo_arquivo in ('jpg', 'jpeg', 'png') %}
+            <div><img src="/cintos/descarte/{{ a.id }}/foto" alt="{{ a.filename }}" style="max-width:220px;max-height:220px;margin-top:6px;border-radius:6px;"></div>
+            {% endif %}</td>
+          <td>{{ a.usuario or "—" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <div class="form-grid">
+    <div class="campo"><label>Marca</label><span>{{ item.marca }}</span></div>
+    <div class="campo"><label>Modelo</label><span>{{ item.modelo or "—" }}</span></div>
+    <div class="campo"><label>CA</label><span>{{ item.ca or "—" }}</span></div>
+    <div class="campo"><label>Lote</label><span>{{ item.lote }}</span></div>
+    <div class="campo"><label>Nº de série</label><span>{{ item.numero_serie }}</span></div>
+    <div class="campo"><label>Fabricação (mês/ano)</label><span>{{ item.data_fabricacao_br }}</span></div>
+    <div class="campo"><label>Validade</label><span>{{ item.data_validade }} ({{ item.validade_meses }} meses)</span></div>
+    <div class="campo"><label>Próxima inspeção</label>
+      <span>{% if item.proxima_inspecao %}{{ item.proxima_inspecao }}
+        {% if item.inspecao_status == 'vencida' %}<span class="badge b-vermelho alerta-verm">vencida</span>
+        {% elif item.inspecao_status == 'proxima' %}<span class="badge b-amarelo pulsa">próxima</span>{% endif %}
+      {% else %}<span class="badge b-vermelho">Sem inspeção</span>{% endif %}</span></div>
+    <div class="campo"><label>Localização</label><span>{{ item.localizacao or "Estoque" }}</span></div>
+    {% if item.observacoes %}<div class="campo"><label>Observações</label><span>{{ item.observacoes }}</span></div>{% endif %}
+  </div>
+
+  {% if pode_escrever %}
+  <p class="linha-botoes">
+    <a class="btn" href="/cintos/{{ item.id }}/editar">Editar</a>
+    {% if not saida_aberta and item.situacao != 'descartado' %}
+    <button type="button" class="btn verde" onclick="document.getElementById('dlg-saida').showModal()">Registrar saída</button>
+    {% endif %}
+    {% if item.situacao != 'descartado' and not saida_aberta %}
+    <button type="button" class="btn verde" onclick="document.getElementById('dlg-insp').showModal()">Registrar inspeção</button>
+    {% endif %}
+    <button type="button" class="btn vermelho" onclick="document.getElementById('dlg-arq').showModal()">{{ "Reativar item" if item.situacao == 'descartado' else "Descartar / arquivar" }}</button>
+  </p>
+  {% endif %}
+
+  {% if pode_escrever and saida_aberta %}
+  <button type="button" class="btn verde" onclick="document.getElementById('dlg-ent').showModal()">Registrar entrada (retorno de {{ saida_aberta.destino }})</button>
+  {% endif %}
+</div>
+
+<!-- ===================== Dialog: Registrar saída (v1.84.0: popup grande) ===================== -->
+<dialog id="dlg-saida" class="modal largo">
+  <div class="modal-topo"><h3>Registrar saída — {{ item.nome or item.codigo }}</h3>
+    <button class="btn" data-fecha-dlg="dlg-saida">✕</button></div>
+  <div class="modal-corpo">
+    <form method="post" action="/cintos/{{ item.id }}/saida" class="form-grid">
+      <div class="campo"><label>Data da saída *</label>
+        <input type="text" name="data" class="js-data" placeholder="dd/mm/aaaa" required></div>
+      <div class="campo campo-largo"><label>Destino / local *</label>
+        <input type="text" name="destino" placeholder="Ex: Ternium - Rio Negro" required></div>
+      <div class="campo campo-largo"><label><input type="checkbox" name="testado" value="1" required>
+        Eu confirmo que o equipamento foi inspecionado pela equipe de segurança e está apto para uso</label></div>
+      <div class="campo campo-largo"><label>Observações</label>
+        <textarea name="observacoes" rows="3"></textarea></div>
+      <div class="campo"><button type="submit" class="verde">Confirmar saída</button></div>
+    </form>
+  </div>
+</dialog>
+
+<!-- ===================== Dialog: Registrar entrada (v1.84.1: popup grande + apto/danificado) ===================== -->
+<dialog id="dlg-ent" class="modal largo">
+  <div class="modal-topo"><h3>Registrar entrada — retorno de {{ saida_aberta.destino }}</h3>
+    <button class="btn" data-fecha-dlg="dlg-ent">✕</button></div>
+  <div class="modal-corpo">
+    <form method="post" action="/cintos/{{ item.id }}/entrada" class="form-grid">
+      <div class="campo"><label>Data *</label><input type="text" name="data" class="js-data" placeholder="dd/mm/aaaa" required></div>
+      <div class="campo campo-largo"><label><input type="checkbox" name="testado" value="1" required> Item inspecionado</label></div>
+      <div class="campo"><label>Resultado *</label>
+        <select name="resultado" required>
+          <option value="apto">Item apto para uso</option>
+          <option value="danificado">Item danificado</option>
+        </select></div>
+      <div class="campo campo-largo"><label>Observações</label><textarea name="observacoes" rows="2"></textarea></div>
+      <div class="campo"><button type="submit" class="verde">Confirmar entrada</button></div>
+    </form>
+    <p class="sub">Se o item voltou danificado, registre "Item danificado" e avalie o descarte na opção Descartar / arquivar.</p>
+  </div>
+</dialog>
+
+<!-- ===================== Dialog: Registrar inspeção (v1.84.0: pergunta anexo x site) ===================== -->
+<dialog id="dlg-insp" class="modal largo">
+  <div class="modal-topo"><h3>Registrar inspeção — {{ item.nome or item.codigo }}</h3>
+    <button class="btn" data-fecha-dlg="dlg-insp">✕</button></div>
+  <div class="modal-corpo">
+    <form method="post" action="/cintos/{{ item.id }}/inspecao" enctype="multipart/form-data" class="form-grid"
+          onsubmit="return validarInsp();">
+      <div class="campo"><label>Data da inspeção *</label>
+        <input type="text" name="data_inspecao" id="insp-data" class="js-data" placeholder="dd/mm/aaaa" required></div>
+      <div class="campo campo-largo"><label>Como você quer registrar? *</label>
+        <select name="tipo" id="sel-tipo" required
+                onchange="document.getElementById('blk-arq').style.display = this.value==='arquivo'?'':'none'; document.getElementById('blk-int').style.display = this.value==='interno'?'':'none'; document.getElementById('blk-int2').style.display = this.value==='interno'?'':'none';">
+          <option value="">— escolha: anexar relatório ou fazer no site —</option>
+          <option value="arquivo">Anexar relatório (PDF/JPG/PNG)</option>
+          <option value="interno">Fazer relatório no site (texto + foto)</option>
+        </select></div>
+      <div id="blk-arq" class="campo campo-largo" style="display:none;"><label>Arquivo do relatório *</label>
+        <input type="file" name="arquivo" accept=".pdf,.jpg,.jpeg,.png"></div>
+      <div id="blk-int" class="campo campo-largo" style="display:none;"><label>Resultado *</label>
+        <textarea name="texto" rows="3" placeholder="Descrição do resultado da inspeção"></textarea></div>
+      <div id="blk-int2" class="campo campo-largo" style="display:none;"><label>Foto (opcional)</label>
+        <input type="file" name="foto" accept=".jpg,.jpeg,.png"></div>
+      <div class="campo"><button type="submit" class="verde">Salvar inspeção</button></div>
+    </form>
+    <p class="sub">A próxima inspeção fica automaticamente 3 meses após a data informada.</p>
+  </div>
+</dialog>
+
+<!-- ===================== Dialog: Descartar / arquivar ===================== -->
+<dialog id="dlg-arq" class="modal largo">
+  <div class="modal-topo"><h3>{{ "Reativar item" if item.situacao == 'descartado' else "Descartar / arquivar item" }}</h3>
+    <button class="btn" data-fecha-dlg="dlg-arq">✕</button></div>
+  <div class="modal-corpo">
+    <form method="post" action="/cintos/{{ item.id }}/arquivar" enctype="multipart/form-data" class="form-grid"
+          onsubmit="return confirm('Confirmar operação?');">
+      <input type="hidden" name="acao" value="{{ 'reativar' if item.situacao == 'descartado' else 'arquivar' }}">
+      {% if item.situacao != 'descartado' %}
+      <p class="sub">O item só pode ser descartado se estiver no estoque (sem saída em aberto).</p>
+      <div class="campo campo-largo"><label>Motivo *</label>
+        <input type="text" name="motivo" placeholder="Desgaste real, retenção de queda..." required></div>
+      <div class="campo campo-largo"><label>Anexos (fotos ou documentos, opcional)</label>
+        <input type="file" name="anexos" multiple accept=".pdf,.jpg,.jpeg,.png"></div>
+      {% else %}
+      <p class="sub">O item voltará ao estoque como ativo.</p>
+      <input type="hidden" name="motivo" value="">
+      {% endif %}
+      <div class="campo"><button type="submit" class="vermelho">Confirmar</button></div>
+    </form>
+  </div>
+</dialog>
+
+<script>
+function validarInsp() {
+  var t = document.getElementById('sel-tipo').value;
+  if (!t) { alert('Escolha: anexar relatório ou fazer no site.'); return false; }
+  return true;
+}
+</script>
+
+<!-- ===================== Inspeções ===================== -->
+<div class="card">
+  <h2>Inspecões <span class="muted">(periódicas a cada {{ intervalo_meses }} meses)</span></h2>
+
+  <table>
+    <thead><tr><th>Data</th><th>Próxima</th><th>Tipo</th><th>Relatório</th><th>Usuário</th></tr></thead>
+    <tbody>
+      {% for i in inspecoes %}
+      <tr>
+        <td>{{ i.data_inspecao }}</td>
+        <td>{{ i.proxima_inspecao }}</td>
+        <td>{{ "Anexo" if i.tipo == 'arquivo' else ("Automática" if i.usuario == 'sistema' else "No sistema") }}</td>
+        <td>
+          {% if i.dados %}
+            <a href="/cintos/inspecao/{{ i.id }}/download">{{ i.filename }}</a>
+          {% endif %}
+          {% if i.texto %}<p class="sub">{{ i.texto }}</p>{% endif %}
+          {% if i.fotos %}<img src="/cintos/inspecao/{{ i.id }}/foto" alt="foto da inspeção" style="max-width:220px;border-radius:6px;">{% endif %}
+        </td>
+        <td>{{ i.usuario }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="muted">Nenhuma inspeção registrada.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- ===================== Movimentações ===================== -->
+<div class="card">
+  <h2>Histórico de entrada e saída</h2>
+  <table>
+    <thead><tr><th>Data</th><th>Tipo</th><th>Destino / local</th><th>Testado</th><th>Confirmação</th><th>Observações</th><th>Usuário</th></tr></thead>
+    <tbody>
+      {% for m in movs %}
+      <tr>
+        <td>{{ m.data }}</td>
+        <td>{% if m.tipo == 'saida' %}<span class="badge b-amarelo">Saída</span>{% else %}<span class="badge b-verde">Entrada</span>{% endif %}
+          {% if m.resultado == 'danificado' %}<span class="badge b-vermelho">Danificado</span>{% elif m.resultado == 'apto' %}<span class="badge b-verde">Apto</span>{% endif %}</td>
+        <td>{{ m.destino or "Estoque" }}</td>
+        <td>{{ "Sim" if m.testado else "—" }}</td>
+        <td class="muted">{{ m.confirmacao }}</td>
+        <td>{{ m.observacoes }}</td>
+        <td>{{ m.responsavel }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="muted">Sem movimentações.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

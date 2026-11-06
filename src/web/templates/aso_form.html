@@ -2,40 +2,81 @@
 {% block titulo %}Novo ASO — NormaTech{% endblock %}
 {% block conteudo %}
 <div class="card">
-  <h1>Novo ASO</h1>
+  <h1>{% if editar %}Editar {{ aso.aso_number }}{% else %}Novo ASO{% endif %}</h1>
+
+  {% if form_erros %}
+  <div class="msg erro" style="margin-bottom:10px;">
+    {% for e in form_erros %}<div>&bull; {{ e }}</div>{% endfor %}
+  </div>
+  {% endif %}
 
   {% if erro %}
   <p class="msg erro">{{ erro }}</p>
   {% else %}
-  <form method="post" action="/aso/novo" class="form-grid" style="max-width:560px;">
+  <form method="post" action="{% if editar %}/aso/{{ aso.id }}/editar{% else %}/aso/novo{% endif %}" class="form-grid" style="max-width:560px;">
     <div class="campo">
       <label for="funcionario_id">Funcionário *</label>
-      <select id="funcionario_id" name="funcionario_id" required>
+      {% if editar %}
+      <input type="hidden" name="funcionario_id" value="{{ aso.employee_id }}">
+      <input type="text" value="{{ funcionario }}" disabled>
+      {% else %}
+      {# v1.78.0: busca rapida de funcionario no select #}
+      <input type="text" id="busca-func" placeholder="Digite para filtrar funcionários..." autocomplete="off" style="margin-bottom:6px;">
+      <select id="funcionario_id" name="funcionario_id" required size="8" style="min-width:100%;">
         {% for f in funcionarios %}
-        <option value="{{ f.id }}">{{ f.nome }}{% if f.cpf %} — {{ f.cpf }}{% endif %}</option>
+        <option value="{{ f.id }}" data-busca="{{ f.nome }} {{ f.cpf or '' }}" {% if (editar and aso.employee_id == f.id) or (not editar and sel_id == f.id) or (form_salvo and (form_salvo.get('funcionario_id') | int) == f.id) %}selected{% endif %}>{{ f.nome }}{% if f.cpf %} — {{ f.cpf }}{% endif %}</option>
         {% endfor %}
       </select>
+      <p class="muted" id="busca-func-conta" style="margin:4px 0 0;"></p>
+      {% endif %}
     </div>
     <div class="campo">
       <label for="tipo_aso">Tipo de ASO *</label>
       <select id="tipo_aso" name="tipo_aso" required>
-        {% for t in tipos %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
+        {# v1.78.0: "Periódico" pré-selecionado no cadastro novo #}
+        {% for t in tipos %}<option value="{{ t }}" {% if (editar and aso.tipo_aso == t) or (form_salvo and form_salvo.get('tipo_aso') == t) or (not editar and not form_salvo and t == 'Periódico') %}selected{% endif %}>{{ t }}</option>{% endfor %}
       </select>
     </div>
     <div class="campo">
       <label for="data_exame">Data do exame *</label>
-      <input type="text" id="data_exame" name="data_exame" class="js-data" value="{{ hoje }}" placeholder="dd/mm/aaaa" required>
+      <input type="text" id="data_exame" name="data_exame" class="js-data" value="{{ form_salvo.get('data_exame') if form_salvo else (exame_br if editar else hoje) }}" placeholder="dd/mm/aaaa" required>
     </div>
     <div class="campo">
       <label for="validade_meses">Validade (meses)</label>
-      <input type="number" id="validade_meses" name="validade_meses" value="12" min="1" max="120">
+      <input type="number" id="validade_meses" name="validade_meses" value="{{ form_salvo.get('validade_meses') if form_salvo else (aso.validade_meses if editar else 12) }}" min="1" max="120">
     </div>
     <div style="grid-column:1/-1; margin-top:8px;">
-      <button type="submit" class="verde">Cadastrar ASO</button>
-      <a class="btn cinza" href="/aso">Cancelar</a>
+      <button type="submit" class="verde">{% if editar %}Salvar alterações{% else %}Cadastrar ASO{% endif %}</button>
+      <a class="btn cinza" href="{% if editar %}/aso/{{ aso.id }}{% else %}/aso{% endif %}">Cancelar</a>
     </div>
   </form>
-  <p class="muted" style="margin-top:10px;">O PDF do ASO é gerado na hora; o documento do médico pode ser anexado na ficha depois.</p>
+  <p class="muted" style="margin-top:10px;">{% if editar %}Ao salvar, o PDF do ASO é regenerado com os novos dados (número e funcionário não mudam).{% else %}O PDF do ASO é gerado na hora; o documento do médico pode ser anexado na ficha depois.{% endif %}</p>
   {% endif %}
 </div>
+{% if not editar and not erro %}
+<script>
+(function () {
+  var inp = document.getElementById('busca-func');
+  var sel = document.getElementById('funcionario_id');
+  var conta = document.getElementById('busca-func-conta');
+  if (!inp || !sel) return;
+  function norm(s) {
+    return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+  function filtrar() {
+    var q = norm(inp.value.trim());
+    var vis = 0;
+    for (var i = 0; i < sel.options.length; i++) {
+      var op = sel.options[i];
+      var ok = !q || norm(op.dataset.busca).indexOf(q) !== -1;
+      op.hidden = !ok;
+      if (ok) vis++;
+    }
+    if (conta) conta.textContent = inp.value.trim() ? (vis + ' funcionário(s) encontrado(s)') : '';
+  }
+  inp.addEventListener('input', filtrar);
+  inp.focus();
+})();
+</script>
+{% endif %}
 {% endblock %}

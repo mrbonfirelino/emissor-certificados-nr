@@ -10,11 +10,16 @@
      {% if v.empresa_nome %} · {{ v.empresa_nome }}{% endif %}</p>
   <p class="sub" style="margin-top:6px;">
     <span class="badge {{ v.status_classe or 'b-cinza' }}">{{ v.status_label or '—' }}</span>
+    {% if v.arquivado %} · <span class="badge b-cinza">ARQUIVADO</span>{% endif %}
+    {% if v.bloqueado %} · <span class="badge b-vermelho" title="{{ v.bloqueado_motivo or 'Bloqueado' }}">BLOQUEADO</span>{% endif %}
     {% if v.motorista_atual %} · Motorista: <b>{{ v.motorista_atual }}</b>{% endif %}
     {% if v.destino_atual %} · Destino: {{ v.destino_atual }}{% endif %}
     {% if not v.proprio and v.fim_contrato_aluguel %} · contrato até {{ br(v.fim_contrato_aluguel) }}{% endif %}
   </p>
 
+  <!-- v1.76.0: layout em duas colunas — acoes a esquerda, dados do veiculo a direita -->
+  <div style="display:flex; gap:24px; flex-wrap:wrap; align-items:flex-start; margin-top:12px;">
+  <div style="flex:0 1 340px; min-width:280px;">
   <div style="display:flex; gap:18px; align-items:flex-start;">
     {% if v.foto %}
     <img src="/frota/{{ v.id }}/foto" alt="Foto do veículo" style="width:150px; height:112px; object-fit:cover; border-radius:6px; border:1px solid #000;">
@@ -35,18 +40,9 @@
     {% endif %}
   </div>
 
-  {% if pode_escrever %}
-  <p class="linha-botoes" style="margin-top:10px;">
-    <a class="btn" href="/frota/{{ v.id }}/editar">Editar</a>
-    <a class="btn amarelo" href="/frota/abastecimentos/novo?veiculo={{ v.id }}">Nova solicitação de abastecimento</a>
-    <form method="post" action="/frota/{{ v.id }}/excluir"
-          onsubmit="return confirm('Excluir o veículo e TODOS os seus registros (docs, laudos, movimentações e abastecimentos)?');">
-      <button type="submit" class="vermelho">Excluir</button>
-    </form>
-  </p>
-  {% endif %}
-
-  <table style="max-width:640px; margin-top:14px;">
+  </div>
+  <div style="flex:1 1 360px; min-width:320px;">
+  <table style="width:100%; margin-top:0;">
     <tbody>
       <tr><th style="text-align:left; width:170px;">Marca / Modelo</th><td>{{ (v.marca or '—') }} / {{ v.modelo }}</td></tr>
       <tr><th style="text-align:left;">Placa</th><td>{{ v.placa or '—' }}</td></tr>
@@ -58,6 +54,44 @@
       {% if v.obs %}<tr><th style="text-align:left;">Observações</th><td>{{ v.obs }}</td></tr>{% endif %}
     </tbody>
   </table>
+  </div>
+  </div>
+
+  <!-- v1.76.1: todas as acoes em linha propria abaixo do quadro de informacoes -->
+  {% if pode_escrever %}
+  <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:14px; padding-top:12px; border-top:1px solid var(--borda,#e3e8ef);">
+    <a class="btn" href="/frota/{{ v.id }}/editar">✏️ Editar</a>
+    <a class="btn amarelo" href="/frota/abastecimentos/novo?veiculo={{ v.id }}">⛽ Nova solicitação de abastecimento</a>
+    {% if v.arquivado %}
+    <form method="post" action="/frota/{{ v.id }}/desarquivar">
+      <button type="submit" class="verde">Desarquivar veículo</button>
+    </form>
+    {% else %}
+    {% if em_viagem %}
+    <span class="muted" title="Registre a entrada da viagem antes de arquivar.">Em viagem — arquivamento bloqueado</span>
+    {% else %}
+    <form method="post" action="/frota/{{ v.id }}/arquivar"
+          data-pedir-motivo="Arquivar veículo|O veículo sairá da lista por padrão (devolvido à locadora) e não poderá receber novas solicitações.">
+      <button type="submit" class="cinza">📦 Arquivar veículo</button>
+    </form>
+    {% endif %}
+    {% endif %}
+    {% if v.bloqueado %}
+    <form method="post" action="/frota/{{ v.id }}/desbloquear">
+      <button type="submit" class="verde">🔓 Desbloquear veículo</button>
+    </form>
+    {% else %}
+    <form method="post" action="/frota/{{ v.id }}/bloquear"
+          data-pedir-motivo="Bloquear veículo|O veículo bloqueado não aceita novas solicitações nem saídas.">
+      <button type="submit" class="amarelo">🚫 Bloquear veículo</button>
+    </form>
+    {% endif %}
+    <form method="post" action="/frota/{{ v.id }}/excluir"
+          data-pedir-motivo="Excluir veículo|O veículo e TODOS os seus registros (docs, laudos, movimentações e abastecimentos) serão apagados. Esta ação não pode ser desfeita.">
+      <button type="submit" class="vermelho">🗑️ Excluir</button>
+    </form>
+  </div>
+  {% endif %}
 </div>
 
 <div class="dlg-botoes">
@@ -124,7 +158,7 @@
     <tbody>
     {% for l in laudos %}
       <tr>
-        <td>{{ l.tipo_label }}</td>
+        <td>{{ l.tipo_label }}{% if l.ano %} <span class="badge b-cinza">ano {{ l.ano }}</span>{% endif %}</td>
         <td>{{ l.descricao or '—' }}</td>
         <td><a href="/frota/{{ v.id }}/laudos/{{ l.id }}/download">{{ l.filename }}</a></td>
         <td>{{ br(l.data_emissao) }}</td>
@@ -144,6 +178,31 @@
     {% endfor %}
     </tbody>
   </table>
+  {% if laudos_arquivados %}
+  <details class="opcoes" style="margin-top:8px;">
+    <summary class="btn cinza">Laudos arquivados ({{ laudos_arquivados|length }})</summary>
+    <table style="margin-top:10px;">
+      <thead><tr><th>Tipo</th><th>Descrição</th><th>Arquivo</th><th>Validade</th><th></th></tr></thead>
+      <tbody>
+      {% for l in laudos_arquivados %}
+        <tr>
+          <td>{{ l.tipo_label }}</td>
+          <td>{{ l.descricao or '-' }}</td>
+          <td><a href="/frota/{{ v.id }}/laudos/{{ l.id }}/download">{{ l.filename }}</a></td>
+          <td>{{ br(l.data_validade) }}</td>
+          <td class="acoes">
+            {% if pode_escrever %}
+            <form method="post" action="/frota/{{ v.id }}/laudos/{{ l.id }}/desarquivar">
+              <button type="submit" class="verde">Desarquivar</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </details>
+  {% endif %}
   {% if pode_escrever %}
   <details class="opcoes" style="margin-top:10px;">
     <summary class="btn cinza">+ Registrar laudo</summary>
@@ -165,6 +224,10 @@
       <div class="campo">
         <label for="l-validade">Validade *</label>
         <input type="text" id="l-validade" name="validade" class="js-data" required placeholder="dd/mm/aaaa">
+      </div>
+      <div class="campo">
+        <label for="l-ano">Ano (CRLV)</label>
+        <input type="text" id="l-ano" name="ano" inputmode="numeric" placeholder="Ex.: 2026">
       </div>
       <div class="campo">
         <label for="l-arquivo">Arquivo *</label>
@@ -284,8 +347,8 @@
         <td class="acoes">
           {% if pode_escrever %}<a class="btn cinza" href="/frota/abastecimentos/{{ a.id }}/nfs">NF / valores</a>{% endif %}
           {% if a.pdf_path %}
-          <a class="btn" href="/frota/abastecimentos/{{ a.id }}/pdf?v={{ a.revisao or 0 }}" target="_blank">Ver</a>
-          <a class="btn azul-claro" href="/frota/abastecimentos/{{ a.id }}/pdf/download?v={{ a.revisao or 0 }}">Baixar</a>
+          <a class="btn" href="/frota/abastecimentos/{{ a.id }}/pdf?v={{ a.revisao or 0 }}" target="_blank" data-abast-data="{{ a.data }}">Ver</a>
+          <a class="btn azul-claro" href="/frota/abastecimentos/{{ a.id }}/pdf/download?v={{ a.revisao or 0 }}" data-abast-data="{{ a.data }}">Baixar</a>
           {% endif %}
         </td>
       </tr>
@@ -508,5 +571,28 @@
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 3000);
   }
 })();
+</script>
+<script>
+  // v1.81.1: aviso ao gerar PDF de solicitacao com data muito anterior (>60 dias)
+  (function () {
+    function _dbr(s) {
+      if (!s) return "";
+      var p = String(s).split("-");
+      return p.length === 3 ? p[2] + "/" + p[1] + "/" + p[0] : String(s);
+    }
+    document.addEventListener("click", function (ev) {
+      var a = ev.target.closest && ev.target.closest('a[data-abast-data]');
+      if (!a) return;
+      var d = new Date(a.getAttribute("data-abast-data") + "T00:00:00");
+      if (isNaN(d)) return;
+      var dias = Math.floor((Date.now() - d.getTime()) / 86400000);
+      if (dias > 60) {
+        if (!window.confirm("ATENÇÃO: esta solicitação tem data " + _dbr(a.getAttribute("data-abast-data")) +
+          " (mais de 60 dias atrás).\n\nDeseja gerar o PDF mesmo assim?")) {
+          ev.preventDefault();
+        }
+      }
+    }, true);
+  })();
 </script>
 {% endblock %}

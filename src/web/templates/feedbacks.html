@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% block titulo %}Feedbacks{% endblock %}
+
+{% block conteudo %}
+<h1>Feedbacks</h1>
+<p class="muted">Mensagens enviadas pelos usuários pelo botão 💬 FeedBack.
+<span class="badge b-amarelo">{{ abertos }} aberto(s)</span></p>
+
+<form class="filtros" method="get" action="/feedbacks">
+    <label>Buscar
+        <input type="search" name="busca" value="{{ busca }}" placeholder="texto, usuário, página…">
+    </label>
+    <label>Situação
+        <select name="arquivado">
+            <option value="nao" {{ 'selected' if arquivado == 'nao' else '' }}>Abertos</option>
+            <option value="sim" {{ 'selected' if arquivado == 'sim' else '' }}>Arquivados</option>
+            <option value="todos" {{ 'selected' if arquivado == 'todos' else '' }}>Todos</option>
+        </select>
+    </label>
+    <button class="btn">Filtrar</button>
+</form>
+
+<table style="margin-top:14px">
+    <tr><th>ID</th><th>Data/hora</th><th>Usuário</th><th>Página</th><th>Mensagem</th><th>Anexos</th><th>Status</th><th></th></tr>
+    {% for f in itens %}
+    <tr>
+        <td>{{ f.id }}</td>
+        <td>{{ f.data_br }}</td>
+        <td>{{ f.usuario or '—' }}</td>
+        <td><code style="font-size:11px">{{ f.pagina or '—' }}</code></td>
+        <td style="max-width:420px">
+            <span class="muted" style="font-size:12px">{{ f.texto[:90] }}{% if f.texto|length > 90 %}…{% endif %}</span>
+            <button type="button" class="btn btn-ler"
+                data-id="{{ f.id }}"
+                data-usuario="{{ f.usuario or '—' }}"
+                data-data="{{ f.data_br }}"
+                data-pagina="{{ f.pagina or '—' }}"
+                data-texto="{{ f.texto }}"
+                data-anexos="{{ f.anexos|join('|') }}">Ler</button>
+        </td>
+        <td style="font-size:12px">{{ f.anexos|length }} arquivo(s)</td>
+        <td>
+            {% if f.status == 'aberto' %}<span class="badge b-amarelo">Aberto</span>
+            {% else %}<span class="badge b-verde" title="{{ f.motivo_arquivamento }}">Arquivado</span>{% endif %}
+        </td>
+        <td>
+            {% if f.status == 'aberto' %}
+            <button class="btn vermelho btn-arquivar"
+                data-id="{{ f.id }}"
+                data-usuario="{{ f.usuario or '' }}"
+                data-data="{{ f.data_br }}">Arquivar</button>
+            {% else %}
+            <span class="muted" style="font-size:11px">{{ f.motivo_arquivamento }}</span>
+            {% endif %}
+        </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="8">Nenhum feedback encontrado.</td></tr>
+    {% endfor %}
+</table>
+
+<dialog id="dlg-ver" style="border:none; border-radius:10px; padding:0; box-shadow:0 10px 30px rgba(0,0,0,.3); max-width:92vw; width:560px;">
+    <div style="padding:18px 20px; display:flex; flex-direction:column; gap:10px;">
+        <h2 style="margin:0; font-size:16px;">Feedback <span id="dlg-ver-id" style="font-weight:400"></span></h2>
+        <p class="muted" style="margin:0; font-size:13px;" id="dlg-ver-info"></p>
+        <div id="dlg-ver-texto" style="white-space:pre-wrap; border:1px solid #ddd; border-radius:8px; padding:12px; max-height:45vh; overflow:auto; font-size:13px;"></div>
+        <div id="dlg-ver-anexos" style="font-size:13px;"></div>
+        <div style="display:flex; gap:8px; justify-content:flex-end;">
+            <button type="button" class="btn cinza" id="dlg-ver-close">Fechar</button>
+        </div>
+    </div>
+</dialog>
+
+<dialog id="dlg-arquivar" style="border:none; border-radius:10px; padding:0; box-shadow:0 10px 30px rgba(0,0,0,.3); max-width:92vw; width:420px;">
+    <form method="post" id="f-arquivar" action="#" style="padding:18px 20px; display:flex; flex-direction:column; gap:10px;">
+        <h2 style="margin:0; font-size:16px;">Arquivar feedback</h2>
+        <p class="muted" style="margin:0; font-size:13px;" id="dlg-arq-info"></p>
+        <input type="hidden" name="motivo" id="motivo-hidden">
+        <label style="font-size:13px; font-weight:600;">Motivo
+            <select name="motivo_sel" id="motivo-sel" style="width:100%; margin-top:4px;">
+                {% for m in motivos %}<option value="{{ m }}">{{ m }}</option>{% endfor %}
+                <option value="outro">Outro (digitar)</option>
+            </select>
+        </label>
+        <label style="font-size:13px; font-weight:600; display:none;" id="motivo-livre-wrap">Motivo personalizado
+            <input type="text" name="motivo_livre" id="motivo-livre" style="width:100%; margin-top:4px;" placeholder="Descreva o motivo">
+        </label>
+        <div style="display:flex; gap:8px; justify-content:flex-end;">
+            <button type="button" class="btn cinza" id="dlg-arq-cancel">Cancelar</button>
+            <button type="submit" class="btn vermelho">Arquivar</button>
+        </div>
+    </form>
+</dialog>
+
+<script>
+(function () {
+    var dlg = document.getElementById('dlg-arquivar');
+    if (!dlg) return;
+    var info = document.getElementById('dlg-arq-info');
+    var sel = document.getElementById('motivo-sel');
+    var livreWrap = document.getElementById('motivo-livre-wrap');
+    var livre = document.getElementById('motivo-livre');
+    var hidden = document.getElementById('motivo-hidden');
+    var form = document.getElementById('f-arquivar');
+
+    // ── dialog "Ler" (texto completo + anexos) ──
+    var dver = document.getElementById('dlg-ver');
+    var vid = document.getElementById('dlg-ver-id');
+    var vinfo = document.getElementById('dlg-ver-info');
+    var vtexto = document.getElementById('dlg-ver-texto');
+    var vanexos = document.getElementById('dlg-ver-anexos');
+    document.querySelectorAll('.btn-ler').forEach(function (b) {
+        b.addEventListener('click', function () {
+            vid.textContent = b.dataset.id || '';
+            vinfo.textContent = 'De ' + (b.dataset.usuario || '—')
+                + ' em ' + (b.dataset.data || '—')
+                + ' · página ' + (b.dataset.pagina || '—');
+            vtexto.textContent = b.dataset.texto || '(sem texto)';
+            vanexos.innerHTML = '';
+            var nomes = (b.dataset.anexos || '').split('|').filter(Boolean);
+            if (nomes.length) {
+                var strong = document.createElement('strong');
+                strong.textContent = 'Anexos: ';
+                vanexos.appendChild(strong);
+                nomes.forEach(function (nome, i) {
+                    if (i) vanexos.appendChild(document.createTextNode(', '));
+                    var a = document.createElement('a');
+                    a.href = '/feedbacks/' + b.dataset.id + '/anexo/'
+                        + encodeURIComponent(nome);
+                    a.target = '_blank';
+                    a.textContent = '📎 ' + nome;
+                    vanexos.appendChild(a);
+                });
+            } else {
+                vanexos.textContent = 'Sem anexos.';
+            }
+            dver.showModal();
+        });
+    });
+    var vc = document.getElementById('dlg-ver-close');
+    if (vc) vc.addEventListener('click', function () { dver.close(); });
+
+    // ── dialog "Arquivar" (v1.87.1: envia campo "motivo" e action correta) ──
+    function atualiza() {
+        var outro = sel.value === 'outro';
+        livreWrap.style.display = outro ? '' : 'none';
+        livre.required = outro;
+    }
+    document.querySelectorAll('.btn-arquivar').forEach(function (b) {
+        b.addEventListener('click', function () {
+            form.action = '/feedbacks/' + b.dataset.id + '/arquivar';
+            info.textContent = 'Feedback de ' + (b.dataset.usuario || '—')
+                + ' (' + b.dataset.data + ')';
+            sel.value = sel.options[0].value;
+            livre.value = '';
+            hidden.value = '';
+            atualiza();
+            dlg.showModal();
+        });
+    });
+    sel.addEventListener('change', atualiza);
+    var c = document.getElementById('dlg-arq-cancel');
+    if (c) c.addEventListener('click', function () { dlg.close(); });
+    form.addEventListener('submit', function (ev) {
+        var motivo = sel.value === 'outro' ? livre.value.trim() : sel.value;
+        if (!motivo) {
+            ev.preventDefault();
+            livre.focus();
+            return;
+        }
+        hidden.value = motivo;
+    });
+})();
+</script>
+{% endblock %}

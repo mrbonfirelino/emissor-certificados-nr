@@ -55,6 +55,15 @@ class PresencaRepository:
                     criado_em TEXT
                 )
             """)
+            # v1.77.0: arquivar lista de presenca
+            try:
+                conn.execute("SELECT arquivado FROM presencas LIMIT 1")
+            except sqlite3.OperationalError:
+                # v1.77.1: ignora "duplicate column" se outro processo criou antes
+                try:
+                    conn.execute("ALTER TABLE presencas ADD COLUMN arquivado INTEGER DEFAULT 0")
+                except sqlite3.OperationalError:
+                    pass
 
     @staticmethod
     def _row_to_dict(r) -> dict:
@@ -89,8 +98,14 @@ class PresencaRepository:
             r = conn.execute("SELECT * FROM presencas WHERE id = ?", (presenca_id,)).fetchone()
             return self._row_to_dict(r) if r else None
 
-    def list(self, busca: str = "", limit: int = 20, offset: int = 0) -> Tuple[List[dict], int]:
+    def list(self, busca: str = "", limit: int = 20, offset: int = 0,
+             arquivado: str = "nao") -> Tuple[List[dict], int]:
         where, params = [], []
+        # v1.77.0: filtro de arquivadas (padrao: so ativas)
+        if arquivado == "sim":
+            where.append("COALESCE(arquivado, 0) = 1")
+        elif arquivado != "todos":
+            where.append("COALESCE(arquivado, 0) = 0")
         q = (busca or "").strip().lower()
         if q:
             where.append("""(lower(serial) LIKE ? OR lower(nr_code) LIKE ?
@@ -120,6 +135,13 @@ class PresencaRepository:
         with self._get_conn() as conn:
             cur = conn.execute("UPDATE presencas SET status = ? WHERE id = ?",
                                (status, presenca_id))
+            return cur.rowcount > 0
+
+    def set_arquivado(self, presenca_id: int, val: int = 1) -> bool:
+        """v1.77.0: arquivar/desarquivar lista de presenca."""
+        with self._get_conn() as conn:
+            cur = conn.execute("UPDATE presencas SET arquivado = ? WHERE id = ?",
+                               (1 if val else 0, presenca_id))
             return cur.rowcount > 0
 
     def attach_signed(self, presenca_id: int, dados: bytes, tipo: str, filename: str) -> bool:
@@ -163,9 +185,11 @@ class PresencaRepository:
             return cur.rowcount > 0
 
     def count_por_status(self) -> dict:
+        """v1.77.0: ignora listas arquivadas."""
         with self._get_conn() as conn:
             rows = conn.execute(
-                "SELECT status, COUNT(*) AS n FROM presencas GROUP BY status").fetchall()
+                "SELECT status, COUNT(*) AS n FROM presencas"
+                " WHERE COALESCE(arquivado, 0) = 0 GROUP BY status").fetchall()
             out = {s: 0 for s in STATUS_VALIDOS}
             for r in rows:
                 out[r["status"]] = r["n"]

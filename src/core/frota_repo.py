@@ -1,4 +1,4 @@
-"""Repositorio da Gestao de Frota (ROADMAP 2.29).
+﻿"""Repositorio da Gestao de Frota (ROADMAP 2.29).
 
 Tabelas: frota_veiculos, frota_veic_empresas, frota_fornecedores,
 frota_veic_docs (pasta virtual, espelho de employee_docs),
@@ -375,6 +375,26 @@ class FrotaRepository:
                          ("assinado_filename", "TEXT"), ("assinado_em", "TEXT")):
             if col not in chk_t:
                 conn.execute(f"ALTER TABLE frota_checklists ADD COLUMN {col} {ddl}")
+        # v1.66.0: arquivar/bloquear veiculo + arquivar laudo
+        laudos_t = {r[1] for r in conn.execute(
+            "PRAGMA table_info(frota_veic_laudos)").fetchall()}
+        if "arquivado" not in veic:
+            conn.execute(
+                "ALTER TABLE frota_veiculos ADD COLUMN arquivado INTEGER DEFAULT 0")
+        for col, ddl in (("bloqueado", "INTEGER DEFAULT 0"),
+                         ("bloqueado_motivo", "TEXT"),
+                         ("bloqueado_em", "TEXT"),
+                         ("bloqueado_por", "TEXT")):
+            if col not in veic:
+                conn.execute(f"ALTER TABLE frota_veiculos ADD COLUMN {col} {ddl}")
+        if "arquivado" not in laudos_t:
+            conn.execute(
+                "ALTER TABLE frota_veic_laudos ADD COLUMN arquivado INTEGER DEFAULT 0")
+        # v1.70.6: verificacao independente — antes ficava aninhada dentro do
+        # bloco do "arquivado" e bancos que ja tinham arquivado nunca ganhavam
+        # a coluna "ano" (Internal Server Error em /frota/<id>)
+        if "ano" not in laudos_t:
+            conn.execute("ALTER TABLE frota_veic_laudos ADD COLUMN ano INTEGER")
         # v1.53.0: backfill — extras com JSON gravado mas extras_total NULL
         # (registros criados antes da v1.48 não entravam nos relatórios de custo)
         for r in conn.execute(
@@ -548,18 +568,27 @@ class FrotaRepository:
         return dict(row) if row else None
 
     def list_veiculos(self, busca: str = "",
-                      limit: int = 500, offset: int = 0):
-        q = f"%{(busca or '').strip().lower()}%"
+                      limit: int = 500, offset: int = 0,
+                      arquivado: str = "nao"):
+        q = f"%{normalize_text(busca)}%"
         where = ""
         params: list = []
         if busca and busca.strip():
-            where = ("WHERE lower(coalesce(v.modelo,''))||' '||"
-                     "lower(coalesce(v.marca,''))||' '||"
-                     "lower(coalesce(v.placa,''))||' '||"
-                     "lower(coalesce(e.nome,''))||' '||"
-                     "lower(coalesce(v.cor,''))||' '||"
-                     "lower(coalesce(v.ano,'')) LIKE ?")
+            where = ("WHERE normalize(coalesce(v.modelo,''))||' '||"
+                     "normalize(coalesce(v.marca,''))||' '||"
+                     "normalize(coalesce(v.placa,''))||' '||"
+                     "normalize(coalesce(e.nome,''))||' '||"
+                     "normalize(coalesce(v.cor,''))||' '||"
+                     "normalize(coalesce(v.ano,'')) LIKE ?")
             params.append(q)
+        # v1.66.0: filtro de veiculos arquivados ('nao' padrao/'sim'/'todos')
+        arq = ""
+        if arquivado == "sim":
+            arq = "v.arquivado = 1"
+        elif arquivado != "todos":
+            arq = "COALESCE(v.arquivado, 0) = 0"
+        if arq:
+            where = (where + " AND " + arq) if where else "WHERE " + arq
         with self._get_conn() as conn:
             rows = conn.execute(
                 f"SELECT v.*, e.nome AS empresa_nome,"
@@ -578,6 +607,34 @@ class FrotaRepository:
         with self._get_conn() as conn:
             return conn.execute(
                 "SELECT COUNT(*) FROM frota_veiculos").fetchone()[0]
+
+    def count_veiculos_bloqueados(self) -> int:
+        """v1.76.0: veiculos bloqueados nao arquivados."""
+        with self._get_conn() as conn:
+            return conn.execute(
+                "SELECT COUNT(*) FROM frota_veiculos "
+                "WHERE COALESCE(bloqueado,0)=1 AND COALESCE(arquivado,0)=0"
+            ).fetchone()[0]
+
+    def tem_historico(self, veiculo_id: int) -> bool:
+        """v1.76.0: veiculo com abastecimentos, documentos ou laudos ativos
+        nao pode ser excluido — somente arquivado."""
+        with self._get_conn() as conn:
+            for sql, args in (
+                ("SELECT COUNT(*) FROM frota_abastecimentos WHERE veiculo_id=?",
+                 (veiculo_id,)),
+                ("SELECT COUNT(*) FROM frota_veic_docs WHERE veiculo_id=?",
+                 (veiculo_id,)),
+                ("SELECT COUNT(*) FROM frota_veic_laudos "
+                 "WHERE veiculo_id=? AND COALESCE(arquivado,0)=0",
+                 (veiculo_id,)),
+            ):
+                try:
+                    if conn.execute(sql, args).fetchone()[0]:
+                        return True
+                except Exception:
+                    continue
+        return False
 
     def delete_veiculo(self, veiculo_id: int) -> bool:
         """Exclui o veiculo e seus registros vinculados."""
@@ -599,6 +656,35 @@ class FrotaRepository:
             return cur.rowcount > 0
 
     # ---------- empresas (veiculos) ----------
+
+    def set_arquivado_veiculo(self, veiculo_id: int, arquivado: bool) -> bool:
+        """v1.66.0: veiculo devolvido a locadora - some da lista por padrao;
+         custos/abastecimentos continuam salvos."""
+        with self._get_conn() as conn:
+            cur = conn.execute(
+                "UPDATE frota_veiculos SET arquivado=? WHERE id=?",
+                (1 if arquivado else 0, veiculo_id))
+        return cur.rowcount > 0
+
+    def set_bloqueio_veiculo(self, veiculo_id: int, bloqueado: bool,
+                             motivo: str = "", usuario: str = "") -> bool:
+        """v1.66.0: bloquear veiculo (ex. manutencao) sem excluir."""
+        em = datetime.now().isoformat(timespec="seconds") if bloqueado else None
+        with self._get_conn() as conn:
+            cur = conn.execute(
+                "UPDATE frota_veiculos SET bloqueado=?, bloqueado_motivo=?,"
+                " bloqueado_em=?, bloqueado_por=? WHERE id=?",
+                (1 if bloqueado else 0, (motivo or "").strip() or None,
+                 em, usuario if bloqueado else None, veiculo_id))
+        return cur.rowcount > 0
+
+    def set_laudo_arquivado(self, laudo_id: int, arquivado: bool) -> bool:
+        """v1.66.0: laudo arquivado sai dos vencimentos e da lista normal."""
+        with self._get_conn() as conn:
+            cur = conn.execute(
+                "UPDATE frota_veic_laudos SET arquivado=? WHERE id=?",
+                (1 if arquivado else 0, laudo_id))
+        return cur.rowcount > 0
 
     def add_empresa(self, nome: str, cnpj: str = "") -> int:
         nome = (nome or "").strip()
@@ -784,7 +870,7 @@ class FrotaRepository:
 
     def add_laudo(self, veiculo_id: int, tipo: str, filename: str,
                   data: bytes, data_emissao: str, data_validade: str,
-                  descricao: str = "") -> int:
+                  descricao: str = "", ano: int = 0) -> int:
         if tipo not in dict(TIPOS_LAUDO):
             raise ValueError("Tipo de laudo inválido.")
         if not data_validade:
@@ -796,17 +882,19 @@ class FrotaRepository:
             cur = conn.execute(
                 "INSERT INTO frota_veic_laudos (veiculo_id, tipo, descricao,"
                 " filename, tipo_arquivo, tamanho, dados, data_emissao,"
-                " data_validade) VALUES (?,?,?,?,?,?,?,?,?)",
+                " data_validade, ano) VALUES (?,?,?,?,?,?,?,?,?,?)",
                 (veiculo_id, tipo, (descricao or "").strip() or None,
                  Path(filename).name, tipo_arq, len(data),
-                 sqlite3.Binary(data), data_emissao or None, data_validade))
+                 sqlite3.Binary(data), data_emissao or None, data_validade,
+                 int(ano or 0)))
             return cur.lastrowid
 
     def list_laudos(self, veiculo_id: int) -> List[dict]:
         with self._get_conn() as conn:
             rows = conn.execute(
                 "SELECT id, tipo, descricao, filename, tipo_arquivo, tamanho,"
-                " data_emissao, data_validade, created_at"
+                " data_emissao, data_validade, created_at,"
+                " COALESCE(arquivado, 0) AS arquivado, COALESCE(ano, 0) AS ano"
                 " FROM frota_veic_laudos WHERE veiculo_id=?"
                 " ORDER BY data_validade", (veiculo_id,)).fetchall()
         hoje = date.today()
@@ -844,7 +932,9 @@ class FrotaRepository:
                 "SELECT l.id, l.tipo, l.descricao, l.data_validade,"
                 " v.modelo, v.marca, v.placa, v.id AS veiculo_id"
                 " FROM frota_veic_laudos l"
-                " JOIN frota_veiculos v ON l.veiculo_id = v.id").fetchall()
+                " JOIN frota_veiculos v ON l.veiculo_id = v.id"
+                " WHERE COALESCE(l.arquivado, 0) = 0"
+                " AND COALESCE(v.arquivado, 0) = 0").fetchall()
         hoje = date.today()
         itens = []
         for r in rows:
@@ -948,6 +1038,10 @@ class FrotaRepository:
             out.append(d)
         return out
 
+    def veiculo_em_viagem(self, veiculo_id: int) -> bool:
+        """True se ha saida sem entrada registrada (v1.67.0)."""
+        return any(m.get("aberta") for m in self.list_movimentacoes(veiculo_id))
+
     def get_mov(self, mov_id: int) -> Optional[dict]:
         with self._get_conn() as conn:
             row = conn.execute(
@@ -1022,16 +1116,16 @@ class FrotaRepository:
                             ordem: str = "data", situacao: str = "todas"):
         """Lista solicitações (2.35). ordem: 'data' (recentes primeiro, padrão)
         ou 'serial'. situacao: 'todas' | 'ativas' | 'bloqueadas'."""
-        q = f"%{(busca or '').strip().lower()}%"
+        q = f"%{normalize_text(busca)}%"
         where = ""
         params: list = []
         if busca and busca.strip():
-            where = ("WHERE lower(a.serial)||' '||"
-                     "lower(coalesce(v.modelo,''))||' '||"
-                     "lower(coalesce(v.placa,''))||' '||"
-                     "lower(coalesce(f.nome,''))||' '||"
-                     "lower(coalesce(a.tmp_fornecedor,''))||' '||"
-                     "lower(coalesce(a.condutor,'')) LIKE ?")
+            where = ("WHERE normalize(a.serial)||' '||"
+                     "normalize(coalesce(v.modelo,''))||' '||"
+                     "normalize(coalesce(v.placa,''))||' '||"
+                     "normalize(coalesce(f.nome,''))||' '||"
+                     "normalize(coalesce(a.tmp_fornecedor,''))||' '||"
+                     "normalize(coalesce(a.condutor,'')) LIKE ?")
             params.append(q)
         if situacao == "ativas":
             where = (where + " AND a.status IS NULL") if where \
@@ -1039,6 +1133,11 @@ class FrotaRepository:
         elif situacao == "bloqueadas":
             where = (where + " AND a.status = 'bloqueada'") if where \
                 else "WHERE a.status = 'bloqueada'"
+        elif situacao == "pendentes":
+            # v1.66.0: solicitações sem Litros nem valor preenchidos
+            cond = "(a.status IS NULL AND a.litros IS NULL" \
+                   " AND a.valor IS NULL)"
+            where = (where + " AND " + cond) if where else "WHERE " + cond
         # 2.38.1: ordena só datas ISO (aaaa-mm-dd); datas quebradas vão
         # para o fim — evita AB recente cair por último na lista.
         order = ("a.serial DESC" if ordem == "serial"
@@ -1069,6 +1168,23 @@ class FrotaRepository:
             d["extras_lista"] = json.loads(d.get("extras") or "[]")
             out.append(d)
         return out, total
+
+    def count_abast_sem_nf(self) -> int:
+        """Abastecimentos ativos (nao bloqueados) sem nota fiscal anexada (v1.68.0)."""
+        row = self._get_conn().execute(
+            "SELECT COUNT(*) FROM frota_abastecimentos a "
+            "WHERE COALESCE(a.status, '') != 'bloqueada' "
+            "AND NOT EXISTS (SELECT 1 FROM frota_abast_nfs n WHERE n.abastecimento_id = a.id)"
+        ).fetchone()
+        return int(row[0] or 0)
+
+    def count_abast_sem_valor(self) -> int:
+        """Abastecimentos ativos (nao bloqueados) sem valor preenchido (v1.68.0)."""
+        row = self._get_conn().execute(
+            "SELECT COUNT(*) FROM frota_abastecimentos a "
+            "WHERE COALESCE(a.status, '') != 'bloqueada' AND a.valor IS NULL"
+        ).fetchone()
+        return int(row[0] or 0)
 
     def tem_nf(self, abast_ids: List[int]) -> Dict[int, Optional[str]]:
         """Mapa abastecimento_id -> numero da NF (2.35.2) ou None."""
@@ -1493,7 +1609,8 @@ class FrotaRepository:
             rows = conn.execute(
                 "SELECT m.*, v.modelo, v.marca, v.placa"
                 " FROM frota_manutencoes m"
-                " JOIN frota_veiculos v ON m.veiculo_id = v.id").fetchall()
+                " JOIN frota_veiculos v ON m.veiculo_id = v.id"
+                " WHERE COALESCE(v.arquivado, 0) = 0").fetchall()  # v1.76.1
         itens = []
         for r in rows:
             d = dict(r)
@@ -1603,9 +1720,11 @@ class FrotaRepository:
             "custo_km": round(custo_km, 2) if custo_km else None,
         }
 
-    def custo_serie_veiculo(self, veiculo_id: int, meses: int = 12) -> List[dict]:
+    def custo_serie_veiculo(self, veiculo_id: int, meses: int = 12,
+                            de: str = "", ate: str = "") -> List[dict]:
         """Série mensal (2.35.1) dos últimos `meses` meses: custo combustível
-        + extras e litros, ignorando bloqueadas. Sempre devolve `meses` itens."""
+        + extras e litros, ignorando bloqueadas. Sempre devolve `meses` itens.
+        v1.85.1: com de/ate (ISO), a serie vai do mes de `de` ao de `ate`."""
         with self._get_conn() as conn:
             rows = conn.execute(
                 "SELECT substr(data,1,7) AS mes,"
@@ -1617,6 +1736,26 @@ class FrotaRepository:
                 " GROUP BY substr(data,1,7)", (veiculo_id,)).fetchall()
         mapa = {r["mes"]: dict(r) for r in rows if r["mes"]}
         serie = []
+        if de:
+            by, bm = int(de[:4]), int(de[5:7])
+            span = meses
+            if ate:
+                ay, am = int(ate[:4]), int(ate[5:7])
+                span = max(1, (ay - by) * 12 + (am - bm) + 1)
+            for i in range(span):
+                m = bm + i
+                y = by + (m - 1) // 12
+                m = (m - 1) % 12 + 1
+                chave = f"{y:04d}-{m:02d}"
+                r = mapa.get(chave, {})
+                serie.append({
+                    "mes": chave,
+                    "rotulo": f"{m:02d}/{str(y)[2:]}",
+                    "combustivel": round(float(r.get("combustivel") or 0), 2),
+                    "extras": round(float(r.get("extras") or 0), 2),
+                    "litros": round(float(r.get("litros") or 0), 2),
+                })
+            return serie
         base = date.today()
         for i in range(meses - 1, -1, -1):
             y = base.year
@@ -1643,19 +1782,30 @@ class FrotaRepository:
         return (date.today() - timedelta(days=int(dias))).isoformat()
 
     def custo_serie_todos(self, meses: int = 12,
-                          dias: Optional[int] = None) -> List[dict]:
+                          dias: Optional[int] = None,
+                          de: str = "", ate: str = "") -> List[dict]:
         """Série mensal (2.37.2) dos últimos `meses` meses com detalhe POR
         VEÍCULO: cada item é {mes, rotulo, por_veiculo: {vid: {rotulo,
         combustivel, extras, litros}}}. Ignora bloqueadas. Sempre devolve
         `meses` itens (meses sem dados têm por_veiculo vazio).
-        2.39.3: `dias` filtra por data real no SQL (período do relatório)."""
+        2.39.3: `dias` filtra por data real no SQL (período do relatório).
+        v1.85.0: `de`/`ate` (ISO yyyy-mm-dd) filtram um período explícito
+        (ex.: mês específico do relatório de custos)."""
         corte = self._data_corte(dias)
-        if dias:
-            meses = {30: 1, 90: 3, 180: 6}.get(dias, meses)
+        if not de and not ate and dias:
+            # 30 dias podem abranger 2 meses calendarios; 90->4; 180->7
+            meses = {30: 2, 90: 4, 180: 7}.get(dias, meses)
+        mes_expr = ("CASE WHEN substr(a.data,5,1)='-' THEN "
+                    "substr(a.data,1,7) ELSE substr(a.data,7,4)"
+                    "||'-'||substr(a.data,4,2) END")
+        data_expr = ("CASE WHEN substr(a.data,5,1)='-' THEN "
+                     "substr(a.data,1,10) ELSE substr(a.data,7,4)"
+                     "||'-'||substr(a.data,4,2)||'-'||"
+                     "substr(a.data,1,2) END")
         with self._get_conn() as conn:
             sql = (
                 "SELECT a.veiculo_id AS vid, v.modelo, v.marca, v.placa,"
-                " substr(a.data,1,7) AS mes,"
+                f" {mes_expr} AS mes,"
                 " SUM(COALESCE(a.valor,0)) AS combustivel,"
                 " SUM(COALESCE(a.extras_total,0)) AS extras,"
                 " SUM(COALESCE(a.litros,0)) AS litros"
@@ -1664,9 +1814,15 @@ class FrotaRepository:
                 " WHERE a.status IS NULL")
             params = []
             if corte:
-                sql += " AND a.data >= ?"
+                sql += f" AND {data_expr} >= ?"
                 params.append(corte)
-            sql += " GROUP BY a.veiculo_id, substr(a.data,1,7)"
+            if de:
+                sql += f" AND {data_expr} >= ?"
+                params.append(de)
+            if ate:
+                sql += f" AND {data_expr} <= ?"
+                params.append(ate)
+            sql += f" GROUP BY a.veiculo_id, {mes_expr}"
             rows = conn.execute(sql, params).fetchall()
         rotulos = {}
         por_mes = {}
@@ -1683,6 +1839,27 @@ class FrotaRepository:
                 "litros": round(float(d["litros"] or 0), 2),
             }
         serie = []
+        # v1.85.1: com de/ate (mes especifico), a serie vai do mes de `de`
+        # ao mes de `ate` (antes terminava no mes atual e o relatorio em PDF
+        # mostrava meses vazios ate hoje)
+        if de:
+            by, bm = int(de[:4]), int(de[5:7])
+            span = meses
+            if ate:
+                ay, am = int(ate[:4]), int(ate[5:7])
+                span = (ay - by) * 12 + (am - bm) + 1
+                span = max(1, span)
+            for i in range(span):
+                m = bm + i
+                y = by + (m - 1) // 12
+                m = (m - 1) % 12 + 1
+                chave = f"{y:04d}-{m:02d}"
+                serie.append({
+                    "mes": chave,
+                    "rotulo": f"{m:02d}/{str(y)[2:]}",
+                    "por_veiculo": por_mes.get(chave, {}),
+                })
+            return serie
         base = date.today()
         for i in range(meses - 1, -1, -1):
             y = base.year
@@ -1698,10 +1875,12 @@ class FrotaRepository:
             })
         return serie
 
-    def custo_por_combustivel(self, dias: Optional[int] = None) -> List[dict]:
+    def custo_por_combustivel(self, dias: Optional[int] = None,
+                              de: str = "", ate: str = "") -> List[dict]:
         """Total por veículo × tipo de combustível (2.37.2), incluindo extras,
         ignorando bloqueadas. 2.39.2/2.39.3: `dias` filtra por data; ordenado
-        por TOTAL gasto (combustível+extras) DESC, depois veículo."""
+        por TOTAL gasto (combustível+extras) DESC, depois veículo.
+        v1.85.0: `de`/`ate` (ISO) filtram período explícito (mês específico)."""
         corte = self._data_corte(dias)
         with self._get_conn() as conn:
             sql = (
@@ -1717,6 +1896,12 @@ class FrotaRepository:
             if corte:
                 sql += " AND a.data >= ?"
                 params.append(corte)
+            if de:
+                sql += " AND a.data >= ?"
+                params.append(de)
+            if ate:
+                sql += " AND a.data <= ?"
+                params.append(ate)
             sql += (" GROUP BY a.veiculo_id, a.combustivel"
                     " ORDER BY (SUM(COALESCE(a.valor,0))"
                     " + SUM(COALESCE(a.extras_total,0))) DESC,"
@@ -1731,12 +1916,14 @@ class FrotaRepository:
             out.append(d)
         return out
 
-    def resumo_custo_todos(self, dias: Optional[int] = None) -> List[dict]:
+    def resumo_custo_todos(self, dias: Optional[int] = None,
+                           de: str = "", ate: str = "") -> List[dict]:
         """Resumo de custo por veículo (2.35.1) para o export geral.
         Ignora bloqueadas; separa combustível x itens extras.
         2.39: `dias` filtra por data; inclui tipo/subtipo, km_l_esperado e
         media_km_l (pares consecutivos de KM dentro do período); ordenado
-        por TOTAL gasto (combustível+extras) DESC."""
+        por TOTAL gasto (combustível+extras) DESC.
+        v1.85.0: `de`/`ate` (ISO) filtram período explícito (mês específico)."""
         corte = self._data_corte(dias)
         with self._get_conn() as conn:
             cond = "a.status IS NULL"
@@ -1744,6 +1931,12 @@ class FrotaRepository:
             if corte:
                 cond += " AND a.data >= ?"
                 params.append(corte)
+            if de:
+                cond += " AND a.data >= ?"
+                params.append(de)
+            if ate:
+                cond += " AND a.data <= ?"
+                params.append(ate)
             rows = conn.execute(
                 "SELECT v.id, v.modelo, v.marca, v.placa, v.tipo, v.subtipo,"
                 " v.km_l_esperado,"

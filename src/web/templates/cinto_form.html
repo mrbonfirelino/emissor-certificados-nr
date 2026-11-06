@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block titulo %}{{ "Editar item" if item else "Novo item" }} — Cintos e Talabartes{% endblock %}
+{% block conteudo %}
+<p><a class="btn-voltar" href="{{ '/cintos/' ~ item.id if item else '/cintos' }}">← Voltar</a></p>
+
+{# v1.84.1: em caso de erro de validacao, repõe o que o usuario digitou (q vem via querystring) #}
+{% set qtipo = item.tipo if item else (q.get('tipo', 'cinto') if q else 'cinto') %}
+{% set qnome = item.nome if item else (q.get('nome', '') if q else '') %}
+{% set qmarca = item.marca if item else (q.get('marca', '') if q else '') %}
+{% set qmodelo = item.modelo if item else (q.get('modelo', '') if q else '') %}
+{% set qca = item.ca if item else (q.get('ca', '') if q else '') %}
+{% set qlote = item.lote if item else (q.get('lote', '') if q else '') %}
+{% set qserie = item.numero_serie if item else (q.get('numero_serie', '') if q else '') %}
+{% set qfab = item.data_fabricacao_br if item else (q.get('data_fabricacao', '') if q else '') %}
+{% set qval = item.validade_meses if item else ((q.get('validade_meses') or 60) if q else 60) %}
+{% set qanti = item.antichama if item else ((q.get('antichama') == 'sim') if q else False) %}
+{% set qobs = item.observacoes if item else (q.get('observacoes', '') if q else '') %}
+
+<div class="card">
+  <h1>{{ "Editar item" if item else "Novo item" }}</h1>
+  <p class="sub">Validade padrão de 5 anos (60 meses) — pode ser maior em casos específicos.
+     Ao salvar, a primeira inspeção fica 3 meses após a inclusão no sistema.</p>
+
+  <form method="post" action="/cintos/salvar" class="form-grid">
+    <input type="hidden" name="id" value="{{ item.id if item else 0 }}">
+    <div class="campo"><label>Tipo *</label>
+      <select name="tipo" required>
+        <option value="cinto" {% if qtipo == 'cinto' %}selected{% endif %}>Cinto</option>
+        <option value="talabarte" {% if qtipo == 'talabarte' %}selected{% endif %}>Talabarte</option>
+      </select></div>
+    <div class="campo"><label>Nome *</label>
+      <input type="text" name="nome" value="{{ qnome }}" placeholder="Ex: Talabarte XYZ" required></div>
+    <div class="campo"><label>Marca *</label>
+      <input type="text" name="marca" value="{{ qmarca }}" required></div>
+    <div class="campo"><label>Modelo</label>
+      <input type="text" name="modelo" value="{{ qmodelo }}"></div>
+    <div class="campo"><label>CA (obrigatório para cinto)</label>
+      <input type="text" name="ca" value="{{ qca }}"></div>
+    <div class="campo"><label>Lote *</label>
+      <input type="text" name="lote" value="{{ qlote }}" required></div>
+    <div class="campo"><label>Nº de série *</label>
+      <input type="text" name="numero_serie" value="{{ qserie }}" required></div>
+    <div class="campo"><label>Fabricação (mês/ano) *</label>
+      <input type="text" name="data_fabricacao" placeholder="mm/aaaa" value="{{ qfab }}" required></div>
+    <div class="campo"><label>Validade (meses)</label>
+      <input type="number" name="validade_meses" min="1" value="{{ qval }}"></div>
+    <div class="campo"><label>Antichama</label>
+      <select name="antichama">
+        <option value="nao" {% if not qanti %}selected{% endif %}>NÃO</option>
+        <option value="sim" {% if qanti %}selected{% endif %}>SIM</option>
+      </select></div>
+    <div class="campo campo-largo"><label>Observações</label>
+      <textarea name="observacoes" rows="2">{{ qobs }}</textarea></div>
+    <div class="campo"><label>&nbsp;</label><button type="submit" class="verde">Salvar</button></div>
+  </form>
+</div>
+{% endblock %}

@@ -53,11 +53,13 @@ def formatar_cnpj(cnpj: str) -> str:
 
 
 def validar_data(data_str: str) -> Optional[date]:
-    """Valida e converte string para date (DD/MM/YYYY)."""
-    try:
-        return datetime.strptime(data_str, "%d/%m/%Y").date()
-    except ValueError:
-        return None
+    """Valida e converte string para date (DD/MM/YYYY ou YYYY-MM-DD)."""
+    for fmt in ("%d/%m/%Y", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(data_str, fmt).date()
+        except ValueError:
+            continue
+    return None
 
 
 def formatar_data(data: date) -> str:

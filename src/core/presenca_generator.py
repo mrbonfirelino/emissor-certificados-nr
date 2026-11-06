@@ -1,4 +1,4 @@
-"""
+﻿"""
 Gerador de Lista de Presenca (v1.41.0).
 
 - Templates reais (XLSX com a logo embutida) em templates/listas_presenca/,
@@ -108,23 +108,119 @@ def participantes_da_emissao(nr_code: str, data_ref: str,
 
 # ── Paginacao e tokens (openpyxl) ───────────────────────────
 
-def _paginacao_openpyxl(ws, ultima_col: int, ultima_linha: int):
+def _paginacao_openpyxl(ws, ultima_col: int, ultima_linha: int,
+                        paisagem: bool = False):
     """
-    Folha VERTICAL (retrato), 1 pagina de largura, grade visivel, centrado e
-    AREA DE IMPRESSAO explicita (sem ela, celulas formatadas vazias viram
-    folhas em branco no PDF).
+    Folha VERTICAL (retrato) por padrao; v1.86.1: templates com "orientacao":
+    "paisagem" no registry saem DEITADOS e ajustados para ocupar a folha
+    inteira (1 pagina x 1 pagina). 1 pagina de largura, grade visivel,
+    centrado e AREA DE IMPRESSAO explicita (sem ela, celulas formatadas
+    vazias viram folhas em branco no PDF).
     """
     try:
         from openpyxl.utils import get_column_letter
         from openpyxl.worksheet.properties import PageSetupProperties
 
-        ws.page_setup.orientation = "portrait"
+        ws.page_setup.orientation = "landscape" if paisagem else "portrait"
         ws.page_setup.fitToWidth = 1
-        ws.page_setup.fitToHeight = 0
+        # v1.86.2: sempre 1 pagina x 1 pagina — cada folha (clone) e uma
+        # pagina; se o wrap crescer linhas, o Excel reduz a escala em vez de
+        # derramar conteudo para uma segunda pagina (que saia cortado)
+        ws.page_setup.fitToHeight = 1
         ws.sheet_properties.pageSetUpPr = PageSetupProperties(fitToPage=True)
         ws.print_options.gridLines = True
         ws.print_options.horizontalCentered = True
         ws.print_area = f"A1:{get_column_letter(max(ultima_col, 1))}{max(ultima_linha, 1)}"
+    except Exception:
+        pass
+
+
+def _ajustar_altura_participantes(ws, lcfg: dict, inicio: int, n: int):
+    """
+    v1.86.2: com wrap ativo nas celulas de nome/funcao/empresa, garante que a
+    altura de cada linha de participante comporte o texto completo (o Excel
+    corta verticalmente texto com wrap quando a linha tem altura fixa menor
+    que o necessario).
+    """
+    import math
+    try:
+        ALT_LINHA = 14.5
+        larg_padrao = 8.43
+        alt_padrao = 15.0
+        if n <= 0:
+            return
+        refs = [(lcfg.get(chave), chave) for chave in ("nome", "funcao", "empresa")]
+        for i in range(n):
+            linha = inicio + i
+            atual = ws.row_dimensions[linha].height or alt_padrao
+            preciso = 0.0
+            for ref, chave in refs:
+                if not ref:
+                    continue
+                cel = ws[f"{ref}{linha}"]
+                v = cel.value
+                if not isinstance(v, str) or not v:
+                    continue
+                larg = ws.column_dimensions[ref].width or larg_padrao
+                por_linha = max(larg * 0.95, 10.0)
+                nlinhas = sum(max(1, math.ceil(len(seg) / por_linha))
+                              for seg in v.split("\n"))
+                preciso = max(preciso, nlinhas * ALT_LINHA + 3.0)
+            if preciso > atual:
+                ws.row_dimensions[linha].height = preciso
+    except Exception:
+        pass
+
+
+def _ajustar_altura_textos(ws):
+    """
+    v1.86.1: garante que textos longos com quebra automatica (ex.: conteudo
+    programatico) tenham altura de linha suficiente — evita texto cortado no
+    PDF em qualquer template. Para cada celula com wrap e texto longo,
+    estima as linhas necessarias pela largura da area (celula unica ou
+    mesclada) e amplia a ultima linha do intervalo quando falta altura.
+    """
+    import math
+    try:
+        ALT_LINHA = 14.5
+        larg_padrao = 8.43
+        alt_padrao = 15.0
+        merges = {}
+        for rng in ws.merged_cells.ranges:
+            merges[(rng.min_row, rng.min_col)] = rng
+        vistos = set()
+        for row in ws.iter_rows():
+            for cel in row:
+                v = cel.value
+                if not isinstance(v, str) or len(v) < 60:
+                    continue
+                if not cel.alignment.wrap_text:
+                    continue
+                if cel.coordinate in vistos:
+                    continue
+                rng = merges.get((cel.row, cel.column))
+                if rng is not None:
+                    cols = list(range(rng.min_col, rng.max_col + 1))
+                    linhas = list(range(rng.min_row, rng.max_row + 1))
+                else:
+                    cols = [cel.column]
+                    linhas = [cel.row]
+                vistos.add(cel.coordinate)
+                from openpyxl.utils import get_column_letter as _gcl
+                larg = sum(
+                    (ws.column_dimensions[_gcl(c)].width or larg_padrao)
+                    for c in cols)
+                atual = sum(
+                    (ws.row_dimensions[l].height if ws.row_dimensions[l].height
+                     else alt_padrao) for l in linhas)
+                por_linha = max(larg * 0.95, 10.0)
+                n = sum(max(1, math.ceil(len(seg) / por_linha))
+                        for seg in v.split("\n"))
+                preciso = n * ALT_LINHA + 6.0
+                if preciso > atual * 1.15:
+                    ultima = linhas[-1]
+                    h = ws.row_dimensions[ultima].height or alt_padrao
+                    ws.row_dimensions[ultima].height = h + (preciso - atual)
     except Exception:
         pass
 
@@ -160,6 +256,10 @@ def _excel_app():
         ) from e
     excel.Visible = False
     excel.DisplayAlerts = False
+    try:
+        excel.AutomationSecurity = 3  # msoAutomationSecurityForceDisable
+    except Exception:
+        pass
     return excel
 
 
@@ -182,13 +282,109 @@ def _fechar_excel(excel, wb=None):
 
 
 def _excel_to_pdf(xlsx_path: Path, pdf_path: Path):
-    excel = _excel_app()
-    wb = None
-    try:
-        wb = excel.Workbooks.Open(str(Path(xlsx_path).resolve()))
-        wb.ExportAsFixedFormat(XL_TYPE_PDF, str(Path(pdf_path).resolve()))
-    finally:
-        _fechar_excel(excel, wb)
+    """
+    Exporta o xlsx para PDF via Excel COM. Tenta, em ordem:
+    1) wb.ExportAsFixedFormat (caminho classico)
+    2) wb.SaveAs(FileFormat=57) (xlTypePDF - workbook inteiro)
+    3) export planilha a planilha + merge PyMuPDF
+    Cada metodo tem retry proprio; o metodo que funcionar e registrado
+    no log (com-pdf-metodo) para diagnostico no servidor.
+    """
+    from src.utils.com_pdf_errors import com_retry, remover_motw
+    from src.utils.error_log import log_error
+
+    remover_motw(xlsx_path)
+
+    pdf_path = Path(pdf_path)
+    if pdf_path.exists():
+        try:
+            pdf_path.unlink()
+        except Exception:
+            pass
+
+    def _via_export():
+        excel = _excel_app()
+        wb = None
+        try:
+            wb = excel.Workbooks.Open(str(Path(xlsx_path).resolve()))
+            wb.ExportAsFixedFormat(XL_TYPE_PDF, str(Path(pdf_path).resolve()))
+        finally:
+            _fechar_excel(excel, wb)
+
+    def _via_saveas():
+        destino = pdf_path.resolve().with_name("saveas_" + pdf_path.name)
+        if destino.exists():
+            try:
+                destino.unlink()
+            except Exception:
+                pass
+        excel = _excel_app()
+        wb = None
+        try:
+            wb = excel.Workbooks.Open(str(Path(xlsx_path).resolve()))
+            wb.SaveAs(str(destino), 57)  # 57 = xlTypePDF
+        finally:
+            _fechar_excel(excel, wb)
+        if not destino.exists():
+            raise RuntimeError("SaveAs xlTypePDF nao gerou o PDF")
+        shutil.move(str(destino), str(pdf_path))
+
+    def _via_sheets():
+        partes = []
+        excel = _excel_app()
+        wb = None
+        try:
+            wb = excel.Workbooks.Open(str(Path(xlsx_path).resolve()))
+            total = wb.Sheets.Count
+            for i in range(1, total + 1):
+                ws = wb.Sheets.Item(i)
+                parte = pdf_path.resolve().with_name("ws_%d.pdf" % i)
+                if parte.exists():
+                    try:
+                        parte.unlink()
+                    except Exception:
+                        pass
+                ws.ExportAsFixedFormat(XL_TYPE_PDF, str(parte))
+                if parte.exists():
+                    partes.append(parte)
+            if not partes:
+                raise RuntimeError("nenhuma planilha exportada")
+        finally:
+            _fechar_excel(excel, wb)
+        if len(partes) == 1:
+            shutil.move(str(partes[0]), str(pdf_path))
+        else:
+            import fitz
+            doc = fitz.open()
+            for parte in partes:
+                doc.insert_pdf(fitz.open(str(parte)))
+            doc.save(str(pdf_path))
+            doc.close()
+            for parte in partes:
+                try:
+                    parte.unlink()
+                except Exception:
+                    pass
+
+    metodos = (("ExportAsFixedFormat", _via_export),
+               ("SaveAs-xlsxTypePDF", _via_saveas),
+               ("por-planilha", _via_sheets))
+    ultimo = None
+    for nome, fn in metodos:
+        try:
+            com_retry(fn, tentativas=2, delay=1.0,
+                      contexto="lista-presenca metodo=%s xlsx=%s pdf=%s"
+                               % (nome, xlsx_path, pdf_path))
+            if pdf_path.exists():
+                log_error("com-pdf-metodo",
+                          Exception("metodo=%s OK xlsx=%s"
+                                    % (nome, Path(xlsx_path).name)))
+                return
+        except Exception as e:
+            ultimo = e
+    if ultimo is not None:
+        raise ultimo
+    raise RuntimeError("Excel nao gerou o PDF da lista")
 
 
 def _celula(ws, ref: str):
@@ -300,12 +496,22 @@ def _preencher_modelo(caminho_xlsx: Path, cfg: dict, data_br: str, carga: float,
             if not ref:
                 continue
             _marcar_col(f"{ref}{linha}")
+            cel = _celula(ws, f"{ref}{linha}")
             if chave == "num":
-                _celula(ws, f"{ref}{linha}").value = i + 1
+                cel.value = i + 1
             elif chave == "empresa":
-                _celula(ws, f"{ref}{linha}").value = EMPRESA_PADRAO
+                cel.value = EMPRESA_PADRAO
             else:
-                _celula(ws, f"{ref}{linha}").value = p.get(chave, "")
+                cel.value = p.get(chave, "")
+            # v1.86.2: ativa quebra de linha nos textos do participante —
+            # sem wrap, texto maior que a coluna e cortado na lateral no PDF
+            if chave != "num" and cel.value:
+                from copy import copy as _copy
+                al = _copy(cel.alignment)
+                al.wrap_text = True
+                cel.alignment = al
+    # v1.86.2: altura das linhas de participantes comporta o texto completo
+    _ajustar_altura_participantes(ws, lcfg, inicio, len(participantes))
     # limpa vagas nao usadas (dados de exemplo que ja vieram no template)
     for i in range(len(participantes), vagas):
         linha = inicio + i
@@ -317,7 +523,16 @@ def _preencher_modelo(caminho_xlsx: Path, cfg: dict, data_br: str, carga: float,
     ultima_linha = max(inicio + max(vagas, len(participantes), 1),
                        ultima_linha_cfg)
     _substituir_tokens(ws, serial, pagina, total)
-    _paginacao_openpyxl(ws, max(colunas_usadas), ultima_linha)
+    # v1.86.1: garante altura suficiente p/ textos com wrap (conteudo
+    # programatico etc.) e respeita "orientacao": "paisagem" do registry
+    _ajustar_altura_textos(ws)
+    # area de impressao: maior entre as colunas marcadas no registry e o
+    # range real da planilha (o modelo pode ter cabecalho/assinatura em
+    # colunas alem das referenciadas; sem isso o PDF sai cortado)
+    paisagem = (cfg.get("orientacao") or "").strip().lower() in (
+        "paisagem", "landscape", "horizontal")
+    _paginacao_openpyxl(ws, max(max(colunas_usadas), ws.max_column),
+                        max(ultima_linha, ws.max_row), paisagem=paisagem)
 
     wb.save(str(clone))
     return clone
@@ -436,7 +651,23 @@ def _gerar_padrao_xlsx(tmp: Path, nr_label: str, data_br: str, carga: float,
             ws.cell(row=linha, column=col_i).border = borda
             ws.cell(row=linha, column=col_i).alignment = Alignment(vertical="center",
                                                                    wrap_text=False)
-        ws.row_dimensions[linha].height = 20
+        # v1.86.2: nome e funcao com quebra de linha — texto longo nao pode
+        # ser cortado na lateral da celula no PDF
+        for col_i in (3, 5):
+            ws.cell(row=linha, column=col_i).alignment = Alignment(
+                vertical="center", wrap_text=True)
+        # altura da linha comporta o nome/funcao completos (larguras reais:
+        # nome C:D = 42+4, funcao E:G = 24+4+3)
+        alt = 20.0
+        for cols, valor in ((46.0, p.get("nome", "")), (31.0, p.get("funcao", ""))):
+            v = valor or ""
+            if v:
+                por_linha = max(cols * 0.95, 10.0)
+                import math as _math
+                nlinhas = sum(max(1, _math.ceil(len(seg) / por_linha))
+                              for seg in v.split("\n"))
+                alt = max(alt, nlinhas * 14.5 + 4.0)
+        ws.row_dimensions[linha].height = alt
         linha += 1
 
     # area de impressao explicita: sem folhas em branco no PDF

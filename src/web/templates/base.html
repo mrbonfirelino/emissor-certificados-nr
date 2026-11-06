@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block titulo %}NormaTech{% endblock %}</title>
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
 <style>
   :root { --azul:#1B3A5C; --azul2:#2E6DA4; --fundo:#F2F5F9; --texto:#22303F;
           --borda:#D6DEE8; --verde:#256B28; --vermelho:#C0392B; --amarelo:#FDF3E3; }
@@ -178,6 +179,9 @@
   .hero .sep { width:1px; align-self:stretch; background:var(--borda); }
   .hero .data-hora { font-size:14px; color:#67737F; margin:0 0 2px; }
   .hero h1.bemvindo { font-size:24px; margin:0 0 4px; }
+  /* v1.71.0: barras de busca maiores em todas as páginas */
+  input[name="busca"] { min-width: 340px; }
+  @media (max-width: 700px) { input[name="busca"] { min-width: 0; width: 100%; } }
   .hero .sub2 { color:#67737F; font-size:14px; margin:0; }
   .stat-cards { display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr));
                 gap:14px; margin-bottom:16px; }
@@ -223,6 +227,14 @@
   <span class="versao">v{{ versao }}</span>
   {% if user %}
     <span class="quem">{{ user.nome or user.username }} · {{ papel_label }} </span>
+    <div style="position:relative;">
+      <button type="button" id="sino-btn" title="Notificações internas"
+              style="background:rgba(255,255,255,.14); color:#fff; border:none; border-radius:6px; padding:5px 10px; cursor:pointer; font-size:15px;">&#128276;<span id="sino-badge" style="display:none; background:#e53935; color:#fff; border-radius:9px; font-size:11px; padding:0 5px; margin-left:4px;"></span></button>
+      <div id="sino-menu" style="display:none; position:absolute; right:0; top:36px; background:#fff; color:#222; border:1px solid #d7dee6; border-radius:8px; min-width:290px; max-height:340px; overflow:auto; box-shadow:0 8px 22px rgba(0,0,0,.18); z-index:60;"></div>
+    </div>
+    <button type="button" id="fb-btn" title="Enviar feedback"
+            style="background:#7b1fa2; color:#fff; border:none; border-radius:6px; padding:5px 12px; cursor:pointer; font-size:14px; font-weight:600; box-shadow:0 0 6px rgba(123,31,162,.6);">&#128172; FeedBack</button>
+    <a class="sair" href="/perfil">Meu perfil</a>
     <a class="sair" href="/logout">Sair</a>
   {% endif %}
 </header>
@@ -231,7 +243,16 @@
   {% for grupo in nav %}
     {% if grupo.titulo == '__botao__' %}
       {% set grupo_ativo = grupo.itens | selectattr('ativo') | list %}
-      {% for item in grupo.itens %}<a href="{{ item.url }}" class="btn destaque-nav {{ 'ativo' if item.ativo else '' }}">{{ item.label }}</a>{% endfor %}
+      {% if grupo.itens %}
+      <div class="nav-grupo">
+        <a href="{{ grupo.itens[0].url }}" class="btn destaque-nav {{ 'ativo' if grupo.itens[0].ativo else '' }}">{{ grupo.itens[0].label }}</a>
+        {% if grupo.itens | length > 1 %}
+        <div class="submenu">
+          {% for item in grupo.itens %}<a href="{{ item.url }}" class="{{ 'ativo' if item.ativo else '' }}">{{ item.label }}</a>{% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
     {% elif grupo.titulo %}
       {% set grupo_ativo = grupo.itens | selectattr('ativo') | list %}
       <div class="nav-grupo">
@@ -295,16 +316,18 @@
     setTimeout(function () { t.remove(); }, erro ? 9000 : 6000);
   }
   function jobToast(msg, ehErro) { toast(msg, ehErro); }
-  function submeterComProgresso(f) {
+  function submeterComProgresso(f, extra) {
     mostrarProgresso();
     var texto = _ovEl("ov-texto"), prog = _ovEl("ov-prog"), bar = _ovEl("ov-bar"),
         pct = _ovEl("ov-pct"), cont = _ovEl("ov-cont"), item = _ovEl("ov-item");
     texto.textContent = f.getAttribute("data-progresso-titulo") || "Processando, aguarde…";
     prog.hidden = false;
     bar.style.width = "0%"; pct.textContent = ""; cont.textContent = ""; item.textContent = "";
+    var fd = new FormData(f);
+    if (extra) extra.forEach(function (kv) { fd.append(kv[0], kv[1]); });
     fetch(f.action, {
       method: "POST",
-      body: new FormData(f),
+      body: fd,
       headers: { "X-Requested-With": "fetch" }
     }).then(function (r) {
       if (!r.headers.get("content-type") || r.headers.get("content-type").indexOf("json") === -1) {
@@ -314,6 +337,13 @@
       }
       return r.json();
     }).then(function (j) {
+      if (j && j.confirmar) { // v1.73.0: NR vigente — pede confirmação e reenvia
+        ocultarProgresso();
+        if (window.confirm(j.erro + "\n\nEmitir mesmo assim?")) {
+          submeterComProgresso(f, [["confirmar_nr", "1"]]);
+        }
+        return;
+      }
       if (!j || j.ok === false) {
         ocultarProgresso();
         jobToast((j && (j.erro || j.erro_fatal)) || "Falha na operação.", true);
@@ -534,6 +564,263 @@
   }
   _ligarMascaras(document);
   window.normaTechMascaras = _ligarMascaras;
+})();
+</script>
+<script>
+/* Notificacoes de vencimentos no navegador (v1.60.0) */
+(function () {
+  if (!document.querySelector("header .quem")) return; // so usuarios logados
+  var ROTULO = {seguranca: "Segurança", frota: "Frota", outros: "Outros"};
+  function mostrar(d) {
+    var box = document.getElementById("sino-btn");
+    if (box) {
+      var badge = document.getElementById("sino-badge");
+      var menu = document.getElementById("sino-menu");
+      if (badge) {
+        if (d && d.alertas) { badge.style.display = "inline-block"; badge.textContent = d.alertas; }
+        else { badge.style.display = "none"; }
+      }
+      if (menu) {
+        var its = (d && d.itens_urgentes) || [];
+        var html = '<div style="padding:8px 12px; font-weight:700; border-bottom:1px solid #eee;">Vencimentos urgentes</div>';
+        if (!its.length) html += '<div style="padding:8px 12px; color:#666;">Nada urgente no momento.</div>';
+        its.forEach(function (it) {
+          html += '<a href="/vencimentos" style="display:block; padding:7px 12px; text-decoration:none; color:#222; border-bottom:1px solid #f0f2f5;">'
+                + '<b>' + (it.numero || "") + '</b> ' + (it.nr || "") + '<br>'
+                + '<span style="font-size:12px; color:#666;">' + (it.item || it.funcionario || "") + ' \u00b7 ' + (it.status || "") + (it.dias != null ? " \u00b7 " + it.dias + "d" : "") + '</span></a>';
+        });
+        html += '<a href="/vencimentos" style="display:block; padding:8px 12px; font-weight:600; color:#1d4e89;">Ver todos os vencimentos</a>';
+        menu.innerHTML = html;
+      }
+    }
+    if (!d || !d.notif || !d.alertas) return;
+    if (!("Notification" in window)) return;
+    var lancar = function () {
+      if (Notification.permission !== "granted") return;
+      var partes = [];
+      var setores = d.por_setor || {};
+      var meu = d.setor_usuario;
+      Object.keys(setores).forEach(function (s) {
+        var info = setores[s];
+        var total = (info.alerta || 0) + (info.vencido || 0);
+        if (total > 0) {
+          var nome = ROTULO[s] || s;
+          if (meu && s === meu) nome += " (seu setor)";
+          partes.push(nome + ": " + total);
+        }
+      });
+      var corpo = partes.length ? partes.join(" · ") : "Acesse a página de Vencimentos.";
+      var n = new Notification("NormaTech: você tem " + d.alertas + " vencimento(s) urgente(s)", {body: corpo});
+      n.onclick = function () { window.focus(); window.location.href = "/vencimentos"; };
+    };
+    if (Notification.permission === "granted") lancar();
+    else if (Notification.permission === "default") {
+      Notification.requestPermission().then(function (p) { if (p === "granted") lancar(); });
+    }
+  }
+  function poll() {
+    fetch("/api/vencimentos/resumo", {credentials: "same-origin"})
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(mostrar)
+      .catch(function () {});
+  }
+  var sbtn = document.getElementById("sino-btn"), smenu = document.getElementById("sino-menu");
+  if (sbtn && smenu) {
+    sbtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      smenu.style.display = (smenu.style.display === "block") ? "none" : "block";
+    });
+    document.addEventListener("click", function (e) {
+      if (!smenu.contains(e.target) && e.target !== sbtn) smenu.style.display = "none";
+    });
+  }
+  poll();
+  setInterval(poll, 10 * 60 * 1000);
+})();
+</script>
+<dialog id="dlg-motivo" style="border:none; border-radius:10px; padding:0; box-shadow:0 10px 30px rgba(0,0,0,.3); max-width:92vw; width:420px;">
+  <form method="dialog" style="padding:18px 20px; display:flex; flex-direction:column; gap:10px;">
+    <h2 id="dlg-motivo-titulo" style="margin:0; font-size:16px;">Confirmar ação</h2>
+    <p id="dlg-motivo-texto" class="muted" style="margin:0; font-size:13px;"></p>
+    <label style="font-size:13px; font-weight:600;">Motivo (obrigatório)
+      <textarea id="dlg-motivo-campo" rows="3" required
+        placeholder="Descreva o motivo desta ação (fica registrado no histórico)."
+        style="width:100%; margin-top:4px;"></textarea>
+    </label>
+    <div style="display:flex; gap:8px; justify-content:flex-end;">
+      <button type="button" class="btn cinza" id="dlg-motivo-cancel">Cancelar</button>
+      <button type="submit" class="btn vermelho" id="dlg-motivo-ok" value="ok">Confirmar</button>
+    </div>
+  </form>
+</dialog>
+<dialog id="dlg-feedback" style="border:none; border-radius:10px; padding:0; box-shadow:0 10px 30px rgba(0,0,0,.3); max-width:92vw; width:480px;">
+  <form method="post" action="/feedbacks/enviar" enctype="multipart/form-data"
+    style="padding:18px 20px; display:flex; flex-direction:column; gap:10px;">
+    <h2 style="margin:0; font-size:16px;">Enviar feedback 💬</h2>
+    <p class="muted" style="margin:0; font-size:13px;">Encontrou um erro ou tem uma sugestão? Escreva abaixo — se quiser, anexe fotos ou prints. Sua página atual e o horário são enviados automaticamente.</p>
+    <input type="hidden" name="pagina" id="fb-pagina">
+
+    <!-- Label configurada em coluna -->
+    <label style="font-size:13px; font-weight:600; display:flex; flex-direction:column; gap:4px;">
+      Mensagem
+      <textarea name="texto" rows="4" required
+        placeholder="Descreva o problema ou a sugestão..."
+        style="width:100%; box-sizing:border-box;"></textarea>
+    </label>
+
+    <!-- O mesmo foi aplicado aos anexos para manter o padrão -->
+    <label style="font-size:13px; font-weight:600; display:flex; flex-direction:column; gap:4px;">
+      Anexos (opcional — até 8 arquivos, PDF/JPG/PNG, 50 MB cada)
+      <input type="file" name="anexo" multiple accept=".pdf,.jpg,.jpeg,.png">
+    </label>
+
+    <div style="display:flex; gap:8px; justify-content:flex-end;">
+      <button type="button" class="btn cinza" id="fb-cancel">Cancelar</button>
+      <button type="submit" class="btn verde">Enviar feedback</button>
+    </div>
+  </form>
+</dialog>
+<script>
+/* v1.87.0: botao FeedBack (header, todas as paginas) abre o modal;
+   a pagina atual e o horario do servidor ficam registrados no feedback. */
+(function () {
+  var btn = document.getElementById("fb-btn");
+  var dlg = document.getElementById("dlg-feedback");
+  if (!btn || !dlg) return;
+  btn.addEventListener("click", function () {
+    var pg = document.getElementById("fb-pagina");
+    if (pg) pg.value = location.pathname + location.search;
+    dlg.showModal();
+  });
+  var cancel = document.getElementById("fb-cancel");
+  if (cancel) cancel.addEventListener("click", function () { dlg.close(); });
+})();
+</script>
+<script>
+/* v1.76.0: popup de confirmacao + motivo para acoes destrutivas.
+   Use no formulario: <form method="post" action="..." data-pedir-motivo="Titulo|Texto explicativo"> */
+(function () {
+  var dlg, campo, titulo, texto, alvo = null;
+  function init() {
+    dlg = document.getElementById("dlg-motivo");
+    if (!dlg) return;
+    campo = document.getElementById("dlg-motivo-campo");
+    titulo = document.getElementById("dlg-motivo-titulo");
+    texto = document.getElementById("dlg-motivo-texto");
+    Array.prototype.forEach.call(
+      document.querySelectorAll("form[data-pedir-motivo]"),
+      function (f) {
+        f.addEventListener("submit", function (ev) {
+          if (f.dataset.motivoOk === "1") { f.dataset.motivoOk = ""; return; }
+          ev.preventDefault();
+          alvo = f;
+          var parts = (f.dataset.pedirMotivo || "Confirmar ação||").split("|");
+          titulo.textContent = parts[0] || "Confirmar ação";
+          texto.textContent = parts[1] || "";
+          campo.value = "";
+          try { dlg.showModal(); } catch (e) {}
+        });
+      });
+    document.getElementById("dlg-motivo-cancel").addEventListener("click",
+      function () { dlg.close(); });
+    dlg.addEventListener("close", function () { alvo = null; });
+    dlg.querySelector("form").addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      if (!campo.value.trim()) { campo.focus(); return; }
+      if (alvo) {
+        var hid = alvo.querySelector('input[name="motivo"]');
+        if (!hid) {
+          hid = document.createElement("input");
+          hid.type = "hidden"; hid.name = "motivo";
+          alvo.appendChild(hid);
+        }
+        hid.value = campo.value.trim();
+        alvo.dataset.motivoOk = "1";
+        var f = alvo; alvo = null;
+        dlg.close();
+        if (f.requestSubmit) f.requestSubmit(); else f.submit();
+      }
+    });
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else { init(); }
+})();
+</script>
+<script>
+/* v1.73.1: busca em tempo real — filtra a tabela principal conforme o
+   usuario digita (feedback imediato na pagina atual).
+   v1.73.2: alem do filtro local, apos uma pequena pausa na digitacao o
+   formulario de busca (GET) e enviado automaticamente, trazendo resultados
+   do cadastro INTEIRO do servidor — nao apenas da pagina atual. */
+(function () {
+  function norm(s) {
+    return (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  }
+  function init() {
+    var inp = document.querySelector('input[name="busca"]');
+    if (!inp || inp.dataset.live === "off") return;
+    var tables = Array.prototype.slice.call(document.querySelectorAll("table"));
+    var tabela = tables.length
+      ? tables.sort(function (a, b) { return b.rows.length - a.rows.length; })[0]
+      : null;
+    var corpo = tabela ? (tabela.tBodies[0] || tabela) : null;
+    var contador = null;
+    if (tabela) {
+      contador = document.createElement("p");
+      contador.className = "muted";
+      contador.style.margin = "4px 0 0";
+      tabela.parentNode.insertBefore(contador, tabela.nextSibling);
+    }
+    function filtra() {
+      if (!corpo || !contador) return;
+      var q = norm(inp.value.trim());
+      var vis = 0;
+      Array.prototype.forEach.call(corpo.rows, function (tr) {
+        if (!q) { tr.style.display = ""; vis++; return; }
+        var txt = norm(tr.textContent);
+        var ok = txt.indexOf(q) !== -1;
+        tr.style.display = ok ? "" : "none";
+        if (ok) vis++;
+      });
+      contador.textContent = inp.value.trim()
+        ? (vis + " linha" + (vis === 1 ? "" : "s") + " nesta p\u00e1gina \u2014 buscando no cadastro completo...")
+        : "";
+    }
+    /* v1.73.2: auto-envio do formulario de busca (GET) com pausa de 700ms */
+    var formulario = inp.closest("form");
+    var podeEnviar = formulario &&
+      (!formulario.method || formulario.method.toLowerCase() === "get") &&
+      formulario.getAttribute("data-live-submit") !== "off";
+    var timer = null;
+    inp.addEventListener("input", function () {
+      filtra();
+      if (!podeEnviar) return;
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(function () {
+        timer = null;
+        if (inp.value.trim() !== (inp.defaultValue || "")) formulario.submit();
+      }, 700);
+    });
+    formulario && formulario.addEventListener("submit", function () {
+      if (timer) { clearTimeout(timer); timer = null; }
+    });
+    /* v1.79.0: manter o foco na barra de busca apos limpar o texto —
+       quando o campo fica vazio marcamos a intencao e, apos o auto-envio,
+       devolvemos o foco (e o cursor) a caixa de pesquisa. */
+    if (inp.value && new URLSearchParams(location.search).get(inp.name)) {
+      try { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); } catch (e) {}
+    } else if (sessionStorage.getItem("busca-foco") === "1") {
+      sessionStorage.removeItem("busca-foco");
+      try { inp.focus(); } catch (e) {}
+    }
+    inp.addEventListener("input", function () {
+      if (!inp.value.trim()) sessionStorage.setItem("busca-foco", "1");
+    });
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else { init(); }
 })();
 </script>
 </body>

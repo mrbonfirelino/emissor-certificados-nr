@@ -54,9 +54,19 @@ class EpiRepository:
                 );
                 INSERT OR IGNORE INTO sequences_epi (name, value) VALUES ('epi', 0);
             """)
+            # v1.77.0: arquivar ficha de EPI
+            try:
+                conn.execute("SELECT arquivado FROM epis LIMIT 1")
+            except sqlite3.OperationalError:
+                # v1.77.1: ignora "duplicate column" se outro processo criou antes
+                try:
+                    conn.execute("ALTER TABLE epis ADD COLUMN arquivado INTEGER DEFAULT 0")
+                except sqlite3.OperationalError:
+                    pass
 
     _LIST_COLS = ("epis.id, epis.epi_number, epis.employee_id, epis.data_emissao, "
-                  "epis.status, epis.items, epis.pdf_path, epis.created_at")
+                  "epis.status, epis.items, epis.pdf_path, epis.created_at, "
+                  "COALESCE(epis.arquivado, 0) AS arquivado")
 
     def next_epi_number(self) -> str:
         with self._get_conn() as conn:
@@ -114,6 +124,13 @@ class EpiRepository:
             conn.execute("UPDATE epis SET status = ? WHERE id = ?", (novo, epi_id))
             return novo
 
+    def set_arquivado(self, epi_id: int, val: int = 1) -> bool:
+        """v1.77.0: arquivar/desarquivar ficha de EPI."""
+        with self._get_conn() as conn:
+            cur = conn.execute("UPDATE epis SET arquivado = ? WHERE id = ?",
+                               (1 if val else 0, epi_id))
+            return cur.rowcount > 0
+
     def get_by_id(self, epi_id: int) -> Optional[Dict[str, Any]]:
         with self._get_conn() as conn:
             row = conn.execute(f"""
@@ -133,20 +150,33 @@ class EpiRepository:
             """, (employee_id,)).fetchall()
             return [self._row_to_dict(r) for r in rows]
 
-    def get_all(self, limit: int = 20, offset: int = 0) -> List[Dict[str, Any]]:
-        """Todas as fichas (portal), mais recentes primeiro."""
+    def get_all(self, limit: int = 20, offset: int = 0,
+                arquivado: str = "nao") -> List[Dict[str, Any]]:
+        """Todas as fichas (portal), mais recentes primeiro.
+        v1.77.0: filtro arquivado (padrao: so ativas)."""
+        cond = ""
+        if arquivado == "sim":
+            cond = "WHERE COALESCE(epis.arquivado, 0) = 1"
+        elif arquivado != "todos":
+            cond = "WHERE COALESCE(epis.arquivado, 0) = 0"
         with self._get_conn() as conn:
             rows = conn.execute(f"""
                 SELECT {self._LIST_COLS}, e.nome AS funcionario_nome, e.cpf AS funcionario_cpf
                 FROM epis LEFT JOIN employees e ON epis.employee_id = e.id
+                {cond}
                 ORDER BY epis.created_at DESC, epis.id DESC
                 LIMIT ? OFFSET ?
             """, (limit, offset)).fetchall()
             return [self._row_to_dict(r) for r in rows]
 
-    def count_all(self) -> int:
+    def count_all(self, arquivado: str = "nao") -> int:
+        cond = ""
+        if arquivado == "sim":
+            cond = "WHERE COALESCE(arquivado, 0) = 1"
+        elif arquivado != "todos":
+            cond = "WHERE COALESCE(arquivado, 0) = 0"
         with self._get_conn() as conn:
-            return conn.execute("SELECT COUNT(*) FROM epis").fetchone()[0]
+            return conn.execute(f"SELECT COUNT(*) FROM epis{cond}").fetchone()[0]
 
     def count_docs(self, epi_id: int) -> int:
         with self._get_conn() as conn:

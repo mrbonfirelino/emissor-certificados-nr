@@ -4,7 +4,7 @@ do PDF e gestão do documento assinado (upload manual / baixar / remover).
 
 from pathlib import Path
 
-from fastapi import Request, UploadFile, File
+from fastapi import Form, Request, UploadFile, File
 from fastapi.responses import RedirectResponse, Response, FileResponse
 
 from src.core.employee_repo import EmployeeRepository
@@ -29,7 +29,8 @@ def register(app, deps: dict):
     # ---------------- lista com filtros ----------------
     @app.get("/historico")
     def historico(request: Request, busca: str = "", nr: str = "",
-                  de: str = "", ate: str = "", assinado: str = "", page: int = 1,
+                  de: str = "", ate: str = "", assinado: str = "",
+                  arquivado: str = "nao", page: int = 1, per: int = 10,
                   user: dict = auth.require_permission("historico")):
         hr = HistoryRepository()
         busca = (busca or "").strip()
@@ -37,35 +38,115 @@ def register(app, deps: dict):
         de = (de or "").strip()
         ate = (ate or "").strip()
         assinado = assinado if assinado in ("sim", "nao") else ""
+        arquivado = arquivado if arquivado in ("nao", "sim", "todos") else "nao"
+        per = per if per in (10, 20, 25, 50) else 10
         de_iso = (validar_data(de).isoformat() if de else None)
         ate_iso = (validar_data(ate).isoformat() if ate else None)
         nr_sel = nr or None
         assinado_sel = assinado or None
 
         total = hr.count_query(query=busca, nr_code=nr_sel, data_de=de_iso,
-                               data_ate=ate_iso, assinado=assinado_sel)
+                               data_ate=ate_iso, assinado=assinado_sel,
+                               arquivado=arquivado)
         page = max(1, page)
-        paginas = max(1, (total + PER_PAGE - 1) // PER_PAGE)
+        paginas = max(1, (total + per - 1) // per)
         page = min(page, paginas)
         itens = hr.query(query=busca, nr_code=nr_sel, data_de=de_iso,
                          data_ate=ate_iso, assinado=assinado_sel,
-                         limit=PER_PAGE, offset=(page - 1) * PER_PAGE)
+                         arquivado=arquivado,
+                         limit=per, offset=(page - 1) * per)
         tem_pdf_map = {r.cert_number: bool(r.pdf_path and Path(r.pdf_path).exists())
                        for r in itens}
 
         qs = [f"busca={busca}" if busca else "", f"nr={nr}" if nr else "",
               f"de={de}" if de else "", f"ate={ate}" if ate else "",
-              f"assinado={assinado}" if assinado else ""]
+              f"assinado={assinado}" if assinado else "",
+              f"arquivado={arquivado}" if arquivado != "nao" else ""]
         qs = "&".join(q for q in qs if q)
+        qs = (qs + "&per=" + str(per)) if qs else ("per=" + str(per))
 
         return templates.TemplateResponse(
             request=request, name="historico.html",
             context=ctx(request, itens=itens, total=total, page=page,
                         paginas=paginas, pg_base=("/historico?" + qs) if qs else "/historico",
                         busca=busca, nr=nr, de=de, ate=ate,
-                        assinado=assinado, nrs=hr.distinct_nrs(), qs=qs,
+                        assinado=assinado, arquivado=arquivado,
+                        nrs=hr.distinct_nrs(), qs=qs, per=per,
                         tem_pdf_map=tem_pdf_map,
                         pode_escrever=pode_escrever(user["papel"], "historico")))
+
+    @app.post("/historico/{numero}/arquivar")
+    def historico_arquivar(numero: str, request: Request, motivo: str = Form(""),
+                           user: dict = auth.require_permission("historico")):
+        """v1.77.0: arquivar certificado (motivo via popup)."""
+        hr = HistoryRepository()
+        reg = hr.get_by_number(numero)
+        if not reg:
+            flash(request, erro="Certificado não encontrado.")
+            return RedirectResponse("/historico", status_code=303)
+        if not pode_escrever(user["papel"], "historico"):
+            flash(request, erro="Sem permissão para arquivar certificados.")
+            return RedirectResponse(f"/historico/{numero}", status_code=303)
+        hr.set_arquivado(reg.id, 1)
+        try:
+            users.audit("certificado-arquivar", user.get("username", ""),
+                        numero, motivo or "")
+        except Exception:
+            pass
+        flash(request, msg=f"Certificado {numero} arquivado.")
+        return RedirectResponse(request.headers.get("referer") or "/historico",
+                                status_code=303)
+
+    @app.post("/historico/{numero}/desarquivar")
+    def historico_desarquivar(numero: str, request: Request,
+                              user: dict = auth.require_permission("historico")):
+        hr = HistoryRepository()
+        reg = hr.get_by_number(numero)
+        if not reg:
+            flash(request, erro="Certificado não encontrado.")
+            return RedirectResponse("/historico?arquivado=sim", status_code=303)
+        if not pode_escrever(user["papel"], "historico"):
+            flash(request, erro="Sem permissão.")
+            return RedirectResponse(f"/historico/{numero}", status_code=303)
+        hr.set_arquivado(reg.id, 0)
+        flash(request, msg=f"Certificado {numero} desarquivado.")
+        return RedirectResponse("/historico?arquivado=sim", status_code=303)
+
+    @app.get("/historico/exportar")
+    def historico_exportar(request: Request, busca: str = "", nr: str = "",
+                           de: str = "", ate: str = "", assinado: str = "",
+                           user: dict = auth.require_permission("historico")):
+        """Exportar Excel dos certificados filtrados (v1.67.1)."""
+        from io import BytesIO
+        from openpyxl import Workbook
+        hr = HistoryRepository()
+        busca = (busca or "").strip()
+        nr = (nr or "").strip()
+        de = (de or "").strip()
+        ate = (ate or "").strip()
+        assinado = assinado if assinado in ("sim", "nao") else ""
+        registros = hr.query(query=busca, nr_code=nr or None,
+                             data_de=(validar_data(de).isoformat() if de else None),
+                             data_ate=(validar_data(ate).isoformat() if ate else None),
+                             assinado=assinado or None, limit=1000000, offset=0)
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Historico"
+        ws.append(["Numero", "NR", "Funcionario", "CPF", "Inicio", "Fim",
+                   "Carga (h)", "Validade (meses)", "Assinado"])
+        for r in registros:
+            ws.append([r.cert_number, r.nr_code, r.funcionario_nome,
+                       r.funcionario_cpf, r.data_inicio, r.data_fim,
+                       r.carga_horaria, r.validade_meses,
+                       "Sim" if r.has_signed_doc else "Nao"])
+        buf = BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+        users.audit("exportar-historico", user["username"], str(len(registros)))
+        return Response(
+            content=buf.getvalue(),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": 'attachment; filename="historico.xlsx"'})
 
     # ---------------- pdf ----------------
     def _regenerar_ou_motivo(record):

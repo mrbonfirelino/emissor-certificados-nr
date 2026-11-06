@@ -48,6 +48,11 @@ if exist "%SRC%\src"  if errorlevel 8 ( echo [ERRO] robocopy src falhou & pause 
 if exist "%SRC%\run_web.py"           copy /Y "%SRC%\run_web.py"           . >nul
 if exist "%SRC%\requirements-web.txt" copy /Y "%SRC%\requirements-web.txt" . >nul
 
+REM 3a) Remove Mark-of-the-Web dos arquivos copiados (Office abre em Modo
+REM     Protegido sem isso e o COM recusa exportar PDF: -2147352567)
+echo [2b/5] Removendo bloqueio de internet (Unblock-File) ...
+powershell -NoProfile -Command "Get-ChildItem -Recurse -Path 'src' -File -ErrorAction SilentlyContinue | Unblock-File"
+
 REM 4) Dependencias
 echo [3/5] Sincronizando dependencias ...
 ".venv\Scripts\python.exe" -m pip install -r requirements-web.txt -q

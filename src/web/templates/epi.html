@@ -32,8 +32,16 @@
         {% for op in per_opcoes %}<option value="{{ op }}" {{ 'selected' if op == per else '' }}>{{ op }}</option>{% endfor %}
       </select>
     </div>
+    <div class="campo">
+      <label for="arq">Arquivadas</label>
+      <select id="arq" name="arquivado" onchange="this.form.submit()" style="max-width:110px;">
+        <option value="nao" {{ 'selected' if arquivado == 'nao' else '' }}>Ativas</option>
+        <option value="sim" {{ 'selected' if arquivado == 'sim' else '' }}>Arquivadas</option>
+        <option value="todos" {{ 'selected' if arquivado == 'todos' else '' }}>Todas</option>
+      </select>
+    </div>
     <button type="submit">Buscar</button>
-    {% if busca or status_sel %}<a class="btn cinza" href="/epi">Limpar</a>{% endif %}
+    {% if busca or status_sel or arquivado != 'nao' %}<a class="btn cinza" href="/epi">Limpar</a>{% endif %}
   </form>
   {% else %}
   <form method="get" action="/epi/funcionario/{{ funcionario.id }}" class="filtros" style="margin-bottom:12px;">
@@ -47,11 +55,12 @@
   {% endif %}
 
   <table>
-    <thead><tr><th>Número</th><th>Funcionário</th><th>Data</th><th>Itens</th><th>Situação</th></tr></thead>
+    <thead><tr><th>Número</th><th>Funcionário</th><th>Data</th><th>Itens</th><th>Situação</th><th></th></tr></thead>
     <tbody>
     {% for f in linhas %}
       <tr>
-        <td><a class="numero" href="/epi/{{ f.id }}">{{ f.numero }}</a></td>
+        <td><a class="numero" href="/epi/{{ f.id }}">{{ f.numero }}</a>
+            {% if f.arquivado %}<span class="badge b-cinza">ARQUIVADA</span>{% endif %}</td>
         <td>
           {% if f.employee_id %}<a href="/epi/funcionario/{{ f.employee_id }}">{{ f.funcionario }}</a>
           {% else %}{{ f.funcionario }}{% endif %}
@@ -64,9 +73,20 @@
           {% elif f.estado_ficha == 'parcial' %}<span class="badge b-amarelo">Devolução parcial</span>
           {% else %}<span class="badge b-verde">Aberta</span>{% endif %}
         </td>
+        <td style="white-space:nowrap;">
+          {% if pode_escrever and not funcionario and not f.arquivado %}
+          <form method="post" action="/epi/{{ f.id }}/arquivar" data-pedir-motivo="Arquivar ficha de EPI|Motivo do arquivamento da ficha {{ f.numero }}:" style="display:inline;">
+            <button type="submit" class="btn cinza" style="font-size:12px; padding:2px 8px;">Arquivar</button>
+          </form>
+          {% elif pode_escrever and not funcionario and f.arquivado %}
+          <form method="post" action="/epi/{{ f.id }}/desarquivar" style="display:inline;">
+            <button type="submit" class="btn cinza" style="font-size:12px; padding:2px 8px;">Desarquivar</button>
+          </form>
+          {% endif %}
+        </td>
       </tr>
     {% else %}
-      <tr><td colspan="5" class="muted">Nenhuma ficha encontrada.</td></tr>
+      <tr><td colspan="6" class="muted">Nenhuma ficha encontrada.</td></tr>
     {% endfor %}
     </tbody>
   </table>

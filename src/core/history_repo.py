@@ -2,11 +2,20 @@ import sqlite3
 import json
 from pathlib import Path
 from datetime import date, timedelta
-from dateutil.relativedelta import relativedelta
 from typing import Optional, List, Dict, Any
 from src.utils.paths import get_db_path
 from src.core.models import CertificateRecord
 from src.utils.text_utils import normalize_text
+
+
+def _add_months(d, m):
+    """v1.81.2: soma de meses sem dateutil (relativedelta era lento e
+    chamado por linha). Resultado idêntico para meses inteiros."""
+    y, mo = divmod((d.year * 12 + (d.month - 1)) + int(m), 12)
+    month = mo + 1
+    leap = (y % 4 == 0 and (y % 100 != 0 or y % 400 == 0))
+    dias_mes = [31, 29 if leap else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    return d.replace(year=y, month=month, day=min(d.day, dias_mes[month - 1]))
 
 
 class HistoryRepository:
@@ -67,12 +76,23 @@ class HistoryRepository:
                 conn.execute("SELECT validade_meses FROM certificates LIMIT 1")
             except sqlite3.OperationalError:
                 conn.execute("ALTER TABLE certificates ADD COLUMN validade_meses INTEGER")
+            # v1.77.0: arquivar certificado
+            try:
+                conn.execute("SELECT arquivado FROM certificates LIMIT 1")
+            except sqlite3.OperationalError:
+                # v1.77.1: se outro processo/thread criou a coluna na mesma
+                #arrancada, o ALTER falha com "duplicate column" — ignorar.
+                try:
+                    conn.execute("ALTER TABLE certificates ADD COLUMN arquivado INTEGER DEFAULT 0")
+                except sqlite3.OperationalError:
+                    pass
 
     # colunas de listagem (BLOB signed_doc fica de fora: carga pesada)
     _LIST_COLS = """
         id, cert_number, nr_code, employee_id, funcionario_nome, funcionario_cpf,
         data_inicio, data_fim, carga_horaria, descricao_treinamento, campos_extra,
-        pdf_path, validade_meses, created_at, (signed_doc IS NOT NULL) AS has_signed_doc
+        pdf_path, validade_meses, created_at, (signed_doc IS NOT NULL) AS has_signed_doc,
+        COALESCE(arquivado, 0) AS arquivado
     """
 
     def next_certificate_number(self) -> str:
@@ -110,6 +130,14 @@ class HistoryRepository:
     def count_all(self) -> int:
         with self._get_conn() as conn:
             return conn.execute("SELECT COUNT(*) FROM certificates").fetchone()[0]
+
+    def count_sem_assinatura(self) -> int:
+        """Certificados sem documento assinado anexado (v1.72.0).
+        v1.77.0: ignora certificados arquivados."""
+        with self._get_conn() as conn:
+            return conn.execute(
+                "SELECT COUNT(*) FROM certificates"
+                " WHERE signed_doc IS NULL AND COALESCE(arquivado, 0) = 0").fetchone()[0]
 
     def get_by_number(self, cert_number: str) -> Optional[CertificateRecord]:
         with self._get_conn() as conn:
@@ -180,11 +208,16 @@ class HistoryRepository:
 
     def query(self, query: str = "", nr_code: Optional[str] = None,
               data_de: Optional[str] = None, data_ate: Optional[str] = None,
-              assinado: Optional[str] = None,
+              assinado: Optional[str] = None, arquivado: str = "nao",
               limit: int = 10, offset: int = 0) -> List[CertificateRecord]:
         """Busca combinada: texto (nome/CPF/numero/NR) + NR exata + periodo por
-        data_fim (ISO) + assinado ('sim'/'nao'/None)."""
+        data_fim (ISO) + assinado ('sim'/'nao'/None).
+        v1.77.0: filtro arquivado ('nao' padrao / 'sim' / 'todos')."""
         where, params = self._build_filters(query, nr_code, data_de, data_ate, assinado)
+        if arquivado == "sim":
+            where.append("COALESCE(arquivado, 0) = 1")
+        elif arquivado != "todos":
+            where.append("COALESCE(arquivado, 0) = 0")
         sql = f"SELECT {self._LIST_COLS} FROM certificates"
         if where:
             sql += " WHERE " + " AND ".join(where)
@@ -195,17 +228,25 @@ class HistoryRepository:
 
     def count_query(self, query: str = "", nr_code: Optional[str] = None,
                     data_de: Optional[str] = None, data_ate: Optional[str] = None,
-                    assinado: Optional[str] = None) -> int:
+                    assinado: Optional[str] = None, arquivado: str = "nao") -> int:
         """Conta resultados da busca combinada."""
         where, params = self._build_filters(query, nr_code, data_de, data_ate, assinado)
+        if arquivado == "sim":
+            where.append("COALESCE(arquivado, 0) = 1")
+        elif arquivado != "todos":
+            where.append("COALESCE(arquivado, 0) = 0")
         sql = "SELECT COUNT(*) FROM certificates"
         if where:
             sql += " WHERE " + " AND ".join(where)
         with self._get_conn() as conn:
             return conn.execute(sql, params).fetchone()[0]
 
-    def get_dashboard_stats(self) -> Dict[str, Any]:
-        """Indicadores para o painel da tela inicial."""
+    def get_dashboard_stats(self, itens: Optional[List[dict]] = None) -> Dict[str, Any]:
+        """Indicadores para o painel da tela inicial.
+
+        v1.81.2: `itens` permite reutilizar a pilha de vencimentos
+        (certificados + ASOs + integrações) já carregada pela rota,
+        evitando varrer a mesma fonte 3 vezes por requisição."""
         with self._get_conn() as conn:
             total = conn.execute("SELECT COUNT(*) FROM certificates").fetchone()[0]
             assinados = conn.execute(
@@ -222,8 +263,20 @@ class HistoryRepository:
 
         vencidos = vencer_7 = vencer_30 = 0
         try:
-            certs = self.get_certificates_with_expiration()
-            for c in certs:
+            # v1.81.2: carrega a pilha uma unica vez (ou reusa a da rota)
+            if itens is None:
+                itens = list(self.get_certificates_with_expiration())
+                try:
+                    from src.core.aso_repo import AsoRepository
+                    itens += AsoRepository().get_asos_with_expiration()
+                except Exception:
+                    pass
+                try:
+                    from src.core.integracao_repo import IntegracaoRepository
+                    itens += IntegracaoRepository().get_integracoes_with_expiration()
+                except Exception:
+                    pass
+            for c in itens:
                 d = c["dias_para_vencer"]
                 if d < 0:
                     vencidos += 1
@@ -234,47 +287,10 @@ class HistoryRepository:
         except Exception:
             pass
 
-        # ASOs entram nos mesmos contadores de vencimento
-        try:
-            from src.core.aso_repo import AsoRepository
-            for a in AsoRepository().get_asos_with_expiration():
-                d = a["dias_para_vencer"]
-                if d < 0:
-                    vencidos += 1
-                elif d <= 7:
-                    vencer_7 += 1
-                elif d <= 30:
-                    vencer_30 += 1
-        except Exception:
-            pass
-
-        # Integrações entram nos mesmos contadores de vencimento
-        try:
-            from src.core.integracao_repo import IntegracaoRepository
-            for i in IntegracaoRepository().get_integracoes_with_expiration():
-                d = i["dias_para_vencer"]
-                if d < 0:
-                    vencidos += 1
-                elif d <= 7:
-                    vencer_7 += 1
-                elif d <= 30:
-                    vencer_30 += 1
-        except Exception:
-            pass
-
-        # Laudos de frota entram nos mesmos contadores de vencimento
-        try:
-            from src.core.frota_repo import FrotaRepository
-            for f in FrotaRepository().get_laudos_with_expiration():
-                d = f["dias_para_vencer"]
-                if d < 0:
-                    vencidos += 1
-                elif d <= 7:
-                    vencer_7 += 1
-                elif d <= 30:
-                    vencer_30 += 1
-        except Exception:
-            pass
+        # v1.78.0: laudos de frota saem destes contadores — a frota tem seus
+        # proprios cards e pagina (/frota/vencimentos); assim o painel usa
+        # exatamente a mesma fonte/regra da pagina /vencimentos
+        # (certificados + ASOs + integracoes, only_latest=True).
 
         return {
             "total": total,
@@ -299,6 +315,10 @@ class HistoryRepository:
             validade_meses = row["validade_meses"]
         except (IndexError, KeyError):
             validade_meses = None
+        try:
+            arquivado = bool(row["arquivado"])
+        except (IndexError, KeyError):
+            arquivado = False
         return CertificateRecord(
             id=row["id"],
             cert_number=row["cert_number"],
@@ -314,13 +334,21 @@ class HistoryRepository:
             pdf_path=row["pdf_path"],
             validade_meses=validade_meses,
             created_at=row["created_at"],
-            has_signed_doc=has_signed
+            has_signed_doc=has_signed,
+            arquivado=arquivado
         )
 
     # --- Documento assinado (escaneado) ---
 
-    SIGNED_DOC_MAX_BYTES = 10 * 1024 * 1024  # 10MB
+    SIGNED_DOC_MAX_BYTES = 30 * 1024 * 1024  # 30MB (v1.80.2)
     SIGNED_DOC_TIPOS = {"pdf", "jpg", "jpeg", "png"}
+
+    def set_arquivado(self, cert_id: int, val: int = 1) -> bool:
+        """v1.77.0: arquivar/desarquivar certificado."""
+        with self._get_conn() as conn:
+            cur = conn.execute("UPDATE certificates SET arquivado = ? WHERE id = ?",
+                               (1 if val else 0, cert_id))
+            return cur.rowcount > 0
 
     def attach_signed_doc(self, cert_id: int, data: bytes, tipo: str) -> bool:
         """Anexa (ou substitui) o documento assinado. tipo: pdf|jpg|jpeg|png."""
@@ -328,7 +356,7 @@ class HistoryRepository:
         if tipo not in self.SIGNED_DOC_TIPOS:
             raise ValueError(f"Formato invalido: {tipo} (aceitos: PDF, JPG, PNG)")
         if len(data) > self.SIGNED_DOC_MAX_BYTES:
-            raise ValueError("Arquivo maior que 10MB")
+            raise ValueError("Arquivo maior que 30MB")
         if tipo == "jpeg":
             tipo = "jpg"
         with self._get_conn() as conn:
@@ -362,10 +390,13 @@ class HistoryRepository:
         today = date.today()
 
         with self._get_conn() as conn:
+            # v1.76.1: vencimentos ignoram funcionarios arquivados
             rows = conn.execute("""
                 SELECT c.*, e.funcao
                 FROM certificates c
                 LEFT JOIN employees e ON c.employee_id = e.id
+                WHERE COALESCE(e.arquivado, 0) = 0
+                  AND COALESCE(c.arquivado, 0) = 0
                 ORDER BY c.funcionario_nome, c.nr_code
             """).fetchall()
 
@@ -376,7 +407,7 @@ class HistoryRepository:
             # validade gravada no certificado (lote) tem prioridade; NULL = template
             validade_meses = row["validade_meses"] or (tmpl.validade_meses if tmpl else 12)
             data_fim = date.fromisoformat(row["data_fim"])
-            data_validade = data_fim + relativedelta(months=validade_meses)
+            data_validade = _add_months(data_fim, validade_meses)
             dias_para_vencer = (data_validade - today).days
 
             if dias_para_vencer < 0:
@@ -424,6 +455,20 @@ class HistoryRepository:
                              key=lambda c: (c["funcionario_nome"], c["nr_code"]))
 
         return results
+
+    def get_vigente(self, employee_id: int, nr_code: str) -> Optional[Dict[str, Any]]:
+        """v1.73.0: certificado vigente (dentro da validade) do funcionario
+        para uma NR, se existir. Usa apenas a emissao mais recente de cada
+        (funcionario, NR) — a mesma regra do painel/vencimentos."""
+        try:
+            for c in self.get_certificates_with_expiration():
+                if (c["employee_id"] == employee_id
+                        and c["nr_code"] == nr_code
+                        and c["dias_para_vencer"] >= 0):
+                    return c
+        except Exception:
+            return None
+        return None
 
     # --- Backup meta ---
     def set_backup_meta(self, key: str, value: str):

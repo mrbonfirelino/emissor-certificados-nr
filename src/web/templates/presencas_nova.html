@@ -3,7 +3,10 @@
 
 {% block conteudo %}
 <h1>Nova lista de presença</h1>
-<p class="muted">Escolha a data do treinamento: o sistema mostra os participantes de cada NR emitida nesse dia. Confira as seções abaixo e clique no botão verde para gerar todas as listas de uma vez.</p>
+<p class="muted">Escolha a data do treinamento: o sistema mostra os participantes de cada NR emitida nesse dia. Confira as seções abaixo e clique no botão verde para gerar todas as listas de uma vez. Para montar uma lista com colaboradores escolhidos livremente (data qualquer), use a <a href="/presencas/avulsa">lista avulsa</a>.</p>
+<div class="linha-botoes" style="margin-bottom:14px">
+    <a class="btn" href="/presencas/avulsa">Lista avulsa (escolher colaboradores)</a>
+</div>
 
 <form class="filtros" method="get" action="/presencas/nova">
     <label>Data do treinamento

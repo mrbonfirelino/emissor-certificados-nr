@@ -37,14 +37,20 @@ def register(app, deps):
     def configuracoes_form(request: Request,
                            user: dict = auth.require_permission("config")):
         cfg, settings, tem_senha, log_tail, task_ativa = _carregar_tudo()
+        # v1.81.0: usuarios ativos (para o aviso mensal de ASOs)
+        try:
+            usuarios_email = [u for u in users.list_users() if u["ativo"]]
+        except Exception:
+            usuarios_email = []
         return templates.TemplateResponse(
             request=request, name="configuracoes.html",
             context=ctx(request,
                         cfg=cfg, s=settings, tem_senha=tem_senha,
-                        log_tail=log_tail, task_ativa=task_ativa))
+                        log_tail=log_tail, task_ativa=task_ativa,
+                        usuarios_email=usuarios_email))
 
     @app.post("/configuracoes/salvar")
-    def configuracoes_salvar(request: Request,
+    async def configuracoes_salvar(request: Request,
                              empresa: str = Form(""),
                              cnpj: str = Form(""),
                              local: str = Form(""),
@@ -56,10 +62,22 @@ def register(app, deps):
                              backup_duplo: str = Form(""),
                              backup_rede: str = Form(""),
                              backup_rede_caminho: str = Form(""),
+                             backup_locais_extras: str = Form(""),
                              rede_docs: str = Form(""),
                              rede_docs_caminho: str = Form(""),
                              tarefa_ativa: str = Form(""),
                              tarefa_hora: str = Form("12:00"),
+                             smtp_host: str = Form(""),
+                             smtp_porta: str = Form("587"),
+                             smtp_usuario: str = Form(""),
+                             smtp_senha: str = Form(""),
+                             smtp_seguranca: str = Form("tls"),
+                             smtp_remetente: str = Form(""),
+                             report_ativo: str = Form(""),
+                             report_destinatarios: str = Form(""),
+                             report_periodicidade: str = Form("mensal"),
+                             aso_email_ativo: str = Form(""),
+                             aso_email_extras: str = Form(""),
                               pdf_data_hora: str = Form(""),
                               abast_duas_vias: str = Form(""),
                              user: dict = auth.require_permission("config")):
@@ -73,6 +91,7 @@ def register(app, deps):
                 "registro": registro.strip(), "backup_intervalo": backup_intervalo,
                 "backup_duplo": bool(backup_duplo), "backup_rede": bool(backup_rede),
                 "backup_rede_caminho": backup_rede_caminho,
+                "backup_locais_extras": backup_locais_extras,
                 "rede_docs": bool(rede_docs),
                 "rede_docs_caminho": rede_docs_caminho,
                 "tarefa_ativa": bool(tarefa_ativa), "tarefa_hora": tarefa_hora}
@@ -129,6 +148,9 @@ def register(app, deps):
         settings["backup_rede_ativo"] = bool(backup_rede)
         settings["backup_rede_caminho"] = (backup_rede_caminho.strip()
                                            or r"Z:\SEGURANÇA\NORMATECH-BACKUP")
+        settings["backup_locais_extras"] = [
+            ln.strip() for ln in (backup_locais_extras or "").splitlines()
+            if ln.strip()]
         settings["rede_documentos_ativo"] = bool(rede_docs)
         settings["rede_documentos_caminho"] = rede_docs_caminho.strip()
         settings["tarefa_agendada_ativo"] = tarefa_on
@@ -161,6 +183,42 @@ def register(app, deps):
 
         if not save_company_config(config):
             return _erro_form(request, user, "Erro ao salvar configuração")
+        from src.core.app_settings import (load_app_settings,
+                                                save_app_settings)
+        _smtp = load_app_settings()
+        _smtp["smtp_host"] = smtp_host.strip()
+        try:
+            _smtp["smtp_porta"] = max(1, min(65535, int(smtp_porta)))
+        except (TypeError, ValueError):
+            _smtp["smtp_porta"] = 587
+        _smtp["smtp_usuario"] = smtp_usuario.strip()
+        if smtp_senha:
+            _smtp["smtp_senha"] = smtp_senha
+        _smtp["smtp_seguranca"] = (smtp_seguranca
+                                   if smtp_seguranca in ("tls", "ssl", "none")
+                                   else "tls")
+        _smtp["smtp_remetente"] = smtp_remetente.strip()
+        _smtp["report_ativo"] = bool(report_ativo)
+        _smtp["report_destinatarios"] = report_destinatarios.strip()
+        _smtp["report_periodicidade"] = (report_periodicidade
+                                         if report_periodicidade in
+                                         ("mensal", "trimestral",
+                                          "semestral", "anual")
+                                         else "mensal")
+        # v1.81.0: aviso mensal de ASOs
+        _smtp["aso_email_ativo"] = bool(aso_email_ativo)
+        _smtp["aso_email_extras"] = aso_email_extras.strip()
+        save_app_settings(_smtp)
+        try:
+            from src.web.users_repo import UsersRepository
+            _ur = UsersRepository()
+        except Exception:
+            _ur = users
+        _form_post = await request.form()
+        for _u in _ur.list_users():
+            _val = _form_post.get(f"email_{_u['id']}")
+            if _val is not None:
+                _ur.set_email(_u["id"], _val)
         if senha_restore:
             set_restore_password(senha_restore)
         if not request.session.get("flash", {}).get("erro"):
@@ -199,6 +257,57 @@ def register(app, deps):
         response.background = BackgroundTask(network_sync.sync_all, notify_success=False)
         return response
 
+    @app.post("/configuracoes/testar-caminho")
+    def configuracoes_testar_caminho(request: Request, caminho: str = Form(""),
+                                     user: dict = auth.require_permission("config")):
+        """Testa acesso a um caminho de rede/pasta (v1.67.1)."""
+        from pathlib import Path as _P
+        caminho = (caminho or "").strip()
+        if not caminho:
+            flash(request, erro="Informe o caminho para testar.")
+            return RedirectResponse("/configuracoes", status_code=303)
+        try:
+            p = _P(caminho)
+            if p.is_dir():
+                n = sum(1 for _ in p.iterdir())
+                flash(request, msg=f"Caminho acessivel ({n} item(ns)).")
+                users.audit("testar-caminho", user["username"], caminho)
+            else:
+                flash(request, erro="Caminho nao encontrado ou sem acesso.")
+        except Exception as e:
+            flash(request, erro=f"Sem acesso ao caminho: {e}")
+        return RedirectResponse("/configuracoes", status_code=303)
+
+    @app.post("/configuracoes/email-testar")
+    def configuracoes_email_testar(request: Request,
+                                   user: dict = auth.require_permission("config")):
+        """Testa login/conexao SMTP com os dados salvos (v1.67.1)."""
+        from src.utils.email_report import testar_conexao
+        ok, msg = testar_conexao()
+        if ok:
+            users.audit("email-testar", user["username"], "ok")
+            flash(request, msg=msg)
+        else:
+            flash(request, erro=msg)
+        return RedirectResponse("/configuracoes", status_code=303)
+
+    @app.post("/configuracoes/email-testar-envio")
+    def configuracoes_email_testar_envio(request: Request,
+                                         user: dict = auth.require_permission("config")):
+        """Envia um e-mail de teste para os destinatarios salvos (v1.67.1)."""
+        from src.core.app_settings import load_app_settings
+        from src.utils.email_report import enviar_email
+        cfg = load_app_settings()
+        ok, msg = enviar_email(cfg, "NormaTech - e-mail de teste",
+                               "<p>Este \u00e9 um e-mail de teste do portal NormaTech.</p>")
+        if ok:
+            users.audit("email-testar-envio", user["username"], "ok")
+        if ok:
+            flash(request, msg=msg)
+        else:
+            flash(request, erro=msg)
+        return RedirectResponse("/configuracoes", status_code=303)
+
     @app.post("/configuracoes/log/limpar")
     def configuracoes_log_limpar(request: Request,
                                  user: dict = auth.require_permission("config")):
@@ -219,3 +328,86 @@ def register(app, deps):
         return FileResponse(
             str(log_path), media_type="text/plain; charset=utf-8",
             filename="normatech-error.log")
+
+    # ---------------- painel do dashboard por setor (v1.77.0) -----------
+    _CARDS_OPCOES = [
+        ("historico", "Certificados emitidos"),
+        ("funcionarios", "Funcionários cadastrados"),
+        ("nrs", "NRs disponíveis"),
+        ("cert30", "Vencimentos em 30 dias"),
+        ("frotavenc", "Vencimentos da frota"),
+        ("sem_assinatura", "Certificados sem documento assinado"),
+        ("venc30", "Vencem em 30 dias (vencimentos)"),
+        ("veiculos", "Veículos na frota"),
+        ("saidas", "Saídas (veículos) em aberto"),
+        ("cert_vencidos", "Certificados vencidos"),
+        ("custo", "Custo de abastecimento (mês)"),
+        ("sem_nf", "Abastecimentos sem nota fiscal"),
+        ("sem_valor", "Abastecimentos sem valor"),
+        ("aso_vencidos", "ASOs vencidos"),
+        ("aso_30", "ASOs vencem em 30 dias"),
+        ("veic_bloq", "Veículos bloqueados"),
+        ("pres_pend", "Listas de presença não assinadas"),
+        ("func_incomp", "Funcionários com cadastro incompleto"),
+    ]
+    _ATALHOS_OPCOES = [
+        ("cert", "Emitir Certificado"),
+        ("funcionarios", "Funcionários"),
+        ("historico", "Histórico"),
+        ("vencimentos", "Vencimentos"),
+        ("lote", "Emissão em Lote"),
+        ("frota", "Gestão de Frota"),
+        ("presencas", "Listas de Presença"),
+        ("epi", "Ficha de EPIs"),
+        ("crachas", "Crachás"),
+        ("cartoes", "Cartões de Bloqueio"),
+        ("aso", "ASO"),
+    ]
+
+    @app.get("/configuracoes/painel-setores")
+    def painel_setores_form(request: Request,
+                            user: dict = auth.require_permission("config")):
+        """Admin define statcards/atalhos padrao por setor (v1.77.0)."""
+        from src.web.permissions import SETORES
+        dados = []
+        for chave, label in SETORES:
+            dados.append({
+                "chave": chave, "label": label,
+                "cards": users.get_setor_cards(chave) or {},
+                "atalhos": users.get_setor_atalhos(chave) or {},
+            })
+        return templates.TemplateResponse(
+            request=request, name="configuracoes_painel_setores.html",
+            context=ctx(request, setores=dados,
+                        cards_opcoes=_CARDS_OPCOES,
+                        atalhos_opcoes=_ATALHOS_OPCOES))
+
+    @app.post("/configuracoes/painel-setores")
+    def painel_setores_salvar(request: Request, setor: str = Form(""),
+                              acao: str = Form("salvar"),
+                              card: list = Form([]),
+                              atalho: list = Form([]),
+                              user: dict = auth.require_permission("config")):
+        import json as _json
+        from src.web.permissions import SETORES, SETOR_LABELS
+        if setor not in dict(SETORES):
+            flash(request, erro="Setor inválido.")
+            return RedirectResponse("/configuracoes/painel-setores",
+                                    status_code=303)
+        nome = SETOR_LABELS.get(setor, setor)
+        if acao == "limpar":
+            users.set_setor_cards(setor, "")
+            users.set_setor_atalhos(setor, "")
+            users.audit("painel-setor-limpar", user["username"], setor)
+            flash(request, msg=f"Padrão do setor {nome} removido "
+                               "(usuários passam a ver o padrão do papel).")
+            return RedirectResponse("/configuracoes/painel-setores",
+                                    status_code=303)
+        cards_prefs = {k: (k in card) for k, _lbl in _CARDS_OPCOES}
+        atalhos_prefs = {k: (k in atalho) for k, _lbl in _ATALHOS_OPCOES}
+        users.set_setor_cards(setor, _json.dumps(cards_prefs))
+        users.set_setor_atalhos(setor, _json.dumps(atalhos_prefs))
+        users.audit("painel-setor-salvar", user["username"], setor)
+        flash(request, msg=f"Padrão do setor {nome} atualizado.")
+        return RedirectResponse("/configuracoes/painel-setores",
+                                status_code=303)

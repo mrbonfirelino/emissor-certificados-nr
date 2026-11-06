@@ -38,6 +38,7 @@ class CertificateService:
         carga_horaria: int,
         descricao_treinamento: str,
         campos_extra: Dict[str, str],
+        data_inicio: Optional[date] = None,
         output_dir: Optional[Path] = None,
         validade_meses: Optional[int] = None
     ) -> Optional[Path]:
@@ -78,6 +79,7 @@ class CertificateService:
             carga_horaria=carga_horaria,
             descricao_treinamento=descricao_treinamento,
             campos_extra=campos_extra,
+            data_inicio=data_inicio,
             conteudo_programatico=template.conteudo_programatico,
             assinaturas=template.assinaturas,
             data_hora_impressao=data_hora_impressao
@@ -92,10 +94,16 @@ class CertificateService:
         # tem prioridade; sem PowerPoint/COM o fluxo JSON/ReportLab continua
         from src.core import pptx_certificate_service as pptx_cert
         if pptx_cert.get_pptx_template_path(nr_code):
-            pptx_cert.gerar_pdf_pptx(
-                nr_code, employee, data_treinamento, cert_number, pdf_path,
-                data_hora=data_hora_impressao
-            )
+            try:
+                pptx_cert.gerar_pdf_pptx(
+                    nr_code, employee, data_treinamento, cert_number, pdf_path,
+                    data_hora=data_hora_impressao, data_inicio=data_inicio
+                )
+            except Exception as e:  # noqa: BLE001
+                from src.utils.error_log import log_error
+
+                log_error("pptx-fallback", e)
+                generate_certificate_pdf(cert_data, template, pdf_path)
         else:
             generate_certificate_pdf(cert_data, template, pdf_path)
 
@@ -105,7 +113,7 @@ class CertificateService:
             employee_id=employee.id,
             funcionario_nome=employee.nome,
             funcionario_cpf=employee.cpf,
-            data_inicio=data_treinamento.isoformat(),
+            data_inicio=(data_inicio or data_treinamento).isoformat(),
             data_fim=data_treinamento.isoformat(),
             carga_horaria=carga_horaria,
             descricao_treinamento=descricao_treinamento,
@@ -134,7 +142,8 @@ class CertificateService:
         carga_horaria: int,
         descricao_treinamento: str,
         campos_extra: Dict[str, str],
-        output_path: Path
+        output_path: Path,
+        data_inicio: Optional[date] = None
     ) -> Optional[Path]:
         if not self.company_config:
             return None
@@ -159,10 +168,27 @@ class CertificateService:
             descricao_treinamento=descricao_treinamento,
             campos_extra=campos_extra,
             conteudo_programatico=template.conteudo_programatico,
+            data_inicio=data_inicio,
             assinaturas=template.assinaturas
         )
 
-        generate_certificate_pdf(cert_data, template, output_path)
+        # mesma prioridade da emissao real: PPTX quando existir template
+        # (a pre-visualizacao/exemplo nao grava nada no historico)
+        gerado = False
+        from src.core import pptx_certificate_service as pptx_cert
+        if pptx_cert.get_pptx_template_path(nr_code):
+            try:
+                pptx_cert.gerar_pdf_pptx(
+                    nr_code, employee, data_treinamento, "PREVIEW-000000",
+                    output_path, data_hora="", data_inicio=data_inicio
+                )
+                gerado = True
+            except Exception as e:  # noqa: BLE001
+                from src.utils.error_log import log_error
+
+                log_error("pptx-fallback", e)
+        if not gerado:
+            generate_certificate_pdf(cert_data, template, output_path)
         return output_path
 
     def regenerar_pdf(self, record: CertificateRecord) -> Path:
@@ -251,10 +277,16 @@ class CertificateService:
         # mesma prioridade da emissao: modelo PPTX da tecnica quando existir
         from src.core import pptx_certificate_service as pptx_cert
         if employee is not None and pptx_cert.get_pptx_template_path(record.nr_code):
-            pptx_cert.gerar_pdf_pptx(
-                record.nr_code, employee, data_treino, record.cert_number,
-                pdf_path, data_hora=data_hora_impressao
-            )
+            try:
+                pptx_cert.gerar_pdf_pptx(
+                    record.nr_code, employee, data_treino, record.cert_number,
+                    pdf_path, data_hora=data_hora_impressao
+                )
+            except Exception as e:  # noqa: BLE001
+                from src.utils.error_log import log_error
+
+                log_error("pptx-fallback", e)
+                generate_certificate_pdf(cert_data, template, pdf_path)
         else:
             generate_certificate_pdf(cert_data, template, pdf_path)
 

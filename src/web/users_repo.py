@@ -11,7 +11,7 @@ import secrets
 import sqlite3
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional, Tuple
 
 import argon2
 
@@ -87,12 +87,56 @@ class UsersRepository:
                     PRIMARY KEY (papel, modulo)
                 )
             """)
+            # v1.59.0: setor do usuario, preferencia de notificacao e
+            # regras setor->modulo configuradas pelo admin
+            _cols = {r[1] for r in conn.execute("PRAGMA table_info(users)")}
+            if "setor" not in _cols:
+                conn.execute("ALTER TABLE users ADD COLUMN setor TEXT NOT NULL DEFAULT ''")
+            if "pref_notif" not in _cols:
+                conn.execute("ALTER TABLE users ADD COLUMN pref_notif INTEGER NOT NULL DEFAULT 1")
+            if "foto" not in _cols:
+                conn.execute("ALTER TABLE users ADD COLUMN foto BLOB")
+            if "foto_tipo" not in _cols:
+                conn.execute("ALTER TABLE users ADD COLUMN foto_tipo TEXT")
+            if "cards_prefs" not in _cols:
+                conn.execute("ALTER TABLE users ADD COLUMN cards_prefs TEXT NOT NULL DEFAULT ''")
+            # v1.73.1: atalhos personalizaveis do dashboard
+            if "atalhos_prefs" not in _cols:
+                conn.execute("ALTER TABLE users ADD COLUMN atalhos_prefs TEXT NOT NULL DEFAULT ''")
+            # v1.81.0: e-mail do usuario (aviso mensal de ASOs)
+            try:
+                if "email" not in _cols:
+                    conn.execute("ALTER TABLE users ADD COLUMN email TEXT NOT NULL DEFAULT ''")
+            except Exception:
+                pass  # corrida uvicorn x APScheduler (licao v1.77.1)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS setores_modulos (
+                    setor TEXT NOT NULL,
+                    modulo TEXT NOT NULL,
+                    permitido INTEGER NOT NULL DEFAULT 1,
+                    PRIMARY KEY (setor, modulo)
+                )
+            """)
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS permissoes_usuario (
                     user_id INTEGER NOT NULL,
                     modulo TEXT NOT NULL,
                     permitido INTEGER NOT NULL DEFAULT 1,
                     PRIMARY KEY (user_id, modulo)
+                )
+            """)
+            # v1.72.0: cards padrao por setor do dashboard
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS setores_cards (
+                    setor TEXT PRIMARY KEY,
+                    prefs TEXT NOT NULL DEFAULT ''
+                )
+            """)
+            # v1.77.0: atalhos padrao por setor do dashboard
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS setores_atalhos (
+                    setor TEXT PRIMARY KEY,
+                    prefs TEXT NOT NULL DEFAULT ''
                 )
             """)
 
@@ -167,8 +211,8 @@ class UsersRepository:
     def list_users(self):
         with self._get_conn() as conn:
             return conn.execute(
-                "SELECT id, username, nome, papel, ativo, must_change, created_at"
-                " FROM users ORDER BY username"
+                "SELECT id, username, nome, papel, ativo, must_change, created_at,"
+                " setor, pref_notif, email FROM users ORDER BY username"
             ).fetchall()
 
     def create_user(self, username: str, nome: str, papel: str,
@@ -268,6 +312,165 @@ class UsersRepository:
         invalidar_cache_permissoes()
 
     # -- bootstrap ---------------------------------------------------------
+    # -- setor, preferencias e regras por setor (v1.59.0) ----------------
+    def set_nome(self, user_id: int, nome: str):
+        with self._get_conn() as conn:
+            conn.execute("UPDATE users SET nome=? WHERE id=?", (nome.strip(), user_id))
+
+    def set_setor(self, user_id: int, setor: str):
+        with self._get_conn() as conn:
+            conn.execute("UPDATE users SET setor=? WHERE id=?",
+                         ((setor or "").strip().lower(), user_id))
+
+    def set_pref_notif(self, user_id: int, valor: bool):
+        with self._get_conn() as conn:
+            conn.execute("UPDATE users SET pref_notif=? WHERE id=?",
+                         (1 if valor else 0, user_id))
+
+    # -- cards do dashboard (v1.63.1) ------------------------------------
+    def set_cards_prefs(self, user_id: int, prefs_json: str):
+        with self._get_conn() as conn:
+            conn.execute("UPDATE users SET cards_prefs=? WHERE id=?",
+                         (prefs_json or "", user_id))
+
+    def get_cards_prefs(self, user_id: int):
+        """None = nunca configurado (mostra tudo)."""
+        import json as _json
+        with self._get_conn() as conn:
+            row = conn.execute("SELECT cards_prefs FROM users WHERE id=?",
+                               (user_id,)).fetchone()
+        if not row or not row[0]:
+            return None
+        try:
+            data = _json.loads(row[0])
+            return data if isinstance(data, dict) else None
+        except Exception:
+            return None
+
+    # -- cards padrao por setor (v1.72.0) --------------------------------
+    def set_setor_cards(self, setor: str, prefs_json: str):
+        with self._get_conn() as conn:
+            conn.execute(
+                "INSERT INTO setores_cards (setor, prefs) VALUES (?, ?)"
+                " ON CONFLICT(setor) DO UPDATE SET prefs=excluded.prefs",
+                ((setor or "").strip(), prefs_json or ""))
+
+    def get_setor_cards(self, setor: str):
+        """Prefs padrao de um setor. None = nunca configurado."""
+        import json as _json
+        with self._get_conn() as conn:
+            row = conn.execute("SELECT prefs FROM setores_cards WHERE setor=?",
+                               ((setor or "").strip(),)).fetchone()
+        if not row or not row[0]:
+            return None
+        try:
+            data = _json.loads(row[0])
+            return data if isinstance(data, dict) else None
+        except Exception:
+            return None
+
+    # -- atalhos padrao por setor (v1.77.0) -------------------------------
+    def set_setor_atalhos(self, setor: str, prefs_json: str):
+        with self._get_conn() as conn:
+            conn.execute(
+                "INSERT INTO setores_atalhos (setor, prefs) VALUES (?, ?)"
+                " ON CONFLICT(setor) DO UPDATE SET prefs=excluded.prefs",
+                ((setor or "").strip(), prefs_json or ""))
+
+    def get_setor_atalhos(self, setor: str):
+        """Prefs padrao de atalhos de um setor. None = nunca configurado."""
+        import json as _json
+        with self._get_conn() as conn:
+            row = conn.execute("SELECT prefs FROM setores_atalhos WHERE setor=?",
+                               ((setor or "").strip(),)).fetchone()
+        if not row or not row[0]:
+            return None
+        try:
+            data = _json.loads(row[0])
+            return data if isinstance(data, dict) else None
+        except Exception:
+            return None
+
+    # -- atalhos do dashboard (v1.73.1) -----------------------------------
+    def set_atalhos_prefs(self, user_id: int, prefs_json: str):
+        with self._get_conn() as conn:
+            conn.execute("UPDATE users SET atalhos_prefs=? WHERE id=?",
+                         (prefs_json or "", user_id))
+
+    def get_atalhos_prefs(self, user_id: int):
+        """None = nunca configurado (mostra os atalhos padrao)."""
+        import json as _json
+        with self._get_conn() as conn:
+            row = conn.execute("SELECT atalhos_prefs FROM users WHERE id=?",
+                               (user_id,)).fetchone()
+        if not row or not row[0]:
+            return None
+        try:
+            data = _json.loads(row[0])
+            return data if isinstance(data, dict) else None
+        except Exception:
+            return None
+
+    # -- e-mail do usuario (v1.81.0, aviso mensal de ASOs) ---------------
+    def set_email(self, user_id: int, email: str):
+        with self._get_conn() as conn:
+            conn.execute("UPDATE users SET email=? WHERE id=?",
+                         ((email or "").strip(), user_id))
+
+    def emails_usuarios(self) -> List[Tuple[int, str, str, str]]:
+        """[(id, nome, username, email)] de usuarios ativos com e-mail preenchido."""
+        with self._get_conn() as conn:
+            rows = conn.execute(
+                "SELECT id, nome, username, email FROM users"
+                " WHERE ativo=1 AND COALESCE(email,'')<>'' ORDER BY nome").fetchall()
+        return [(r[0], r[1], r[2], r[3]) for r in rows]
+
+    # -- foto do usuario (v1.62.0) --------------------------------------
+    def set_foto(self, user_id: int, data: bytes, tipo: str):
+        with self._get_conn() as conn:
+            conn.execute("UPDATE users SET foto=?, foto_tipo=? WHERE id=?",
+                         (data, tipo, user_id))
+
+    def get_foto(self, user_id: int):
+        with self._get_conn() as conn:
+            row = conn.execute("SELECT foto, foto_tipo FROM users WHERE id=?",
+                               (user_id,)).fetchone()
+        if row is None or not row[0]:
+            return None
+        return (row[0], row[1] or "png")
+
+    def remover_foto(self, user_id: int):
+        with self._get_conn() as conn:
+            conn.execute("UPDATE users SET foto=NULL, foto_tipo=NULL WHERE id=?",
+                         (user_id,))
+
+    def setores_overrides(self):
+        """Retorna ({setor: {modulo: bool}}, {user_id: setor})."""
+        with self._get_conn() as conn:
+            regras = {}
+            for r in conn.execute("SELECT setor, modulo, permitido FROM setores_modulos"):
+                regras.setdefault(r["setor"], {})[r["modulo"]] = bool(r["permitido"])
+            setores = {r["id"]: (r["setor"] or "")
+                       for r in conn.execute("SELECT id, setor FROM users")}
+        return regras, setores
+
+    def set_regra_setor(self, setor: str, modulo: str, permitido):
+        with self._get_conn() as conn:
+            if permitido is None:
+                conn.execute("DELETE FROM setores_modulos WHERE setor=? AND modulo=?",
+                             (setor, modulo))
+            else:
+                conn.execute(
+                    "INSERT INTO setores_modulos (setor, modulo, permitido) VALUES (?, ?, ?) "
+                    "ON CONFLICT(setor, modulo) DO UPDATE SET permitido=excluded.permitido",
+                    (setor, modulo, 1 if permitido else 0),
+                )
+
+    def limpar_regras_setor(self, setor: str) -> int:
+        with self._get_conn() as conn:
+            cur = conn.execute("DELETE FROM setores_modulos WHERE setor=?", (setor,))
+            return cur.rowcount
+
     def bootstrap_admin(self) -> Optional[str]:
         """Cria o admin com senha provisoria no 1o boot. Retorna a senha ou None."""
         if self.get_by_username("admin") is not None:

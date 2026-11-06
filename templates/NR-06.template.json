@@ -1,9 +1,12 @@
 {
   "nr_code": "NR-06",
   "nr_name": "Equipamento de Proteção Individual (EPI)",
-  "carga_horaria_minima": 6,
-  "validade_meses": 12,
-  "riscos": ["Acidente", "Fisico"],
+  "carga_horaria_minima": 3,
+  "validade_meses": 24,
+  "riscos": [
+    "Acidente",
+    "Fisico"
+  ],
   "descricao_padrao": "TREINAMENTO DE EQUIPAMENTO DE PROTEÇÃO INDIVIDUAL (EPIs)",
   "campos_extra": [
     {
@@ -37,8 +40,8 @@
     "6. USO ADEQUADO, GUARDA, CONSERVAÇÃO E INSPEÇÃO DE PRÉ-USO",
     "7. RISCOS POTENCIAIS DE NÃO USO DOS EPIs E TIPOS DE ACIDENTES",
     "8. TABELA DE EPIs x FUNÇÕES",
-	"9. ANÁLISE DE RISCO E FICHA DE CONTROLE DE EPIs",
-	"10. EPIs PARA AS SEGUINTES PROTEÇÕES: CABEÇA, OLHOS E FACE, PROTEÇÃO AUDITIVA, PROTEÇÃO RESPIRATÓRIA, TRONCO, MEMBROS SUPERIORES E INFERIORES, CORPO INTEIRO, CONTRA QUEDAS DO MESMO NÍVEL E COM DIFERENÇA DE NÍVEL"
+    "9. ANÁLISE DE RISCO E FICHA DE CONTROLE DE EPIs",
+    "10. EPIs PARA AS SEGUINTES PROTEÇÕES: CABEÇA, OLHOS E FACE, PROTEÇÃO AUDITIVA, PROTEÇÃO RESPIRATÓRIA, TRONCO, MEMBROS SUPERIORES E INFERIORES, CORPO INTEIRO, CONTRA QUEDAS DO MESMO NÍVEL E COM DIFERENÇA DE NÍVEL"
   ],
   "texto_certificado": "Certificamos que {nome_funcionario}, portador do CPF {cpf}, da empresa {empresa}, sob o CNPJ {cnpj}, concluiu com aproveitamento o {descricao_treinamento}, com carga horaria de {carga_horaria} horas, no dia {data_treinamento}, situada na {local_treinamento}, atendendo aos requisitos da Norma Regulatoria nº 06 (NR-06) do Ministerio do Trabalho e Emprego.",
   "assinaturas": [

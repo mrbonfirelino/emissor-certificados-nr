@@ -11,36 +11,172 @@
   </div>
 </div>
 
-<div class="stat-cards">
-  <a class="stat-card" href="/historico"><span class="num">{{ stats.total }}</span><span class="rot">Certificados emitidos</span></a>
-  <a class="stat-card" href="/funcionarios"><span class="num">{{ total_funcionarios }}</span><span class="rot">Funcionários cadastrados</span></a>
-  <a class="stat-card" href="/certificados"><span class="num">{{ total_nrs }}</span><span class="rot">NRs disponíveis</span></a>
+<div id="modal-cards" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:50; align-items:center; justify-content:center;">
+  <div style="background:#fff; border-radius:10px; padding:18px 22px; min-width:320px; max-width:92vw; box-shadow:0 10px 30px rgba(0,0,0,.25);">
+    <h2 style="margin-top:0;">Escolher cards do painel</h2>
+    <form method="post" action="/perfil/cards" style="display:flex; flex-direction:column; gap:8px;">
+      <div style="max-height:46vh; overflow:auto; border:1px solid #e3e8ef; border-radius:8px;">
+        <table style="width:100%; border-collapse:collapse;">
+          {% for chave, rotulo in cards_opcoes %}
+          <tr>
+            <td style="padding:6px 10px; width:34px;"><input type="checkbox" name="card" value="{{ chave }}" {{ 'checked' if cards[chave] else '' }}></td>
+            <td style="padding:6px 10px;">{{ rotulo }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+      </div>
+      {% if pode_setor_cards %}
+      <label style="display:flex; gap:8px; align-items:center; font-size:14px;">
+        <input type="checkbox" name="salvar_setor" value="1">
+        Gravar também como padrão do meu setor
+      </label>
+      {% endif %}
+      <div style="display:flex; gap:8px; margin-top:10px;">
+        <button type="submit" class="btn verde">Salvar</button>
+        <button type="button" class="btn cinza" onclick="document.getElementById('modal-cards').style.display='none'">Cancelar</button>
+      </div>
+    </form>
+    <p class="muted">Desmarque o que não quer ver no painel.</p>
+  </div>
+</div>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  var b = document.getElementById("btn-cards"), m = document.getElementById("modal-cards");
+  if (b && m) {
+    b.addEventListener("click", function () { m.style.display = "flex"; });
+    m.addEventListener("click", function (e) { if (e.target === m) m.style.display = "none"; });
+  }
+  /* v1.73.1: modal de atalhos */
+  var ba = document.getElementById("btn-atalhos"), ma = document.getElementById("modal-atalhos");
+  if (ba && ma) {
+    ba.addEventListener("click", function () { ma.style.display = "flex"; });
+    ma.addEventListener("click", function (e) { if (e.target === ma) ma.style.display = "none"; });
+  }
+});
+</script>
+
+<style>
+@keyframes pulsa-card { 0%, 100% { box-shadow: 0 0 0 0 rgba(198,40,40,.40); }
+  50% { box-shadow: 0 0 0 7px rgba(198,40,40,.10); } }
+.stat-card.pulsa { animation: pulsa-card 1.8s ease-in-out infinite; }
+/* v1.76.1: piscar em vermelho (alerta critico) para presencas nao assinadas e docs da frota */
+@keyframes pisca-vermelho { 0%, 100% { background:#c62828; border-color:#8e1b12; }
+  50% { background:#e53935; border-color:#ff8a80; } }
+.stat-card.alerta-verm { animation: pisca-vermelho 1.1s ease-in-out infinite; }
+.stat-card.alerta-verm .num, .stat-card.alerta-verm .rot { color:#fff; }
+/* v1.87.1: feedbacks em aberto piscam com FUNDO azul claro e texto em
+   alto contraste (azul escuro) */
+.stat-card.pisca-azul { animation: pisca-azul 1.2s ease-in-out infinite;
+  border-color:#64b5f6; }
+@keyframes pisca-azul { 0%, 100% { background:#e3f2fd; }
+  50% { background:#90caf9; } }
+.stat-card.pisca-azul .num, .stat-card.pisca-azul .rot { color:#0d47a1; }
+/* v1.72.0: painel de statcards em div proprio com borda */
+.painel-cards { background:#fff; border:1px solid var(--borda, #e3e8ef);
+  border-radius:12px; padding:14px 16px; margin-bottom:16px;
+  box-shadow:0 1px 3px rgba(0,0,0,.04); }
+.painel-cards-topo { display:flex; justify-content:space-between;
+  align-items:center; margin-bottom:10px; }
+.painel-cards-topo h2 { margin:0; font-size:15px; color:#555; }
+</style>
+
+<!-- v1.73.1: area de Atalhos personalizavel -->
+<div id="modal-atalhos" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:50; align-items:center; justify-content:center;">
+  <div style="background:#fff; border-radius:10px; padding:18px 22px; min-width:320px; max-width:92vw; box-shadow:0 10px 30px rgba(0,0,0,.25);">
+    <h2 style="margin-top:0;">Escolher atalhos</h2>
+    <form method="post" action="/perfil/atalhos" style="display:flex; flex-direction:column; gap:8px;">
+      <div style="max-height:46vh; overflow:auto; border:1px solid #e3e8ef; border-radius:8px;">
+        <table style="width:100%; border-collapse:collapse;">
+          {% for chave, rotulo in atalhos_opcoes %}
+          <tr>
+            <td style="padding:6px 10px; width:34px;"><input type="checkbox" name="atalho" value="{{ chave }}" {{ 'checked' if atalhos[chave] else '' }}></td>
+            <td style="padding:6px 10px;">{{ rotulo }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+      </div>
+      <div style="display:flex; gap:8px; margin-top:10px;">
+        <button type="submit" class="btn verde">Salvar</button>
+        <button type="button" class="btn cinza" onclick="document.getElementById('modal-atalhos').style.display='none'">Cancelar</button>
+      </div>
+    </form>
+    <p class="muted">Desmarque o que não quer ver nos atalhos.</p>
+  </div>
+</div>
+
+<div class="painel-cards" id="painel-atalhos">
+  <div class="painel-cards-topo">
+    <h2>Atalhos</h2>
+    <button type="button" id="btn-atalhos" class="btn cinza" title="Escolher atalhos"
+            style="font-size:13px; padding:4px 10px;">&#9881; Personalizar</button>
+  </div>
+  <div class="atalhos">
+    {% if atalhos.cert %}<a class="btn verde" href="/certificados">🎓 Emitir Certificado</a>{% endif %}
+    {% if atalhos.funcionarios %}<a class="btn" href="/funcionarios">👥 Funcionários</a>{% endif %}
+    {% if atalhos.historico %}<a class="btn" href="/historico">📋 Histórico</a>{% endif %}
+    {% if atalhos.vencimentos %}<a class="btn" href="/vencimentos">⏰ Vencimentos</a>{% endif %}
+    {% if atalhos.lote %}<a class="btn" href="/emissao-lote">📦 Certificados em Lote</a>{% endif %}
+    {% if atalhos.frota %}<a class="btn" href="/frota">🚚 Gestão de Frota</a>{% endif %}
+    {% if atalhos.presencas %}<a class="btn" href="/presencas">📝 Listas de Presença</a>{% endif %}
+    {% if atalhos.epi %}<a class="btn cinza" href="/epi">🦺 Ficha de EPIs</a>{% endif %}
+    {% if atalhos.crachas %}<a class="btn" href="/crachas">🪪 Crachás</a>{% endif %}
+    {% if atalhos.cartoes %}<a class="btn" href="/cartoes">🚧 Cartões de Bloqueio</a>{% endif %}
+    {% if atalhos.aso %}<a class="btn" href="/aso">🩺 ASO</a>{% endif %}
+  </div>
+</div>
+
+
+<div class="painel-cards">
+  <div class="painel-cards-topo">
+    <h2>Visão geral</h2>
+    <button type="button" id="btn-cards" class="btn cinza" title="Escolher cards do painel"
+            style="font-size:13px; padding:4px 10px;">&#9881; Personalizar</button>
+  </div>
+  <div class="stat-cards">
+  {% if atalhos.feedbacks %}<a class="stat-card{% if abertos %} pisca-azul{% endif %}" href="/feedbacks" title="Feedbacks em aberto (só administração)"><span class="num" id="fb-count">{{ abertos }}</span><span class="rot">Feedbacks em aberto</span></a>{% endif %}
+  {% if cards.historico %}<a class="stat-card" href="/historico"><span class="num">{{ stats.total }}</span><span class="rot">Certificados emitidos</span></a>{% endif %}
+  {% if cards.funcionarios %}<a class="stat-card" href="/funcionarios"><span class="num">{{ total_funcionarios }}</span><span class="rot">Funcionários cadastrados</span></a>{% endif %}
+  {% if cards.nrs %}<a class="stat-card" href="/certificados"><span class="num">{{ total_nrs }}</span><span class="rot">NRs disponíveis</span></a>{% endif %}
+  {% if cards.cert30 %}<a class="stat-card{% if cert30 %} pulsa{% endif %}" href="/vencimentos"><span class="num">{{ cert30 }}</span><span class="rot">Vencimentos em 30 dias</span></a>{% endif %}
+  {% if cards.sem_assinatura %}<a class="stat-card" href="/historico?assinado=nao" title="Certificados sem documento assinado anexado"><span class="num">{{ sem_assinatura }}</span><span class="rot">Certificados sem documento assinado</span></a>{% endif %}
+  {% if cards.cert_vencidos %}<a class="stat-card{% if cert_vencidos %} alerta-verm{% endif %}" href="/vencimentos?periodo=vencidos" title="Certificados vencidos (não inclui ASOs e frota)"><span class="num">{{ cert_vencidos }}</span><span class="rot">Certificados vencidos</span></a>{% endif %}
+  {% if cards.aso_vencidos %}<a class="stat-card{% if aso_vencidos %} alerta-verm{% endif %}" href="/aso?situacao=vencidos" title="ASOs vencidos (válido mais recente por funcionário)"><span class="num">{{ aso_vencidos }}</span><span class="rot">ASOs vencidos</span></a>{% endif %}
+  {% if cards.aso_30 %}<a class="stat-card{% if aso_30 %} pulsa{% endif %}" href="/aso" title="ASOs que vencem nos próximos 30 dias"><span class="num">{{ aso_30 }}</span><span class="rot">ASOs vencem em 30 dias</span></a>{% endif %}
+  {% if cards.veic_bloq %}<a class="stat-card" href="/frota" title="Veículos bloqueados (não considera arquivados)"><span class="num">{{ veic_bloq }}</span><span class="rot">Veículos bloqueados</span></a>{% endif %}
+  {% if cards.pres_pend %}<a class="stat-card{% if pres_pend %} alerta-verm{% endif %}" href="/presencas" title="Listas de presença pendentes ou parciais (sem lista assinada)"><span class="num">{{ pres_pend }}</span><span class="rot">Listas de presença não assinadas</span></a>{% endif %}
+  {% if cards.func_incomp %}<a class="stat-card" href="/funcionarios" title="Cadastro básico incompleto: Foto, Nome, CPF, Cargo/Função, Telefone e ASO válido"><span class="num">{{ func_incomp }}</span><span class="rot">Funcionários com cadastro incompleto</span></a>{% endif %}
+  {% if cards.cintos_prox %}<a class="stat-card{% if cintos_prox %} pulsa{% endif %}" href="/cintos" title="Inspeções de cintos/talabartes nos próximos 30 dias"><span class="num">{{ cintos_prox }}</span><span class="rot">Inspeções de cintos próximas (30 dias)</span></a>{% endif %}
+  {% if cards.cintos_venc %}<a class="stat-card{% if cintos_venc %} alerta-verm{% endif %}" href="/cintos" title="Inspeções de cintos/talabartes atrasadas"><span class="num">{{ cintos_venc }}</span><span class="rot">Inspeções de cintos atrasadas</span></a>{% endif %}
+  {% if cards.frotavenc %}<a class="stat-card{% if frotavenc %} alerta-verm{% endif %}" href="/frota/vencimentos"><span class="num">{{ frotavenc }}</span><span class="rot">Documentos da frota próximos de vencer (30 dias)</span></a>{% endif %}
+  {% if cards.venc30 and setor_usuario == 'seguranca' and venc_resumo %}
+{% set v30 = venc_resumo.proximos30 %}
+  <a class="stat-card{% if v30 %} pulsa{% endif %}" href="/vencimentos" style="background:#c62828;border:1px solid #8e1b12;"><span class="num" style="color:#ffffff;">{{ v30 }}</span><span class="rot" style="color:#ffffff;">Documentos de Segurança vencem em 30 dias</span></a>
+  {% endif %}
   {% if frota_stats %}
-  <a class="stat-card" href="/frota"><span class="num">{{ frota_stats.veiculos }}</span><span class="rot">Veículos na frota</span></a>
-  <a class="stat-card" href="/frota"><span class="num">{{ frota_stats.movs_abertas }}</span><span class="rot">Saídas em aberto</span></a>
-  <a class="stat-card" href="/frota/abastecimentos"><span class="num num-brl" data-valor="{{ frota_stats.custo_mes or 0 }}">{{ brl(frota_stats.custo_mes) }}</span><span class="rot">Custo de abastecimento (mês)</span></a>
+  {% if cards.veiculos %}<a class="stat-card" href="/frota"><span class="num">{{ frota_stats.veiculos }}</span><span class="rot">Veículos na frota</span></a>{% endif %}
+  {% if cards.saidas %}<a class="stat-card" href="/frota"><span class="num">{{ frota_stats.movs_abertas }}</span><span class="rot">Saídas (veículos) em aberto</span></a>{% endif %}
+  {% if cards.custo %}<a class="stat-card" href="/frota/abastecimentos"><span class="num num-brl" data-valor="{{ frota_stats.custo_mes or 0 }}">{{ brl(frota_stats.custo_mes) }}</span><span class="rot">Custo de abastecimento (este mês)</span></a>{% endif %}
+  {% if cards.sem_nf %}<a class="stat-card" href="/frota/abastecimentos"><span class="num">{{ sem_nf }}</span><span class="rot">Abastecimentos sem nota fiscal cadastrada</span></a>{% endif %}
+  {% if cards.sem_valor %}<a class="stat-card" href="/frota/abastecimentos"><span class="num">{{ sem_valor }}</span><span class="rot">Abastecimentos sem valor definido</span></a>{% endif %}
   {% endif %}
 </div>
-
-<div class="atalhos">
-  <a class="btn verde" href="/certificados">🎓 Emitir Certificado</a>
-  <a class="btn" href="/funcionarios">👥 Funcionários</a>
-  <a class="btn cinza" href="/historico">📋 Histórico</a>
-  <a class="btn cinza" href="/vencimentos">⏰ Vencimentos</a>
-  {% if pode_lote %}<a class="btn" href="/emissao-lote">📦 Emissão em Lote</a>{% endif %}
 </div>
 
+
 <div class="duo">
-  <div class="card">
-    <h2>🎂 Aniversariantes de hoje</h2>
+  <details class="card" {% if anivers_hoje %}open{% endif %} style="padding:14px 16px;">
+    <summary style="cursor:pointer; font-weight:600;">🎂 Aniversariantes de hoje ({{ anivers_hoje | length }})</summary>
+    <div style="margin-top:8px;">
     {% if anivers_hoje %}
       <p>{{ anivers_hoje | map(attribute='nome') | join(', ') }}</p>
     {% else %}
       <p class="muted">Ninguém faz aniversário hoje.</p>
     {% endif %}
-  </div>
-  <div class="card">
-    <h2>📅 Aniversariantes de {{ mes_nome }}</h2>
+    </div>
+  </details>
+  <details class="card" style="padding:14px 16px;">
+    <summary style="cursor:pointer; font-weight:600;">📅 Aniversariantes de {{ mes_nome }} ({{ anivers_mes | length }})</summary>
+    <div style="margin-top:8px;">
     {% if anivers_mes %}
       <div style="max-height:220px; overflow-y:auto;">
       <table>
@@ -53,7 +189,8 @@
     {% else %}
       <p class="muted">Sem aniversários neste mês.</p>
     {% endif %}
-  </div>
+    </div>
+  </details>
 </div>
 
 <details class="opcoes">
@@ -62,7 +199,7 @@
     <div class="chip"><div class="rotulo">Assinados</div><div class="valor">{{ stats.assinados }}</div></div>
     <div class="chip vencido"><div class="rotulo">Vencidos</div><div class="valor">{{ stats.vencidos }}</div></div>
     <div class="chip alerta"><div class="rotulo">Vencem em 7 dias</div><div class="valor">{{ stats.vencer_7 }}</div></div>
-    <div class="chip alerta"><div class="rotulo">Vencem em 30 dias</div><div class="valor">{{ stats.vencer_30 }}</div></div>
+    <div class="chip alerta"><div class="rotulo">Vencem em 30 dias</div><div class="valor">{{ stats.vencer_7 + stats.vencer_30 }}</div></div>
   </div>
 
   <div class="duo">

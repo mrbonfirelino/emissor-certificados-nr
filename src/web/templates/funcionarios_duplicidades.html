@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block titulo %}Duplicidades de funcionários — NormaTech{% endblock %}
+{% block conteudo %}
+<div class="card">
+  <h1>Duplicidades de funcionários</h1>
+  <p class="sub">{{ total }} grupo(s) de possíveis duplicados (mesmo nome, ignorando acentos, ou mesmo CPF).</p>
+  <p><a class="btn cinza" href="/funcionarios">← Voltar</a></p>
+
+  {% if not grupos %}
+  <p class="muted">Nenhuma possível duplicidade encontrada. ✔</p>
+  {% endif %}
+
+  {% for g in grupos %}
+  <div style="border:1px solid var(--borda,#e3e8ef); border-radius:10px; padding:12px 14px; margin-bottom:14px;">
+    <table>
+      <thead><tr><th>ID</th><th>Nome</th><th>CPF</th><th>Função</th><th>Situação</th></tr></thead>
+      <tbody>
+        {% for e in g %}
+        <tr{% if e.arquivado %} style="opacity:.6;"{% endif %}>
+          <td>{{ e.id }}</td>
+          <td><a href="/funcionarios/{{ e.id }}">{{ e.nome }}</a></td>
+          <td>{{ e.cpf or '—' }}</td>
+          <td>{{ e.funcao or '—' }}</td>
+          <td>{% if e.arquivado %}<span class="badge b-cinza">ARQUIVADO</span>{% else %}<span class="badge b-verde">Ativo</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <form method="post" action="/funcionarios/mesclar" data-pedir-motivo="Mesclar cadastros|Motivo da mescla (ficará no histórico):"
+          style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:10px;">
+      <label style="font-size:13px;">Principal:
+        <select name="principal_id" style="max-width:280px;">
+          {% for e in g %}<option value="{{ e.id }}">{{ e.id }} — {{ e.nome }}{% if e.arquivado %} (arquivado){% endif %}</option>{% endfor %}
+        </select>
+      </label>
+      <label style="font-size:13px;">Mesclar e arquivar:
+        <select name="duplicado_id" style="max-width:280px;">
+          {% for e in g %}<option value="{{ e.id }}">{{ e.id }} — {{ e.nome }}</option>{% endfor %}
+        </select>
+      </label>
+      <button type="submit" class="verde">Mesclar</button>
+    </form>
+    <p class="muted" style="margin:6px 0 0; font-size:12px;">Os certificados, ASOs, EPIs, crachás e documentos do duplicado são transferidos para o principal, e o duplicado é arquivado (o histórico permanece).</p>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

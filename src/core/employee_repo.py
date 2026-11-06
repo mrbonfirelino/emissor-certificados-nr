@@ -70,6 +70,21 @@ class EmployeeRepository:
                 conn.execute("SELECT cnh_ear FROM employees LIMIT 1")
             except sqlite3.OperationalError:
                 conn.execute("ALTER TABLE employees ADD COLUMN cnh_ear INTEGER DEFAULT 0")
+            # v1.69.0: normaliza datas dd/mm/aaaa -> ISO (formato do banco)
+            for _col in ("data_nascimento", "data_admissao"):
+                try:
+                    conn.execute(
+                        f"UPDATE employees SET {_col} = "
+                        f"substr({_col}, 7, 4) || '-' || substr({_col}, 4, 2) || '-' || substr({_col}, 1, 2) "
+                        f"WHERE {_col} LIKE '%/%/%'"
+                    )
+                except sqlite3.OperationalError:
+                    pass
+            # v1.69.0: arquivamento (soft-delete) de funcionarios com certificados
+            try:
+                conn.execute("SELECT arquivado FROM employees LIMIT 1")
+            except sqlite3.OperationalError:
+                conn.execute("ALTER TABLE employees ADD COLUMN arquivado INTEGER DEFAULT 0")
             # nota: coluna matricula pode existir em bancos antigos — permanece ignorada
             try:
                 conn.execute("SELECT cpf FROM employees WHERE cpf IS NULL LIMIT 1")
@@ -239,7 +254,7 @@ class EmployeeRepository:
             like = f"%{norm}%"
             rows = conn.execute("""
                 SELECT * FROM employees
-                WHERE normalize(nome) LIKE ? OR cpf LIKE ? OR normalize(funcao) LIKE ? OR telefone LIKE ?
+                WHERE COALESCE(arquivado, 0) = 0 AND (normalize(nome) LIKE ? OR cpf LIKE ? OR normalize(funcao) LIKE ? OR telefone LIKE ?)
                 ORDER BY nome LIMIT ?
             """, (like, f"%{query}%", like, f"%{query}%", limit)).fetchall()
             return [self._row_to_employee(r) for r in rows]
@@ -251,20 +266,35 @@ class EmployeeRepository:
             like = f"%{norm}%"
             return conn.execute("""
                 SELECT COUNT(*) FROM employees
-                WHERE normalize(nome) LIKE ? OR cpf LIKE ? OR normalize(funcao) LIKE ? OR telefone LIKE ?
+                WHERE COALESCE(arquivado, 0) = 0 AND (normalize(nome) LIKE ? OR cpf LIKE ? OR normalize(funcao) LIKE ? OR telefone LIKE ?)
             """, (like, f"%{query}%", like, f"%{query}%")).fetchone()[0]
 
     def get_all(self, limit: int = 10, offset: int = 0) -> List[Employee]:
         with self._get_conn() as conn:
             rows = conn.execute(
-                "SELECT * FROM employees ORDER BY nome LIMIT ? OFFSET ?",
+                "SELECT * FROM employees WHERE COALESCE(arquivado, 0) = 0 ORDER BY nome LIMIT ? OFFSET ?",
                 (limit, offset)
             ).fetchall()
             return [self._row_to_employee(r) for r in rows]
 
     def count_all(self) -> int:
         with self._get_conn() as conn:
-            return conn.execute("SELECT COUNT(*) FROM employees").fetchone()[0]
+            return conn.execute(
+                "SELECT COUNT(*) FROM employees WHERE COALESCE(arquivado, 0) = 0"
+            ).fetchone()[0]
+
+    def iter_cadastro_check(self) -> list:
+        """v1.82.0: dados minimos para o card de cadastro incompleto.
+
+        Retorna (id, arquivado, tem_foto, cpf, funcao, telefone) de todos os
+        funcionarios, sem carregar objetos Employee nem blobs de foto."""
+        with self._get_conn() as conn:
+            return conn.execute(
+                "SELECT id, COALESCE(arquivado, 0), "
+                "COALESCE(LENGTH(foto), 0) > 0, "
+                "COALESCE(cpf, ''), COALESCE(funcao, ''), "
+                "COALESCE(telefone, '') FROM employees"
+            ).fetchall()
 
     def get_all_funcoes(self) -> List[str]:
         with self._get_conn() as conn:
@@ -343,6 +373,43 @@ class EmployeeRepository:
         except sqlite3.IntegrityError:
             return False
 
+    def set_arquivado(self, emp_id: int, arquivado: bool) -> bool:
+        """v1.69.0: arquivamento (soft-delete). Funcionario com certificados nao pode ser
+        excluido, mas pode ser arquivado: sai das listas/buscas sem perder o historico."""
+        with self._get_conn() as conn:
+            cur = conn.execute(
+                "UPDATE employees SET arquivado = ? WHERE id = ?", (1 if arquivado else 0, emp_id)
+            )
+            return cur.rowcount > 0
+
+    def mesclar(self, principal_id: int, duplicado_id: int) -> dict:
+        """v1.80.0: mescla dois cadastros duplicados — move certificados, ASOs,
+        EPIs, crachas e documentos para o registro principal e arquiva o
+        duplicado (soft-delete, historico preservado)."""
+        with self._get_conn() as conn:
+            mov = {}
+            for tabela in ("certificates", "asos", "epis", "crachas",
+                           "employee_docs"):
+                cur = conn.execute(
+                    f"UPDATE {tabela} SET employee_id = ? WHERE employee_id = ?",
+                    (principal_id, duplicado_id),
+                )
+                mov[tabela] = cur.rowcount
+            conn.execute(
+                "UPDATE employees SET arquivado = 1 WHERE id = ?",
+                (duplicado_id,),
+            )
+            mov["arquivado"] = duplicado_id
+            return mov
+
+    def get_all_arquivados(self, limit: int = 1_000_000) -> List[Employee]:
+        with self._get_conn() as conn:
+            rows = conn.execute(
+                "SELECT * FROM employees WHERE COALESCE(arquivado, 0) = 1 ORDER BY nome LIMIT ?",
+                (limit,),
+            ).fetchall()
+            return [self._row_to_employee(r) for r in rows]
+
     def delete(self, emp_id: int) -> bool:
         from src.core.history_repo import HistoryRepository
         history = HistoryRepository(self.db_path)
@@ -384,6 +451,10 @@ class EmployeeRepository:
         except Exception:
             ctps_val = None
         try:
+            arq_val = bool(row["arquivado"])
+        except Exception:
+            arq_val = False
+        try:
             ear_val = bool(row["cnh_ear"])
         except Exception:
             ear_val = False
@@ -399,6 +470,7 @@ class EmployeeRepository:
             data_admissao=adm_val or None,
             registro_ctps=ctps_val or None,
             cnh_ear=ear_val,
+            arquivado=arq_val,
             created_at=row["created_at"],
         )
         try:

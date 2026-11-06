@@ -468,7 +468,8 @@ def _employee_values(emp, template: dict, options: dict) -> Dict[str, str]:
         "TELEFONE": tel,
         "CPF": emp.cpf or "",
         "MATRICULA": matricula,
-        "SETOR": options.get("setor", ""),
+        "SETOR": ((options.get("setores") or {}).get(emp.id)
+                  or options.get("setor", "")),
         "EMPRESA": template.get("empresa_default", "ALTEC"),
         "PAPEL": papeis.get(emp.id, "LIDERADO"),
     }
@@ -539,12 +540,29 @@ def _pptx_to_pdf_batch(pairs: List[Tuple[Path, Path]]):
             ) from e
 
         try:
+            app.DisplayAlerts = False  # ppAlertsNone
+        except Exception:
+            pass
+
+        try:
+            from src.utils.com_pdf_errors import com_retry, traduz_erro_com
+
             for src, dst in pairs:
-                pres = app.Presentations.Open(str(Path(src).resolve()), True, False, False)
+                def _um_arquivo(_src=src, _dst=dst):
+                    from src.utils.com_pdf_errors import remover_motw
+
+                    remover_motw(_src)
+                    pres = app.Presentations.Open(str(Path(_src).resolve()), True, False, False)
+                    try:
+                        pres.SaveAs(str(Path(_dst).resolve()), PP_SAVE_AS_PDF)
+                    finally:
+                        pres.Close()
+
                 try:
-                    pres.SaveAs(str(Path(dst).resolve()), PP_SAVE_AS_PDF)
-                finally:
-                    pres.Close()
+                    com_retry(_um_arquivo,
+                      contexto=f"pptx-card src={src} dst={dst}")
+                except RuntimeError as e:
+                    raise RuntimeError(f"{src.name}: {e}") from e
         finally:
             try:
                 app.Quit()

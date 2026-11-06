@@ -218,6 +218,34 @@ class BackupManager:
                 _log(f"AVISO destino externo indisponivel ({d}): {e}")
         return dirs
 
+    def _extra_dirs(self) -> List[Path]:
+        """Locais extras configurados pelo usuario (v1.86.0) — um caminho por
+        linha no campo backup_locais_extras. Tolerante: pasta fora do ar
+        apenas gera aviso no log, nao interrompe o backup."""
+        from src.core.app_settings import get_setting
+
+        try:
+            bruto = get_setting("backup_locais_extras", [])
+        except Exception:
+            return []
+        if isinstance(bruto, str):
+            linhas = bruto.splitlines()
+        else:
+            linhas = list(bruto)
+        dirs: List[Path] = []
+        for linha in linhas:
+            caminho = (str(linha) or "").strip()
+            if not caminho:
+                continue
+            try:
+                d = Path(caminho)
+                d.mkdir(parents=True, exist_ok=True)
+                if d not in dirs:
+                    dirs.append(d)
+            except Exception as e:
+                _log(f"AVISO local extra indisponivel ({caminho}): {e}")
+        return dirs
+
     def _copy_dual(self, backup_path: Path):
         """Copia o backup para cada destino externo (locais + rede), com a
         mesma retencao; falha em um destino nao para os demais."""
@@ -225,6 +253,9 @@ class BackupManager:
         rede = self._network_dir()
         if rede:
             destinos.append(rede)
+        for d in self._extra_dirs():
+            if d not in destinos:
+                destinos.append(d)
         for d in destinos:
             try:
                 shutil.copy2(backup_path, d / backup_path.name)

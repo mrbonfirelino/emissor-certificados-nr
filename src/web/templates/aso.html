@@ -8,12 +8,15 @@
   {% if pode_escrever %}<p><a class="btn verde" href="/aso/novo">+ Novo ASO</a></p>{% endif %}
 
   <form method="get" action="/aso" class="filtros" style="margin-bottom:12px;">
+        <div class="campo"><label for="f-per">Ver por página</label><select id="f-per" name="per" onchange="this.form.submit()" style="max-width:90px;"><option value="10" {{ 'selected' if per == 10 else '' }}>10</option><option value="20" {{ 'selected' if per == 20 else '' }}>20</option><option value="25" {{ 'selected' if per == 25 else '' }}>25</option><option value="50" {{ 'selected' if per == 50 else '' }}>50</option></select></div>
     <div class="campo">
       <label for="busca">Buscar</label>
       <input type="text" id="busca" name="busca" value="{{ busca }}" placeholder="Funcionário, CPF, número ou tipo...">
     </div>
+    <div class="campo"><label for="f-sit">Situação</label><select id="f-sit" name="situacao" onchange="this.form.submit()"><option value="todos" {{ 'selected' if situacao == 'todos' else '' }}>Todas</option><option value="vencidos" {{ 'selected' if situacao == 'vencidos' else '' }}>Vencidos</option><option value="vencem30" {{ 'selected' if situacao == 'vencem30' else '' }}>Vencem em 30 dias</option></select></div>
+    <div class="campo"><label for="f-tipo">Tipo</label><select id="f-tipo" name="tipo" onchange="this.form.submit()"><option value="" {{ 'selected' if not tipo_sel else '' }}>Todos</option>{% for t in tipos %}<option value="{{ t }}" {{ 'selected' if tipo_sel == t else '' }}>{{ t }}</option>{% endfor %}</select></div>
     <button type="submit">Buscar</button>
-    {% if busca %}<a class="btn cinza" href="/aso">Limpar</a>{% endif %}
+    {% if busca or situacao != 'todos' or tipo_sel %}<a class="btn cinza" href="/aso">Limpar</a>{% endif %}
   </form>
 
   <table>
@@ -26,7 +29,8 @@
         <td>{{ a.tipo }}</td>
         <td>{{ a.exame }}</td>
         <td>{{ a.valido }}</td>
-        <td><span class="badge {{ a.classe }}">{{ a.status }}</span></td>
+        <td><span class="badge {{ a.classe }}">{{ a.status }}</span>
+            {% if a.bloqueado %}<span class="badge b-vermelho" title="Bloqueado por {{ a.bloqueado_por or '—' }} em {{ a.bloqueado_em or '—' }}">BLOQUEADO</span>{% endif %}</td>
         <td>{% if a.anexado %}<span class="badge b-verde">Anexado</span>{% else %}<span class="badge b-cinza">—</span>{% endif %}</td>
       </tr>
     {% else %}

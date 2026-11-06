@@ -26,6 +26,20 @@ DEFAULTS: Dict[str, Any] = {
     "tarefa_agendada_hora": "12:00",
     "pdf_data_hora_emissao": False,
     "abast_pdf_duas_vias": False,
+    "smtp_host": "",
+    "smtp_porta": 587,
+    "smtp_usuario": "",
+    "smtp_senha": "",
+    "smtp_seguranca": "tls",
+    "smtp_remetente": "",
+    "report_ativo": False,
+    "report_destinatarios": "",
+    "report_periodicidade": "mensal",
+    "report_ultimo_envio": "",
+    # v1.81.0: aviso mensal de ASOs a vencer
+    "aso_email_ativo": False,
+    "aso_email_extras": "",
+    "aso_email_ultimo_envio": "",
 }
 
 

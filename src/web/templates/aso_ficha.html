@@ -5,7 +5,18 @@
   <h1>{{ aso.aso_number }}</h1>
   <p class="sub">{{ funcionario }}{% if cpf %} — {{ cpf }}{% endif %}</p>
 
-  <table style="max-width:640px;">
+  {% if aso.bloqueado %}
+  <p style="background:#fdecea; border:1px solid #f5c6cb; color:#8a1c1c; padding:10px 12px; border-radius:6px; font-weight:600;">
+    &#9940; BLOQUEADO — somente leitura.
+    {% if aso.bloqueado_por %}Por {{ aso.bloqueado_por }}{% endif %}
+    {% if aso.bloqueado_em %}em {{ aso.bloqueado_em }}{% endif %}.
+  </p>
+  {% endif %}
+
+  <div style="display:flex; gap:16px; align-items:flex-start;">
+    <img src="/funcionarios/{{ aso.employee_id }}/foto" alt="Foto do funcionário"
+         style="width:72px; height:96px; object-fit:cover; border-radius:6px; background:#eee;">
+    <table style="flex:1; max-width:640px;">
     <tbody>
       <tr><th style="text-align:left;">Tipo</th><td>{{ aso.tipo_aso }}</td></tr>
       <tr><th style="text-align:left;">Data do exame</th><td>{{ exame_br }}</td></tr>
@@ -14,11 +25,26 @@
       <tr><th style="text-align:left;">Documento do médico</th><td>{% if anexado %}<span class="badge b-verde">Anexado</span>{% else %}<span class="badge b-cinza">Não anexado</span>{% endif %}</td></tr>
     </tbody>
   </table>
+  </div>
 
   <p style="margin-top:12px;">
     {% if tem_pdf %}<a class="btn" href="/aso/{{ aso.id }}/pdf" target="_blank">Ver PDF no navegador</a>
     <a class="btn cinza" href="/aso/{{ aso.id }}/pdf/download">Baixar PDF</a>
     {% else %}<span class="muted">PDF não encontrado.</span>{% endif %}
+    {% if pode_escrever %}
+    <a class="btn" href="/aso/{{ aso.id }}/editar">&#9998; Editar</a>
+    {% if aso.bloqueado %}
+    <form method="post" action="/aso/{{ aso.id }}/desbloquear" style="display:inline;"
+          onsubmit="return confirm('Desbloquear este ASO para edição?');">
+      <button type="submit" class="verde">Desbloquear</button>
+    </form>
+    {% else %}
+    <form method="post" action="/aso/{{ aso.id }}/bloquear" style="display:inline;"
+          onsubmit="return confirm('Bloquear este ASO? O registro e o PDF permanecem, mas ele não poderá ser editado.');">
+      <button type="submit" class="vermelho">Bloquear</button>
+    </form>
+    {% endif %}
+    {% endif %}
   </p>
 
   {% if pode_escrever %}

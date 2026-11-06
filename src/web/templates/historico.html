@@ -3,9 +3,10 @@
 {% block conteudo %}
 <div class="card">
   <h1>Histórico de certificados</h1>
-  <p class="sub">{{ total }} certificado(s) encontrados.</p>
+  <p class="sub">{{ total }} certificado(s) encontrados. <a class="btn cinza" style="padding:2px 10px;" href="/historico/exportar?{{ qs }}">Exportar Excel</a></p>
 
   <form method="get" action="/historico" class="filtros" style="margin-bottom:12px;">
+        <div class="campo"><label for="f-per">Ver por página</label><select id="f-per" name="per" onchange="this.form.submit()" style="max-width:90px;"><option value="10" {{ 'selected' if per == 10 else '' }}>10</option><option value="20" {{ 'selected' if per == 20 else '' }}>20</option><option value="25" {{ 'selected' if per == 25 else '' }}>25</option><option value="50" {{ 'selected' if per == 50 else '' }}>50</option></select></div>
     <div class="campo">
       <label for="busca">Buscar</label>
       <input type="text" id="busca" name="busca" value="{{ busca }}" placeholder="Nome, CPF, número...">
@@ -33,8 +34,16 @@
         <option value="nao" {{ 'selected' if assinado == 'nao' else '' }}>Não</option>
       </select>
     </div>
+    <div class="campo">
+      <label for="arq">Arquivados</label>
+      <select id="arq" name="arquivado">
+        <option value="nao" {{ 'selected' if arquivado == 'nao' else '' }}>Ativos</option>
+        <option value="sim" {{ 'selected' if arquivado == 'sim' else '' }}>Arquivados</option>
+        <option value="todos" {{ 'selected' if arquivado == 'todos' else '' }}>Todos</option>
+      </select>
+    </div>
     <button type="submit">Filtrar</button>
-    {% if busca or nr or de or ate or assinado %}<a class="btn cinza" href="/historico">Limpar</a>{% endif %}
+    {% if busca or nr or de or ate or assinado or arquivado != 'nao' %}<a class="btn cinza" href="/historico">Limpar</a>{% endif %}
   </form>
 
   <table>
@@ -42,7 +51,8 @@
     <tbody>
     {% for cert in itens %}
       <tr>
-        <td><b class="numero">{{ cert.cert_number }}</b></td>
+        <td><b class="numero">{{ cert.cert_number }}</b>
+            {% if cert.arquivado %}<span class="badge b-cinza">ARQUIVADO</span>{% endif %}</td>
         <td>{{ cert.nr_code }}</td>
         <td>{{ cert.funcionario_nome }}</td>
         <td>{{ cert.data_fim }}</td>
@@ -64,6 +74,15 @@
           <a class="btn" href="/historico/{{ cert.cert_number }}/assinado">Assinado</a>
           {% endif %}
           {% if pode_escrever %}
+          {% if not cert.arquivado %}
+          <form method="post" action="/historico/{{ cert.cert_number }}/arquivar" data-pedir-motivo="Arquivar certificado|Motivo do arquivamento do certificado {{ cert.cert_number }}:" style="display:inline;">
+            <button type="submit" class="btn cinza" title="Arquivar certificado (sai das listas e vencimentos)">Arquivar</button>
+          </form>
+          {% else %}
+          <form method="post" action="/historico/{{ cert.cert_number }}/desarquivar" style="display:inline;">
+            <button type="submit" class="btn cinza" title="Retirar do arquivo">Desarquivar</button>
+          </form>
+          {% endif %}
           <details class="anexo-pop">
             <summary class="btn cinza">Anexar assinado</summary>
             <div class="anexo-box">

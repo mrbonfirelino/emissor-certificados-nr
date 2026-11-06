@@ -233,14 +233,9 @@ def generate_certificate_pdf(
     story.append(Paragraph(f"<b>{texto}</b>", style_body_bold))
     story.append(Spacer(1, spacers_cfg.get('after_text_mm', 8) * mm))
 
-    # 4. Cidade, Data (direita)
-    meses_pt = {
-        1: "janeiro", 2: "fevereiro", 3: "marco", 4: "abril",
-        5: "maio", 6: "junho", 7: "julho", 8: "agosto",
-        9: "setembro", 10: "outubro", 11: "novembro", 12: "dezembro"
-    }
-    d = data.data_treinamento
-    data_extensa = f"{d.day} de {meses_pt[d.month]} de {d.year}"
+    # 4. Cidade, Data (direita) — data_extensa vem de to_dict()
+    # (inclui periodo multi-dia 'realizado de X a Y' quando houver)
+    data_extensa = data.to_dict()["data_treinamento"]
     city = layout.city
     story.append(Paragraph(f"<b>{city}, {data_extensa}</b>", style_date_line))
 

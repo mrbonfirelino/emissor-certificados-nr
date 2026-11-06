@@ -271,14 +271,144 @@ def register(app, deps: dict):
         return Response(status_code=404)
 
     # ---------------- lista ----------------
+    def _nivel_cadastro(emp, aso_ok: set) -> str:
+        """v1.77.0: nivel de cadastro do funcionario.
+        completo = todos os campos preenchidos (basico + nasc/tipo sanguineo/
+        admissao/CTPS); basico = foto, nome, cpf, funcao, telefone e ASO valido;
+        incompleto = nao atende o basico."""
+        def _ok(v):
+            return bool(v and str(v).strip())
+        basico = bool(getattr(emp, "foto", None)) and _ok(emp.cpf) \
+            and _ok(emp.funcao) and _ok(emp.telefone) and emp.id in aso_ok
+        if not basico:
+            return "incompleto"
+        extras = [getattr(emp, "data_nascimento", None),
+                  getattr(emp, "tipo_sanguineo", None),
+                  getattr(emp, "data_admissao", None),
+                  getattr(emp, "registro_ctps", None)]
+        if all(_ok(c) for c in extras):
+            return "completo"
+        return "basico"
+
+    # v1.81.0: XLSX de funcionarios com cadastro incompleto
+    @app.get("/funcionarios/incompletos/exportar")
+    def funcionarios_incompletos_exportar(
+            user: dict = auth.require_permission("funcionarios")):
+        from io import BytesIO
+        from openpyxl import Workbook
+        from openpyxl.styles import Border, Font, PatternFill, Side
+        er = EmployeeRepository()
+        todos = list(er.get_all(limit=1_000_000))
+        todos.sort(key=lambda e: str(e.nome).lower())
+        from src.core.aso_repo import AsoRepository
+        try:
+            aso_ok = {a["employee_id"] for a in
+                      AsoRepository().get_asos_with_expiration(only_latest=True)
+                      if a["dias_para_vencer"] >= 0}
+        except Exception:
+            aso_ok = set()
+
+        def _ok(v):
+            return bool(v and str(v).strip())
+
+        linhas = []
+        for e in todos:
+            if _nivel_cadastro(e, aso_ok) != "incompleto":
+                continue
+            faltando = []
+            if not getattr(e, "foto", None):
+                faltando.append("Foto")
+            if not _ok(e.cpf):
+                faltando.append("CPF")
+            if not _ok(e.funcao):
+                faltando.append("Função")
+            if not _ok(e.telefone):
+                faltando.append("Telefone")
+            if e.id not in aso_ok:
+                faltando.append("ASO válido")
+            linhas.append((e.nome, e.cpf or "", e.funcao or "",
+                           e.telefone or "", ", ".join(faltando)))
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Incompletos"
+        ws.append(["Funcionário", "CPF", "Função", "Telefone", "Faltando"])
+        for r in linhas:
+            ws.append(list(r))
+        fina = Side(style="thin", color="999999")
+        borda = Border(left=fina, right=fina, top=fina, bottom=fina)
+        for c in ws[1]:
+            c.font = Font(bold=True)
+            c.fill = PatternFill("solid", fgColor="FFE699")
+            c.border = borda
+        larguras = {"A": 38, "B": 16, "C": 22, "D": 18, "E": 42}
+        for col, w in larguras.items():
+            ws.column_dimensions[col].width = w
+        for row in ws.iter_rows(min_row=2):
+            for c in row:
+                c.border = borda
+        ws.freeze_panes = "A2"
+        ws.auto_filter.ref = ws.dimensions
+        buf = BytesIO()
+        wb.save(buf)
+        from urllib.parse import quote
+        nome = quote("cadastros_incompletos.xlsx")
+        return Response(content=buf.getvalue(),
+                        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        headers={"Content-Disposition":
+                                 f"attachment; filename*=UTF-8''{nome}"})
+
     @app.get("/funcionarios")
     def funcionarios(request: Request, busca: str = "", page: int = 1, per: int = PER_PAGE,
+                     arquivado: str = "nao", nivel: str = "todos",
+                     tem_aso: str = "todos", tem_telefone: str = "todos",
+                     tem_foto: str = "todos", tem_cpf: str = "todos",
+                     tem_funcao: str = "todos",
                      user: dict = auth.require_permission("funcionarios")):
         er = EmployeeRepository()
         busca = (busca or "").strip()
         per = per if per in PER_OPCOES else PER_PAGE
-        todos = (er.search(busca, limit=1_000_000) if busca
-                 else er.get_all(limit=1_000_000))
+        arquivado = arquivado if arquivado in ("nao", "sim", "todos") else "nao"
+        nivel = nivel if nivel in ("todos", "basico", "incompleto", "completo") else "todos"
+        if arquivado == "sim":
+            todos = er.get_all_arquivados(limit=1_000_000)
+        elif arquivado == "todos":
+            todos = list(er.get_all(limit=1_000_000)) + \
+                list(er.get_all_arquivados(limit=1_000_000))
+            todos.sort(key=lambda e: str(e.nome).lower())
+        else:
+            todos = (er.search(busca, limit=1_000_000) if busca
+                     else er.get_all(limit=1_000_000))
+        # v1.77.0: nivel de cadastro (badge) — ASO valido via expirations
+        from src.core.aso_repo import AsoRepository
+        try:
+            aso_ok = {a["employee_id"] for a in
+                      AsoRepository().get_asos_with_expiration(only_latest=True)
+                      if a["dias_para_vencer"] >= 0}
+        except Exception:
+            aso_ok = set()
+        nivel_map = {e.id: _nivel_cadastro(e, aso_ok) for e in todos}
+        if nivel != "todos":
+            todos = [e for e in todos if nivel_map.get(e.id) == nivel]
+        # v1.79.0: filtros SIM/NAO por dado cadastrado
+        def _tem(e, campo):
+            v = getattr(e, campo, None)
+            if campo == "foto":
+                return bool(v)
+            return bool(v and str(v).strip())
+        _filtros_tem = {
+            "tem_aso": lambda e: e.id in aso_ok,
+            "tem_telefone": lambda e: _tem(e, "telefone"),
+            "tem_foto": lambda e: _tem(e, "foto"),
+            "tem_cpf": lambda e: _tem(e, "cpf"),
+            "tem_funcao": lambda e: _tem(e, "funcao"),
+        }
+        for _k, _fn in _filtros_tem.items():
+            _v = locals()[_k]
+            if _v == "sim":
+                todos = [e for e in todos if _fn(e)]
+            elif _v == "nao":
+                todos = [e for e in todos if not _fn(e)]
         total = len(todos)
         page = max(1, page)
         paginas = max(1, (total + per - 1) // per)
@@ -289,13 +419,162 @@ def register(app, deps: dict):
             params.append(f"busca={busca}")
         if per != PER_PAGE:
             params.append(f"per={per}")
+        if arquivado != "nao":
+            params.append(f"arquivado={arquivado}")
+        if nivel != "todos":
+            params.append(f"nivel={nivel}")
+        for _k in ("tem_aso", "tem_telefone", "tem_foto", "tem_cpf", "tem_funcao"):
+            if locals()[_k] != "todos":
+                params.append(f"{_k}={locals()[_k]}")
         pg_base = "/funcionarios" + (("?" + "&".join(params)) if params else "")
         return templates.TemplateResponse(
             request=request, name="funcionarios.html",
             context=ctx(request, lista=fatia, total=total, page=page,
                         paginas=paginas, pg_base=pg_base, busca=busca, per=per,
-                        per_opcoes=PER_OPCOES,
+                        per_opcoes=PER_OPCOES, arquivado=arquivado, nivel=nivel,
+                        nivel_map=nivel_map,
+                        tem_aso=tem_aso, tem_telefone=tem_telefone,
+                        tem_foto=tem_foto, tem_cpf=tem_cpf, tem_funcao=tem_funcao,
                         pode_escrever=pode_escrever(user["papel"], "funcionarios")))
+
+    # ---------------- arquivar / desarquivar (v1.69.0) ----------------
+    @app.post("/funcionarios/{emp_id}/excluir")
+    def excluir_funcionario(emp_id: int, request: Request,
+                            motivo: str = Form(""),
+                            user: dict = auth.require_permission("funcionarios")):
+        # v1.86.0: usuarios do setor Seguranca podem ARQUIVAR funcionarios
+        # desligados (mas nao excluir); exclusao continua só admin.
+        eh_admin = user["papel"] == "admin"
+        try:
+            _u_db = users.get_by_id(user["id"])
+            setor_usuario = (dict(_u_db).get("setor") if _u_db else "") or ""
+        except Exception:
+            setor_usuario = ""
+        eh_seguranca = setor_usuario == "seguranca"
+        if not eh_admin and not eh_seguranca:
+            flash(request, erro="Somente o administrador pode excluir/arquivar funcionarios.")
+            return RedirectResponse(f"/funcionarios/{emp_id}", status_code=303)
+        er = EmployeeRepository()
+        emp = er.get_by_id(emp_id)
+        if not emp:
+            flash(request, erro="Funcionario nao encontrado.")
+            return RedirectResponse("/funcionarios", status_code=303)
+        if eh_seguranca and not eh_admin:
+            # setor Seguranca apenas ARQUIVA (nunca exclui o registro)
+            er.set_arquivado(emp_id, True)
+            users.audit("arquivar-funcionario", user["username"], emp_id,
+                        motivo or emp.nome)
+            flash(request, msg=f"Funcionario {emp.nome} ARQUIVADO. "
+                  "Ele sai das listas, mas o historico permanece.")
+            return RedirectResponse("/funcionarios", status_code=303)
+        if er.delete(emp_id):
+            users.audit("excluir-funcionario", user["username"], emp_id,
+                        motivo or emp.nome)
+            flash(request, msg=f"Funcionario {emp.nome} excluido.")
+        elif eh_seguranca and not eh_admin:
+            er.set_arquivado(emp_id, True)
+            users.audit("arquivar-funcionario", user["username"], emp_id,
+                        motivo or emp.nome)
+            flash(request, msg=f"Funcionario {emp.nome} ARQUIVADO. "
+                  "Ele sai das listas, mas o historico permanece.")
+        else:
+            er.set_arquivado(emp_id, True)
+            users.audit("arquivar-funcionario", user["username"], emp_id,
+                        motivo or emp.nome)
+            flash(request, msg=f"Funcionario {emp.nome} ARQUIVADO (possui certificados, "
+                  "nao pode ser excluido). Ele sai das listas, mas o historico permanece.")
+        return RedirectResponse("/funcionarios", status_code=303)
+
+    @app.post("/funcionarios/{emp_id}/desarquivar")
+    def desarquivar_funcionario(emp_id: int, request: Request,
+                                user: dict = auth.require_permission("funcionarios")):
+        if user["papel"] != "admin":
+            flash(request, erro="Somente o administrador pode desarquivar funcionarios.")
+            return RedirectResponse(f"/funcionarios/{emp_id}", status_code=303)
+        er = EmployeeRepository()
+        er.set_arquivado(emp_id, False)
+        users.audit("desarquivar-funcionario", user["username"], emp_id, "")
+        flash(request, msg="Funcionario desarquivado.")
+        return RedirectResponse("/funcionarios?arquivado=nao", status_code=303)
+
+    # ---------------- duplicidades / mesclar (v1.80.0) ----------------
+    @app.get("/funcionarios/duplicidades")
+    def duplicidades(request: Request,
+                     user: dict = auth.require_permission("funcionarios")):
+        if user["papel"] != "admin":
+            flash(request, erro="Somente o administrador pode ver duplicidades.")
+            return RedirectResponse("/funcionarios", status_code=303)
+        from src.utils.text_utils import normalize_text
+        er = EmployeeRepository()
+        # v1.80.1: agrupar somente ATIVOS — apos a mescla (duplicado arquivado)
+        # o grupo sai da lista automaticamente. Arquivados seguem em /funcionarios?arquivado=sim.
+        todos = list(er.get_all(limit=1_000_000))
+        pai = {e.id: e.id for e in todos}
+
+        def _raiz(i):
+            while pai[i] != i:
+                pai[i] = pai[pai[i]]
+                i = pai[i]
+            return i
+
+        def _unir(a, b):
+            ra, rb = _raiz(a), _raiz(b)
+            if ra != rb:
+                pai[rb] = ra
+
+        por_cpf, por_nome = {}, {}
+        for e in todos:
+            cpf = (e.cpf or "").strip()
+            if cpf:
+                if cpf in por_cpf:
+                    _unir(por_cpf[cpf], e.id)
+                else:
+                    por_cpf[cpf] = e.id
+            nome = normalize_text(e.nome or "")
+            if nome:
+                if nome in por_nome:
+                    _unir(por_nome[nome], e.id)
+                else:
+                    por_nome[nome] = e.id
+        grupos = {}
+        for e in todos:
+            grupos.setdefault(_raiz(e.id), []).append(e)
+        lista = [sorted(g, key=lambda x: x.id)
+                 for g in grupos.values() if len(g) > 1]
+        lista.sort(key=lambda g: normalize_text(g[0].nome or ""))
+        return templates.TemplateResponse(
+            request=request, name="funcionarios_duplicidades.html",
+            context=ctx(request, grupos=lista,
+                        total=len(lista),
+                        funcs={e.id: e for g in lista for e in g}))
+
+    @app.post("/funcionarios/mesclar")
+    def mesclar_funcionarios(request: Request, principal_id: int = Form(0),
+                             duplicado_id: int = Form(0),
+                             motivo: str = Form(""),
+                             user: dict = auth.require_permission("funcionarios")):
+        if user["papel"] != "admin":
+            flash(request, erro="Somente o administrador pode mesclar cadastros.")
+            return RedirectResponse("/funcionarios/duplicidades", status_code=303)
+        if not motivo or not motivo.strip():
+            flash(request, erro="Informe o motivo da mescla.")
+            return RedirectResponse("/funcionarios/duplicidades", status_code=303)
+        if not principal_id or not duplicado_id or principal_id == duplicado_id:
+            flash(request, erro="Selecione o registro principal e o duplicado.")
+            return RedirectResponse("/funcionarios/duplicidades", status_code=303)
+        er = EmployeeRepository()
+        p, d = er.get_by_id(principal_id), er.get_by_id(duplicado_id)
+        if not p or not d:
+            flash(request, erro="Funcionario nao encontrado.")
+            return RedirectResponse("/funcionarios/duplicidades", status_code=303)
+        mov = er.mesclar(principal_id, duplicado_id)
+        users.audit("mesclar-funcionarios", user["username"],
+                    f"{duplicado_id}->{principal_id}",
+                    motivo or "")
+        total = sum(v for k, v in mov.items() if isinstance(v, int) and k != "arquivado")
+        flash(request, msg=f"Cadastros mesclados: {d.nome} -> {p.nome} "
+              f"({total} registro(s) movido(s); duplicado arquivado).")
+        return RedirectResponse("/funcionarios/duplicidades", status_code=303)
 
     # ---------------- novo ----------------
     # IMPORTANTE: declarado ANTES de /funcionarios/{emp_id} — o FastAPI casa
@@ -303,9 +582,13 @@ def register(app, deps: dict):
     @app.get("/funcionarios/novo")
     def novo_form(request: Request,
                   user: dict = auth.require_permission("funcionarios")):
+        salvo = request.session.pop("func_form", None) or {}
+        fvals = salvo.get("campos", {}) if isinstance(salvo, dict) else {}
+        ferros = salvo.get("erros", []) if isinstance(salvo, dict) else []
         return templates.TemplateResponse(
             request=request, name="funcionario_form.html",
             context=ctx(request, emp=None, tipos=_TIPOS_SANGUINEOS,
+                        form_salvo=fvals, form_erros=ferros,
                         pode_escrever=pode_escrever(user["papel"], "funcionarios")))
 
     @app.post("/funcionarios/novo")
@@ -322,7 +605,9 @@ def register(app, deps: dict):
         if isinstance(foto_res, str):
             erros.append(foto_res)
         if erros:
-            flash(request, erro=" ".join(erros))
+            request.session["func_form"] = {
+                "campos": {k: v for k, v in form.items() if isinstance(v, str)},
+                "erros": erros}
             return RedirectResponse("/funcionarios/novo", status_code=303)
         er = EmployeeRepository()
         nasc = validar_data(c["nascimento"]) if c["nascimento"] else None
@@ -350,16 +635,63 @@ def register(app, deps: dict):
             flash(request, erro="Funcionário não encontrado.")
             return RedirectResponse("/funcionarios", status_code=303)
         hr = HistoryRepository()
+        # v1.75.0: enriquece certificados com situacao de validade e vigencia
+        certificados = []
+        try:
+            _todos = hr.get_certificates_with_expiration(only_latest=False)
+            _mapa = {c["id"]: c for c in _todos if c["employee_id"] == emp_id}
+            _vigentes = {c["id"] for c in hr.get_certificates_with_expiration(
+                only_latest=True) if c["employee_id"] == emp_id}
+            for _r in hr.get_by_employee(emp_id):
+                try:
+                    _cid = _r["id"]
+                    _c = dict(_r)
+                except TypeError:
+                    _cid = _r.id
+                    _c = {"id": _r.id, "cert_number": _r.cert_number,
+                          "nr_code": _r.nr_code, "data_fim": _r.data_fim,
+                          "carga_horaria": _r.carga_horaria,
+                          "has_signed_doc": getattr(_r, "has_signed_doc", None)}
+                _m = _mapa.get(_cid, {})
+                _dv = _m.get("data_validade") or ""
+                _c["dias"] = _m.get("dias_para_vencer")
+                _c["st"] = _m.get("status", "")
+                _c["validade_br"] = f"{_dv[8:10]}/{_dv[5:7]}/{_dv[0:4]}" if _dv else ""
+                _c["vigente"] = _cid in _vigentes
+                certificados.append(_c)
+        except Exception:
+            try:
+                certificados = [dict(_r) for _r in hr.get_by_employee(emp_id)]
+            except Exception:
+                certificados = []
         try:
             from src.core.epi_repo import EpiRepository
             epi_count = len(EpiRepository().get_by_employee(emp_id))
         except Exception:
             epi_count = 0
+        asos = []
+        try:
+            from src.core.aso_repo import AsoRepository
+            from src.web.routers.aso import _br as _aso_br, _status_e_classe as _aso_status
+            for _a in AsoRepository().get_by_employee(emp_id):
+                _valido, _st, _cls = _aso_status(_a["data_exame"], _a.get("validade_meses") or 12)
+                asos.append({
+                    "id": _a["id"], "numero": _a["aso_number"],
+                    "tipo": _a["tipo_aso"], "exame_br": _aso_br(_a["data_exame"]),
+                    "valido_br": _valido.strftime("%d/%m/%Y") if _valido else "",
+                    "status": _st, "classe": _cls,
+                    "bloqueado": bool(_a.get("bloqueado")),
+                })
+        except Exception:
+            asos = []
         return templates.TemplateResponse(
             request=request, name="funcionario_ficha.html",
             context=ctx(request, emp=emp, docs=er.list_docs(emp_id),
-                        certificados=hr.get_by_employee(emp_id),
+                        certificados=certificados,
                         epi_count=epi_count,
+                        asos=asos,
+                        eh_admin=(user["papel"] == "admin"),
+                        pode_aso=pode_escrever(user["papel"], "aso"),
                         pode_escrever=pode_escrever(user["papel"], "funcionarios")))
 
     @app.get("/funcionarios/{emp_id}/foto")
@@ -377,9 +709,13 @@ def register(app, deps: dict):
         if emp is None:
             flash(request, erro="Funcionário não encontrado.")
             return RedirectResponse("/funcionarios", status_code=303)
+        salvo = request.session.pop("func_form", None) or {}
+        fvals = salvo.get("campos", {}) if isinstance(salvo, dict) else {}
+        ferros = salvo.get("erros", []) if isinstance(salvo, dict) else []
         return templates.TemplateResponse(
             request=request, name="funcionario_form.html",
             context=ctx(request, emp=emp, tipos=_TIPOS_SANGUINEOS,
+                        form_salvo=fvals, form_erros=ferros,
                         pode_escrever=pode_escrever(user["papel"], "funcionarios")))
 
     @app.post("/funcionarios/{emp_id}/editar")
@@ -401,7 +737,9 @@ def register(app, deps: dict):
         if isinstance(foto_res, str):
             erros.append(foto_res)
         if erros:
-            flash(request, erro=" ".join(erros))
+            request.session["func_form"] = {
+                "campos": {k: v for k, v in form.items() if isinstance(v, str)},
+                "erros": erros}
             return RedirectResponse(f"/funcionarios/{emp_id}/editar", status_code=303)
         nasc = validar_data(c["nascimento"]) if c["nascimento"] else None
         adm = validar_data(c["admissao"]) if c["admissao"] else None

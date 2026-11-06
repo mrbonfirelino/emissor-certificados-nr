@@ -71,21 +71,36 @@ def register(app, deps) -> None:
         return user and pode_escrever(user["papel"], "aso")
 
     @rotas.get("/aso")
-    def lista(request: Request, busca: str = "", page: int = 1,
+    def lista(request: Request, busca: str = "", page: int = 1, per: int = 10,
+              situacao: str = "todos", tipo: str = "",
               user: dict = auth.require_permission("aso")):
         from src.web.permissions import pode_escrever
         aso_repo, _ = _repos()
         busca = (busca or "").strip()
+        per = per if per in (10, 20, 25, 50) else 10
+        situacao = situacao if situacao in ("todos", "vencidos", "vencem30") else "todos"
         if busca:
             total = aso_repo.count_search(busca)
-            itens = aso_repo.search(busca, limit=PER_PAGE,
-                                    offset=(max(page, 1) - 1) * PER_PAGE)
+            itens = aso_repo.search(busca, limit=1000000)
         else:
             total = aso_repo.count_all()
-            itens = aso_repo.get_all(limit=PER_PAGE,
-                                     offset=(max(page, 1) - 1) * PER_PAGE)
+            itens = aso_repo.get_all(limit=1000000)
+        # v1.78.0: filtros situacao (vencidos / vencem em 30 dias) e tipo
+        _exp = {}
+        if situacao != "todos":
+            try:
+                for r in aso_repo.get_asos_with_expiration(only_latest=True):
+                    _exp[r["id"]] = r["dias_para_vencer"]
+            except Exception:
+                _exp = {}
         linhas = []
         for a in itens:
+            if situacao == "vencidos" and _exp.get(a["id"], 1) >= 0:
+                continue
+            if situacao == "vencem30" and not (0 <= _exp.get(a["id"], -1) <= 30):
+                continue
+            if tipo and (a["tipo_aso"] or "") != tipo:
+                continue
             valido, status, cls = _status_e_classe(a["data_exame"],
                                                    a.get("validade_meses") or 12)
             linhas.append({
@@ -95,20 +110,35 @@ def register(app, deps) -> None:
                 "valido": valido.strftime("%d/%m/%Y") if valido else "—",
                 "status": status, "classe": cls, "anexado": bool(a.get("has_doc")),
             })
-        total_paginas = max(1, -(-total // PER_PAGE))
+        total = len(linhas)
+        _ini = (max(page, 1) - 1) * per
+        linhas = linhas[_ini:_ini + per]
+        total_paginas = max(1, -(-total // per))
+        # v1.78.0: pg_base sempre com '?' (antes: "/aso&per=..." sem busca → 404)
+        _qs = [("busca", busca)] if busca else []
+        if situacao != "todos":
+            _qs.append(("situacao", situacao))
+        if tipo:
+            _qs.append(("tipo", tipo))
+        from src.core.aso_repo import ASO_TIPOS as _TIPOS
+        _qs.append(("per", str(per)))
+        pg_base = "/aso?" + "&".join(f"{k}={v}" for k, v in _qs)
         return templates.TemplateResponse(request=request, name="aso.html",
-            context=ctx(request, linhas=linhas, busca=busca, page=max(page, 1),
+            context=ctx(request, linhas=linhas, busca=busca, page=max(page, 1), per=per,
                         total_paginas=total_paginas, total=total,
-                        pg_base=("/aso?busca=" + busca) if busca else "/aso",
+                        pg_base=pg_base,
+                        situacao=situacao, tipo_sel=tipo, tipos=_TIPOS,
                         pode_escrever=pode_escrever(user["papel"], "aso")))
 
     @rotas.get("/aso/novo")
-    def novo_form(request: Request, user: dict = auth.require_permission("aso")):
+    def novo_form(request: Request, funcionario: int = 0,
+                  user: dict = auth.require_permission("aso")):
         from src.core.aso_repo import ASO_TIPOS
         _, er = _repos()
         funcionarios = sorted(er.get_all(limit=1000000), key=lambda e: e.nome.lower())
         return templates.TemplateResponse(request=request, name="aso_form.html",
             context=ctx(request, funcionarios=funcionarios, tipos=ASO_TIPOS,
+                        sel_id=funcionario,
                         hoje=_hoje_br(), erro="" if _pode_escrever(request)
                         else "Somente administrador ou emissor podem cadastrar ASO."))
 
@@ -126,26 +156,31 @@ def register(app, deps) -> None:
         from src.core import network_sync
 
         aso_repo, er = _repos()
+
+        def _voltar(msg):
+            request.session["aso_form"] = {
+                "campos": {"funcionario_id": funcionario_id,
+                           "tipo_aso": tipo_aso, "data_exame": data_exame,
+                           "validade_meses": validade_meses},
+                "erros": [msg]}
+            return RedirectResponse("/aso/novo", status_code=303)
+
         employee = er.get_by_id(funcionario_id)
         if employee is None:
-            flash(request, erro="Selecione o funcionário.")
-            return RedirectResponse("/aso/novo", status_code=303)
+            return _voltar("Selecione o funcionário.")
         if tipo_aso not in ("Admissional", "Periódico", "Mudança de Função",
                             "Retorno ao Trabalho", "Demissional"):
-            flash(request, erro="Tipo de ASO inválido.")
-            return RedirectResponse("/aso/novo", status_code=303)
+            return _voltar("Tipo de ASO inválido.")
         try:
             meses = int(validade_meses or "12")
         except ValueError:
             meses = 0
         if not 1 <= meses <= 120:
-            flash(request, erro="Validade deve ser entre 1 e 120 meses.")
-            return RedirectResponse("/aso/novo", status_code=303)
+            return _voltar("Validade deve ser entre 1 e 120 meses.")
         data_iso = (date.today().isoformat() if not (data_exame or "").strip()
                     else _iso_br(data_exame))
         if data_iso is None:
-            flash(request, erro="Data do exame inválida (use dd/mm/aaaa).")
-            return RedirectResponse("/aso/novo", status_code=303)
+            return _voltar("Data do exame inválida (use dd/mm/aaaa).")
         numero = aso_repo.next_aso_number()
         pasta = get_asos_dir() / employee_folder_name(
             employee, er.get_all(limit=1000000))
@@ -221,6 +256,10 @@ def register(app, deps) -> None:
         import fitz  # noqa: F401  (garante dependência carregada p/ rebuild)
 
         aso_repo, er = _repos()
+        previa = aso_repo.get_by_id(aso_id)
+        if previa and previa.get("bloqueado"):
+            flash(request, erro="ASO bloqueado: desbloqueie antes de anexar documentos.")
+            return RedirectResponse(f"/aso/{aso_id}", status_code=303)
         dados = await arquivo.read()
         if not dados:
             flash(request, erro="Arquivo vazio.")
@@ -272,6 +311,9 @@ def register(app, deps) -> None:
         aso = aso_repo.get_by_id(aso_id)
         if aso is None:
             return RedirectResponse("/aso", status_code=303)
+        if aso.get("bloqueado"):
+            flash(request, erro="ASO bloqueado: desbloqueie antes de remover documentos.")
+            return RedirectResponse(f"/aso/{aso_id}", status_code=303)
         aso_repo.remove_doc(aso_id)
         employee = er.get_by_id(aso["employee_id"])
         try:
@@ -285,6 +327,118 @@ def register(app, deps) -> None:
         except Exception:
             pass
         flash(request, msg="Documento removido (PDF volta ao modo esparso).")
+        return RedirectResponse(f"/aso/{aso_id}", status_code=303)
+
+    # ---------------- edição e bloqueio (bloquear != excluir) ----------------
+    def _usuario(request: Request) -> str:
+        return (auth.usuario_atual(request) or {}).get("username", "")
+
+    @rotas.get("/aso/{aso_id}/editar")
+    def editar_form(request: Request, aso_id: int,
+                    user: dict = auth.require_permission("aso")):
+        if not _pode_escrever(request):
+            flash(request, erro="Somente administrador ou emissor podem editar ASOs.")
+            return RedirectResponse(f"/aso/{aso_id}", status_code=303)
+        aso_repo, er = _repos()
+        a = aso_repo.get_by_id(aso_id)
+        if a is None:
+            return RedirectResponse("/aso", status_code=303)
+        if a.get("bloqueado"):
+            flash(request, erro="ASO bloqueado: desbloqueie antes de editar.")
+            return RedirectResponse(f"/aso/{aso_id}", status_code=303)
+        funcionarios = sorted(er.get_all(limit=1000000),
+                              key=lambda e: e.nome.lower())
+        from src.core.aso_repo import ASO_TIPOS
+        return templates.TemplateResponse(
+            request=request, name="aso_form.html",
+            context=ctx(request, funcionarios=funcionarios, tipos=ASO_TIPOS,
+                        hoje=_hoje_br(), editar=True, aso=a,
+                        funcionario=a.get("funcionario_nome") or "",
+                        exame_br=_br(a["data_exame"]), erro=""))
+
+    @rotas.post("/aso/{aso_id}/editar")
+    def editar(request: Request, aso_id: int,
+               tipo_aso: str = Form(""),
+               data_exame: str = Form(""),
+               validade_meses: int = Form(12),
+               user: dict = auth.require_permission("aso")):
+        if not _pode_escrever(request):
+            flash(request, erro="Somente administrador ou emissor podem editar ASOs.")
+            return RedirectResponse(f"/aso/{aso_id}", status_code=303)
+        aso_repo, er = _repos()
+        a = aso_repo.get_by_id(aso_id)
+        if a is None:
+            return RedirectResponse("/aso", status_code=303)
+        if a.get("bloqueado"):
+            flash(request, erro="ASO bloqueado: desbloqueie antes de editar.")
+            return RedirectResponse(f"/aso/{aso_id}", status_code=303)
+        from src.core.aso_repo import ASO_TIPOS
+        if tipo_aso not in ASO_TIPOS:
+            flash(request, erro="Tipo de ASO inválido.")
+            return RedirectResponse(f"/aso/{aso_id}/editar", status_code=303)
+        try:
+            meses = int(validade_meses)
+        except (TypeError, ValueError):
+            meses = 0
+        if not 1 <= meses <= 120:
+            flash(request, erro="Validade deve ficar entre 1 e 120 meses.")
+            return RedirectResponse(f"/aso/{aso_id}/editar", status_code=303)
+        data_iso = _iso_br(data_exame or "")
+        if data_iso is None:
+            flash(request, erro="Data do exame inválida (use dd/mm/aaaa).")
+            return RedirectResponse(f"/aso/{aso_id}/editar", status_code=303)
+        aso_repo.update(aso_id, tipo_aso, data_iso, meses)
+        # regenera o PDF no mesmo caminho, se existir
+        if a.get("pdf_path") and Path(a["pdf_path"]).exists():
+            from src.core.aso_pdf_generator import generate_aso_pdf
+            employee = er.get_by_id(a["employee_id"])
+            try:
+                generate_aso_pdf(str(a["pdf_path"]), a["aso_number"], employee,
+                                 tipo_aso, data_iso, meses)
+            except PermissionError:
+                flash(request, msg="Dados atualizados, mas o PDF está aberto "
+                                   "em outro programa — feche-o e edite "
+                                   "novamente para regenerá-lo.")
+            except Exception as e:
+                from src.utils.error_log import log_error
+                log_error("portal-aso-editar-pdf", e)
+        from src.core import network_sync
+        try:
+            network_sync.run_async(network_sync.sync_aso,
+                                   aso_repo.get_by_id(aso_id),
+                                   er.get_by_id(a["employee_id"]))
+        except Exception:
+            pass
+        users.audit("editar-aso", _usuario(request), a["aso_number"])
+        flash(request, msg=f"ASO {a['aso_number']} atualizado.")
+        return RedirectResponse(f"/aso/{aso_id}", status_code=303)
+
+    @rotas.post("/aso/{aso_id}/bloquear")
+    def bloquear(request: Request, aso_id: int,
+                 user: dict = auth.require_permission("aso")):
+        if not _pode_escrever(request):
+            flash(request, erro="Somente administrador ou emissor podem bloquear ASOs.")
+            return RedirectResponse(f"/aso/{aso_id}", status_code=303)
+        aso_repo, _ = _repos()
+        if aso_repo.get_by_id(aso_id) is None:
+            return RedirectResponse("/aso", status_code=303)
+        aso_repo.set_bloqueio(aso_id, True, _usuario(request))
+        users.audit("bloquear-aso", _usuario(request), str(aso_id))
+        flash(request, msg="ASO bloqueado (registro e PDF permanecem).")
+        return RedirectResponse(f"/aso/{aso_id}", status_code=303)
+
+    @rotas.post("/aso/{aso_id}/desbloquear")
+    def desbloquear(request: Request, aso_id: int,
+                    user: dict = auth.require_permission("aso")):
+        if not _pode_escrever(request):
+            flash(request, erro="Somente administrador ou emissor podem desbloquear ASOs.")
+            return RedirectResponse(f"/aso/{aso_id}", status_code=303)
+        aso_repo, _ = _repos()
+        if aso_repo.get_by_id(aso_id) is None:
+            return RedirectResponse("/aso", status_code=303)
+        aso_repo.set_bloqueio(aso_id, False, "")
+        users.audit("desbloquear-aso", _usuario(request), str(aso_id))
+        flash(request, msg="ASO desbloqueado.")
         return RedirectResponse(f"/aso/{aso_id}", status_code=303)
 
     app.include_router(rotas)

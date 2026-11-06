@@ -30,9 +30,10 @@
     <div class="campo">
       <label for="situacao">Situação</label>
       <select id="situacao" name="situacao" onchange="this.form.submit();">
-        <option value="todas" {{ 'selected' if situacao != 'ativas' and situacao != 'bloqueadas' }}>Todas</option>
+        <option value="todas" {{ 'selected' if situacao not in ('ativas', 'bloqueadas', 'pendentes') }}>Todas</option>
         <option value="ativas" {{ 'selected' if situacao == 'ativas' }}>Ativas</option>
         <option value="bloqueadas" {{ 'selected' if situacao == 'bloqueadas' }}>Bloqueadas</option>
+        <option value="pendentes" {{ 'selected' if situacao == 'pendentes' }}>Pendentes de preenchimento</option>
       </select>
     </div>
     <button type="submit">Buscar</button>
@@ -61,8 +62,8 @@
               <a class="btn amarelo-claro" style="display:block; text-align:center; margin-bottom:6px;" href="/frota/abastecimentos/{{ a.id }}/nfs">NF / valores</a>
               {% if pode_escrever %}<a class="btn verde" style="display:block; text-align:center; margin-bottom:6px;" href="/frota/abastecimentos/{{ a.id }}/editar">Editar</a>{% endif %}
               {% if a.pdf_path %}
-              <a class="btn" style="display:block; text-align:center; margin-bottom:6px;" href="/frota/abastecimentos/{{ a.id }}/pdf?v={{ a.revisao or 0 }}" target="_blank">Ver PDF</a>
-              <a class="btn azul-claro" style="display:block; text-align:center; margin-bottom:6px;" href="/frota/abastecimentos/{{ a.id }}/pdf/download?v={{ a.revisao or 0 }}">Baixar PDF</a>
+              <a class="btn" style="display:block; text-align:center; margin-bottom:6px;" href="/frota/abastecimentos/{{ a.id }}/pdf?v={{ a.revisao or 0 }}" target="_blank" data-abast-data="{{ a.data }}">Ver PDF</a>
+              <a class="btn azul-claro" style="display:block; text-align:center; margin-bottom:6px;" href="/frota/abastecimentos/{{ a.id }}/pdf/download?v={{ a.revisao or 0 }}" data-abast-data="{{ a.data }}">Baixar PDF</a>
               {% endif %}
               {% if pode_escrever %}
               {% if not a.bloqueada %}
@@ -98,4 +99,27 @@
 
   {% with paginas = paginas %}{% include "_paginacao.html" %}{% endwith %}
 </div>
+<script>
+  // v1.81.1: aviso ao gerar PDF de solicitacao com data muito anterior (>60 dias)
+  (function () {
+    function _dbr(s) {
+      if (!s) return "";
+      var p = String(s).split("-");
+      return p.length === 3 ? p[2] + "/" + p[1] + "/" + p[0] : String(s);
+    }
+    document.addEventListener("click", function (ev) {
+      var a = ev.target.closest && ev.target.closest('a[data-abast-data]');
+      if (!a) return;
+      var d = new Date(a.getAttribute("data-abast-data") + "T00:00:00");
+      if (isNaN(d)) return;
+      var dias = Math.floor((Date.now() - d.getTime()) / 86400000);
+      if (dias > 60) {
+        if (!window.confirm("ATENÇÃO: esta solicitação tem data " + _dbr(a.getAttribute("data-abast-data")) +
+          " (mais de 60 dias atrás).\n\nDeseja gerar o PDF mesmo assim?")) {
+          ev.preventDefault();
+        }
+      }
+    }, true);
+  })();
+</script>
 {% endblock %}

@@ -112,6 +112,18 @@ def register(app, deps):
         flash(request, erro="Seu papel é somente leitura neste módulo.")
         return RedirectResponse(url, status_code=303)
 
+    def _impedir_operacao(repo, veiculo_id, acao):
+        """v1.66.0: veiculo arquivado/bloqueado nao aceita novas operacoes."""
+        v = repo.get_veiculo(veiculo_id) or {}
+        if v.get("arquivado"):
+            return ("Veículo arquivado (devolvido à locadora): "
+                    f"não é possível {acao}.")
+        if v.get("bloqueado"):
+            return ("Veículo bloqueado"
+                    f" ({v.get('bloqueado_motivo') or 'manutenção'}):"
+                    f" não é possível {acao}.")
+        return None
+
     def _repo() -> FrotaRepository:
         return FrotaRepository()
 
@@ -203,7 +215,7 @@ def register(app, deps):
             f'<svg viewBox="0 0 {largura} {altura}" width="{largura}" '
             f'height="{altura}" role="img" '
             f'style="width:100%;height:auto;" '
-            f'xmlns="http://www.w3.org/2000/svg">{"".join(partes)}</svg>')
+            f'xmlns="http://www.w3.org/2000/svg">{"".join(partes)}<rect x="0.5" y="0.5" width="{largura - 1}" height="{altura - 1}" fill="none" stroke="#C9D2DC" stroke-width="1"/></svg>')
 
     # paleta p/ gráficos multi-veículo (2.37.2)
     _PALETA = ("#2E6DA4", "#E6A23C", "#256B28", "#B03A5B", "#6A5ACD",
@@ -244,6 +256,19 @@ def register(app, deps):
                 return dias, _MESES_POR_PERIODO[cod], rot
         return None, _MESES_POR_PERIODO["12m"], "12 meses"
 
+    def _mes_range(mes: str):
+        """v1.85.0: mm/aaaa → (de, ate, rotulo) em ISO, ou None se inválido."""
+        import calendar
+        try:
+            mm, aa = (int(x) for x in (mes or "").strip().split("/"))
+        except ValueError:
+            return None
+        if not (1 <= mm <= 12 and 1900 <= aa <= 2100):
+            return None
+        de = f"{aa:04d}-{mm:02d}-01"
+        ate = f"{aa:04d}-{mm:02d}-{calendar.monthrange(aa, mm)[1]:02d}"
+        return de, ate, f"Mês {mes}"
+
     def _svg_custos_todos(serie: list, largura=860, altura=300):
         """Gráfico mensal empilhado POR VEÍCULO (2.37.2): cada mês tem um
         segmento por veículo (comb+extras somados); tooltip lista o detalhe."""
@@ -274,6 +299,7 @@ def register(app, deps):
         passo = pw / n
         bw = min(38.0, passo * 0.6)
         y_base = m_t + ph
+        pts_mes = []  # v1.86.0: linha do total mensal sobre as barras
         partes = [f'<line x1="{m_e}" y1="{y_base}" x2="{m_e + pw}" '
                   f'y2="{y_base}" stroke="#D6DEE8"/>']
         for i, s in enumerate(serie):
@@ -294,8 +320,16 @@ def register(app, deps):
                 h = tot_v / maxv * ph
                 g.append(f'<rect x="{x:.1f}" y="{y_base - acum - h:.1f}" '
                          f'width="{bw:.1f}" height="{h:.1f}" '
-                         f'fill="{_PALETA[veic_ids.index(vid) % len(_PALETA)]}"/>')
+                         f'fill="{_PALETA[veic_ids.index(vid) % len(_PALETA)]}" '
+                         f'data-veiculo="{_esc(d["rotulo"])}" '
+                         f'data-info="{_esc(d["rotulo"])}: R$ {_fmt(tot_v)} '
+                         f'(comb R$ {_fmt(d["combustivel"])} · '
+                         f'extras R$ {_fmt(d["extras"])})"/>')
                 acum += h
+            tot_mes = sum(d["combustivel"] + d["extras"]
+                          for d in (s.get("por_veiculo") or {}).values())
+            pts_mes.append((m_e + i * passo + passo / 2,
+                            y_base - tot_mes / maxv * ph))
             g.append(f'<title>{_esc(s["rotulo"])} — ' +
                      ("; ".join(detalhes) if detalhes else "Sem custos") +
                      '</title>')
@@ -308,6 +342,16 @@ def register(app, deps):
                      f'text-anchor="middle">{_esc(s["rotulo"])}</text>')
             g.append('</g>')
             partes.append("".join(g))
+        # v1.86.0: linha do total mensal sobreposta às barras
+        if pts_mes:
+            pts = " ".join(f"{px:.1f},{py:.1f}" for px, py in pts_mes)
+            partes.append(f'<polyline points="{pts}" fill="none" '
+                          f'stroke="#B3261E" stroke-width="2" '
+                          f'stroke-linejoin="round" stroke-linecap="round" '
+                          f'pointer-events="none"/>')
+            for px, py in pts_mes:
+                partes.append(f'<circle cx="{px:.1f}" cy="{py:.1f}" r="2.5" '
+                              f'fill="#B3261E" pointer-events="none"/>')
         partes.append(f'<text x="{m_e - 6}" y="{m_t + 4}" font-size="9" '
                       f'fill="#5A6B7C" text-anchor="end">'
                       f'R$ {maxv:,.0f}</text>'.replace(",", "."))
@@ -323,7 +367,7 @@ def register(app, deps):
             f'<svg viewBox="0 0 {largura} {altura}" width="{largura}" '
             f'height="{altura}" role="img" '
             f'style="width:100%;height:auto;" '
-            f'xmlns="http://www.w3.org/2000/svg">{"".join(partes)}</svg>'), leg
+            f'xmlns="http://www.w3.org/2000/svg">{"".join(partes)}<rect x="0.5" y="0.5" width="{largura - 1}" height="{altura - 1}" fill="none" stroke="#C9D2DC" stroke-width="1"/></svg>'), leg
 
     def _svg_custos_comb(itens: list, largura=860, altura=300):
         """Gráfico POR VEÍCULO segmentado por tipo de combustível + extras
@@ -341,6 +385,9 @@ def register(app, deps):
         ordem = [vid for vid in ordem
                  if any((x["combustivel"] + x["extras"]) > 0
                         for x in por_veic[vid]["itens"])]
+        # 945: quem mais gasta sempre no topo (total = combustivel + extras)
+        ordem.sort(key=lambda vid: -sum(x["combustivel"] + x["extras"]
+                                        for x in por_veic[vid]["itens"]))
         if not ordem:
             return "", ""
 
@@ -435,7 +482,7 @@ def register(app, deps):
             f'<svg viewBox="0 0 {largura} {altura}" width="{largura}" '
             f'height="{altura}" role="img" '
             f'style="width:100%;height:auto;" '
-            f'xmlns="http://www.w3.org/2000/svg">{"".join(partes)}</svg>'), leg
+            f'xmlns="http://www.w3.org/2000/svg">{"".join(partes)}<rect x="0.5" y="0.5" width="{largura - 1}" height="{altura - 1}" fill="none" stroke="#C9D2DC" stroke-width="1"/></svg>'), leg
 
     def _funcionarios_nomes() -> list:
         try:
@@ -458,6 +505,20 @@ def register(app, deps):
     def _status_veiculo(repo, v: dict):
         """Deriva status/motorista/destino: viagem > manutenção/indisponível > disponível."""
         vid = v["id"]
+        if v.get("arquivado"):
+            v["status"] = "arquivado"
+            v["status_label"] = "Arquivado"
+            v["status_classe"] = "b-cinza"
+            v["motorista_atual"] = ""
+            v["destino_atual"] = ""
+            return
+        if v.get("bloqueado"):
+            v["status"] = "bloqueado"
+            v["status_label"] = "Bloqueado"
+            v["status_classe"] = "b-vermelho"
+            v["motorista_atual"] = ""
+            v["destino_atual"] = ""
+            return
         movs = repo.list_movimentacoes(vid)
         aberta = next((m for m in movs if m["aberta"]), None)
         pior = None
@@ -484,14 +545,16 @@ def register(app, deps):
 
     @app.get("/frota")
     def frota_lista(request: Request, busca: str = "", page: int = 1,
-                    per: int = 20,
+                    per: int = 20, arquivado: str = "nao",
                     user: dict = auth.require_permission("frota")):
         repo = _repo()
         per_val = per if per in _PER_OPCOES else 20
         pagina = max(1, page)
+        arq_val = arquivado if arquivado in ("nao", "sim", "todos") else "nao"
         veiculos, total = repo.list_veiculos(busca=busca,
                                              limit=per_val,
-                                             offset=(pagina - 1) * per_val)
+                                             offset=(pagina - 1) * per_val,
+                                             arquivado=arq_val)
         for v in veiculos:
             v["rotulo"] = veiculo_rotulo(v)
             v["tipo_label"] = label_tipo(v["tipo"])
@@ -504,12 +567,15 @@ def register(app, deps):
             if (busca or "").strip() else ""
         if per_val != 20:
             qs = (qs + "&" if qs else "") + f"per={per_val}"
+        if arq_val != "nao":
+            qs = (qs + "&" if qs else "") + f"arquivado={arq_val}"
         return templates.TemplateResponse(
             request=request, name="frota.html",
             context=ctx(request, veiculos=veiculos, total=total,
                         busca=(busca or "").strip(), page=page_n,
                         paginas=paginas,
                         per=per_val, per_opcoes=_PER_OPCOES,
+                        arquivado=arq_val,
                         pg_base=("/frota?" + qs) if qs else "/frota",
                         pode_escrever=auth.pode_escrever(user["papel"],
                                                          "frota")))
@@ -650,6 +716,7 @@ def register(app, deps):
 
     @app.post("/frota/{veiculo_id}/excluir")
     def frota_excluir(veiculo_id: int, request: Request,
+                      motivo: str = Form(""),
                       user: dict = auth.require_permission("frota")):
         red = _bloqueio(request, user, "/frota")
         if red:
@@ -658,10 +725,16 @@ def register(app, deps):
         if not v:
             flash(request, erro="Veículo não encontrado.")
             return RedirectResponse("/frota", status_code=303)
+        # v1.76.0: nao permite excluir veiculo com historico — so arquivar
+        if _repo().tem_historico(veiculo_id):
+            flash(request, erro=("Este veículo possui abastecimentos, "
+                                 "documentos ou laudos vinculados e não pode "
+                                 "ser excluído — utilize 'Arquivar veículo'."))
+            return RedirectResponse(f"/frota/{veiculo_id}", status_code=303)
         try:
             _repo().delete_veiculo(veiculo_id)
             _audit(request, "frota-veiculo-excluir", user["username"],
-                   str(veiculo_id), veiculo_rotulo(v))
+                   str(veiculo_id), motivo or veiculo_rotulo(v))
             flash(request, msg=f"Veículo '{veiculo_rotulo(v)}' excluído.")
         except ValueError as e:
             flash(request, erro=str(e))
@@ -910,7 +983,8 @@ def register(app, deps):
         repo = _repo()
         per_val = per if per in _PER_OPCOES else 20
         ordem_val = ordem if ordem in ("data", "serial") else "data"
-        sit_val = (situacao if situacao in ("todas", "ativas", "bloqueadas")
+        sit_val = (situacao if situacao in ("todas", "ativas", "bloqueadas",
+                                            "pendentes")
                    else "todas")
         pagina = max(1, page)
         itens, total = repo.list_abastecimentos(
@@ -955,6 +1029,13 @@ def register(app, deps):
         red = _bloqueio(request, user, "/frota/abastecimentos")
         if red:
             return red
+        if veiculo:
+            _err = _impedir_operacao(_repo(), veiculo,
+                                     "criar solicitação")
+            if _err:
+                flash(request, erro=_err)
+                return RedirectResponse("/frota/abastecimentos",
+                                        status_code=303)
         repo = _repo()
         veiculo_sel = veiculo if repo.get_veiculo(veiculo) else None
         return templates.TemplateResponse(
@@ -988,6 +1069,17 @@ def register(app, deps):
         extras = _ler_extras(await request.form())
         data_iso = _iso(data)
         repo = _repo()
+        try:
+            _vid = int(str(veiculo_id).strip())
+        except ValueError:
+            _vid = 0
+        if _vid:
+            _err = _impedir_operacao(repo, _vid,
+                                     "criar solicitação")
+            if _err:
+                flash(request, erro=_err)
+                return RedirectResponse("/frota/abastecimentos",
+                                        status_code=303)
 
         def _re_render(erro):
             return templates.TemplateResponse(
@@ -1348,64 +1440,90 @@ def register(app, deps):
                 cell.number_format = "0.00"
 
     @app.get("/frota/custos")
-    def frota_custos(request: Request, periodo: str = "12m",
+    def frota_custos(request: Request, periodo: str = "12m", mes: str = "",
                      user: dict = auth.require_permission("frota")):
         """Gráficos de custos gerais (2.37.2): por mês e por veículo ×
         combustível (incl. extras), com exportações.
         2.39: período selecionável, KM/L + KM/L padrão, tooltip de nota
-        (pesados/leves), scroll e ordenação por maior consumo."""
+        (pesados/leves), scroll e ordenação por maior consumo.
+        v1.85.0: `mes` (mm/aaaa) mostra apenas o mês específico."""
         repo = _repo()
-        dias, meses, rotulo = _periodo_info(periodo)
-        serie = repo.custo_serie_todos(meses=meses, dias=dias)
+        de = ate = ""
+        if mes:
+            m = _mes_range(mes)
+            if not m:
+                flash(request, erro="Mês inválido (use mm/aaaa).")
+                return RedirectResponse("/frota/custos", status_code=303)
+            de, ate, rotulo = m
+            serie = repo.custo_serie_todos(meses=24, de=de, ate=ate)
+        else:
+            dias, meses, rotulo = _periodo_info(periodo)
+            serie = repo.custo_serie_todos(meses=meses, dias=dias)
         resumos = []
-        for r in repo.resumo_custo_todos(dias=dias):
+        for r in repo.resumo_custo_todos(dias=None if mes else _periodo_info(periodo)[0],
+                                         de=de, ate=ate):
             if not r["qtd"]:
                 continue
             tipo = (r.get("tipo") or "outros")
             r["disclaimer"] = (_DISC_PESADOS if tipo in _PESADOS
                                else _DISC_LEVES)
             resumos.append(r)
-        comb = repo.custo_por_combustivel(dias=dias)
+        comb = repo.custo_por_combustivel(dias=None if mes else _periodo_info(periodo)[0],
+                                          de=de, ate=ate)
         g_meses, leg_meses = _svg_custos_todos(serie)
         g_comb, leg_comb = _svg_custos_comb(comb)
+        # v1.85.1: echo do mes no seletor <input type="month"> (yyyy-mm)
+        mes_ym = ""
+        if de:
+            try:
+                _aa, _mm = mes.split("/")
+                mes_ym = f"{int(_aa):04d}-{int(_mm):02d}"
+            except ValueError:
+                mes_ym = ""
         return templates.TemplateResponse(
             request=request, name="custos_frota.html",
             context=ctx(request, grafico_meses=g_meses, legenda_meses=leg_meses,
                         grafico_comb=g_comb, legenda_comb=leg_comb,
-                        resumos=resumos, periodo=periodo,
+                        resumos=resumos, periodo=periodo, mes=mes,
+                        mes_ym=mes_ym,
                         periodo_rotulo=rotulo, periodos=_PERIODOS_CUSTOS,
                         pode_escrever=pode_escrever(user["papel"], "frota")))
 
     @app.get("/frota/custos/pdf")
-    def frota_custos_pdf(request: Request, periodo: str = "12m",
+    def frota_custos_pdf(request: Request, periodo: str = "12m", mes: str = "",
                          user: dict = auth.require_permission("frota")):
-        """RELATÓRIO DE CUSTOS — FROTA em PDF (2.37.2), direto no navegador."""
+        """RELATÓRIO DE CUSTOS — FROTA em PDF (2.37.2), direto no navegador.
+        v1.85.0: `mes` (mm/aaaa) restringe a um mês específico."""
         from src.core.pdf_custos_frota import gerar_pdf_custos_frota
         dias, _meses, _rot = _periodo_info(periodo)
         try:
-            data = gerar_pdf_custos_frota(dias=dias)
+            data = gerar_pdf_custos_frota(dias=dias, mes=mes)
         except Exception:
             from src.utils.error_log import log_error
             log_error("portal-frota-custos-pdf")
             flash(request, erro="Não foi possível gerar o relatório de custos.")
             return RedirectResponse("/frota/custos", status_code=303)
-        _audit(request, "frota-custos-pdf", user["username"], "geral")
+        _audit(request, "frota-custos-pdf", user["username"],
+               mes or "geral")
+        sufixo = f"_{mes.replace('/', '-')}" if mes else ""
         return Response(content=data, media_type="application/pdf",
                         headers={"Content-Disposition":
-                                 'inline; filename="custos_frota.pdf"'})
+                                 f'inline; filename="custos_frota{sufixo}.pdf"'})
 
     @app.get("/frota/{veiculo_id}/custos/pdf")
     def frota_custo_veiculo_pdf(veiculo_id: int, request: Request,
-                                periodo: str = "12m",
+                                periodo: str = "12m", mes: str = "",
                                 user: dict = auth.require_permission("frota")):
-        """PDF individual de custos do veículo (2.37.2), direto no navegador."""
+        """PDF individual de custos do veículo (2.37.2), direto no navegador.
+        v1.85.0: `mes` (mm/aaaa) restringe a um mês específico."""
         from src.core.pdf_custos_frota import gerar_pdf_custos_frota
         v = _repo().get_veiculo(veiculo_id)
         if not v:
             return Response(status_code=404)
         dias, _meses, _rot = _periodo_info(periodo)
         try:
-            data = gerar_pdf_custos_frota(veiculo_id=veiculo_id, dias=dias)
+            data = gerar_pdf_custos_frota(veiculo_id=veiculo_id, dias=dias,
+                                          mes=mes)
         except Exception:
             from src.utils.error_log import log_error
             log_error("portal-frota-custos-pdf")
@@ -1414,23 +1532,23 @@ def register(app, deps):
         _audit(request, "frota-custos-pdf", user["username"],
                v.get("placa") or str(veiculo_id))
         nome = (v.get("placa") or str(veiculo_id)).replace(" ", "_")
+        sufixo = f"_{mes.replace('/', '-')}" if mes else ""
         return Response(content=data, media_type="application/pdf",
                         headers={"Content-Disposition":
-                                 f'inline; filename="custos_{nome}.pdf"'})
+                                 f'inline; filename="custos_{nome}{sufixo}.pdf"'})
 
-    @app.get("/frota/custos/exportar")
-    def frota_custos_exportar(request: Request, periodo: str = "12m",
-                              user: dict = auth.require_permission("frota")):
-        """Excel geral de custos (2.35.1): resumo por veículo + todas as linhas.
-        2.39.3: respeita o período selecionado."""
+    def _custos_excel_bytes(repo: FrotaRepository, dias, de: str, ate: str) -> bytes:
+        """v1.85.1: monta o Excel geral de custos (usado por /custos/exportar
+        e pelo pacote ZIP). de/ate (ISO) filtram mês específico."""
         import io
         import openpyxl
-        repo = _repo()
-        dias, _meses, _rot = _periodo_info(periodo)
         corte = FrotaRepository._data_corte(dias)
-        resumos = repo.resumo_custo_todos(dias=dias)
+        resumos = repo.resumo_custo_todos(dias=None if de else dias,
+                                          de=de, ate=ate)
         itens, _total = repo.list_abastecimentos(limit=5000, offset=0)
-        if corte:
+        if de:
+            itens = [a for a in itens if de <= (a.get("data") or "") <= ate]
+        elif corte:
             itens = [a for a in itens if (a.get("data") or "") >= corte]
         nf_map = repo.tem_nf([a["id"] for a in itens])
         wb = openpyxl.Workbook()
@@ -1456,12 +1574,70 @@ def register(app, deps):
         buf = io.BytesIO()
         wb.save(buf)
         wb.close()
-        _audit(request, "frota-custos-exportar", user["username"], periodo,
-               f"{len(resumos)} veiculo(s)")
+        return buf.getvalue()
+
+    @app.get("/frota/custos/pacote")
+    def frota_custos_pacote(request: Request, periodo: str = "12m",
+                            mes: str = "",
+                            user: dict = auth.require_permission("frota")):
+        """v1.85.1: Baixar Pacote — ZIP com o PDF e o Excel do período/mês."""
+        import io
+        import zipfile
+        from src.core.pdf_custos_frota import gerar_pdf_custos_frota
+        repo = _repo()
+        dias, _meses, _rot = _periodo_info(periodo)
+        de = ate = ""
+        if mes:
+            m = _mes_range(mes)
+            if not m:
+                flash(request, erro="Mês inválido (use mm/aaaa).")
+                return RedirectResponse("/frota/custos", status_code=303)
+            de, ate, _rotulo = m
+        try:
+            pdf = gerar_pdf_custos_frota(dias=dias, mes=mes)
+            xls = _custos_excel_bytes(repo, dias, de, ate)
+        except Exception:
+            from src.utils.error_log import log_error
+            log_error("portal-frota-custos-pacote")
+            flash(request, erro="Não foi possível gerar o pacote de custos.")
+            return RedirectResponse("/frota/custos", status_code=303)
+        _audit(request, "frota-custos-pacote", user["username"],
+               mes or periodo)
+        sufixo = f"_{mes.replace('/', '-')}" if mes else ""
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+            z.writestr(f"custos_frota{sufixo}.pdf", pdf)
+            z.writestr(f"custos_frota{sufixo}.xlsx", xls)
         return Response(
-            content=buf.getvalue(), media_type=_XLSX_MEDIA,
+            content=buf.getvalue(), media_type="application/zip",
             headers={"Content-Disposition":
-                     'attachment; filename="custos_frota.xlsx"'})
+                     f'attachment; filename="custos_frota{sufixo}.zip"'})
+
+    @app.get("/frota/custos/exportar")
+    def frota_custos_exportar(request: Request, periodo: str = "12m",
+                              mes: str = "",
+                              user: dict = auth.require_permission("frota")):
+        """Excel geral de custos (2.35.1): resumo por veículo + todas as linhas.
+        2.39.3: respeita o período selecionado.
+        v1.85.0: `mes` (mm/aaaa) exporta apenas o mês específico.
+        v1.85.1: montagem extraída para _custos_excel_bytes (reusada pelo pacote)."""
+        repo = _repo()
+        dias, _meses, _rot = _periodo_info(periodo)
+        de = ate = ""
+        if mes:
+            m = _mes_range(mes)
+            if not m:
+                flash(request, erro="Mês inválido (use mm/aaaa).")
+                return RedirectResponse("/frota/custos", status_code=303)
+            de, ate, _rotulo = m
+        _audit(request, "frota-custos-exportar", user["username"],
+               mes or periodo)
+        sufixo = f"_{mes.replace('/', '-')}" if mes else ""
+        return Response(
+            content=_custos_excel_bytes(repo, dias, de, ate),
+            media_type=_XLSX_MEDIA,
+            headers={"Content-Disposition":
+                     f'attachment; filename="custos_frota{sufixo}.xlsx"'})
 
     @app.get("/frota/{veiculo_id}/custo/exportar")
     def frota_custo_veiculo_exportar(veiculo_id: int, request: Request,
@@ -1691,6 +1867,51 @@ def register(app, deps):
 
 # ================= ficha do veiculo =================
 
+    # ---- v1.67.0: vencimentos da frota (pagina propria) ----
+
+    @app.get("/frota/vencimentos")
+    def frota_vencimentos(request: Request,
+                          page: int = 1,
+                          user: dict = auth.require_permission("frota")):
+        from src.web.routers.vencimentos import (
+            _carregar_frota, STATUS_CLASSE, _br)
+        itens = _carregar_frota()
+        itens.sort(key=lambda c: (c["dias_para_vencer"],
+                                  str(c.get("funcionario_nome", "")).lower()))
+        vencidos = sum(1 for c in itens if c["dias_para_vencer"] < 0)
+        sete = sum(1 for c in itens if 0 <= c["dias_para_vencer"] <= 7)
+        quinze = sum(1 for c in itens if 8 <= c["dias_para_vencer"] <= 15)
+        trinta = sum(1 for c in itens if 16 <= c["dias_para_vencer"] <= 30)
+        # v1.76.1: paginacao server-side (export continua completo)
+        _por_pag = 25
+        total_itens = len(itens)
+        paginas = max(1, (total_itens + _por_pag - 1) // _por_pag)
+        page = min(max(1, page), paginas)
+        fatia = itens[(page - 1) * _por_pag:page * _por_pag]
+        linhas = []
+        for c in fatia:
+            if c.get("por_km"):
+                validade, dias = "\u2014 (por KM)", f"{c['dias_para_vencer']} km"
+            else:
+                validade, dias = (_br(c.get("data_validade")),
+                                  c["dias_para_vencer"])
+            linhas.append({
+                "veiculo": c.get("funcionario_nome", ""),
+                "documento": c.get("descricao_treinamento", ""),
+                "validade": validade, "dias": dias,
+                "status": c.get("status", ""),
+                "classe": STATUS_CLASSE.get(c.get("status", ""), "b-verde"),
+                "veiculo_id": c.get("veiculo_id", 0),
+                "laudo_id": (c.get("id") if (not c.get("por_km")
+                             and c.get("tipo_laudo")) else 0),
+            })
+        return templates.TemplateResponse(
+            request=request, name="frota_vencimentos.html",
+            context=ctx(request, linhas=linhas, total=total_itens,
+                        vencidos=vencidos, sete=sete,
+                        quinze=quinze, trinta=trinta,
+                        page=page, paginas=paginas, pg_base="/frota/vencimentos"))
+
     @app.get("/frota/{veiculo_id}")
     def frota_ficha(veiculo_id: int, request: Request,
                     user: dict = auth.require_permission("frota")):
@@ -1700,9 +1921,13 @@ def register(app, deps):
             flash(request, erro="Veículo não encontrado.")
             return RedirectResponse("/frota", status_code=303)
         v["rotulo"] = veiculo_rotulo(v)
+        _status_veiculo(repo, v)  # 2.33.2
         _status_veiculo(repo, v)  # 2.33.2: situação atual também na ficha
+        em_viagem = repo.veiculo_em_viagem(veiculo_id)
         docs = repo.list_docs(veiculo_id)
-        laudos = repo.list_laudos(veiculo_id)
+        _laudos = repo.list_laudos(veiculo_id)
+        laudos = [l for l in _laudos if not l.get("arquivado")]
+        laudos_arquivados = [l for l in _laudos if l.get("arquivado")]
         movs = repo.list_movimentacoes(veiculo_id)
         abasts = repo.list_abast_por_veiculo(veiculo_id)
         nf_map = repo.tem_nf([a["id"] for a in abasts])
@@ -1720,9 +1945,12 @@ def register(app, deps):
             context=ctx(request, v=v, rotulo=v["rotulo"],
                         tipo_label=label_tipo(v["tipo"]),
                         sub_label=label_subtipo(v["subtipo"]),
-                        docs=docs, laudos=laudos, movs=movs, abasts=abasts,
+                        docs=docs, laudos=laudos,
+                        laudos_arquivados=laudos_arquivados,
+                        movs=movs, abasts=abasts,
                         checklists=checklists, manutencoes=manutencoes,
                         resumo=resumo,
+                        em_viagem=em_viagem,
                         grafico_svg=_svg_grafico_custo(serie),
                         tags_doc=TAGS_DOC,
                         funcionarios=_funcionarios_nomes(),
@@ -1731,6 +1959,77 @@ def register(app, deps):
                         hoje=date.today().strftime("%d/%m/%Y"),
                         pode_escrever=auth.pode_escrever(user["papel"],
                                                          "frota")))
+
+    # ---- v1.66.0: arquivar/bloquear veiculo + arquivar laudo ----
+
+    @app.post("/frota/{veiculo_id}/arquivar")
+    def frota_veic_arquivar(veiculo_id: int, request: Request,
+                            motivo: str = Form(""),
+                            user: dict = auth.require_permission("frota")):
+        repo = _repo()
+        if repo.veiculo_em_viagem(veiculo_id):
+            flash(request, erro="O ve\u00edculo est\u00e1 em viagem (sa\u00edda sem entrada registrada). Registre a entrada antes de arquivar.")
+            return RedirectResponse(f"/frota/{veiculo_id}", status_code=303)
+        repo.set_arquivado_veiculo(veiculo_id, True)
+        _audit(request, "frota-veiculo-arquivar", user["username"],
+               str(veiculo_id), motivo)
+        flash(request, msg="Veículo arquivado (devolvido à locadora). "
+              "Ele some da lista por padrão; custos continuam salvos.")
+        return RedirectResponse("/frota", status_code=303)
+
+    @app.post("/frota/{veiculo_id}/desarquivar")
+    def frota_veic_desarquivar(veiculo_id: int, request: Request,
+                               user: dict = auth.require_permission("frota")):
+        _repo().set_arquivado_veiculo(veiculo_id, False)
+        _audit(request, "frota-veiculo-desarquivar", user["username"],
+               str(veiculo_id), "")
+        flash(request, msg="Veículo desarquivado.")
+        return RedirectResponse(f"/frota/{veiculo_id}", status_code=303)
+
+    @app.post("/frota/{veiculo_id}/bloquear")
+    def frota_veic_bloquear(veiculo_id: int, request: Request,
+                            motivo: str = Form(""),
+                            user: dict = auth.require_permission("frota")):
+        _repo().set_bloqueio_veiculo(veiculo_id, True, motivo,
+                                     user["username"])
+        _audit(request, "frota-veiculo-bloquear", user["username"],
+               str(veiculo_id), motivo)
+        flash(request, msg="Veículo bloqueado (não aceita novas "
+              "solicitações nem saídas).")
+        return RedirectResponse(f"/frota/{veiculo_id}", status_code=303)
+
+    @app.post("/frota/{veiculo_id}/desbloquear")
+    def frota_veic_desbloquear(veiculo_id: int, request: Request,
+                               user: dict = auth.require_permission("frota")):
+        _repo().set_bloqueio_veiculo(veiculo_id, False, "", "")
+        _audit(request, "frota-veiculo-desbloquear", user["username"],
+               str(veiculo_id), "")
+        flash(request, msg="Veículo desbloqueado.")
+        return RedirectResponse(f"/frota/{veiculo_id}", status_code=303)
+
+    @app.post("/frota/{veiculo_id}/laudos/{laudo_id}/arquivar")
+    def frota_laudo_arquivar(veiculo_id: int, laudo_id: int,
+                             request: Request, voltar: str = Form(""),
+                             motivo: str = Form(""),
+                             user: dict = auth.require_permission("frota")):
+        _repo().set_laudo_arquivado(laudo_id, True)
+        _audit(request, "frota-laudo-arquivar", user["username"],
+               str(laudo_id), motivo)
+        flash(request, msg="Laudo arquivado (só no submenu de "
+              "conferência; fora dos vencimentos).")
+        destino = voltar if voltar.startswith("/") else f"/frota/{veiculo_id}"
+        return RedirectResponse(destino, status_code=303)
+
+    @app.post("/frota/{veiculo_id}/laudos/{laudo_id}/desarquivar")
+    def frota_laudo_desarquivar(veiculo_id: int, laudo_id: int,
+                                request: Request,
+                                user: dict = auth.require_permission("frota")):
+        _repo().set_laudo_arquivado(laudo_id, False)
+        _audit(request, "frota-laudo-desarquivar", user["username"],
+               str(laudo_id), "")
+        flash(request, msg="Laudo desarquivado.")
+        return RedirectResponse(f"/frota/{veiculo_id}", status_code=303)
+
 
     # ---- documentos (pasta virtual) ----
 
@@ -1784,6 +2083,7 @@ def register(app, deps):
                               descricao: str = Form(""),
                               emissao: str = Form(""),
                               validade: str = Form(""),
+                              ano: str = Form(""),
                               arquivo: UploadFile = File(None),
                               user: dict = auth.require_permission("frota")):
         red = _bloqueio(request, user, f"/frota/{veiculo_id}")
@@ -1799,9 +2099,13 @@ def register(app, deps):
             return RedirectResponse(f"/frota/{veiculo_id}", status_code=303)
         data = await arquivo.read()
         try:
+            try:
+                ano_i = int(str(ano or "").strip() or 0)
+            except ValueError:
+                ano_i = 0
             _repo().add_laudo(veiculo_id, tipo,
                               Path(arquivo.filename).name, data,
-                              data_emi, data_val, descricao)
+                              data_emi, data_val, descricao, ano_i)
         except ValueError as e:
             flash(request, erro=str(e))
             return RedirectResponse(f"/frota/{veiculo_id}", status_code=303)
@@ -1842,6 +2146,11 @@ def register(app, deps):
         red = _bloqueio(request, user, f"/frota/{veiculo_id}")
         if red:
             return red
+        _err = _impedir_operacao(_repo(), veiculo_id,
+                                 "registrar saída")
+        if _err:
+            flash(request, erro=_err)
+            return RedirectResponse(f"/frota/{veiculo_id}", status_code=303)
         data_iso = _iso(data_saida)
         if data_iso is None:
             flash(request, erro="Data de saída inválida (dd/mm/aaaa).")

@@ -7,16 +7,48 @@
 
   <div class="linha-botoes" style="margin-top:0;">
     <label style="display:inline-flex; align-items:center; gap:6px;">Período
-      <select id="sel-periodo" onchange="window.location='/frota/custos?periodo='+this.value;">
+      <select id="sel-periodo" onchange="ir_custos()">
         {% for cod, rot, _d in periodos %}
-        <option value="{{ cod }}" {{ 'selected' if cod == periodo }}>{{ rot }}</option>
+        <option value="{{ cod }}" {{ 'selected' if cod == periodo and not mes }}>{{ rot }}</option>
         {% endfor %}
       </select>
     </label>
-    <a class="btn verde" href="/frota/custos/pdf?periodo={{ periodo }}" target="_blank">Exportar PDF (diretoria)</a>
-    <a class="btn cinza" href="/frota/custos/exportar?periodo={{ periodo }}">Exportar Excel (geral)</a>
+    <label style="display:inline-flex; align-items:center; gap:6px;">Mês específico
+      <input type="month" id="inp-mes" value="{{ mes_ym }}" style="width:150px;" onchange="ir_custos();" onkeydown="if(event.key==='Enter'){ir_custos();}" title="Escolha o mês (deixe vazio para usar o período)">
+    </label>
+    <button type="button" class="btn" onclick="limpar_mes()" title="Limpar o mês e voltar ao período">Limpar</button>
+    <a class="btn verde" id="lnk-pdf" href="/frota/custos/pdf?periodo={{ periodo }}" target="_blank">Exportar PDF (diretoria)</a>
+    <a class="btn verde" id="lnk-xls" href="/frota/custos/exportar?periodo={{ periodo }}">Exportar Excel (geral)</a>
+    <a class="btn verde" id="lnk-zip" href="/frota/custos/pacote?periodo={{ periodo }}">Baixar Pacote</a>
     <a class="btn cinza" href="/frota">Voltar</a>
   </div>
+  <script>
+    // v1.85.0/v1.85.1: mes especifico nos custos da frota
+    function ir_custos() {
+      var v = (document.getElementById('inp-mes') || {}).value || '';
+      var per = document.getElementById('sel-periodo').value;
+      var qs = [];
+      if (v) {
+        var p = v.split('-');           // yyyy-mm (type=month) -> mm/aaaa
+        if (p.length === 2) { qs.push('mes=' + encodeURIComponent(p[1] + '/' + p[0])); }
+      }
+      if (!qs.length) { qs.push('periodo=' + encodeURIComponent(per)); }
+      window.location = '/frota/custos?' + qs.join('&');
+    }
+    function limpar_mes() {
+      document.getElementById('inp-mes').value = '';
+      ir_custos();
+    }
+    (function () {
+      var mes = "{{ mes }}";
+      var suf = mes ? ('&mes=' + encodeURIComponent(mes)) : '';
+      var pdf = document.getElementById('lnk-pdf'), xls = document.getElementById('lnk-xls');
+      var zip = document.getElementById('lnk-zip');
+      if (pdf) pdf.href = '/frota/custos/pdf?periodo={{ periodo }}' + suf;
+      if (xls) xls.href = '/frota/custos/exportar?periodo={{ periodo }}' + suf;
+      if (zip) zip.href = '/frota/custos/pacote?periodo={{ periodo }}' + suf;
+    })();
+  </script>
 
   <h2 style="margin-top:22px;">Custos por mês — todos os veículos</h2>
   <div id="graf-meses">{{ grafico_meses }}</div>
@@ -28,7 +60,7 @@
   {% endif %}
 
   <h2 style="margin-top:26px;">Custos por veículo × tipo de combustível</h2>
-  <div id="graf-comb" style="max-height:430px; overflow-y:auto;">{{ grafico_comb }}</div>
+  <div id="graf-comb" style="max-height:430px; overflow-y:auto; border: 1px solid lightgray;">{{ grafico_comb }}</div>
   {% if grafico_comb %}
   <div class="legenda-graf" id="leg-comb">{{ legenda_comb | safe }}</div>
   <button type="button" class="btn" data-png="graf-comb" data-nome="custos_frota_por_veiculo" style="margin-top:10px;">Baixar gráfico (PNG)</button>
@@ -38,7 +70,7 @@
 
   <h2 style="margin-top:26px;">Resumo por veículo</h2>
   {% if resumos %}
-  <div style="max-height:520px; overflow:auto;">
+  <div style="max-height:520px; overflow:auto; border: 1px solid lightgray;">
   <table>
     <thead><tr><th>Veículo</th><th>Abast. ativos</th><th>Litros</th><th>KM/L (real)</th><th>KM/L padrão</th><th>Combustível</th><th>Itens extras</th><th>Total</th><th></th></tr></thead>
     <tbody>
@@ -72,10 +104,25 @@
   document.querySelectorAll("#graf-meses .g-mes, #graf-comb .g-mes").forEach(function (g) {
     var cap = g.querySelector(".captura") || g;
     g.addEventListener("mousemove", function (ev) {
-      var det = cap.getAttribute("data-det") || "";
       var mes = cap.getAttribute("data-mes") || "";
-      var linhas = det ? det.split("||") : ["Sem custos."];
-      tip.innerHTML = "<b>" + mes + "</b><br>" + linhas.join("<br>");
+      var vt = null;
+      if (document.elementsFromPoint) {
+        var pilha = document.elementsFromPoint(ev.clientX, ev.clientY) || [];
+        for (var k = 0; k < pilha.length; k++) {
+          var el = pilha[k];
+          if (el && el.getAttribute && el.getAttribute("data-info")) {
+            vt = el.getAttribute("data-info"); break;
+          }
+        }
+      }
+      if (vt) {
+        // v1.86.0: mostra apenas o veículo sob o mouse
+        tip.innerHTML = "<b>" + mes + "</b><br>" + vt;
+      } else {
+        var det = cap.getAttribute("data-det") || "";
+        var linhas = det ? det.split("||") : ["Sem custos."];
+        tip.innerHTML = "<b>" + mes + "</b><br>" + linhas.join("<br>");
+      }
       tip.style.display = "block";
       var x = ev.clientX + 14, y = ev.clientY + 12;
       if (x + tip.offsetWidth > window.innerWidth - 8) {

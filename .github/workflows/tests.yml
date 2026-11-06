@@ -1,0 +1,54 @@
+name: tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  unit:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - name: Suítes unitárias
+        shell: pwsh
+        run: |
+          python test_history_filters.py
+          python test_signed_docs.py
+          python test_vencimentos.py
+          python test_photo_importer.py
+          python test_backup.py
+          python test_cert_number.py
+          python test_scan.py
+          python test_layout.py
+          python test_pptx_cards.py --unit
+
+  portal:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements-web.txt
+      - name: Suítes do Portal Web (sem PowerPoint/Excel — E2E COM é ignorado)
+        shell: pwsh
+        run: |
+          python test_web_auth.py
+          python test_web_fase2.py
+          python test_web_fase3.py
+          python test_web_lote.py
+          python test_web_fase3b.py
+          python test_web_fase3c.py
+          python test_web_ux.py
+          python test_web_v132.py
+          python test_web_v134.py
+          python test_web_frota.py
+          python test_web_v145.py
+          python test_web_v142.py
+          python test_web_v143.py
+          python test_web_v144.py
+          python test_web_presencas.py

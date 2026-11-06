@@ -27,3 +27,9 @@ backups/
 NormaTech-Portal-SERVIDOR-*.zip
 PACOTE SERVIDOR*/
 ATUALIZACAO*/
+
+# Segredos e logs locais
+data/web_secret.key
+data/error.log
+data/web_admin_provisorio.txt
+data/web_admin_provisorio.txt*

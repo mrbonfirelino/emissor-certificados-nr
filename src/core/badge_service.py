@@ -493,15 +493,23 @@ A4_MARGIN_MM, A4_GAP_MM = 6.0, 3.0
 REDUZIDO_W_MM, REDUZIDO_H_MM = 86.0, 54.0
 
 
-def _badge_metrics(template: dict, tamanho: str) -> tuple:
+def _badge_metrics(template: dict, tamanho: str,
+                   orientacao: str = "") -> tuple:
     """Retorna (w_native, h_native, escala, w_slot, h_slot) para a geracao.
 
     - tamanho 'real': escala 1.0, slot = dimensao nativa do template
     - tamanho 'reduzido': escala uniforme min(tw/w, th/h) p/ caber no alvo
       (86x54 paisagem / 54x86 retrato) sem alterar o layout
+    - orientacao 'vertical'/'horizontal': v1.54.2 — troca w/h quando o
+      template nao segue a orientacao pedida (padrao do portal: vertical)
     """
     w_mm = float(template.get("card_width_mm", W_MM))
     h_mm = float(template.get("card_height_mm", H_MM))
+    orient = (orientacao or "").strip().lower()
+    if orient == "vertical" and w_mm > h_mm:
+        w_mm, h_mm = h_mm, w_mm
+    elif orient == "horizontal" and h_mm > w_mm:
+        w_mm, h_mm = h_mm, w_mm
     if tamanho == "reduzido":
         tw, th = (REDUZIDO_H_MM, REDUZIDO_W_MM) if h_mm > w_mm else (REDUZIDO_W_MM, REDUZIDO_H_MM)
         escala = min(tw / w_mm, th / h_mm)
@@ -580,7 +588,9 @@ def generate_badges(
     if not dados:
         return [], faltantes
 
-    w_mm, h_mm, escala, slot_w, slot_h = _badge_metrics(template, options.get("tamanho", "real"))
+    w_mm, h_mm, escala, slot_w, slot_h = _badge_metrics(
+        template, options.get("tamanho", "real"),
+        options.get("orientacao", ""))
     draw_fn = draw_badge_vertical if h_mm > w_mm else draw_badge
     a4_size = (A4_W_MM * mm, A4_H_MM * mm)
     logo_path = get_logo_path()

@@ -1,9 +1,12 @@
 {
   "nr_code": "NR-18",
   "nr_name": "Condições e Meio Ambiente de Trabalho na Indústria da Construção",
-  "carga_horaria_minima": 8,
-  "validade_meses": 12,
-  "riscos": ["Acidente", "Fisico"],
+  "carga_horaria_minima": 4,
+  "validade_meses": 24,
+  "riscos": [
+    "Acidente",
+    "Fisico"
+  ],
   "descricao_padrao": "Treinamento de Segurança na Construção Civil - NR-18",
   "campos_extra": [
     {
@@ -17,14 +20,28 @@
       "id": "atividade",
       "label": "Atividade Principal",
       "tipo": "select",
-      "opcoes": ["Alvenaria", "Concretagem", "Formas/Armaduras", "Escavação", "Andaimes", "Elétrica", "Pintura", "Outra"],
+      "opcoes": [
+        "Alvenaria",
+        "Concretagem",
+        "Formas/Armaduras",
+        "Escavação",
+        "Andaimes",
+        "Elétrica",
+        "Pintura",
+        "Outra"
+      ],
       "obrigatorio": false
     },
     {
       "id": "tipo_treinamento",
       "label": "Tipo de Treinamento",
       "tipo": "select",
-      "opcoes": ["Inicial (Integração)", "Periódico", "Mudança de Função", "Retorno de Afastamento"],
+      "opcoes": [
+        "Inicial (Integração)",
+        "Periódico",
+        "Mudança de Função",
+        "Retorno de Afastamento"
+      ],
       "obrigatorio": false
     }
   ],

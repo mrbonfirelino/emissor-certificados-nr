@@ -1,13 +1,23 @@
 import sqlite3
 from pathlib import Path
 from datetime import date
-from dateutil.relativedelta import relativedelta
+# v1.81.2: dateutil removido — _add_months local substitui relativedelta
 from typing import Optional, List, Dict, Any
 from src.utils.paths import get_db_path
 from src.utils.text_utils import normalize_text
 
 
 ASO_TIPOS = ["Admissional", "Periódico", "Mudança de Função", "Retorno ao Trabalho", "Demissional"]
+
+
+def _add_months(d, m):
+    """v1.81.2: soma de meses sem dateutil (relativedelta era lento e
+    chamado por linha). Resultado idêntico para meses inteiros."""
+    y, mo = divmod((d.year * 12 + (d.month - 1)) + int(m), 12)
+    month = mo + 1
+    leap = (y % 4 == 0 and (y % 100 != 0 or y % 400 == 0))
+    dias_mes = [31, 29 if leap else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    return d.replace(year=y, month=month, day=min(d.day, dias_mes[month - 1]))
 
 
 class AsoRepository:
@@ -49,11 +59,22 @@ class AsoRepository:
                 );
                 INSERT OR IGNORE INTO sequences_aso (name, value) VALUES ('aso', 0);
             """)
+            # migracao idempotente: bloqueio de ASO (bloquear != excluir)
+            cols = {r[1] for r in conn.execute("PRAGMA table_info(asos)").fetchall()}
+            if "bloqueado" not in cols:
+                conn.execute(
+                    "ALTER TABLE asos ADD COLUMN bloqueado INTEGER DEFAULT 0")
+            if "bloqueado_por" not in cols:
+                conn.execute("ALTER TABLE asos ADD COLUMN bloqueado_por TEXT")
+            if "bloqueado_em" not in cols:
+                conn.execute("ALTER TABLE asos ADD COLUMN bloqueado_em TEXT")
 
     # colunas de listagem (BLOB aso_doc fica de fora: carga pesada)
     _LIST_COLS = """
         asos.id, aso_number, employee_id, tipo_aso, data_exame, validade_meses,
-        pdf_path, asos.created_at, (aso_doc IS NOT NULL) AS has_doc
+        pdf_path, asos.created_at, (aso_doc IS NOT NULL) AS has_doc,
+        COALESCE(asos.bloqueado, 0) AS bloqueado, asos.bloqueado_por,
+        asos.bloqueado_em
     """
 
     def next_aso_number(self) -> str:
@@ -76,6 +97,31 @@ class AsoRepository:
     def update_pdf_path(self, aso_id: int, pdf_path: str) -> bool:
         with self._get_conn() as conn:
             conn.execute("UPDATE asos SET pdf_path = ? WHERE id = ?", (pdf_path, aso_id))
+            return True
+
+    # --- Bloqueio (bloquear != excluir: registro e PDF permanecem) ---
+
+    def set_bloqueio(self, aso_id: int, bloqueado: bool, usuario: str) -> bool:
+        from datetime import datetime
+        with self._get_conn() as conn:
+            conn.execute(
+                "UPDATE asos SET bloqueado = ?, bloqueado_por = ?, bloqueado_em = ? "
+                "WHERE id = ?",
+                (1 if bloqueado else 0,
+                 usuario if bloqueado else None,
+                 datetime.now().isoformat(timespec="seconds") if bloqueado else None,
+                 aso_id))
+            return True
+
+    # --- Edição de dados do ASO (não altera numero/funcionario) ---
+
+    def update(self, aso_id: int, tipo_aso: str, data_exame: str,
+               validade_meses: int) -> bool:
+        with self._get_conn() as conn:
+            conn.execute(
+                "UPDATE asos SET tipo_aso = ?, data_exame = ?, validade_meses = ? "
+                "WHERE id = ?",
+                (tipo_aso, data_exame, validade_meses, aso_id))
             return True
 
     def get_by_id(self, aso_id: int) -> Optional[Dict[str, Any]]:
@@ -182,6 +228,7 @@ class AsoRepository:
             rows = conn.execute("""
                 SELECT a.*, e.nome AS funcionario_nome, e.cpf AS funcionario_cpf, e.funcao AS funcionario_funcao
                 FROM asos a LEFT JOIN employees e ON a.employee_id = e.id
+                WHERE COALESCE(e.arquivado, 0) = 0
                 ORDER BY e.nome, a.data_exame, a.id
             """).fetchall()
 
@@ -194,7 +241,7 @@ class AsoRepository:
                 data_exame = date.fromisoformat(row["data_exame"])
             except ValueError:
                 continue
-            data_validade = data_exame + relativedelta(months=validade_meses)
+            data_validade = _add_months(data_exame, validade_meses)
             dias = (data_validade - today).days
             if dias < 0:
                 status = "vencido"

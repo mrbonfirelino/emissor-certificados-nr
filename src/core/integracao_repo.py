@@ -286,6 +286,7 @@ class IntegracaoRepository:
                 FROM integracoes i
                 LEFT JOIN empresas_clientes xc ON i.empresa_id = xc.id
                 LEFT JOIN employees e ON i.employee_id = e.id
+                WHERE COALESCE(e.arquivado, 0) = 0
                 ORDER BY e.nome, xc.nome, i.data_validade, i.id
             """).fetchall()
 

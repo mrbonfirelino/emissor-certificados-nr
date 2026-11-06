@@ -1,6 +1,15 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% block titulo %}Emissão em Lote — NormaTech{% endblock %}
 {% block conteudo %}
+<style>
+  /* Layout mais horizontal: "Dados do lote" em 4 colunas (item 7 do roadmap) */
+  .form-grid.lote-grid { grid-template-columns: repeat(4, 1fr); gap: 4px 18px; }
+  .form-grid.lote-grid .campo.span-3 { grid-column: span 3; }
+  @media (max-width: 900px) {
+    .form-grid.lote-grid { grid-template-columns: repeat(2, 1fr); }
+    .form-grid.lote-grid .campo.span-3 { grid-column: span 2; }
+  }
+</style>
 <div class="card">
   <h1>Emissão em Lote</h1>
   <p class="sub">Emita o mesmo treinamento para vários funcionários de uma vez, com ajuste individual opcional.</p>
@@ -25,11 +34,22 @@
     <input type="hidden" name="nr" value="{{ nr_sel }}">
 
     <h2 style="font-size:16px; margin:12px 0 6px;">Dados do lote (aplicados a todos)</h2>
-    <div class="form-grid">
+    <div class="form-grid lote-grid">
       <div class="campo">
-        <label for="data">Data do treinamento *</label>
+        <label for="data">Data de emissão (fim) *</label>
         <input type="text" id="data" name="data" class="js-data" value="{{ hoje_br }}" required>
+        <label style="font-weight:normal;">
+          <input type="checkbox" id="mesmo-dia" onchange="document.getElementById('campo-inicio').style.display=this.checked ? 'block' : 'none'"> Treinamento de vários dias
+        </label>
+        <div id="campo-inicio" style="display:none;">
+          <label for="data_inicio">Início do treinamento</label>
+          <input type="text" id="data_inicio" name="data_inicio" class="js-data" placeholder="dd/mm/aaaa">
+        </div>
       </div>
+    </div>
+    <details class="opcoes" style="margin-top:10px;">
+      <summary>Carga horária, validade, descrição e campos extras</summary>
+      <div class="form-grid lote-grid">
       <div class="campo">
         <label for="carga">Carga horária (h) *</label>
         <input type="number" id="carga" name="carga" min="1" value="{{ tmpl.carga_horaria_minima }}" required>
@@ -38,7 +58,7 @@
         <label for="validade">Validade (meses)</label>
         <input type="number" id="validade" name="validade" min="1" max="120" value="{{ tmpl.validade_meses }}">
       </div>
-      <div class="campo" style="grid-column: span 2;">
+      <div class="campo span-3">
         <label for="descricao">Descrição do treinamento *</label>
         <input type="text" id="descricao" name="descricao" value="{{ tmpl.descricao_padrao }}" required>
       </div>
@@ -57,7 +77,8 @@
         {% endif %}
       </div>
       {% endfor %}
-    </div>
+      </div>
+    </details>
 
     <h2 style="font-size:16px; margin:16px 0 6px;">Funcionários</h2>
     <p class="muted" style="margin-bottom:8px;">Marque quem receberá o treinamento. Ajuste data/carga/validade individuais se precisar (vazio = usa o do lote).</p>
@@ -65,13 +86,13 @@
     <div class="filtros" style="margin-bottom:8px;">
       <div class="campo">
         <label for="f-busca">Buscar na lista</label>
-        <input type="text" id="f-busca" placeholder="Nome ou CPF..." style="max-width:260px;">
+        <input type="text" id="f-busca" placeholder="Nome ou CPF..." style="min-width: 300px; max-width: 400px; width: 100%;">
       </div>
       <div class="campo">
         <label for="f-per">Ver por página</label>
         <select id="f-per" style="max-width:90px;">
-          <option value="10">10</option>
-          <option value="20" selected>20</option>
+          <option value="10" selected>10</option>
+          <option value="20">20</option>
           <option value="25">25</option>
           <option value="50">50</option>
         </select>
@@ -152,11 +173,16 @@
   var sel = document.getElementById('f-per');
   var info = document.getElementById('f-info');
   var pager = document.getElementById('f-pager');
-  var filtro = '', porPagina = 20, pagina = 1;
+  var filtro = '', porPagina = 10, pagina = 1;
+
+  // v1.71.0: busca sem acentos ("joao" acha "João")
+  function norm(s) {
+    return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
 
   function visiveis() {
     return linhas.filter(function (tr) {
-      return !filtro || tr.dataset.busca.indexOf(filtro) >= 0;
+      return !filtro || norm(tr.dataset.busca).indexOf(filtro) >= 0;
     });
   }
 
@@ -173,7 +199,7 @@
   }
 
   function aplicar() {
-    filtro = inp.value.trim().toLowerCase();
+    filtro = norm(inp.value.trim());
     porPagina = parseInt(sel.value, 10) || 20;
     var lista = visiveis();
     var total = lista.length;
@@ -207,6 +233,33 @@
   inp.addEventListener('input', function () { pagina = 1; aplicar(); });
   sel.addEventListener('change', function () { pagina = 1; aplicar(); });
   aplicar();
+})();
+</script>
+{% endif %}
+
+{% if tmpl and funcionarios %}
+<script>
+// v1.86.0: aviso/confirmação quando alguma data de emissão difere de hoje
+(function () {
+  var form = document.querySelector('form[action="/emissao-lote/emitir"]');
+  if (!form) return;
+  var hj = new Date();
+  var hoje = String(hj.getDate()).padStart(2, '0') + '/' +
+             String(hj.getMonth() + 1).padStart(2, '0') + '/' + hj.getFullYear();
+  document.addEventListener('submit', function (ev) {
+    if (ev.target !== form) return;
+    var dif = [];
+    form.querySelectorAll('input.js-data').forEach(function (i) {
+      var v = (i.value || '').trim();
+      if (v && /^\d{2}\/\d{2}\/\d{4}$/.test(v) && v !== hoje && dif.indexOf(v) < 0) dif.push(v);
+    });
+    if (!dif.length) return;
+    if (!window.confirm('ATENÇÃO: existe data de emissão diferente de hoje (' +
+        dif.join(', ') + '; hoje é ' + hoje + ').\n\nDeseja emitir mesmo assim?')) {
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+    }
+  }, true);
 })();
 </script>
 {% endif %}

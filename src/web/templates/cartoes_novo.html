@@ -11,18 +11,26 @@
   <p><a class="btn cinza" href="/cartoes">Voltar</a></p>
   {% else %}
 
-  <form method="post" action="/cartoes/emitir" enctype="multipart/form-data" data-confirmar-lista>
+  <form method="post" action="/cartoes/emitir" id="form-emitir" enctype="multipart/form-data" data-confirmar-lista>
     <div class="form-grid">
       <div class="campo">
         <label>Modelo do cartão</label>
-        <select name="template_code" onchange="aplicarCampos()">
+        <select name="template_code" id="sel-modelo" onchange="aplicarCampos()">
           {% for t in tpls %}
-          <option value="{{ t.code }}"
+          <option value="{{ t.code }}"{{ ' selected' if t.code == modelo else '' }}
                   data-usa-setor="{{ '1' if t.usa_setor else '0' }}"
                   data-usa-papel="{{ '1' if t.usa_papel else '0' }}"
-                  data-usa-matricula="{{ '1' if t.matricula else '0' }}">{{ t.nome }}</option>
+                  data-usa-matricula="{{ '1' if t.matricula else '0' }}"
+                  data-matricula-obrig="{{ '1' if t.matricula_obrig else '0' }}"
+                  data-w="{{ t.w }}" data-h="{{ t.h }}"
+                  data-tipo="{{ t.tipo }}">{{ t.nome }}</option>
           {% endfor %}
         </select>
+      </div>
+      <div class="campo" id="campo-preview">
+        <label>Pré-visualização</label>
+        <div id="preview-cartao" title="Proporção do cartão"></div>
+        <p class="muted" id="preview-info" style="font-size:.85em"></p>
       </div>
       <div class="campo">
         <label>Saída</label>
@@ -37,30 +45,50 @@
       </div>
     </div>
     <p class="muted" id="req-modelo"></p>
+  </form>
 
-    <h2>Funcionários</h2>
+  <h2>Funcionários</h2>
     <p class="muted">Modelos JSON exigem telefone e foto 3x4; modelos PPTX exigem apenas
        os campos que usam. Os campos exibidos acima e as colunas da tabela se
        ajustam ao modelo selecionado.</p>
+    {% if busca %}
+    <p class="muted">{{ total }} resultado(s) para “{{ busca }}”.</p>
+    {% endif %}
 
-    <p class="upload">Importar lista de bloqueios (.xlsx — colunas Nome e CPF):
-       <input type="file" name="arquivo" accept=".xlsx"></p>
-    <button class="btn" type="submit" formaction="/cartoes/importar" formnovalidate>Importar lista</button>
+    <form method="get" action="/cartoes/novo" class="filtros" style="margin:10px 0 12px">
+      <input type="hidden" id="sel-hidden" name="sel" value="{{ sel_str }}">
+      <input type="hidden" id="modelo-hidden" name="modelo" value="{{ modelo }}">
+      <input type="search" name="busca" value="{{ busca }}" placeholder="Buscar funcionário por nome ou CPF..." style="width:420px; max-width:100%">
+      <button class="btn" type="submit">Buscar</button>
+      {% if busca %}<a class="btn cinza" href="/cartoes/novo{% if sel_str %}?sel={{ sel_str }}{% endif %}">Limpar</a>{% endif %}
+      <div class="campo" style="margin-top:6px"><label for="f-per">Ver por página</label><select id="f-per" name="per" onchange="this.form.submit()" style="max-width:90px;"><option value="10" {{ 'selected' if per == 10 else '' }}>10</option><option value="20" {{ 'selected' if per == 20 else '' }}>20</option><option value="25" {{ 'selected' if per == 25 else '' }}>25</option><option value="50" {{ 'selected' if per == 50 else '' }}>50</option></select></div>
+    </form>
 
+    <form method="post" action="/cartoes/importar" enctype="multipart/form-data" style="margin:10px 0">
+      <details>
+        <summary>Importar lista de bloqueios (.xlsx)</summary>
+        <p class="upload">Arquivo com colunas Nome e CPF:
+          <input type="file" name="arquivo" accept=".xlsx"></p>
+        <button class="btn" type="submit" formnovalidate>Importar lista</button>
+      </details>
+    </form>
+
+    <p class="muted" id="sel-nomes" style="margin:4px 0"></p>
     {% if linhas %}
+    <div style="max-height:480px; overflow-y:auto; border:1px solid #ddd; border-radius:6px">
     <table>
       <tr><th>Emitir</th><th>Funcionário</th><th>CPF</th><th>Telefone</th><th>Foto</th>
           <th class="col-matricula">Matrícula (só na emissão)</th><th class="col-papel">Papel</th></tr>
       {% for f in linhas %}
       <tr data-nome="{{ f.nome }}" data-det="{{ f.cpf }}">
-        <td><input type="checkbox" name="sel_{{ f.id }}" {{ 'checked' if f.sel }}></td>
+        <td><input type="checkbox" name="sel_{{ f.id }}" form="form-emitir" {{ 'checked' if f.sel }}></td>
         <td>{{ f.nome }}</td>
         <td>{{ f.cpf }}</td>
         <td>{% if f.telefone %}<span class="badge b-verde">ok</span>{% else %}<span class="badge b-vermelho">sem telefone</span>{% endif %}</td>
         <td>{% if f.foto %}<span class="badge b-verde">ok</span>{% else %}<span class="badge b-vermelho">sem foto</span>{% endif %}</td>
-        <td class="col-matricula"><input type="text" name="matricula_{{ f.id }}" style="max-width:130px" placeholder="—"></td>
+        <td class="col-matricula"><input type="text" name="matricula_{{ f.id }}" form="form-emitir" style="max-width:130px" placeholder="—"></td>
         <td class="col-papel">
-          <select name="papel_{{ f.id }}" style="max-width:120px">
+          <select name="papel_{{ f.id }}" form="form-emitir" style="max-width:120px">
             <option value="LIDERADO">Liderado</option>
             <option value="LIDER">Líder</option>
           </select>
@@ -68,29 +96,99 @@
       </tr>
       {% endfor %}
     </table>
+    </div>
+    {% include "_paginacao.html" %}
     {% else %}
     <p class="muted">Nenhum funcionário cadastrado.</p>
     {% endif %}
 
     <div class="linha-botoes">
-      <button class="btn verde" type="submit" formaction="/cartoes/emitir">Emitir cartões</button>
+      <button class="btn cinza" type="submit" form="form-emitir" formaction="/cartoes/preview" formtarget="_blank">Pré-visualizar cartão</button>
+      <button class="btn verde" type="submit" form="form-emitir" formaction="/cartoes/emitir">Emitir cartões</button>
       <a class="btn cinza" href="/cartoes">Cancelar</a>
     </div>
-  </form>
+
+  <style>
+  .sel-chip { display:inline-block; background:#eef2f6; border:1px solid #d5dde5;
+    border-radius:12px; padding:1px 8px; margin:2px 6px 2px 0; font-size:.85em; }
+  .sel-chip a { text-decoration:none; color:#c62828; font-weight:bold; margin-left:2px; }
+  #preview-cartao { border: 2px dashed #9aa5b1; border-radius: 6px;
+    background: repeating-linear-gradient(45deg, #f4f6f8, #f4f6f8 8px, #e9edf2 8px, #e9edf2 16px); }
+  /* v1.70.4: popup de setor redesenhado */
+  #modal-setor { display:none; position:fixed; inset:0; background:rgba(15,23,42,.55);
+    z-index:60; align-items:center; justify-content:center; padding:16px; }
+  #modal-setor .ms-box { background:#fff; border-radius:12px; max-width:520px; width:100%;
+    max-height:85vh; overflow:auto; box-shadow:0 12px 40px rgba(0,0,0,.3); }
+  #modal-setor .ms-header { padding:16px 20px 12px; border-bottom:1px solid #e5eaf0; }
+  #modal-setor .ms-header h3 { margin:0 0 2px; font-size:1.1em; }
+  #modal-setor .ms-header p { margin:0; font-size:.88em; color:#5b6672; }
+  #modal-setor .ms-body { padding:14px 20px 4px; }
+  #modal-setor .ms-opcao { display:flex; align-items:center; gap:10px; border:1px solid #d5dde5;
+    border-radius:8px; padding:10px 12px; margin-bottom:8px; cursor:pointer; background:#fafbfc;
+    justify-content:flex-start; text-align:left; }
+  #modal-setor .ms-opcao:hover { background:#f0f4f8; }
+  #modal-setor .ms-opcao input { margin:0; flex:0 0 auto; width:auto; }
+  #modal-setor .ms-opcao > span { flex:1; min-width:0; }
+  #modal-setor .ms-opcao .ms-titulo { font-weight:600; }
+  #modal-setor .ms-opcao .ms-desc { display:block; font-weight:400; font-size:.82em; color:#5b6672; }
+  #modal-setor .ms-painel { margin:0 0 12px 30px; }
+  #modal-setor .ms-painel input[type=text] { width:100%; }
+  #modal-setor .ms-emp { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  #modal-setor .ms-emp label { flex:0 0 45%; font-size:.85em; overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap; text-align:left; }
+  #modal-setor .ms-emp input { flex:1; }
+  #modal-setor .ms-emp input.ms-faltando { border-color:#c62828; background:#fdf2f2; }
+  #modal-setor .ms-footer { display:flex; justify-content:flex-end; gap:8px;
+    padding:12px 20px 16px; border-top:1px solid #e5eaf0; }
+  </style>
+  <div id="modal-setor">
+    <div class="ms-box">
+      <div class="ms-header">
+        <h3>Setor dos funcionários</h3>
+        <p>Este modelo imprime o setor no cartão. Como deseja informar?</p>
+      </div>
+      <div class="ms-body">
+        <label class="ms-opcao">
+          <input type="radio" name="ms-modo" value="mesmo" checked onchange="msModo()">
+          <span><span class="ms-titulo">Todos do mesmo setor</span>
+          <span class="ms-desc">Aplica um único setor para todos os selecionados</span></span>
+        </label>
+        <div class="ms-painel" id="ms-mesmo">
+          <input type="text" id="ms-setor" placeholder="Ex.: Manutenção">
+        </div>
+        <label class="ms-opcao">
+          <input type="radio" name="ms-modo" value="individual" onchange="msModo()">
+          <span><span class="ms-titulo">Informar individualmente</span>
+          <span class="ms-desc">Um setor diferente para cada funcionário</span></span>
+        </label>
+        <div class="ms-painel" id="ms-individual" style="display:none; max-height:220px; overflow:auto"></div>
+      </div>
+      <div class="ms-footer">
+        <button type="button" class="btn cinza" id="ms-cancel">Cancelar</button>
+        <button type="button" class="btn verde" id="ms-ok">Continuar emissão</button>
+      </div>
+    </div>
+  </div>
 
   <script>
   function aplicarCampos() {
     var sel = document.querySelector('select[name="template_code"]');
     if (!sel) return;
+    var mh = document.getElementById('modelo-hidden');
+    if (mh) mh.value = sel.value;
+    if (typeof atualizarSel === "function") atualizarSel();
     var opt = sel.options[sel.selectedIndex];
     if (!opt) return;
     var setor = opt.dataset.usaSetor === '1';
     var papel = opt.dataset.usaPapel === '1';
-    var mat = opt.dataset.usaMatricula === '1';
+    var usaMat = opt.dataset.usaMatricula === '1';
+    var mat = usaMat && opt.dataset.matriculaObrig === '1';
     var campoSetor = document.getElementById('campo-setor');
     if (campoSetor) campoSetor.style.display = setor ? '' : 'none';
+    var thMat = document.querySelector('th.col-matricula');
+    if (thMat) thMat.textContent = usaMat && !mat ? 'Matrícula (opcional)' : 'Matrícula (só na emissão)';
     document.querySelectorAll('.col-matricula').forEach(function (el) {
-      el.style.display = mat ? '' : 'none';
+      el.style.display = usaMat ? '' : 'none';
     });
     document.querySelectorAll('.col-papel').forEach(function (el) {
       el.style.display = papel ? '' : 'none';
@@ -99,12 +197,169 @@
     if (setor) reqs.push('Setor');
     if (papel) reqs.push('Papel (líder/liderado)');
     if (mat) reqs.push('Matrícula por funcionário (obrigatória)');
+    else if (usaMat) reqs.push('Matrícula (opcional)');
     var alvo = document.getElementById('req-modelo');
     if (alvo) alvo.textContent = reqs.length
       ? 'Este modelo usa: ' + reqs.join(' · ') + '.'
       : 'Este modelo não usa setor, papel nem matrícula.';
+    // Pré-visualização (proporção do cartão, v1.55.0)
+    var box = document.getElementById('preview-cartao');
+    var info = document.getElementById('preview-info');
+    if (box) {
+      var w = parseFloat(opt.dataset.w) || 86;
+      var h = parseFloat(opt.dataset.h) || 54;
+      var maxW = 150, maxH = 96;
+      var esc = Math.min(maxW / w, maxH / h);
+      box.style.width = Math.max(24, w * esc) + 'px';
+      box.style.height = Math.max(16, h * esc) + 'px';
+      if (info) info.textContent = w.toFixed(0) + ' × ' + h.toFixed(0) +
+        ' mm · ' + (opt.dataset.tipo || '');
+    }
   }
   document.addEventListener('DOMContentLoaded', aplicarCampos);
+  // 969: selecao estavel entre paginas
+  var SEL = [];
+  "{{ sel_str }}".split(",").forEach(function (s) { if (s) SEL.push(s); });
+  var NOMES = {{ nomes | tojson }};
+  function _escH(s) { var d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+  function atualizarSel() {
+    SEL.sort(function (a, b) { return (a | 0) - (b | 0); });
+    var hid = document.getElementById('sel-hidden');
+    if (hid) hid.value = SEL.join(',');
+    var box = document.getElementById('sel-nomes');
+    if (box) {
+      var vis = 0;
+      document.querySelectorAll('input[type=checkbox][name^="sel_"]').forEach(function (cb) {
+        var id = cb.name.slice(4);
+        if (SEL.indexOf(id) >= 0) vis++;
+      });
+      var ocultos = SEL.length - vis;
+      if (!SEL.length) { box.innerHTML = ''; }
+      else {
+        var maxMostrar = 15;
+        var html = 'Selecionados: ' + SEL.length + (ocultos > 0 ? ' (' + ocultos + ' em outras página(s)/busca)' : '') + '<br>';
+        var parte = SEL.slice(0, maxMostrar);
+        html += parte.map(function (id) {
+          var nome = NOMES[id] || ('ID ' + id);
+          return '<span class="sel-chip">' + _escH(nome) +
+                 ' <a href="#" data-sel-remove="' + id + '" title="Remover">×</a></span>';
+        }).join(' ');
+        if (SEL.length > parte.length) html += ' <span class="muted">+' + (SEL.length - parte.length) + ' outro(s)</span>';
+        box.innerHTML = html;
+      }
+    }
+    var selMod = document.querySelector('select[name="template_code"]');
+    document.querySelectorAll('.paginacao a').forEach(function (a) {
+      var parts = a.getAttribute('href').split('?');
+      var params = (parts[1] || '').split('&').filter(function (p) {
+        return p && p.indexOf('sel=') !== 0 && p.indexOf('modelo=') !== 0;
+      });
+      if (SEL.length) params.push('sel=' + SEL.join(','));
+      if (selMod && selMod.value) params.push('modelo=' + encodeURIComponent(selMod.value));
+      a.setAttribute('href', parts[0] + (params.length ? '?' + params.join('&') : ''));
+    });
+  }
+  document.querySelectorAll('input[type=checkbox][name^="sel_"]').forEach(function (cb) {
+    cb.addEventListener('change', function () {
+      var id = cb.name.slice(4);
+      var i = SEL.indexOf(id);
+      if (cb.checked && i < 0) SEL.push(id);
+      if (!cb.checked && i >= 0) SEL.splice(i, 1);
+      atualizarSel();
+    });
+  });
+  document.addEventListener('DOMContentLoaded', atualizarSel);
+  document.addEventListener('click', function (ev) {
+    var a = ev.target.closest ? ev.target.closest("[data-sel-remove]") : null;
+    if (!a) return;
+    ev.preventDefault();
+    var id = a.getAttribute("data-sel-remove");
+    var i = SEL.indexOf(id);
+    if (i >= 0) SEL.splice(i, 1);
+    var cb = document.querySelector('input[type=checkbox][name="sel_' + id + '"]');
+    if (cb) cb.checked = false;
+    atualizarSel();
+  });
+  // v1.70.2: popup de setor antes de emitir (sempre que o modelo usa setor) — corrigido em v1.70.3 (div fora do <style>)
+  var _formEmit = document.querySelector('form[action="/cartoes/emitir"]');
+  var _msPass = false, _msSubmitter = null;
+  if (_formEmit) {
+    _formEmit.addEventListener('submit', function (ev) {
+      if (_msPass) { _msPass = false; return; }
+      var sel = document.querySelector('select[name="template_code"]');
+      var opt = sel && sel.options[sel.selectedIndex];
+      if (!opt || opt.dataset.usaSetor !== '1') return;
+      _msSubmitter = ev.submitter || null;
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+      msAbrir();
+    });
+  }
+  function msAbrir() {
+    var campo = _formEmit.querySelector('input[name="setor"]');
+    var atual = campo ? campo.value : '';
+    document.getElementById('ms-setor').value = atual;
+    var box = document.getElementById('ms-individual');
+    box.innerHTML = '';
+    var ids = SEL.slice();
+    ids.sort(function (a, b) { return (a | 0) - (b | 0); });
+    if (!ids.length) {
+      box.innerHTML = '<p class="muted">N\u00e3o h\u00e1 funcion\u00e1rios selecionados.</p>';
+    }
+    ids.forEach(function (id) {
+      var nome = (typeof NOMES !== 'undefined' && NOMES[id]) ? NOMES[id] : ('ID ' + id);
+      var row = document.createElement('div');
+      row.className = 'ms-emp';
+      row.innerHTML = '<label title="' + _escH(nome) + '">' + _escH(nome) +
+        '</label><input type="text" data-ms-emp="' + id + '" value="' + _escH(atual) +
+        '" placeholder="Setor">';
+      box.appendChild(row);
+    });
+    document.getElementById('modal-setor').style.display = 'flex';
+  }
+  function msModo() {
+    var ind = document.querySelector('input[name="ms-modo"]:checked').value === 'individual';
+    document.getElementById('ms-mesmo').style.display = ind ? 'none' : '';
+    document.getElementById('ms-individual').style.display = ind ? '' : 'none';
+  }
+  function msFechar() { document.getElementById('modal-setor').style.display = 'none'; }
+  var msOk = document.getElementById('ms-ok');
+  if (msOk) msOk.addEventListener('click', function () {
+    var ind = document.querySelector('input[name="ms-modo"]:checked').value === 'individual';
+    if (!SEL.length) { msFechar(); return; }
+    _formEmit.querySelectorAll('input[type=hidden][name^="setor_"]').forEach(function (h) { h.remove(); });
+    if (!ind) {
+      var v = document.getElementById('ms-setor').value.trim();
+      if (!v) { document.getElementById('ms-setor').focus(); return; }
+      _formEmit.querySelector('input[name="setor"]').value = v;
+    } else {
+      var faltando = null;
+      document.querySelectorAll('#ms-individual input[data-ms-emp]').forEach(function (inp) {
+        var vv = inp.value.trim();
+        if (!vv && !faltando) faltando = inp;
+        var hid = document.createElement('input');
+        hid.type = 'hidden';
+        hid.name = 'setor_' + inp.getAttribute('data-ms-emp');
+        hid.value = vv;
+        _formEmit.appendChild(hid);
+      });
+      if (faltando) { faltando.focus(); faltando.classList.add('ms-faltando'); return; }
+      _formEmit.querySelector('input[name="setor"]').value = '';
+    }
+    msFechar();
+    if (_msSubmitter) {
+      _msPass = true;
+      _msSubmitter.click();
+    } else {
+      HTMLFormElement.prototype.submit.call(_formEmit);
+    }
+  });
+  var msCancel = document.getElementById('ms-cancel');
+  if (msCancel) msCancel.addEventListener('click', msFechar);
+  var msModal = document.getElementById('modal-setor');
+  if (msModal) msModal.addEventListener('click', function (ev) {
+    if (ev.target === msModal) msFechar();
+  });
   </script>
   {% endif %}
 </div>
