@@ -20,6 +20,17 @@ from src.utils.paths import get_data_dir
 _PRAZO_DIAS = {"mensal": 30, "trimestral": 91, "semestral": 182, "anual": 365}
 
 
+def _smtp_ssl(host: str, porta: int):
+    """SMTP_SSL que tenta validar o certificado e, se o nome nao bater
+    (ex.: Locaweb), reconecta sem validar (conexao continua criptografada)."""
+    try:
+        return smtplib.SMTP_SSL(host, porta, timeout=15,
+                                context=ssl.create_default_context())
+    except ssl.SSLCertVerificationError:
+        return smtplib.SMTP_SSL(host, porta, timeout=15,
+                                context=ssl._create_unverified_context())
+
+
 def _destinos(cfg: Dict[str, Any]) -> List[str]:
     brutos = (cfg.get("report_destinatarios") or cfg.get("smtp_remetente") or "")
     return [d.strip() for d in brutos.split(",") if d.strip()]
@@ -31,13 +42,21 @@ def _conectar(cfg: Dict[str, Any]):
     host = (cfg.get("smtp_host") or "").strip()
     porta = int(cfg.get("smtp_porta") or 587)
     if seg == "ssl":
-        srv = smtplib.SMTP_SSL(host, porta, timeout=15)
+        srv = _smtp_ssl(host, porta)
     else:
         srv = smtplib.SMTP(host, porta, timeout=15)
     try:
         srv.ehlo()
         if seg == "tls":
-            srv.starttls(context=ssl.create_default_context())
+            try:
+                srv.starttls(context=ssl.create_default_context())
+            except ssl.SSLCertVerificationError:
+                # Cert do servidor sem nome valido (ex.: Locaweb): reconecta
+                # sem validar, mantendo a conexao criptografada.
+                srv.quit()
+                srv = smtplib.SMTP(host, porta, timeout=15)
+                srv.ehlo()
+                srv.starttls(context=ssl._create_unverified_context())
             srv.ehlo()
         usuario = (cfg.get("smtp_usuario") or "").strip()
         senha = cfg.get("smtp_senha") or ""

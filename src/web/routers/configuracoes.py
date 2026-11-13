@@ -308,6 +308,26 @@ def register(app, deps):
             flash(request, erro=msg)
         return RedirectResponse("/configuracoes", status_code=303)
 
+    @app.post("/configuracoes/email-testar-relatorio")
+    def configuracoes_email_testar_relatorio(request: Request,
+                                             user: dict = auth.require_permission("config")):
+        """Gera e envia o relatorio de vencimentos como teste (previa do e-mail automatico)."""
+        from src.core.app_settings import load_app_settings
+        from src.utils.email_report import enviar_email, gerar_relatorio_vencimentos_html
+        cfg = load_app_settings()
+        try:
+            html = gerar_relatorio_vencimentos_html()
+        except Exception as e:
+            flash(request, erro=f"Erro ao gerar relatório: {e}")
+            return RedirectResponse("/configuracoes", status_code=303)
+        ok, msg = enviar_email(cfg, "NormaTech - Relatório de vencimentos (TESTE)", html)
+        if ok:
+            users.audit("email-testar-relatorio", user["username"], "ok")
+            flash(request, msg=msg)
+        else:
+            flash(request, erro=msg)
+        return RedirectResponse("/configuracoes", status_code=303)
+
     @app.post("/configuracoes/log/limpar")
     def configuracoes_log_limpar(request: Request,
                                  user: dict = auth.require_permission("config")):
